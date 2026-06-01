@@ -1,20 +1,19 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { coachEngine } from '@/core/ai-engine/coach-engine'
 
 export async function POST() {
   try {
     const cookieStore = await cookies()
 
-    const supabaseAuth = createServerClient(
+    const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
     )
 
-    const { data: { user } } = await supabaseAuth.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
     }

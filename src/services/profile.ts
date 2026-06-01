@@ -1,16 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from './supabase'
 import { Profile, UserGoal, OnboardingData } from '@/types'
-
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!
-  )
-}
 
 export const profileService = {
   async getProfile(userId: string): Promise<Profile | null> {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -21,7 +14,7 @@ export const profileService = {
   },
 
   async updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile> {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -33,7 +26,7 @@ export const profileService = {
   },
 
   async completeOnboarding(userId: string, onboardingData: OnboardingData): Promise<void> {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
@@ -76,7 +69,7 @@ export const profileService = {
   },
 
   async getGoals(userId: string): Promise<UserGoal[]> {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('user_goals')
       .select('*')

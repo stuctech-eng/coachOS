@@ -1,8 +1,9 @@
-import { supabase } from './supabase'
+import { createAdminClient } from './supabase'
 import { CoachRecommendation, CoachMemory, CoachInsight, DailyStatus } from '@/types'
 
 export const coachService = {
   async getTodayRecommendation(userId: string): Promise<CoachRecommendation | null> {
+    const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
     const { data } = await supabase
       .from('coach_recommendations')
@@ -14,6 +15,7 @@ export const coachService = {
   },
 
   async saveRecommendation(userId: string, rec: Partial<CoachRecommendation>): Promise<CoachRecommendation> {
+    const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
     const { data, error } = await supabase
       .from('coach_recommendations')
@@ -25,6 +27,7 @@ export const coachService = {
   },
 
   async getMemory(userId: string): Promise<CoachMemory[]> {
+    const supabase = createAdminClient()
     const { data } = await supabase
       .from('coach_memory')
       .select('*')
@@ -35,10 +38,12 @@ export const coachService = {
   },
 
   async addMemory(userId: string, memory: Partial<CoachMemory>): Promise<void> {
+    const supabase = createAdminClient()
     await supabase.from('coach_memory').insert({ user_id: userId, ...memory })
   },
 
   async getInsights(userId: string): Promise<CoachInsight[]> {
+    const supabase = createAdminClient()
     const { data } = await supabase
       .from('coach_insights')
       .select('*')
@@ -49,6 +54,7 @@ export const coachService = {
   },
 
   async getTodayStatus(userId: string): Promise<DailyStatus | null> {
+    const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
     const { data } = await supabase
       .from('daily_status')
@@ -60,6 +66,7 @@ export const coachService = {
   },
 
   async saveDailyStatus(userId: string, status: Partial<DailyStatus>): Promise<void> {
+    const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
     await supabase
       .from('daily_status')
@@ -67,6 +74,7 @@ export const coachService = {
   },
 
   async saveConversation(userId: string, role: 'user' | 'assistant', message: string): Promise<void> {
+    const supabase = createAdminClient()
     await supabase.from('ai_conversations').insert({
       user_id: userId,
       role,

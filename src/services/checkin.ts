@@ -1,8 +1,9 @@
-import { supabase } from './supabase'
+import { createAdminClient } from './supabase'
 import { DailyCheckin } from '@/types'
 
 export const checkinService = {
   async getTodayCheckin(userId: string): Promise<DailyCheckin | null> {
+    const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
     const { data, error } = await supabase
       .from('daily_checkins')
@@ -15,6 +16,7 @@ export const checkinService = {
   },
 
   async saveCheckin(userId: string, checkin: Partial<DailyCheckin>): Promise<DailyCheckin> {
+    const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
     const { data, error } = await supabase
       .from('daily_checkins')
@@ -30,6 +32,7 @@ export const checkinService = {
   },
 
   async getRecentCheckins(userId: string, days = 7): Promise<DailyCheckin[]> {
+    const supabase = createAdminClient()
     const from = new Date()
     from.setDate(from.getDate() - days)
     const { data, error } = await supabase
