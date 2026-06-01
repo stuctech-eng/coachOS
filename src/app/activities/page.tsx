@@ -68,7 +68,7 @@ export default function ActiviteitenPage() {
   async function laadActiviteiten() {
     setLoading(true)
     try {
-      const res = await fetch('/api/activiteiten')
+      const res = await fetch('/api/activities')
       const data = await res.json()
       setSessions(data.sessions || [])
     } catch {
@@ -84,7 +84,7 @@ export default function ActiviteitenPage() {
     try {
       const form = new FormData()
       form.append('file', file)
-      const res = await fetch('/api/activiteiten', { method: 'POST', body: form })
+      const res = await fetch('/api/activities', { method: 'POST', body: form })
       const data = await res.json()
       if (data.error) {
         setImportResult('❌ ' + data.error)
