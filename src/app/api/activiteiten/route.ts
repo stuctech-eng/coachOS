@@ -135,9 +135,13 @@ function parseGPX(content: string) {
     const times = content.match(/<time>([^<]+)<\/time>/g) || []
     let duration = 0
     if (times.length >= 2) {
-      const start = new Date(times[0].replace(/<\/?time>/g, ''))
-      const end = new Date(times[times.length - 1].replace(/<\/?time>/g, ''))
-      duration = Math.round((end.getTime() - start.getTime()) / 60000)
+      const startStr = times[0]?.replace(/<\/?time>/g, '') ?? ''
+      const endStr = times[times.length - 1]?.replace(/<\/?time>/g, '') ?? ''
+      if (startStr && endStr) {
+        const start = new Date(startStr)
+        const end = new Date(endStr)
+        duration = Math.round((end.getTime() - start.getTime()) / 60000)
+      }
     }
 
     // Afstand via lat/lon berekening
