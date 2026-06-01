@@ -1,4 +1,4 @@
-# CoachOS - Project Geheugen
+# CoachOS — Project Geheugen
 
 ## Project
 - App naam: CoachOS
@@ -18,7 +18,6 @@
 - Hosting: Vercel
 
 ## Architectuur
-
 Browser (client-side):
 - Auth via browserClient (publishable key)
 - UI state via Zustand
@@ -29,6 +28,57 @@ API Routes (server-side):
 - Auth check via createServerClient + cookies
 - Data via createAdminClient (secret key)
 - Alle database operaties hier
+
+## Bestandsstructuur
+src/
+  app/
+    api/
+      ai/route.ts              klaar
+      checkin/route.ts         klaar
+      coach/route.ts           klaar
+      profile/route.ts         klaar
+    login/page.tsx             klaar
+    register/page.tsx          klaar
+    onboarding/page.tsx        klaar
+    home/page.tsx              klaar
+    checkin/page.tsx           klaar
+    settings/page.tsx          klaar
+    layout.tsx                 klaar
+    page.tsx                   klaar
+  components/
+    ui/index.tsx               klaar
+    layout/index.tsx           klaar
+  core/
+    ai-engine/recovery-engine.ts  klaar
+    prompts/daily-coach.ts        klaar
+  hooks/
+    useAuth.ts                 klaar
+    useCoach.ts                klaar
+  lib/
+    supabase.ts                klaar
+  store/
+    index.ts                   klaar
+  types/
+    index.ts                   klaar
+  utils/
+    index.ts                   klaar
+
+## Huidige staat
+- Login/register werkt
+- Onboarding werkt (Start CoachOS knop werkt)
+- Check-in werkt (opslaan via API route)
+- Home scherm werkt
+- Genereer advies — nog niet getest na v1.1 push
+
+## Bekende bugs
+- Activiteiten pagina niet gebouwd
+- PWA icons ontbreken
+
+## Volgende stappen
+1. v1.1 push naar GitHub bevestigen
+2. Vercel deployment controleren
+3. Genereer advies testen
+4. Naam tonen op home scherm controleren
 
 ## Environment Variables (Vercel)
 - NEXT_PUBLIC_SUPABASE_URL
@@ -42,18 +92,13 @@ API Routes (server-side):
 - Redirect URLs: https://coach-os-tau.vercel.app/**
 - Email bevestiging: AAN
 
-## Roadmap
-- Fase 1 KLAAR: Fundering (login, onboarding, home, check-in, AI coach)
-- Fase 2: Coach Core (Garmin integratie, coach memory opbouw)
-- Fase 3: Data (Apple Health, activiteiten registratie)
-- Fase 4: Intelligence (strength/fitness engine, predictions)
-- Fase 5: Toekomst (video analyse, Strava/Oura/Whoop)
-
 ## Afspraken
 - Altijd overleg voor code
 - Volledige bestanden tonen
-- Python writer voor UTF-8 clean bestanden
-- Python zipfile voor zip export (geen bash zip)
+- Python write_file() voor UTF-8 clean bestanden
+- Python make_zip() voor zip export
+- Bestandsnaam eindigt altijd op .zip
+- Na download iPhone: naam + .zip toevoegen
 - README updaten na elke grote wijziging
 - Taal UI: Nederlands
 - Design: Dark mode first, mobile-first
