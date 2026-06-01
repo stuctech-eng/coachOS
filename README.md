@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.2.0
+- Versie: 1.3.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -35,21 +35,25 @@ src/
     api/
       ai/route.ts              klaar
       checkin/route.ts         klaar
-      coach/route.ts           klaar - triggert memory analyse
-      memory/route.ts          klaar - GET + POST memory analyse
+      coach/route.ts           klaar
+      memory/route.ts          klaar
       profile/route.ts         klaar
+      strava/
+        auth/route.ts          klaar - start OAuth
+        callback/route.ts      klaar - verwerkt OAuth
+        sync/route.ts          klaar - GET status + POST sync
     login/page.tsx             klaar
     register/page.tsx          klaar
     onboarding/page.tsx        klaar
     home/page.tsx              klaar
     checkin/page.tsx           klaar
-    insights/page.tsx          klaar - coach inzichten
-    settings/page.tsx          klaar
+    insights/page.tsx          klaar
+    settings/page.tsx          klaar - met Strava sectie
     layout.tsx                 klaar
     page.tsx                   klaar
   components/
     ui/index.tsx               klaar
-    layout/index.tsx           klaar - 5 nav items incl Inzichten
+    layout/index.tsx           klaar
   core/
     ai-engine/recovery-engine.ts  klaar
     prompts/daily-coach.ts        klaar
@@ -65,24 +69,29 @@ src/
   utils/
     index.ts                   klaar
 
+## Database Tabellen
+- profiles, user_goals, activity_templates, activities
+- activity_sessions, daily_checkins, health_metrics
+- daily_status, coach_memory, coach_recommendations
+- coach_insights, knowledge_observations, ai_conversations
+- strava_tokens (nieuw v1.3.0)
+
 ## Huidige staat
 - Login/register werkt
 - Onboarding werkt
 - Check-in werkt
 - Home scherm werkt
 - Genereer advies werkt
-- Coach memory opbouw werkt
+- Coach memory werkt
 - Inzichten pagina werkt
+- Strava OAuth koppeling werkt
+- Strava activiteiten sync werkt
 
-## Bekende issues
-- Activiteiten pagina nog niet gebouwd
-- PWA icons ontbreken
-- Memory analyse vereist auth cookie - wordt op achtergrond getriggerd
-
-## Volgende stappen
-1. Activiteiten registratie bouwen
-2. Garmin integratie
-3. Weekly review
+## Strava Setup
+- Client ID: 254388
+- Callback domain: coach-os-tau.vercel.app
+- Scope: read, activity:read_all
+- Garmin is gekoppeld aan Strava
 
 ## Environment Variables (Vercel)
 - NEXT_PUBLIC_SUPABASE_URL
@@ -90,11 +99,24 @@ src/
 - SUPABASE_SECRET_KEY
 - ANTHROPIC_API_KEY
 - NEXT_PUBLIC_APP_URL=https://coach-os-tau.vercel.app
+- STRAVA_CLIENT_ID=254388
+- STRAVA_CLIENT_SECRET=9b4822ef38ccd541a9bbc86730f965a8f5149208
 
 ## Supabase Instellingen
 - Site URL: https://coach-os-tau.vercel.app
 - Redirect URLs: https://coach-os-tau.vercel.app/**
 - Email bevestiging: AAN
+
+## Bekende issues
+- Activiteiten pagina nog niet gebouwd
+- PWA icons ontbreken
+- Apple Health nog niet geintegreerd
+
+## Volgende stappen
+1. Apple Health export verwerken
+2. Activiteiten pagina bouwen
+3. Garmin API aanvraag indienen
+4. Weekly review
 
 ## Afspraken
 - Altijd overleg voor code
@@ -112,6 +134,7 @@ src/
 - v1.1.0: Correcte architectuur API routes
 - v1.1.1: Check-in upsert fix
 - v1.2.0: Coach memory + inzichten pagina
+- v1.3.0: Strava OAuth + activiteiten sync
 
 ## Nieuwe chat starten
 Lees mijn README op
