@@ -90,3 +90,39 @@ export interface OnboardingData {
   available_time: Profile['available_time']
   activities: string[]
 }
+
+// Nieuw v1.4.0
+export interface ActivityMetrics {
+  distance?: number       // meters
+  avg_hr?: number         // bpm
+  max_hr?: number         // bpm
+  elevation?: number      // meters
+  avg_speed?: number      // km/h
+  calories?: number       // kcal
+  steps?: number
+  cadence?: number
+}
+
+export interface ActivitySession {
+  id: string
+  user_id: string
+  activity_id: string | null
+  date: string
+  duration: number        // minuten
+  metrics: ActivityMetrics
+  source: 'strava' | 'garmin' | 'manual' | string
+  notes: string | null
+  created_at: string
+}
+
+export interface Activity {
+  id: string
+  user_id: string
+  template_id: string | null
+  name: string
+  created_at: string
+}
+
+export interface ActivityWithSessions extends Activity {
+  sessions: ActivitySession[]
+}
