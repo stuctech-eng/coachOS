@@ -11,7 +11,7 @@ export function getGreeting(name?: string | null): string {
   if (hour < 12) greeting = 'Goedemorgen'
   else if (hour < 18) greeting = 'Goedemiddag'
   else greeting = 'Goedenavond'
-  return name ? `${greeting} ${name}` : greeting
+  return name ? greeting + ' ' + name : greeting
 }
 
 export function formatDate(date: string | Date): string {

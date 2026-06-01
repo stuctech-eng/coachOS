@@ -1,44 +1,48 @@
 'use client'
 import { useEffect, useCallback } from 'react'
-import { useUserStore } from '@/store/userStore'
-import { useCoachStore } from '@/store/coachStore'
-import { checkinService } from '@/services/checkin'
-import { coachService } from '@/services/coach'
+import { useUserStore, useCoachStore } from '@/store'
 
 export function useCoach() {
   const { user } = useUserStore()
-  const { todayRecommendation, todayCheckin, todayStatus, isGenerating, setRecommendation, setCheckin, setStatus, setGenerating } = useCoachStore()
+  const { recommendation, checkin, isGenerating, setRecommendation, setCheckin, setGenerating } = useCoachStore()
 
   useEffect(() => {
     if (!user) return
-    // Load today's data
-    checkinService.getTodayCheckin(user.id).then(setCheckin)
-    coachService.getTodayRecommendation(user.id).then(setRecommendation)
-    coachService.getTodayStatus(user.id).then(setStatus)
-  }, [user, setCheckin, setRecommendation, setStatus])
+    fetch('/api/checkin').then(r => r.json()).then(data => setCheckin(data)).catch(() => {})
+    fetch('/api/coach').then(r => r.json()).then(data => setRecommendation(data)).catch(() => {})
+  }, [user, setCheckin, setRecommendation])
 
   const generateAdvice = useCallback(async () => {
     if (!user || isGenerating) return
     setGenerating(true)
     try {
-      const response = await fetch('/api/coach/daily', { method: 'POST' })
-      const data = await response.json()
-      setRecommendation(data)
-      const status = await coachService.getTodayStatus(user.id)
-      setStatus(status)
+      const res = await fetch('/api/coach', { method: 'POST' })
+      const data = await res.json()
+      if (data && !data.error) setRecommendation(data)
     } catch (error) {
-      console.error('Coach generation failed:', error)
+      console.error('Generate advice error:', error)
     } finally {
       setGenerating(false)
     }
-  }, [user, isGenerating, setGenerating, setRecommendation, setStatus])
+  }, [user, isGenerating, setGenerating, setRecommendation])
 
-  return {
-    recommendation: todayRecommendation,
-    checkin: todayCheckin,
-    status: todayStatus,
-    isGenerating,
-    generateAdvice,
-    hasCheckin: !!todayCheckin,
-  }
+  const saveCheckin = useCallback(async (checkinData: {
+    feeling_score: number
+    energy_score: number
+    has_pain: boolean
+    pain_description?: string
+    notes?: string
+  }) => {
+    const res = await fetch('/api/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(checkinData),
+    })
+    if (!res.ok) throw new Error('Check-in opslaan mislukt')
+    const data = await res.json()
+    setCheckin(data)
+    return data
+  }, [setCheckin])
+
+  return { recommendation, checkin, isGenerating, generateAdvice, saveCheckin, hasCheckin: !!checkin }
 }

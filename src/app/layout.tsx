@@ -4,13 +4,9 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'CoachOS',
-  description: 'Jouw persoonlijke AI coach voor gezondheid, herstel en prestaties',
+  description: 'Jouw persoonlijke AI coach',
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'CoachOS',
-  },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'CoachOS' },
 }
 
 export const viewport: Viewport = {
@@ -25,7 +21,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="nl" className="dark">
-      <body className={`${GeistSans.className} bg-coach-dark text-slate-100 h-screen overflow-hidden`}>
+      <body className={GeistSans.className + ' bg-coach-dark text-slate-100 h-screen overflow-hidden'}>
         {children}
       </body>
     </html>

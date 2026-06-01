@@ -1,36 +1,30 @@
 'use client'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/services/supabase'
-import { profileService } from '@/services/profile'
-import { useUserStore } from '@/store/userStore'
+import { browserClient } from '@/lib/supabase'
+import { useUserStore } from '@/store'
 
 export function useAuth() {
   const { user, profile, isLoading, setUser, setProfile, setGoals, setLoading, reset } = useUserStore()
   const router = useRouter()
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    browserClient.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user)
-        profileService.getProfile(session.user.id).then((p) => {
-          setProfile(p)
-          setLoading(false)
-        })
+        fetch('/api/profile')
+          .then(r => r.json())
+          .then(data => { setProfile(data.profile); setGoals(data.goals || []); setLoading(false) })
+          .catch(() => setLoading(false))
       } else {
         setLoading(false)
       }
     })
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = browserClient.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(session.user)
-        const p = await profileService.getProfile(session.user.id)
-        setProfile(p)
-        const goals = await profileService.getGoals(session.user.id)
-        setGoals(goals)
+        fetch('/api/profile').then(r => r.json()).then(data => { setProfile(data.profile); setGoals(data.goals || []) }).catch(() => {})
       } else {
         reset()
       }
@@ -40,7 +34,7 @@ export function useAuth() {
   }, [setUser, setProfile, setGoals, setLoading, reset])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    await browserClient.auth.signOut()
     reset()
     router.push('/login')
   }
