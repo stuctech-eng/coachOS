@@ -14,7 +14,7 @@ export async function POST() {
       { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
     )
 
-    const { data: { user } } = await supabaseAuth.getUser()
+    const { data: { user } } = await supabaseAuth.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
     }
