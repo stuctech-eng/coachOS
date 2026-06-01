@@ -11,7 +11,7 @@ export const coachEngine = {
   async generateDailyAdvice(userId: string): Promise<CoachRecommendation> {
     // Check cache first
     const existing = await coachService.getTodayRecommendation(userId)
-    if (existing) return existing
+    if (existing?.recommendation) return existing
 
     // Gather all context
     const [profile, goals, checkin, memory] = await Promise.all([
@@ -51,31 +51,54 @@ export const coachEngine = {
       systemPrompt
     )
 
-    // Parse response
-    let parsed: { recommendation: string; reasoning: string; recovery_status: string; energy_level: number }
+    console.log('AI raw response:', response)
+
+    // Parse response - meerdere strategieën
+    let recommendation = 'Een rustige wandeling van 30 minuten'
+    let reasoning = 'Op basis van je huidige herstelstatus is een lichte activiteit het beste voor vandaag.'
+
     try {
+      // Strategie 1: directe JSON parse
       const clean = response.replace(/```json|```/g, '').trim()
-      parsed = JSON.parse(clean)
+      const parsed = JSON.parse(clean)
+      if (parsed.recommendation) recommendation = parsed.recommendation
+      if (parsed.reasoning) reasoning = parsed.reasoning
     } catch {
-      parsed = {
-        recommendation: 'Een rustige wandeling van 30 minuten',
-        reasoning: response,
-        recovery_status: recovery.status,
-        energy_level: checkin?.energy_score || 5,
+      try {
+        // Strategie 2: JSON uit tekst extraheren
+        const jsonMatch = response.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0])
+          if (parsed.recommendation) recommendation = parsed.recommendation
+          if (parsed.reasoning) reasoning = parsed.reasoning
+        } else {
+          // Strategie 3: gebruik de volledige response als reasoning
+          reasoning = response
+        }
+      } catch {
+        reasoning = response
       }
     }
 
+    // Verwijder eventuele lege strings
+    if (!recommendation || recommendation.trim() === '') {
+      recommendation = 'Een rustige wandeling van 30 minuten'
+    }
+    if (!reasoning || reasoning.trim() === '') {
+      reasoning = 'Op basis van je herstelstatus is rust of lichte beweging het beste voor vandaag.'
+    }
+
     // Save recommendation
-    const recommendation = await coachService.saveRecommendation(userId, {
-      recommendation: parsed.recommendation,
-      reasoning: parsed.reasoning,
-      recovery_status: parsed.recovery_status,
-      energy_level: parsed.energy_level,
+    const saved = await coachService.saveRecommendation(userId, {
+      recommendation,
+      reasoning,
+      recovery_status: recovery.status,
+      energy_level: checkin?.energy_score || 5,
     })
 
     // Save conversation
-    await coachService.saveConversation(userId, 'assistant', parsed.recommendation)
+    await coachService.saveConversation(userId, 'assistant', recommendation)
 
-    return recommendation
+    return saved
   },
 }
