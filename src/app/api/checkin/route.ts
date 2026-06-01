@@ -20,7 +20,12 @@ export async function GET() {
     if (!user) return NextResponse.json(null)
     const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
-    const { data } = await supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single()
+    const { data } = await supabase
+      .from('daily_checkins')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .single()
     return NextResponse.json(data || null)
   } catch {
     return NextResponse.json(null)
@@ -44,7 +49,7 @@ export async function POST(req: NextRequest) {
         has_pain: body.has_pain || false,
         pain_description: body.has_pain ? body.pain_description : null,
         notes: body.notes || null,
-      })
+      }, { onConflict: 'user_id,date' })
       .select()
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
