@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -12,8 +12,7 @@ interface StravaStatus {
   last_sync: string | null
 }
 
-export default function SettingsPage() {
-  const { profile, user, signOut } = useAuth()
+function StravaSection() {
   const searchParams = useSearchParams()
   const [stravaStatus, setStravaStatus] = useState<StravaStatus>({ connected: false, athlete_name: null, last_sync: null })
   const [syncing, setSyncing] = useState(false)
@@ -21,7 +20,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetch('/api/strava/sync').then(r => r.json()).then(setStravaStatus).catch(() => {})
-
     const stravaParam = searchParams.get('strava')
     if (stravaParam === 'connected') setSyncMessage('Strava gekoppeld!')
     if (stravaParam === 'error') setSyncMessage('Koppeling mislukt. Probeer opnieuw.')
@@ -41,6 +39,41 @@ export default function SettingsPage() {
       setSyncing(false)
     }
   }
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
+          <Activity size={20} className="text-orange-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-white font-semibold text-sm">Strava</p>
+          <p className="text-slate-400 text-xs">
+            {stravaStatus.connected ? stravaStatus.athlete_name || 'Gekoppeld' : 'Niet gekoppeld'}
+          </p>
+        </div>
+        {stravaStatus.connected
+          ? <CheckCircle size={18} className="text-coach-green" />
+          : <XCircle size={18} className="text-slate-600" />
+        }
+      </div>
+      {syncMessage && <p className="text-xs text-primary-400 mb-3">{syncMessage}</p>}
+      {stravaStatus.connected ? (
+        <Button onClick={handleStravaSync} loading={syncing} variant="secondary" fullWidth size="sm">
+          <RefreshCw size={14} className="mr-2" />
+          Activiteiten synchroniseren
+        </Button>
+      ) : (
+        <Button onClick={() => window.location.href = '/api/strava/auth'} variant="secondary" fullWidth size="sm">
+          Verbind Strava
+        </Button>
+      )}
+    </Card>
+  )
+}
+
+export default function SettingsPage() {
+  const { profile, user, signOut } = useAuth()
 
   return (
     <AppShell>
@@ -70,51 +103,9 @@ export default function SettingsPage() {
 
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Integraties</p>
-          <Card className="p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
-                <Activity size={20} className="text-orange-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-white font-semibold text-sm">Strava</p>
-                <p className="text-slate-400 text-xs">
-                  {stravaStatus.connected
-                    ? stravaStatus.athlete_name || 'Gekoppeld'
-                    : 'Niet gekoppeld'}
-                </p>
-              </div>
-              {stravaStatus.connected
-                ? <CheckCircle size={18} className="text-coach-green" />
-                : <XCircle size={18} className="text-slate-600" />
-              }
-            </div>
-
-            {syncMessage && (
-              <p className="text-xs text-primary-400 mb-3">{syncMessage}</p>
-            )}
-
-            {stravaStatus.connected ? (
-              <Button
-                onClick={handleStravaSync}
-                loading={syncing}
-                variant="secondary"
-                fullWidth
-                size="sm"
-              >
-                <RefreshCw size={14} className="mr-2" />
-                Activiteiten synchroniseren
-              </Button>
-            ) : (
-              <Button
-                onClick={() => window.location.href = '/api/strava/auth'}
-                variant="secondary"
-                fullWidth
-                size="sm"
-              >
-                Verbind Strava
-              </Button>
-            )}
-          </Card>
+          <Suspense fallback={<Card className="p-4 h-24 animate-pulse" />}>
+            <StravaSection />
+          </Suspense>
         </div>
 
         <div>
