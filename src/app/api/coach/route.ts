@@ -22,7 +22,12 @@ export async function GET() {
     if (!user) return NextResponse.json(null)
     const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
-    const { data } = await supabase.from('coach_recommendations').select('*').eq('user_id', user.id).eq('date', today).single()
+    const { data } = await supabase
+      .from('coach_recommendations')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .single()
     return NextResponse.json(data || null)
   } catch {
     return NextResponse.json(null)
@@ -36,7 +41,12 @@ export async function POST() {
     const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
 
-    const { data: cached } = await supabase.from('coach_recommendations').select('*').eq('user_id', user.id).eq('date', today).single()
+    const { data: cached } = await supabase
+      .from('coach_recommendations')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .single()
     if (cached?.recommendation) return NextResponse.json(cached)
 
     const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes] = await Promise.all([
@@ -59,7 +69,15 @@ export async function POST() {
       status_color: recovery.color,
     })
 
-    const systemPrompt = buildDailyCoachPrompt(profile, goalsRes.data || [], checkinRes.data || null, metricsRes.data || null, recovery, memoryRes.data || [])
+    const systemPrompt = buildDailyCoachPrompt(
+      profile,
+      goalsRes.data || [],
+      checkinRes.data || null,
+      metricsRes.data || null,
+      recovery,
+      memoryRes.data || []
+    )
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
 
     const aiResponse = await fetch(appUrl + '/api/ai', {
@@ -94,12 +112,25 @@ export async function POST() {
 
     const { data: saved, error: saveError } = await supabase
       .from('coach_recommendations')
-      .upsert({ user_id: user.id, date: today, recommendation, reasoning, recovery_status: recovery.status, energy_level: checkinRes.data?.energy_score || 5 })
+      .upsert({
+        user_id: user.id, date: today,
+        recommendation, reasoning,
+        recovery_status: recovery.status,
+        energy_level: checkinRes.data?.energy_score || 5,
+      })
       .select().single()
 
     if (saveError) throw saveError
 
-    await supabase.from('ai_conversations').insert({ user_id: user.id, role: 'assistant', message: recommendation })
+    await supabase.from('ai_conversations').insert({
+      user_id: user.id, role: 'assistant', message: recommendation,
+    })
+
+    // Trigger memory analyse op de achtergrond
+    fetch(appUrl + '/api/memory', {
+      method: 'POST',
+      headers: { 'Cookie': '' },
+    }).catch(() => {})
 
     return NextResponse.json(saved)
   } catch (error) {

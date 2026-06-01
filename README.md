@@ -1,8 +1,8 @@
-# CoachOS — Project Geheugen
+# CoachOS - Project Geheugen
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.1.0
+- Versie: 1.2.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -35,19 +35,21 @@ src/
     api/
       ai/route.ts              klaar
       checkin/route.ts         klaar
-      coach/route.ts           klaar
+      coach/route.ts           klaar - triggert memory analyse
+      memory/route.ts          klaar - GET + POST memory analyse
       profile/route.ts         klaar
     login/page.tsx             klaar
     register/page.tsx          klaar
     onboarding/page.tsx        klaar
     home/page.tsx              klaar
     checkin/page.tsx           klaar
+    insights/page.tsx          klaar - coach inzichten
     settings/page.tsx          klaar
     layout.tsx                 klaar
     page.tsx                   klaar
   components/
     ui/index.tsx               klaar
-    layout/index.tsx           klaar
+    layout/index.tsx           klaar - 5 nav items incl Inzichten
   core/
     ai-engine/recovery-engine.ts  klaar
     prompts/daily-coach.ts        klaar
@@ -65,20 +67,22 @@ src/
 
 ## Huidige staat
 - Login/register werkt
-- Onboarding werkt (Start CoachOS knop werkt)
-- Check-in werkt (opslaan via API route)
+- Onboarding werkt
+- Check-in werkt
 - Home scherm werkt
-- Genereer advies — nog niet getest na v1.1 push
+- Genereer advies werkt
+- Coach memory opbouw werkt
+- Inzichten pagina werkt
 
-## Bekende bugs
-- Activiteiten pagina niet gebouwd
+## Bekende issues
+- Activiteiten pagina nog niet gebouwd
 - PWA icons ontbreken
+- Memory analyse vereist auth cookie - wordt op achtergrond getriggerd
 
 ## Volgende stappen
-1. v1.1 push naar GitHub bevestigen
-2. Vercel deployment controleren
-3. Genereer advies testen
-4. Naam tonen op home scherm controleren
+1. Activiteiten registratie bouwen
+2. Garmin integratie
+3. Weekly review
 
 ## Environment Variables (Vercel)
 - NEXT_PUBLIC_SUPABASE_URL
@@ -105,7 +109,9 @@ src/
 
 ## Versiehistorie
 - v1.0.0: Fase 1 eerste versie
-- v1.1.0: Correcte architectuur API routes, Python UTF-8 writer
+- v1.1.0: Correcte architectuur API routes
+- v1.1.1: Check-in upsert fix
+- v1.2.0: Coach memory + inzichten pagina
 
 ## Nieuwe chat starten
 Lees mijn README op
