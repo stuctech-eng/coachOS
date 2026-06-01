@@ -1,8 +1,16 @@
-import { supabase } from './supabase'
+import { createClient } from '@supabase/supabase-js'
 import { Profile, UserGoal, OnboardingData } from '@/types'
+
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!
+  )
+}
 
 export const profileService = {
   async getProfile(userId: string): Promise<Profile | null> {
+    const supabase = getAdminClient()
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -13,6 +21,7 @@ export const profileService = {
   },
 
   async updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile> {
+    const supabase = getAdminClient()
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -24,7 +33,7 @@ export const profileService = {
   },
 
   async completeOnboarding(userId: string, onboardingData: OnboardingData): Promise<void> {
-    // Update profile
+    const supabase = getAdminClient()
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
@@ -38,7 +47,6 @@ export const profileService = {
       .eq('user_id', userId)
     if (profileError) throw profileError
 
-    // Create goals
     if (onboardingData.goals.length > 0) {
       const goals = onboardingData.goals.map((goalType, index) => ({
         user_id: userId,
@@ -47,11 +55,9 @@ export const profileService = {
         priority: index + 1,
         status: 'active' as const,
       }))
-      const { error: goalsError } = await supabase.from('user_goals').insert(goals)
-      if (goalsError) throw goalsError
+      await supabase.from('user_goals').insert(goals)
     }
 
-    // Add selected activities
     if (onboardingData.activities.length > 0) {
       const { data: templates } = await supabase
         .from('activity_templates')
@@ -70,6 +76,7 @@ export const profileService = {
   },
 
   async getGoals(userId: string): Promise<UserGoal[]> {
+    const supabase = getAdminClient()
     const { data, error } = await supabase
       .from('user_goals')
       .select('*')

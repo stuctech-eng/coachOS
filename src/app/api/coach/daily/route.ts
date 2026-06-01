@@ -8,7 +8,6 @@ export async function POST() {
   try {
     const cookieStore = await cookies()
 
-    // Auth check met publishable key
     const supabaseAuth = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -18,22 +17,6 @@ export async function POST() {
     const { data: { user } } = await supabaseAuth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
-    }
-
-    // Coach engine met service role voor volledige toegang
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SECRET_KEY!
-    )
-
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!profile) {
-      return NextResponse.json({ error: 'Profiel niet gevonden' }, { status: 404 })
     }
 
     const recommendation = await coachEngine.generateDailyAdvice(user.id)
