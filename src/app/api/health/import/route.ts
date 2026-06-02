@@ -1,3 +1,13 @@
+export const maxDuration = 60
+export const dynamic = 'force-dynamic'
+
+// Vercel body size limit
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+}
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
