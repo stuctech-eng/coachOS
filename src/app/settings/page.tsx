@@ -1,7 +1,7 @@
 'use client'
-import { Suspense, useEffect, useState, useRef } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Heart } from 'lucide-react'
+import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Heart, Copy, Key } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -73,29 +73,40 @@ function StravaSection() {
 }
 
 function AppleHealthSection() {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [importing, setImporting] = useState(false)
-  const [importMessage, setImportMessage] = useState('')
+  const [apiKey, setApiKey] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [copied, setCopied] = useState(false)
 
-  const handleImport = async (file: File) => {
-    setImporting(true)
-    setImportMessage('')
+  useEffect(() => {
+    fetch('/api/health/apikey')
+      .then(r => r.json())
+      .then(d => setApiKey(d.key))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const generateKey = async () => {
+    setGenerating(true)
     try {
-      const form = new FormData()
-      form.append('file', file)
-      const res = await fetch('/api/health/import', { method: 'POST', body: form })
+      const res = await fetch('/api/health/apikey', { method: 'POST' })
       const data = await res.json()
-      if (data.error) {
-        setImportMessage('❌ ' + data.error)
-      } else {
-        setImportMessage('✅ ' + data.message)
-      }
+      setApiKey(data.key)
     } catch {
-      setImportMessage('❌ Import mislukt')
+      //
     } finally {
-      setImporting(false)
+      setGenerating(false)
     }
   }
+
+  const copyKey = async () => {
+    if (!apiKey) return
+    await navigator.clipboard.writeText(apiKey)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const appUrl = 'https://coach-os-tau.vercel.app'
 
   return (
     <Card className="p-4 mt-3">
@@ -105,40 +116,61 @@ function AppleHealthSection() {
         </div>
         <div className="flex-1">
           <p className="text-white font-semibold text-sm">Apple Health</p>
-          <p className="text-slate-400 text-xs">Importeer export.xml</p>
+          <p className="text-slate-400 text-xs">Via iPhone Shortcut</p>
         </div>
+        {apiKey && <CheckCircle size={18} className="text-coach-green" />}
       </div>
 
-      <p className="text-xs text-slate-500 mb-3">
-        Gezondheid → Profiel → Exporteer gezondheidsdata → deel export.xml
-      </p>
+      {loading ? (
+        <div className="h-8 bg-slate-800 rounded animate-pulse" />
+      ) : apiKey ? (
+        <>
+          <div className="bg-slate-900 rounded-xl p-3 mb-3">
+            <p className="text-xs text-slate-500 mb-1">API Key</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-primary-400 font-mono flex-1 truncate">{apiKey}</p>
+              <button onClick={copyKey} className="flex-shrink-0 p-1.5 rounded-lg bg-slate-800 active:bg-slate-700">
+                {copied
+                  ? <CheckCircle size={14} className="text-coach-green" />
+                  : <Copy size={14} className="text-slate-400" />
+                }
+              </button>
+            </div>
+          </div>
 
-      {importMessage && (
-        <p className="text-xs text-primary-400 mb-3">{importMessage}</p>
+          <div className="bg-slate-900 rounded-xl p-3 mb-3">
+            <p className="text-xs text-slate-500 mb-2">Shortcut instellen</p>
+            <ol className="text-xs text-slate-400 space-y-1.5 list-none">
+              <li>1. Open <span className="text-white">Shortcuts</span> app</li>
+              <li>2. Tik <span className="text-white">+</span> nieuw shortcut</li>
+              <li>3. Voeg toe: <span className="text-white">Gezondheid → Zoek gezondheidsmonsters</span></li>
+              <li>4. Kies: Hartslagfrequentie, afgelopen 30 dagen</li>
+              <li>5. Herhaal voor: HRV, Stappen, Gewicht, Slaap, Actieve energie, VO2max</li>
+              <li>6. Voeg toe: <span className="text-white">Haal inhoud van URL op</span></li>
+              <li>7. URL: <span className="text-primary-400 break-all">{appUrl}/api/health/shortcut</span></li>
+              <li>8. Methode: POST, Header: x-api-key = jouw key</li>
+              <li>9. Sla op als <span className="text-white">CoachOS Sync</span></li>
+            </ol>
+          </div>
+
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 mb-3">
+            <p className="text-xs text-blue-400 font-semibold mb-1">Automatisch uitvoeren</p>
+            <p className="text-xs text-slate-400">
+              Shortcuts → Automatisering → + → Tijdstip → Elke dag 07:00 → CoachOS Sync
+            </p>
+          </div>
+
+          <Button onClick={generateKey} loading={generating} variant="secondary" fullWidth size="sm">
+            <Key size={14} className="mr-2" />
+            Nieuwe API key genereren
+          </Button>
+        </>
+      ) : (
+        <Button onClick={generateKey} loading={generating} variant="secondary" fullWidth size="sm">
+          <Key size={14} className="mr-2" />
+          API key aanmaken
+        </Button>
       )}
-
-      <Button
-        onClick={() => fileInputRef.current?.click()}
-        loading={importing}
-        variant="secondary"
-        fullWidth
-        size="sm"
-      >
-        <Heart size={14} className="mr-2" />
-        {importing ? 'Importeren...' : 'Selecteer export.xml'}
-      </Button>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".xml"
-        className="hidden"
-        onChange={e => {
-          const f = e.target.files?.[0]
-          if (f) handleImport(f)
-          e.target.value = ''
-        }}
-      />
     </Card>
   )
 }
@@ -183,7 +215,7 @@ export default function SettingsPage() {
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Over</p>
           <Card>
-            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v1.5.0</span>} />
+            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v1.6.0</span>} />
           </Card>
         </div>
 
