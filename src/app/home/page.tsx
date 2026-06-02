@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronUp, Sparkles, Bell } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { AppShell } from '@/components/layout'
@@ -112,6 +112,25 @@ export default function HomePage() {
             </div>
           </Card>
         )}
+
+        {/* Weekoverzicht knop */}
+        <Link href="/weekly">
+          <Card className="px-5 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary-500/20 flex items-center justify-center">
+                  <Calendar size={18} className="text-primary-400" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold text-sm">Weekoverzicht</p>
+                  <p className="text-slate-400 text-xs mt-0.5">Hoe was je week?</p>
+                </div>
+              </div>
+              <ChevronDown size={16} className="text-slate-600 -rotate-90" />
+            </div>
+          </Card>
+        </Link>
+
       </div>
     </AppShell>
   )
