@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { calculateRecoveryScore } from '@/core/ai-engine/recovery-engine'
-import { buildDailyCoachPrompt } from '@/core/prompts/daily-coach'
+import { buildDailyCoachPrompt, WeekMetrics } from '@/core/prompts/daily-coach'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -49,12 +49,28 @@ export async function POST() {
       .single()
     if (cached?.recommendation) return NextResponse.json(cached)
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes] = await Promise.all([
+    // Zeven dagen geleden
+    const zeven = new Date()
+    zeven.setDate(zeven.getDate() - 7)
+    const zevenDagenGeleden = zeven.toISOString().split('T')[0]
+
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('health_metrics').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('coach_memory').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
+      supabase.from('health_metrics')
+        .select('date, hrv, resting_hr, sleep_duration, steps')
+        .eq('user_id', user.id)
+        .gte('date', zevenDagenGeleden)
+        .order('date', { ascending: true }),
+      supabase.from('activity_sessions')
+        .select('date, duration, metrics, activities(name)')
+        .eq('user_id', user.id)
+        .gte('date', zevenDagenGeleden)
+        .order('date', { ascending: false })
+        .limit(5),
     ])
 
     const profile = profileRes.data
@@ -69,13 +85,38 @@ export async function POST() {
       status_color: recovery.color,
     })
 
+    // Week metrics verwerken
+    let weekMetrics: WeekMetrics | null = null
+    const weekData = weekMetricsRes.data || []
+    if (weekData.length > 0) {
+      weekMetrics = {
+        hrv: weekData.filter(d => d.hrv).map(d => d.hrv as number),
+        resting_hr: weekData.filter(d => d.resting_hr).map(d => d.resting_hr as number),
+        sleep_duration: weekData.filter(d => d.sleep_duration).map(d => d.sleep_duration as number),
+        steps: weekData.filter(d => d.steps).map(d => d.steps as number),
+        dates: weekData.map(d => d.date),
+      }
+    }
+
+    // Recente activiteiten verwerken
+    const recenteActiviteiten: string[] = (activiteitenRes.data || []).map(a => {
+      const naam = (a.activities as { name: string } | null)?.name || 'Activiteit'
+      const duur = a.duration ? a.duration + ' min' : ''
+      const afstand = (a.metrics as { distance?: number })?.distance
+        ? ((a.metrics as { distance?: number }).distance! / 1000).toFixed(1) + ' km'
+        : ''
+      return [naam, duur, afstand].filter(Boolean).join(' — ')
+    })
+
     const systemPrompt = buildDailyCoachPrompt(
       profile,
       goalsRes.data || [],
       checkinRes.data || null,
       metricsRes.data || null,
       recovery,
-      memoryRes.data || []
+      memoryRes.data || [],
+      weekMetrics,
+      recenteActiviteiten
     )
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
@@ -85,7 +126,7 @@ export async function POST() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
+        max_tokens: 600,
         system: systemPrompt,
         messages: [{ role: 'user', content: 'Geef mijn coaching advies voor vandaag.' }],
       }),
@@ -126,8 +167,8 @@ export async function POST() {
       user_id: user.id, role: 'assistant', message: recommendation,
     })
 
-    // Trigger memory analyse op de achtergrond
-    fetch(appUrl + '/api/memory', {
+    const appUrlForMemory = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
+    fetch(appUrlForMemory + '/api/memory', {
       method: 'POST',
       headers: { 'Cookie': '' },
     }).catch(() => {})
