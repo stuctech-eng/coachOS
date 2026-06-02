@@ -100,7 +100,8 @@ export async function POST() {
 
     // Recente activiteiten verwerken
     const recenteActiviteiten: string[] = (activiteitenRes.data || []).map(a => {
-      const naam = (a.activities as { name: string } | null)?.name || 'Activiteit'
+      const activiteit = a.activities as { name: string } | { name: string }[] | null
+      const naam = (Array.isArray(activiteit) ? activiteit[0]?.name : activiteit?.name) || "Activiteit"
       const duur = a.duration ? a.duration + ' min' : ''
       const afstand = (a.metrics as { distance?: number })?.distance
         ? ((a.metrics as { distance?: number }).distance! / 1000).toFixed(1) + ' km'
