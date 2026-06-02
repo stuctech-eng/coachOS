@@ -1,258 +1,233 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save } from 'lucide-react'
+import { Suspense, useEffect, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Heart, Copy, Key } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
-import { useUserStore } from '@/store'
 
-type Gender = 'man' | 'vrouw' | 'anders' | 'zeg ik liever niet'
-type ExperienceLevel = 'beginner' | 'gemiddeld' | 'gevorderd'
-type AvailableTime = '15min' | '30min' | '60min' | 'flexibel'
-
-interface FormData {
-  first_name: string
-  display_name: string
-  age: string
-  height: string
-  weight: string
-  gender: Gender | ''
-  experience_level: ExperienceLevel | ''
-  available_time: AvailableTime | ''
-  injury_history: string
+interface StravaStatus {
+  connected: boolean
+  athlete_name: string | null
+  last_sync: string | null
 }
 
-export default function ProfilePage() {
-  const router = useRouter()
-  const { profile, setProfile } = useUserStore()
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
-  const [form, setForm] = useState<FormData>({
-    first_name: '',
-    display_name: '',
-    age: '',
-    height: '',
-    weight: '',
-    gender: '',
-    experience_level: '',
-    available_time: '',
-    injury_history: '',
-  })
+function StravaSection() {
+  const searchParams = useSearchParams()
+  const [stravaStatus, setStravaStatus] = useState<StravaStatus>({ connected: false, athlete_name: null, last_sync: null })
+  const [syncing, setSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState('')
 
   useEffect(() => {
-    if (profile) {
-      setForm({
-        first_name: profile.first_name || '',
-        display_name: profile.display_name || '',
-        age: profile.age?.toString() || '',
-        height: profile.height?.toString() || '',
-        weight: profile.weight?.toString() || '',
-        gender: profile.gender || '',
-        experience_level: profile.experience_level || '',
-        available_time: profile.available_time || '',
-        injury_history: profile.injury_history || '',
-      })
-    }
-  }, [profile])
+    fetch('/api/strava/sync').then(r => r.json()).then(setStravaStatus).catch(() => {})
+    const stravaParam = searchParams.get('strava')
+    if (stravaParam === 'connected') setSyncMessage('Strava gekoppeld!')
+    if (stravaParam === 'error') setSyncMessage('Koppeling mislukt. Probeer opnieuw.')
+  }, [searchParams])
 
-  const set = (key: keyof FormData, value: string) => {
-    setForm(f => ({ ...f, [key]: value }))
-  }
-
-  const opslaan = async () => {
-    setSaving(true)
-    setMessage('')
+  const handleStravaSync = async () => {
+    setSyncing(true)
+    setSyncMessage('')
     try {
-      const res = await fetch('/api/profile/update', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          first_name: form.first_name,
-          display_name: form.display_name || form.first_name,
-          age: form.age ? Number(form.age) : null,
-          height: form.height ? Number(form.height) : null,
-          weight: form.weight ? Number(form.weight) : null,
-          gender: form.gender || null,
-          experience_level: form.experience_level || null,
-          available_time: form.available_time || null,
-          injury_history: form.injury_history || null,
-        }),
-      })
+      const res = await fetch('/api/strava/sync', { method: 'POST' })
       const data = await res.json()
-      if (data.error) {
-        setMessage('❌ ' + data.error)
-      } else {
-        setProfile(data.profile)
-        setMessage('✅ Opgeslagen')
-        setTimeout(() => router.push('/settings'), 1000)
-      }
+      setSyncMessage(data.message || 'Sync klaar')
+      fetch('/api/strava/sync').then(r => r.json()).then(setStravaStatus).catch(() => {})
     } catch {
-      setMessage('❌ Opslaan mislukt')
+      setSyncMessage('Sync mislukt')
     } finally {
-      setSaving(false)
+      setSyncing(false)
     }
   }
 
   return (
-    <AppShell showNav={false}>
-      <div className="px-5 py-6 flex flex-col gap-5">
+    <Card className="p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
+          <Activity size={20} className="text-orange-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-white font-semibold text-sm">Strava</p>
+          <p className="text-slate-400 text-xs">
+            {stravaStatus.connected ? stravaStatus.athlete_name || 'Gekoppeld' : 'Niet gekoppeld'}
+          </p>
+        </div>
+        {stravaStatus.connected
+          ? <CheckCircle size={18} className="text-coach-green" />
+          : <XCircle size={18} className="text-slate-600" />
+        }
+      </div>
+      {syncMessage && <p className="text-xs text-primary-400 mb-3">{syncMessage}</p>}
+      {stravaStatus.connected ? (
+        <Button onClick={handleStravaSync} loading={syncing} variant="secondary" fullWidth size="sm">
+          <RefreshCw size={14} className="mr-2" />
+          Activiteiten synchroniseren
+        </Button>
+      ) : (
+        <Button onClick={() => window.location.href = '/api/strava/auth'} variant="secondary" fullWidth size="sm">
+          Verbind Strava
+        </Button>
+      )}
+    </Card>
+  )
+}
 
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/settings')} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
-            <ArrowLeft size={20} className="text-slate-400" />
-          </button>
-          <h1 className="text-xl font-bold text-white">Profiel bewerken</h1>
+function AppleHealthSection() {
+  const [apiKey, setApiKey] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/health/apikey')
+      .then(r => r.json())
+      .then(d => setApiKey(d.key))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const generateKey = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/health/apikey', { method: 'POST' })
+      const data = await res.json()
+      setApiKey(data.key)
+    } catch {
+      //
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const copyKey = async () => {
+    if (!apiKey) return
+    await navigator.clipboard.writeText(apiKey)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const appUrl = 'https://coach-os-tau.vercel.app'
+
+  return (
+    <Card className="p-4 mt-3">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+          <Heart size={20} className="text-red-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-white font-semibold text-sm">Apple Health</p>
+          <p className="text-slate-400 text-xs">Via iPhone Shortcut</p>
+        </div>
+        {apiKey && <CheckCircle size={18} className="text-coach-green" />}
+      </div>
+
+      {loading ? (
+        <div className="h-8 bg-slate-800 rounded animate-pulse" />
+      ) : apiKey ? (
+        <>
+          <div className="bg-slate-900 rounded-xl p-3 mb-3">
+            <p className="text-xs text-slate-500 mb-1">API Key</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-primary-400 font-mono flex-1 truncate">{apiKey}</p>
+              <button onClick={copyKey} className="flex-shrink-0 p-1.5 rounded-lg bg-slate-800 active:bg-slate-700">
+                {copied
+                  ? <CheckCircle size={14} className="text-coach-green" />
+                  : <Copy size={14} className="text-slate-400" />
+                }
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 rounded-xl p-3 mb-3">
+            <p className="text-xs text-slate-500 mb-2">Shortcut instellen</p>
+            <ol className="text-xs text-slate-400 space-y-1.5 list-none">
+              <li>1. Open <span className="text-white">Opdrachten</span> app</li>
+              <li>2. Tik <span className="text-white">+</span> nieuw shortcut</li>
+              <li>3. Voeg toe: <span className="text-white">Gezondheid → Zoek gezondheidsmonsters</span></li>
+              <li>4. Kies: Hartslagfrequentie, afgelopen 1 dag</li>
+              <li>5. Herhaal voor: HRV, Stappen, Gewicht, Slaap, Actieve energie</li>
+              <li>6. Voeg toe: <span className="text-white">Haal inhoud van URL op</span></li>
+              <li>7. URL: <span className="text-primary-400 break-all">{appUrl}/api/health/shortcut</span></li>
+              <li>8. Methode: POST, Header: x-api-key = jouw key, JSON velden koppelen</li>
+              <li>9. Automatisering: elke dag 07:00</li>
+            </ol>
+          </div>
+
+          <Button onClick={generateKey} loading={generating} variant="secondary" fullWidth size="sm">
+            <Key size={14} className="mr-2" />
+            Nieuwe API key genereren
+          </Button>
+        </>
+      ) : (
+        <Button onClick={generateKey} loading={generating} variant="secondary" fullWidth size="sm">
+          <Key size={14} className="mr-2" />
+          API key aanmaken
+        </Button>
+      )}
+    </Card>
+  )
+}
+
+export default function SettingsPage() {
+  const { profile, user, signOut } = useAuth()
+  const router = useRouter()
+
+  return (
+    <AppShell>
+      <div className="px-5 py-6 flex flex-col gap-6">
+        <h1 className="text-2xl font-bold text-white">Instellingen</h1>
+
+        <Card className="p-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-primary-500/20 flex items-center justify-center">
+              <span className="text-2xl font-bold text-primary-400">{profile?.first_name?.charAt(0)?.toUpperCase() || '?'}</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-semibold">{profile?.display_name || profile?.first_name || 'Gebruiker'}</p>
+              <p className="text-slate-400 text-sm">{user?.email}</p>
+            </div>
+          </div>
+        </Card>
+
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Profiel</p>
+          <Card>
+            <Row icon={User} label="Profiel bewerken" onClick={() => router.push('/profile')} />
+            <div className="h-px bg-coach-border mx-4" />
+            <Row icon={Target} label="Doelen beheren" onClick={() => router.push('/goals')} />
+          </Card>
         </div>
 
-        {message && (
-          <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl px-4 py-3">
-            <p className="text-primary-400 text-sm">{message}</p>
-          </div>
-        )}
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Integraties</p>
+          <Suspense fallback={<Card className="p-4 h-24 animate-pulse" />}>
+            <StravaSection />
+          </Suspense>
+          <AppleHealthSection />
+        </div>
 
-        {/* Naam */}
-        <Card className="p-4 flex flex-col gap-4">
-          <p className="text-xs text-slate-500 uppercase tracking-wider">Naam</p>
-          <div>
-            <label className="text-xs text-slate-400 mb-1 block">Voornaam</label>
-            <input
-              value={form.first_name}
-              onChange={e => set('first_name', e.target.value)}
-              className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Jouw naam"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-slate-400 mb-1 block">Weergavenaam</label>
-            <input
-              value={form.display_name}
-              onChange={e => set('display_name', e.target.value)}
-              className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Hoe de coach je noemt"
-            />
-          </div>
-        </Card>
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Over</p>
+          <Card>
+            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v2.0.0</span>} />
+          </Card>
+        </div>
 
-        {/* Lichaam */}
-        <Card className="p-4 flex flex-col gap-4">
-          <p className="text-xs text-slate-500 uppercase tracking-wider">Lichaam</p>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs text-slate-400 mb-1 block">Leeftijd</label>
-              <input
-                value={form.age}
-                onChange={e => set('age', e.target.value)}
-                type="number"
-                className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="35"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 mb-1 block">Lengte (cm)</label>
-              <input
-                value={form.height}
-                onChange={e => set('height', e.target.value)}
-                type="number"
-                className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="180"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 mb-1 block">Gewicht (kg)</label>
-              <input
-                value={form.weight}
-                onChange={e => set('weight', e.target.value)}
-                type="number"
-                className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="75"
-              />
-            </div>
-          </div>
-
-          {/* Geslacht */}
-          <div>
-            <label className="text-xs text-slate-400 mb-2 block">Geslacht</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['man', 'vrouw', 'anders', 'zeg ik liever niet'] as Gender[]).map(g => (
-                <button
-                  key={g}
-                  onClick={() => set('gender', g)}
-                  className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    form.gender === g
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-slate-800 text-slate-400 active:bg-slate-700'
-                  }`}
-                >
-                  {g.charAt(0).toUpperCase() + g.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Training */}
-        <Card className="p-4 flex flex-col gap-4">
-          <p className="text-xs text-slate-500 uppercase tracking-wider">Training</p>
-
-          <div>
-            <label className="text-xs text-slate-400 mb-2 block">Ervaringsniveau</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['beginner', 'gemiddeld', 'gevorderd'] as ExperienceLevel[]).map(e => (
-                <button
-                  key={e}
-                  onClick={() => set('experience_level', e)}
-                  className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    form.experience_level === e
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-slate-800 text-slate-400 active:bg-slate-700'
-                  }`}
-                >
-                  {e.charAt(0).toUpperCase() + e.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs text-slate-400 mb-2 block">Beschikbare tijd</label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['15min', '30min', '60min', 'flexibel'] as AvailableTime[]).map(t => (
-                <button
-                  key={t}
-                  onClick={() => set('available_time', t)}
-                  className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    form.available_time === t
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-slate-800 text-slate-400 active:bg-slate-700'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* Blessures */}
-        <Card className="p-4 flex flex-col gap-3">
-          <p className="text-xs text-slate-500 uppercase tracking-wider">Blessuregeschiedenis</p>
-          <textarea
-            value={form.injury_history}
-            onChange={e => set('injury_history', e.target.value)}
-            className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-            placeholder="Beschrijf eventuele blessures of aandachtspunten..."
-            rows={3}
-          />
-        </Card>
-
-        {/* Opslaan */}
-        <Button onClick={opslaan} loading={saving} fullWidth>
-          <Save size={16} className="mr-2" />
-          Opslaan
-        </Button>
-
+        <button onClick={signOut} className="flex items-center gap-3 px-4 py-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+          <LogOut size={18} />
+          <span className="font-medium">Uitloggen</span>
+        </button>
       </div>
     </AppShell>
+  )
+}
+
+function Row({ icon: Icon, label, trailing, onClick }: { icon: React.ElementType; label: string; trailing?: React.ReactNode; onClick?: () => void }) {
+  return (
+    <button onClick={onClick} className="flex items-center gap-4 px-4 py-4 w-full active:bg-slate-800">
+      <Icon size={18} className="text-slate-400 flex-shrink-0" />
+      <span className="flex-1 text-left text-sm text-slate-200">{label}</span>
+      {trailing || <ChevronRight size={16} className="text-slate-600" />}
+    </button>
   )
 }
