@@ -1,7 +1,7 @@
 'use client'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle } from 'lucide-react'
+import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Heart } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -72,6 +72,77 @@ function StravaSection() {
   )
 }
 
+function AppleHealthSection() {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [importing, setImporting] = useState(false)
+  const [importMessage, setImportMessage] = useState('')
+
+  const handleImport = async (file: File) => {
+    setImporting(true)
+    setImportMessage('')
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/health/import', { method: 'POST', body: form })
+      const data = await res.json()
+      if (data.error) {
+        setImportMessage('❌ ' + data.error)
+      } else {
+        setImportMessage('✅ ' + data.message)
+      }
+    } catch {
+      setImportMessage('❌ Import mislukt')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  return (
+    <Card className="p-4 mt-3">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+          <Heart size={20} className="text-red-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-white font-semibold text-sm">Apple Health</p>
+          <p className="text-slate-400 text-xs">Importeer export.xml</p>
+        </div>
+      </div>
+
+      <p className="text-xs text-slate-500 mb-3">
+        Gezondheid → Profiel → Exporteer gezondheidsdata → deel export.xml
+      </p>
+
+      {importMessage && (
+        <p className="text-xs text-primary-400 mb-3">{importMessage}</p>
+      )}
+
+      <Button
+        onClick={() => fileInputRef.current?.click()}
+        loading={importing}
+        variant="secondary"
+        fullWidth
+        size="sm"
+      >
+        <Heart size={14} className="mr-2" />
+        {importing ? 'Importeren...' : 'Selecteer export.xml'}
+      </Button>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xml"
+        className="hidden"
+        onChange={e => {
+          const f = e.target.files?.[0]
+          if (f) handleImport(f)
+          e.target.value = ''
+        }}
+      />
+    </Card>
+  )
+}
+
 export default function SettingsPage() {
   const { profile, user, signOut } = useAuth()
 
@@ -106,12 +177,13 @@ export default function SettingsPage() {
           <Suspense fallback={<Card className="p-4 h-24 animate-pulse" />}>
             <StravaSection />
           </Suspense>
+          <AppleHealthSection />
         </div>
 
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Over</p>
           <Card>
-            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v1.3.0</span>} />
+            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v1.5.0</span>} />
           </Card>
         </div>
 
