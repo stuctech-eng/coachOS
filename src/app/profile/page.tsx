@@ -84,7 +84,7 @@ export default function ProfilePage() {
       } else {
         setProfile(data.profile)
         setMessage('✅ Opgeslagen')
-        setTimeout(() => router.push('/settings'), 1000)
+        setTimeout(() => router.back(), 1000)
       }
     } catch {
       setMessage('❌ Opslaan mislukt')
@@ -99,7 +99,7 @@ export default function ProfilePage() {
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/settings')} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
+          <button onClick={() => router.back()} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
             <ArrowLeft size={20} className="text-slate-400" />
           </button>
           <h1 className="text-xl font-bold text-white">Profiel bewerken</h1>
