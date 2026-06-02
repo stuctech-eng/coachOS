@@ -24,8 +24,9 @@ interface FormData {
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { profile, setProfile } = useUserStore()
+  const { setProfile } = useUserStore()
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [form, setForm] = useState<FormData>({
     first_name: '',
@@ -39,21 +40,29 @@ export default function ProfilePage() {
     injury_history: '',
   })
 
+  // Laad altijd verse data direct van API
   useEffect(() => {
-    if (profile) {
-      setForm({
-        first_name: profile.first_name || '',
-        display_name: profile.display_name || '',
-        age: profile.age?.toString() || '',
-        height: profile.height?.toString() || '',
-        weight: profile.weight?.toString() || '',
-        gender: profile.gender || '',
-        experience_level: profile.experience_level || '',
-        available_time: profile.available_time || '',
-        injury_history: profile.injury_history || '',
+    fetch('/api/profile')
+      .then(r => r.json())
+      .then(data => {
+        const p = data.profile
+        if (p) {
+          setForm({
+            first_name: p.first_name || '',
+            display_name: p.display_name || '',
+            age: p.age?.toString() || '',
+            height: p.height?.toString() || '',
+            weight: p.weight?.toString() || '',
+            gender: p.gender || '',
+            experience_level: p.experience_level || '',
+            available_time: p.available_time || '',
+            injury_history: p.injury_history || '',
+          })
+        }
       })
-    }
-  }, [profile])
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
 
   const set = (key: keyof FormData, value: string) => {
     setForm(f => ({ ...f, [key]: value }))
@@ -91,6 +100,22 @@ export default function ProfilePage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <AppShell showNav={false}>
+        <div className="px-5 py-6 flex flex-col gap-5">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.back()} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
+              <ArrowLeft size={20} className="text-slate-400" />
+            </button>
+            <h1 className="text-xl font-bold text-white">Profiel bewerken</h1>
+          </div>
+          {[1,2,3].map(i => <div key={i} className="h-24 rounded-2xl bg-coach-card animate-pulse" />)}
+        </div>
+      </AppShell>
+    )
   }
 
   return (
@@ -145,7 +170,7 @@ export default function ProfilePage() {
                 onChange={e => set('age', e.target.value)}
                 type="number"
                 className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="35"
+                placeholder="54"
               />
             </div>
             <div>
@@ -155,7 +180,7 @@ export default function ProfilePage() {
                 onChange={e => set('height', e.target.value)}
                 type="number"
                 className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="180"
+                placeholder="186"
               />
             </div>
             <div>
@@ -165,7 +190,7 @@ export default function ProfilePage() {
                 onChange={e => set('weight', e.target.value)}
                 type="number"
                 className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="75"
+                placeholder="95"
               />
             </div>
           </div>
