@@ -66,6 +66,7 @@ export async function POST() {
       activiteiten30Res,
       checkins30Res,
       blessuresRes,
+      lifeEventsRes,
     ] = await Promise.all([
       supabase.from('profiles').select('available_time').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -74,6 +75,7 @@ export async function POST() {
       supabase.from('activity_sessions').select('date, duration, metrics').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('daily_checkins').select('date, energy_score, feeling_score').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('injuries').select('active').eq('user_id', user.id).eq('active', true),
+      supabase.from('life_events').select('type, recovery_impact, stress_load, sleep_disruption').eq('user_id', user.id).gte('start_time', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()),
     ])
 
     const profile = profileRes.data
@@ -83,9 +85,15 @@ export async function POST() {
     const activiteiten30 = activiteiten30Res.data || []
     const checkins30 = checkins30Res.data || []
     const heeftBlessure = (blessuresRes.data?.length || 0) > 0
+    const lifeEvents = (lifeEventsRes.data || []) as Array<{ recovery_impact: number; stress_load: number; sleep_disruption: number }>
+
+    // Life event penalty berekenen
+    const lifeEventPenalty = lifeEvents.reduce((acc, e) => {
+      return acc + (e.recovery_impact * 5) + (e.sleep_disruption * 3)
+    }, 0)
 
     // Bereken scores
-    const recovery = calculateRecoveryScore(checkin, metricsVandaag)
+    const recovery = calculateRecoveryScore(checkin, metricsVandaag, lifeEventPenalty)
     const training = calculateTrainingScore(activiteiten30, profile?.available_time || null)
     const lifestyle = calculateLifestyleScore(metrics30)
     const coachScore = calculateCoachScore(recovery.score, training.score, lifestyle.score)
