@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
         stress_load: body.stress_load || 0,
         sleep_disruption: body.sleep_disruption || 0,
         notes: body.notes || null,
+        start_hour: body.start_hour ?? null,
+        end_hour: body.end_hour ?? null,
+        recurrence: body.recurrence || null,
+        recurrence_interval: body.recurrence_interval || null,
       })
       .select()
       .single()
@@ -78,6 +82,9 @@ export async function PATCH(req: NextRequest) {
     if (body.stress_load !== undefined)      update.stress_load      = body.stress_load
     if (body.sleep_disruption !== undefined) update.sleep_disruption = body.sleep_disruption
     if (body.end_time !== undefined)         update.end_time         = body.end_time
+    if (body.start_hour !== undefined)       update.start_hour       = body.start_hour
+    if (body.end_hour !== undefined)         update.end_hour         = body.end_hour
+    if (body.recurrence !== undefined)       update.recurrence       = body.recurrence
 
     const { error } = await supabase
       .from('life_events')
