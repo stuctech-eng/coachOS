@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { AppShell } from '@/components/layout'
@@ -16,10 +16,21 @@ const statusColors: Record<StatusColor, { dot: string; text: string; bg: string 
   red: { dot: 'bg-coach-red', text: 'text-coach-red', bg: 'bg-coach-red/10' },
 }
 
+interface CoachStatus {
+  coach_score: number | null
+  recovery_score: number | null
+  training_score: number | null
+  lifestyle_score: number | null
+  risk_flags: string[]
+  status_color: string
+}
+
 export default function HomePage() {
   const { profile } = useAuth()
   const { recommendation, checkin, isGenerating, generateAdvice, hasCheckin } = useCoach()
   const [showReasoning, setShowReasoning] = useState(false)
+  const [coachStatus, setCoachStatus] = useState<CoachStatus | null>(null)
+  const [berekenend, setBerekenend] = useState(false)
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
   const statusColor: StatusColor = checkin
@@ -27,6 +38,26 @@ export default function HomePage() {
       : (checkin.feeling_score || 0) >= 4 ? 'orange' : 'red'
     : 'orange'
   const colors = statusColors[statusColor]
+
+  const berekenCoachScore = async () => {
+    setBerekenend(true)
+    try {
+      const res = await fetch('/api/status', { method: 'POST' })
+      const data = await res.json()
+      setCoachStatus(data)
+    } catch {
+      //
+    } finally {
+      setBerekenend(false)
+    }
+  }
+
+  const scoreKleur = (score: number | null) => {
+    if (!score) return 'text-slate-400'
+    if (score >= 75) return 'text-green-400'
+    if (score >= 50) return 'text-orange-400'
+    return 'text-red-400'
+  }
 
   return (
     <AppShell>
@@ -45,6 +76,66 @@ export default function HomePage() {
           <div className={cn('w-3 h-3 rounded-full flex-shrink-0 animate-pulse-slow', colors.dot)} />
           <p className={cn('text-sm font-semibold flex-1', colors.text)}>{getStatusLabel(statusColor)}</p>
         </div>
+
+        {/* Coach Score */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-white">Coach Score</p>
+            <button
+              onClick={berekenCoachScore}
+              disabled={berekenend}
+              className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={cn('text-slate-400', berekenend && 'animate-spin')} />
+            </button>
+          </div>
+
+          {coachStatus ? (
+            <>
+              <div className="flex items-end gap-2 mb-3">
+                <p className={cn('text-5xl font-bold', scoreKleur(coachStatus.coach_score))}>
+                  {coachStatus.coach_score ?? '—'}
+                </p>
+                <p className="text-slate-500 text-sm mb-1">/100</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="bg-slate-800 rounded-xl p-2 text-center">
+                  <p className="text-xs text-slate-500">Herstel</p>
+                  <p className={cn('text-lg font-bold', scoreKleur(coachStatus.recovery_score))}>
+                    {coachStatus.recovery_score ?? '—'}
+                  </p>
+                </div>
+                <div className="bg-slate-800 rounded-xl p-2 text-center">
+                  <p className="text-xs text-slate-500">Training</p>
+                  <p className={cn('text-lg font-bold', scoreKleur(coachStatus.training_score))}>
+                    {coachStatus.training_score ?? '—'}
+                  </p>
+                </div>
+                <div className="bg-slate-800 rounded-xl p-2 text-center">
+                  <p className="text-xs text-slate-500">Leefstijl</p>
+                  <p className={cn('text-lg font-bold', scoreKleur(coachStatus.lifestyle_score))}>
+                    {coachStatus.lifestyle_score ?? '—'}
+                  </p>
+                </div>
+              </div>
+              {coachStatus.risk_flags && coachStatus.risk_flags.length > 0 && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                  <p className="text-xs text-red-400 font-semibold mb-1">⚠️ Risico's</p>
+                  {coachStatus.risk_flags.map((flag, i) => (
+                    <p key={i} className="text-xs text-red-300">• {flag}</p>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-3">
+              <p className="text-slate-400 text-sm mb-3">Bereken je dagelijkse Coach Score</p>
+              <Button onClick={berekenCoachScore} loading={berekenend} fullWidth>
+                {berekenend ? 'Berekenen...' : 'Bereken Coach Score'}
+              </Button>
+            </div>
+          )}
+        </Card>
 
         <Card className="p-5">
           <div className="flex flex-col gap-4">
@@ -113,7 +204,7 @@ export default function HomePage() {
           </Card>
         )}
 
-        {/* Weekoverzicht knop */}
+        {/* Weekoverzicht */}
         <Link href="/weekly">
           <Card className="px-5 py-4">
             <div className="flex items-center justify-between">
