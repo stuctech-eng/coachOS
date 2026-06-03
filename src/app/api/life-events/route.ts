@@ -21,17 +21,14 @@ export async function GET() {
     const user = await getUser()
     if (!user) return NextResponse.json({ events: [] })
     const supabase = createAdminClient()
-
     const veertien = new Date()
     veertien.setDate(veertien.getDate() - 14)
-
     const { data } = await supabase
       .from('life_events')
       .select('*')
       .eq('user_id', user.id)
       .gte('start_time', veertien.toISOString())
       .order('start_time', { ascending: false })
-
     return NextResponse.json({ events: data || [] })
   } catch {
     return NextResponse.json({ events: [] })
@@ -44,7 +41,6 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
     const body = await req.json()
     if (!body.type) return NextResponse.json({ error: 'Type verplicht' }, { status: 400 })
-
     const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('life_events')
@@ -60,12 +56,40 @@ export async function POST(req: NextRequest) {
       })
       .select()
       .single()
-
     if (error) throw error
     return NextResponse.json({ event: data })
   } catch (error) {
     console.error('Life event POST error:', error)
     return NextResponse.json({ error: 'Toevoegen mislukt' }, { status: 500 })
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const user = await getUser()
+    if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+    const body = await req.json()
+    if (!body.id) return NextResponse.json({ error: 'ID verplicht' }, { status: 400 })
+    const supabase = createAdminClient()
+
+    const update: Record<string, unknown> = {}
+    if (body.notes !== undefined)            update.notes            = body.notes
+    if (body.recovery_impact !== undefined)  update.recovery_impact  = body.recovery_impact
+    if (body.stress_load !== undefined)      update.stress_load      = body.stress_load
+    if (body.sleep_disruption !== undefined) update.sleep_disruption = body.sleep_disruption
+    if (body.end_time !== undefined)         update.end_time         = body.end_time
+
+    const { error } = await supabase
+      .from('life_events')
+      .update(update)
+      .eq('id', body.id)
+      .eq('user_id', user.id)
+
+    if (error) throw error
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Life event PATCH error:', error)
+    return NextResponse.json({ error: 'Updaten mislukt' }, { status: 500 })
   }
 }
 

@@ -16,7 +16,6 @@ async function getUser() {
   return user
 }
 
-// GET — haal alle actieve doelen op
 export async function GET() {
   try {
     const user = await getUser()
@@ -34,7 +33,6 @@ export async function GET() {
   }
 }
 
-// POST — voeg nieuw doel toe
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
@@ -43,7 +41,6 @@ export async function POST(req: NextRequest) {
     if (!body.title) return NextResponse.json({ error: 'Titel verplicht' }, { status: 400 })
     const supabase = createAdminClient()
 
-    // Bepaal prioriteit
     const { data: existing } = await supabase
       .from('user_goals')
       .select('priority')
@@ -61,6 +58,7 @@ export async function POST(req: NextRequest) {
         title: body.title,
         priority,
         status: 'active',
+        target_value: body.target_value || null,
         target_date: body.target_date || null,
       })
       .select()
@@ -74,7 +72,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH — update doel status
 export async function PATCH(req: NextRequest) {
   try {
     const user = await getUser()
@@ -82,11 +79,19 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json()
     if (!body.id) return NextResponse.json({ error: 'ID verplicht' }, { status: 400 })
     const supabase = createAdminClient()
+
+    const update: Record<string, unknown> = {}
+    if (body.status !== undefined)        update.status        = body.status
+    if (body.current_value !== undefined) update.current_value = body.current_value
+    if (body.target_value !== undefined)  update.target_value  = body.target_value
+    if (body.title !== undefined)         update.title         = body.title
+
     const { error } = await supabase
       .from('user_goals')
-      .update({ status: body.status || 'completed' })
+      .update(update)
       .eq('id', body.id)
       .eq('user_id', user.id)
+
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -95,7 +100,6 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// DELETE — verwijder doel
 export async function DELETE(req: NextRequest) {
   try {
     const user = await getUser()
