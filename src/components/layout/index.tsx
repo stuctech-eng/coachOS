@@ -1,13 +1,13 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Activity, CheckSquare, Settings, Brain } from 'lucide-react'
+import { Home, Activity, CheckSquare, Settings, Brain, MessageCircle } from 'lucide-react'
 import { cn } from '@/utils'
 
 const navItems = [
   { href: '/home', icon: Home, label: 'Home' },
   { href: '/checkin', icon: CheckSquare, label: 'Check-in' },
-  { href: '/insights', icon: Brain, label: 'Inzichten' },
+  { href: '/chat', icon: MessageCircle, label: 'Coach' },
   { href: '/activities', icon: Activity, label: 'Activiteiten' },
   { href: '/settings', icon: Settings, label: 'Instellingen' },
 ]
