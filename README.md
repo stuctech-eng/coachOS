@@ -209,3 +209,35 @@ Engines:
 Lees mijn README op
 https://raw.githubusercontent.com/stuctech-eng/coachOS/refs/heads/main/README.md
 en help me verder met CoachOS
+## Standaard Werkwijze
+
+### Nieuwe bestanden checklist
+1. `'use client'` bovenaan pagina
+2. `export const dynamic = 'force-dynamic'` bovenaan API route
+3. Supabase tabel aanmaken
+4. RLS policy aanmaken: `CREATE POLICY "Users own data" ON tabel FOR ALL USING (auth.uid() = user_id);`
+5. Altijd volledig bestand — nooit fragment
+
+### Bug flow
+1. Buildlog → exacte fout lezen
+2. TypeScript error → props/types checken
+3. "Niets veranderd" → bestand op juist pad in Working Copy?
+4. "Slaat niet op" → RLS policy Supabase checken
+5. "404" → mapnaam exact controleren
+6. Dan pas code fixen
+
+### Voor Dick altijd
+- Volledig bestand in chat of als zip
+- Zip → naam + .zip → uitpakken → Working Copy → push
+- Na deploy testen voor volgende stap
+- Overleggen voor bouwen
+- Secrets NOOIT in de chat plakken
+
+### Technische standaarden
+- API route: `export const dynamic = 'force-dynamic'`
+- Pagina: `'use client'`
+- Auth check: createServerClient + cookies → getUser()
+- Database: createAdminClient() voor alle queries
+- Supabase: RLS + "Users own data" policy per tabel
+- Navigatie: router.push() — nooit router.back()
+- Exports: Python zipfile → /mnt/user-data/outputs/
