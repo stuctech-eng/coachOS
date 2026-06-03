@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Brain, TrendingUp, AlertTriangle, Star, RefreshCw, Heart, Activity, Moon, Footprints } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Brain, TrendingUp, AlertTriangle, Star, RefreshCw, Heart, Activity, Moon, Footprints, ArrowLeft } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { cn } from '@/utils'
@@ -136,6 +137,7 @@ function GrafiekKaart({
 }
 
 export default function InsightsPage() {
+  const router = useRouter()
   const [insights, setInsights] = useState<MemoryItem[]>([])
   const [metrics, setMetrics] = useState<HealthMetric[]>([])
   const [loading, setLoading] = useState(true)
@@ -170,18 +172,21 @@ export default function InsightsPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell showNav={false}>
       <div className="px-5 py-6 flex flex-col gap-5">
 
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Inzichten</h1>
-            <p className="text-slate-400 text-sm mt-0.5">Gezondheid &amp; coach analyse</p>
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.push('/settings')} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
+            <ArrowLeft size={20} className="text-slate-400" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-white">Inzichten</h1>
+            <p className="text-slate-400 text-xs">Gezondheid & coach analyse</p>
           </div>
           <button
             onClick={runAnalysis}
             disabled={analysing}
-            className="w-11 h-11 rounded-xl bg-coach-card flex items-center justify-center text-slate-400 active:bg-slate-700 disabled:opacity-50"
+            className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center text-slate-400 active:bg-slate-700 disabled:opacity-50"
           >
             <RefreshCw size={18} className={cn(analysing && 'animate-spin')} />
           </button>
