@@ -124,8 +124,8 @@ function AppleHealthSection() {
       </button>
 
       {open && loading ? (
-        <div className="h-8 bg-slate-800 rounded animate-pulse" />
-      ) : apiKey ? (
+        <div className="h-8 bg-slate-800 rounded animate-pulse mt-3" />
+      ) : open && apiKey ? (
         <>
           <div className="bg-slate-900 rounded-xl p-3 mb-3">
             <p className="text-xs text-slate-500 mb-1">API Key</p>
