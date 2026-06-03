@@ -110,6 +110,10 @@ export async function POST() {
 
     if (error) throw error
 
+    // Trigger memory analyse op achtergrond
+    const appUrlForMemory = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
+    fetch(appUrlForMemory + '/api/memory', { method: 'POST' }).catch(() => {})
+
     return NextResponse.json({
       ...saved,
       recovery,
