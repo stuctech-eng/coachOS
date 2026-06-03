@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -31,6 +31,7 @@ export default function HomePage() {
   const [showReasoning, setShowReasoning] = useState(false)
   const [coachStatus, setCoachStatus] = useState<CoachStatus | null>(null)
   const [berekenend, setBerekenend] = useState(false)
+  const [laden, setLaden] = useState(true)
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
   const statusColor: StatusColor = checkin
@@ -38,6 +39,19 @@ export default function HomePage() {
       : (checkin.feeling_score || 0) >= 4 ? 'orange' : 'red'
     : 'orange'
   const colors = statusColors[statusColor]
+
+  // Laad bestaande score bij openen
+  useEffect(() => {
+    fetch('/api/status')
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.coach_score !== null) {
+          setCoachStatus(data)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLaden(false))
+  }, [])
 
   const berekenCoachScore = async () => {
     setBerekenend(true)
@@ -90,7 +104,9 @@ export default function HomePage() {
             </button>
           </div>
 
-          {coachStatus ? (
+          {laden ? (
+            <div className="h-16 bg-slate-800 rounded-xl animate-pulse" />
+          ) : coachStatus ? (
             <>
               <div className="flex items-end gap-2 mb-3">
                 <p className={cn('text-5xl font-bold', scoreKleur(coachStatus.coach_score))}>
@@ -120,7 +136,7 @@ export default function HomePage() {
               </div>
               {coachStatus.risk_flags && coachStatus.risk_flags.length > 0 && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
-                  <p className="text-xs text-red-400 font-semibold mb-1">⚠️ Risico's</p>
+                  <p className="text-xs text-red-400 font-semibold mb-1">⚠️ Risico&apos;s</p>
                   {coachStatus.risk_flags.map((flag, i) => (
                     <p key={i} className="text-xs text-red-300">• {flag}</p>
                   ))}
