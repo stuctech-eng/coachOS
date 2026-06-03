@@ -63,7 +63,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 )
 Input.displayName = 'Input'
 
-export function ScoreSlider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+export function ScoreSlider({
+  label,
+  value,
+  onChange,
+  lowLabel,
+  highLabel,
+}: {
+  label: string
+  value: number
+  onChange: (v: number) => void
+  lowLabel?: string
+  highLabel?: string
+}) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center">
@@ -78,6 +90,12 @@ export function ScoreSlider({ label, value, onChange }: { label: string; value: 
           </button>
         ))}
       </div>
+      {(lowLabel || highLabel) && (
+        <div className="flex justify-between text-xs text-slate-500">
+          <span>{lowLabel || ''}</span>
+          <span>{highLabel || ''}</span>
+        </div>
+      )}
     </div>
   )
 }
