@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
       activiteitenRes,
       memoryRes,
       blessuresRes,
+      lifeEventsRes,
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
@@ -74,6 +75,11 @@ export async function POST(req: NextRequest) {
         .select('body_part, pain_score, notes, active')
         .eq('user_id', user.id)
         .eq('active', true),
+      supabase.from('life_events')
+        .select('type, start_time, recovery_impact, stress_load, sleep_disruption, notes')
+        .eq('user_id', user.id)
+        .gte('start_time', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
+        .order('start_time', { ascending: false }),
     ])
 
     const profile = profileRes.data
@@ -85,6 +91,7 @@ export async function POST(req: NextRequest) {
     const activiteiten = activiteitenRes.data || []
     const memory = memoryRes.data || []
     const blessures = blessuresRes.data || []
+    const lifeEvents = lifeEventsRes.data || []
 
     const naam = profile?.display_name || profile?.first_name || 'de atleet'
 
@@ -176,6 +183,27 @@ export async function POST(req: NextRequest) {
       context.push(`ACTIEVE BLESSURES:`)
       blessures.forEach(b => {
         context.push(`- ${b.body_part}${b.pain_score ? ` (pijn: ${b.pain_score}/10)` : ''}${b.notes ? ': ' + b.notes : ''}`)
+      })
+      context.push(``)
+    }
+
+    // Life events
+    if (lifeEvents.length > 0) {
+      const EVENT_LABELS: Record<string, string> = {
+        nachtdienst: 'Nachtdienst',
+        vroege_dienst: 'Vroege dienst',
+        reizen: 'Reizen',
+        werk_stress: 'Werkstress',
+        feest: 'Feest/late avond',
+        ziek: 'Ziek',
+        emotionele_stress: 'Emotionele stress',
+        vakantie: 'Vakantie',
+      }
+      context.push(`LEVENSGEBEURTENISSEN (laatste 3 dagen):`)
+      lifeEvents.forEach((e: { type: string; start_time: string; recovery_impact: number; stress_load: number; sleep_disruption: number; notes: string | null }) => {
+        const label = EVENT_LABELS[e.type] || e.type
+        const datum = new Date(e.start_time).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
+        context.push(`- ${datum}: ${label}${e.notes ? ' — ' + e.notes : ''} (herstelimpact: ${e.recovery_impact}/3, stress: ${e.stress_load}/3)`)
       })
       context.push(``)
     }

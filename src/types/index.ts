@@ -34,6 +34,10 @@ export interface DailyCheckin {
   date: string
   feeling_score: number | null
   energy_score: number | null
+  stress_score: number | null
+  motivation_score: number | null
+  soreness_score: number | null
+  sleep_quality: number | null
   has_pain: boolean
   pain_description: string | null
   notes: string | null
@@ -91,14 +95,13 @@ export interface OnboardingData {
   activities: string[]
 }
 
-// Nieuw v1.4.0
 export interface ActivityMetrics {
-  distance?: number       // meters
-  avg_hr?: number         // bpm
-  max_hr?: number         // bpm
-  elevation?: number      // meters
-  avg_speed?: number      // km/h
-  calories?: number       // kcal
+  distance?: number
+  avg_hr?: number
+  max_hr?: number
+  elevation?: number
+  avg_speed?: number
+  calories?: number
   steps?: number
   cadence?: number
 }
@@ -108,7 +111,7 @@ export interface ActivitySession {
   user_id: string
   activity_id: string | null
   date: string
-  duration: number        // minuten
+  duration: number
   metrics: ActivityMetrics
   source: 'strava' | 'garmin' | 'manual' | string
   notes: string | null
@@ -125,4 +128,42 @@ export interface Activity {
 
 export interface ActivityWithSessions extends Activity {
   sessions: ActivitySession[]
+}
+
+export interface Injury {
+  id: string
+  user_id: string
+  body_part: string
+  pain_score: number | null
+  started_at: string | null
+  notes: string | null
+  active: boolean
+  created_at: string
+}
+
+export interface LifeEvent {
+  id: string
+  user_id: string
+  type: string
+  start_time: string
+  end_time: string | null
+  recovery_impact: number
+  stress_load: number
+  sleep_disruption: number
+  notes: string | null
+  created_at: string
+}
+
+export interface DailyStatus {
+  id: string
+  user_id: string
+  date: string
+  recovery_score: number | null
+  training_score: number | null
+  lifestyle_score: number | null
+  coach_score: number | null
+  energy_score: number | null
+  status_color: string | null
+  risk_flags: string[]
+  created_at: string
 }

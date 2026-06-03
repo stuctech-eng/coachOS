@@ -27,30 +27,26 @@ export function calculateRecoveryScore(
   }
 
   // Stress (omgekeerd — hoge stress = lage score)
-  if ((checkin as DailyCheckin & { stress_score?: number })?.stress_score) {
-    const stressScore = (checkin as DailyCheckin & { stress_score?: number }).stress_score!
-    total += ((10 - stressScore) / 10) * 100
+  if (checkin?.stress_score) {
+    total += ((10 - checkin.stress_score) / 10) * 100
     count++
   }
 
   // Motivatie
-  if ((checkin as DailyCheckin & { motivation_score?: number })?.motivation_score) {
-    const motivatieScore = (checkin as DailyCheckin & { motivation_score?: number }).motivation_score!
-    total += (motivatieScore / 10) * 100
+  if (checkin?.motivation_score) {
+    total += (checkin.motivation_score / 10) * 100
     count++
   }
 
   // Spierpijn (omgekeerd)
-  if ((checkin as DailyCheckin & { soreness_score?: number })?.soreness_score) {
-    const spierpijnScore = (checkin as DailyCheckin & { soreness_score?: number }).soreness_score!
-    total += ((10 - spierpijnScore) / 10) * 100
+  if (checkin?.soreness_score) {
+    total += ((10 - checkin.soreness_score) / 10) * 100
     count++
   }
 
   // Slaapkwaliteit (subjectief)
-  if ((checkin as DailyCheckin & { sleep_quality?: number })?.sleep_quality) {
-    const slaapScore = (checkin as DailyCheckin & { sleep_quality?: number }).sleep_quality!
-    total += (slaapScore / 10) * 100
+  if (checkin?.sleep_quality) {
+    total += (checkin.sleep_quality / 10) * 100
     count++
   }
 
@@ -98,7 +94,7 @@ export function calculateRecoveryScore(
     ? Math.max(0, Math.min(100, Math.round(total / count)))
     : 50
 
-  // Life event penalty toepassen
+  // Life event penalty
   score = Math.max(0, score - lifeEventPenalty)
 
   if (score >= 75) return { score, status: 'Volledig hersteld', color: 'green' }
