@@ -40,17 +40,26 @@ export default function HomePage() {
     : 'orange'
   const colors = statusColors[statusColor]
 
-  // Laad bestaande score bij openen
+  // Laad bestaande score bij openen — herbereken automatisch als ontbreekt
   useEffect(() => {
+    const today = new Date().toISOString().split('T')[0]
     fetch('/api/status')
       .then(r => r.json())
       .then(data => {
-        if (data && data.coach_score !== null) {
+        if (data && data.coach_score !== null && data.date === today) {
           setCoachStatus(data)
+          setLaden(false)
+        } else {
+          setLaden(false)
+          setBerekenend(true)
+          fetch('/api/status', { method: 'POST' })
+            .then(r => r.json())
+            .then(nieuw => setCoachStatus(nieuw))
+            .catch(() => {})
+            .finally(() => setBerekenend(false))
         }
       })
-      .catch(() => {})
-      .finally(() => setLaden(false))
+      .catch(() => setLaden(false))
   }, [])
 
   const berekenCoachScore = async () => {
