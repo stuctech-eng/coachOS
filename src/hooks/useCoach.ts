@@ -29,6 +29,10 @@ export function useCoach() {
   const saveCheckin = useCallback(async (checkinData: {
     feeling_score: number
     energy_score: number
+    stress_score?: number
+    motivation_score?: number
+    soreness_score?: number
+    sleep_quality?: number
     has_pain: boolean
     pain_description?: string
     notes?: string

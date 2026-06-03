@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
@@ -39,6 +41,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
+
     const { data, error } = await supabase
       .from('daily_checkins')
       .upsert({
@@ -46,12 +49,17 @@ export async function POST(req: NextRequest) {
         date: today,
         feeling_score: body.feeling_score,
         energy_score: body.energy_score,
+        stress_score: body.stress_score || null,
+        motivation_score: body.motivation_score || null,
+        soreness_score: body.soreness_score || null,
+        sleep_quality: body.sleep_quality || null,
         has_pain: body.has_pain || false,
         pain_description: body.has_pain ? body.pain_description : null,
         notes: body.notes || null,
       }, { onConflict: 'user_id,date' })
       .select()
       .single()
+
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data)
   } catch (error) {
