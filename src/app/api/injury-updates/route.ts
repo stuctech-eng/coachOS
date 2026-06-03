@@ -44,7 +44,6 @@ export async function POST(req: NextRequest) {
     if (!body.injury_id) return NextResponse.json({ error: 'injury_id verplicht' }, { status: 400 })
     const supabase = createAdminClient()
 
-    // Sla update op
     const { data, error } = await supabase
       .from('injury_updates')
       .insert({

@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error
 
+    // Update ook het doel zelf
     await supabase
       .from('user_goals')
       .update({ current_value: body.current_value })
