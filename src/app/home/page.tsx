@@ -114,7 +114,12 @@ export default function HomePage() {
         <Card className={cn('p-5', getScoreBg(score))}>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Coach Score</p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-xs text-slate-400 uppercase tracking-wider">Coach Score</p>
+                {coachStatus && (
+                  <div className={`w-2 h-2 rounded-full ${coachStatus.date === new Date().toISOString().split('T')[0] ? 'bg-green-400' : 'bg-red-400'}`} />
+                )}
+              </div>
               <div className="flex items-end gap-2">
                 {laden || berekenend ? (
                   <div className="h-12 w-20 bg-slate-700 rounded-xl animate-pulse" />
