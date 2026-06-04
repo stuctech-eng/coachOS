@@ -47,14 +47,15 @@ export async function POST() {
     const zeven = new Date()
     zeven.setDate(zeven.getDate() - 7)
 
-    const [profileRes, checkinRes, metricsRes, statusRes, blessuresRes, lifeEventsRes, goalsRes] = await Promise.all([
+    const [profileRes, checkinRes, metricsRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('health_metrics').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('injuries').select('body_part, pain_score').eq('user_id', user.id).eq('active', true),
-      supabase.from('life_events').select('type, start_hour, end_hour').eq('user_id', user.id).gte('start_time', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()),
+      supabase.from('life_events').select('type, start_hour, end_hour, notes, recurrence').eq('user_id', user.id).gte('start_time', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()),
       supabase.from('user_goals').select('title').eq('user_id', user.id).eq('status', 'active'),
+      supabase.from('life_events').select('type, start_hour, end_hour, notes, recurrence').eq('user_id', user.id).not('recurrence', 'is', null),
     ])
 
     const profile = profileRes.data
@@ -64,6 +65,13 @@ export async function POST() {
     const blessures = blessuresRes.data || []
     const lifeEvents = lifeEventsRes.data || []
     const goals = goalsRes.data || []
+    const herhalendeEvents = herhalendeEventsRes.data || []
+
+    // Combineer recente en herhalende events
+    const alleEvents = [...lifeEvents]
+    herhalendeEvents.forEach(he => {
+      if (!alleEvents.find(e => e.type === he.type)) alleEvents.push(he)
+    })
 
     const naam = profile?.display_name || profile?.first_name || 'je'
     const score = status?.coach_score || 50
@@ -74,7 +82,12 @@ export async function POST() {
       checkin ? `Gevoel: ${checkin.feeling_score}/10, Energie: ${checkin.energy_score}/10, Stress: ${(checkin as {stress_score?: number}).stress_score || '?'}/10` : 'Geen check-in',
       metrics ? `Slaap: ${metrics.sleep_duration || '?'}u, HRV: ${metrics.hrv || '?'}ms` : '',
       blessures.length > 0 ? `Blessures: ${blessures.map(b => b.body_part).join(', ')}` : '',
-      lifeEvents.length > 0 ? `Life events: ${lifeEvents.map(e => e.type).join(', ')}` : '',
+      alleEvents.length > 0 ? `Life events (inclusief herhalende): ${alleEvents.map(e => {
+        const tijden = e.start_hour !== null && e.end_hour !== null ? ` ${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour).padStart(2,'0')}:00` : ''
+        const notitie = e.notes ? ` (${e.notes})` : ''
+        const herhaling = e.recurrence ? ` [${e.recurrence}]` : ''
+        return e.type + tijden + notitie + herhaling
+      }).join(', ')}` : '',
       goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',
     ].filter(Boolean).join('\n')
 
@@ -83,11 +96,14 @@ export async function POST() {
 DATA VANDAAG:
 ${context}
 
-Maak een praktisch dagplan met 3-5 concrete acties verspreid over de dag.
-Houd rekening met de coach score, blessures en life events.
-Elke actie heeft een tijdstip en is specifiek en uitvoerbaar.
-
-Gebruik GEEN markdown. Geen **bold**. Geen bullets.
+INSTRUCTIES:
+- Plan acties BUITEN werktijden als er een dienst is (vroege dienst 06:00-15:00 = acties na 15:00)
+- Als de notitie zegt "momenteel alleen dagdiensten" — behandel het dan als dagdienst, niet als vroege dienst
+- Houd rekening met blessures: geen oefeningen die pijnlijke lichaamsdelen belasten
+- Coach score onder 50: focus op herstel, niet op training
+- Maak 3-5 concrete acties verspreid over vrije uren
+- Elke actie heeft een realistisch tijdstip en is specifiek uitvoerbaar
+- Gebruik GEEN markdown, geen bold, geen bullets
 
 Reageer ALLEEN in dit JSON formaat:
 {

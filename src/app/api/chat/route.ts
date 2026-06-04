@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
       memoryRes,
       blessuresRes,
       lifeEventsRes,
+      herhalendeEventsRes,
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
@@ -76,10 +77,14 @@ export async function POST(req: NextRequest) {
         .eq('user_id', user.id)
         .eq('active', true),
       supabase.from('life_events')
-        .select('type, start_time, recovery_impact, stress_load, sleep_disruption, notes')
+        .select('type, start_time, recovery_impact, stress_load, sleep_disruption, notes, start_hour, end_hour, recurrence')
         .eq('user_id', user.id)
         .gte('start_time', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
         .order('start_time', { ascending: false }),
+      supabase.from('life_events')
+        .select('type, start_hour, end_hour, notes, recurrence')
+        .eq('user_id', user.id)
+        .not('recurrence', 'is', null),
     ])
 
     const profile = profileRes.data
@@ -92,6 +97,9 @@ export async function POST(req: NextRequest) {
     const memory = memoryRes.data || []
     const blessures = blessuresRes.data || []
     const lifeEvents = lifeEventsRes.data || []
+    const herhalendeEvents = (herhalendeEventsRes.data || []).filter(
+      (he: {type: string}) => !lifeEvents.find((e: {type: string}) => e.type === he.type)
+    )
 
     const naam = profile?.display_name || profile?.first_name || 'de atleet'
 
@@ -120,6 +128,8 @@ export async function POST(req: NextRequest) {
       `- Altijd Nederlands`,
       `- Geen jargon tenzij de gebruiker dat zelf gebruikt`,
       `- Geen opsommingen tenzij nodig — schrijf in natuurlijke zinnen`,
+      `- Gebruik NOOIT markdown: geen **bold**, geen *italic*, geen # headers, geen bullet points met -`,
+      `- Gewone tekst alleen — de app rendert geen markdown`,
       ``,
       `PROFIEL:`,
       `Naam: ${naam}, Leeftijd: ${profile?.age || 'onbekend'}, Gewicht: ${profile?.weight || 'onbekend'}kg`,
@@ -188,11 +198,15 @@ export async function POST(req: NextRequest) {
     // Recente activiteiten
     if (activiteiten.length > 0) {
       context.push(`RECENTE ACTIVITEITEN:`)
+      const vandaagDate = new Date(today)
       activiteiten.slice(0, 5).forEach(a => {
         const act = a.activities as { name: string } | { name: string }[] | null
         const naam_act = Array.isArray(act) ? act[0]?.name : act?.name || 'Activiteit'
         const dist = (a.metrics as { distance?: number })?.distance
-        context.push(`- ${a.date}: ${naam_act} ${a.duration}min${dist ? ` ${(dist/1000).toFixed(1)}km` : ''}`)
+        const actDate = new Date(a.date)
+        const dagenGeleden = Math.round((vandaagDate.getTime() - actDate.getTime()) / (1000 * 60 * 60 * 24))
+        const dagenTekst = dagenGeleden === 0 ? 'vandaag' : dagenGeleden === 1 ? 'gisteren' : `${dagenGeleden} dagen geleden`
+        context.push(`- ${dagenTekst} (${a.date}): ${naam_act} ${a.duration}min${dist ? ` ${(dist/1000).toFixed(1)}km` : ''}`)
       })
       context.push(``)
     }
@@ -219,11 +233,24 @@ export async function POST(req: NextRequest) {
         vakantie: 'Vakantie',
       }
       context.push(`LEVENSGEBEURTENISSEN (laatste 3 dagen):`)
-      lifeEvents.forEach((e: { type: string; start_time: string; recovery_impact: number; stress_load: number; sleep_disruption: number; notes: string | null }) => {
+      lifeEvents.forEach((e: { type: string; start_time: string; recovery_impact: number; stress_load: number; sleep_disruption: number; notes: string | null; start_hour?: number | null; end_hour?: number | null; recurrence?: string | null }) => {
         const label = EVENT_LABELS[e.type] || e.type
         const datum = new Date(e.start_time).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
-        context.push(`- ${datum}: ${label}${e.notes ? ' — ' + e.notes : ''} (herstelimpact: ${e.recovery_impact}/3, stress: ${e.stress_load}/3)`)
+        const tijden = e.start_hour !== null && e.start_hour !== undefined && e.end_hour !== null && e.end_hour !== undefined
+          ? ` (${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour).padStart(2,'0')}:00)` : ''
+        const notitie = e.notes ? ` — ${e.notes}` : ''
+        const herhaling = e.recurrence ? ` [${e.recurrence}]` : ''
+        context.push(`- ${datum}: ${label}${tijden}${notitie}${herhaling} (herstelimpact: ${e.recovery_impact}/3)`)
       })
+      if (herhalendeEvents.length > 0) {
+        context.push(`HERHALENDE LIFE EVENTS:`)
+        herhalendeEvents.forEach((e: { type: string; start_hour?: number | null; end_hour?: number | null; notes?: string | null; recurrence?: string | null }) => {
+          const label = EVENT_LABELS[e.type] || e.type
+          const tijden = e.start_hour !== null && e.start_hour !== undefined ? ` ${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour ?? 0).padStart(2,'0')}:00` : ''
+          const notitie = e.notes ? ` — ${e.notes}` : ''
+          context.push(`- ${label}${tijden}${notitie} [${e.recurrence}]`)
+        })
+      }
       context.push(``)
     }
 
