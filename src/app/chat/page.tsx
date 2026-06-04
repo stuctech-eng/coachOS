@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User } from 'lucide-react'
+import { Send, Bot, User, Trash2 } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
 
@@ -16,12 +16,52 @@ const SUGGESTIES = [
   'Geef me een trainingsadvies',
 ]
 
+function getVandaag(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [laden, setLaden] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Laad gesprek van vandaag bij openen
+  useEffect(() => {
+    const vandaag = getVandaag()
+    const opgeslaanKey = 'chat_datum'
+    const berichtenKey = 'chat_berichten'
+
+    const opgeslaanDatum = localStorage.getItem(opgeslaanKey)
+    const opgeslaanBerichten = localStorage.getItem(berichtenKey)
+
+    if (opgeslaanDatum === vandaag && opgeslaanBerichten) {
+      try {
+        const parsed = JSON.parse(opgeslaanBerichten)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed)
+        }
+      } catch {
+        //
+      }
+    } else {
+      // Nieuwe dag — wis opgeslagen berichten
+      localStorage.removeItem(berichtenKey)
+      localStorage.setItem(opgeslaanKey, vandaag)
+    }
+    setLaden(false)
+  }, [])
+
+  // Sla berichten op bij elke wijziging
+  useEffect(() => {
+    if (laden) return
+    if (messages.length > 0) {
+      localStorage.setItem('chat_berichten', JSON.stringify(messages))
+      localStorage.setItem('chat_datum', getVandaag())
+    }
+  }, [messages, laden])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -58,14 +98,39 @@ export default function ChatPage() {
     }
   }
 
+  function wisGesprek() {
+    setMessages([])
+    localStorage.removeItem('chat_berichten')
+  }
+
+  if (laden) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center h-full">
+          <div className="w-8 h-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
+        </div>
+      </AppShell>
+    )
+  }
+
   return (
     <AppShell>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
 
         {/* Header */}
-        <div className="px-5 pt-6 pb-4 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-white">Coach</h1>
-          <p className="text-slate-400 text-sm mt-0.5">Stel je coach een vraag</p>
+        <div className="px-5 pt-6 pb-4 flex-shrink-0 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Coach</h1>
+            <p className="text-slate-400 text-sm mt-0.5">Stel je coach een vraag</p>
+          </div>
+          {messages.length > 0 && (
+            <button
+              onClick={wisGesprek}
+              className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center active:bg-slate-700"
+            >
+              <Trash2 size={16} className="text-slate-400" />
+            </button>
+          )}
         </div>
 
         {/* Berichten */}
@@ -99,7 +164,6 @@ export default function ChatPage() {
             <div className="flex flex-col gap-4 pt-2">
               {messages.map((msg, i) => (
                 <div key={i} className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
-                  {/* Avatar */}
                   <div className={cn(
                     'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1',
                     msg.role === 'user' ? 'bg-primary-500/20' : 'bg-slate-700'
@@ -109,8 +173,6 @@ export default function ChatPage() {
                       : <Bot size={16} className="text-slate-300" />
                     }
                   </div>
-
-                  {/* Bericht */}
                   <div className={cn(
                     'max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
                     msg.role === 'user'
@@ -122,7 +184,6 @@ export default function ChatPage() {
                 </div>
               ))}
 
-              {/* Loading indicator */}
               {loading && (
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-xl bg-slate-700 flex items-center justify-center flex-shrink-0 mt-1">
