@@ -201,6 +201,22 @@ export default function ChatPage() {
           )}
         </div>
 
+        {/* Snelle suggesties */}
+        {messages.length > 0 && (
+          <div className="flex-shrink-0 px-5 pt-2 pb-1 flex gap-2 overflow-x-auto">
+            {SUGGESTIES.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => stuurBericht(s)}
+                disabled={loading}
+                className="flex-shrink-0 px-3 py-1.5 bg-slate-800 rounded-full text-xs text-slate-300 active:bg-slate-700 border border-slate-700/50 disabled:opacity-50"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Input */}
         <div className="flex-shrink-0 px-5 pb-6 pt-2 border-t border-coach-border">
           <div className="flex gap-3 items-end">
