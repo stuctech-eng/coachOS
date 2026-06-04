@@ -1,23 +1,14 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
+import { useCoachStore } from '@/store'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { getGreeting, formatDate } from '@/utils'
 import { cn } from '@/utils'
-
-interface CoachStatus {
-  coach_score: number | null
-  recovery_score: number | null
-  training_score: number | null
-  lifestyle_score: number | null
-  risk_flags: string[]
-  status_color: string
-  date: string
-}
 
 function getScoreLabel(score: number | null): string {
   if (!score) return '—'
@@ -42,69 +33,80 @@ function getScoreBg(score: number | null): string {
   return 'bg-red-500/10 border border-red-500/20'
 }
 
-function getRisicoKleur(urgentie: string): string {
-  if (urgentie === 'hoog') return 'bg-red-500/10 border-red-500/30 text-red-400'
-  if (urgentie === 'gemiddeld') return 'bg-orange-500/10 border-orange-500/30 text-orange-400'
-  return 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+function getRisicoKleur(): string {
+  return 'bg-orange-500/10 border-orange-500/30 text-orange-400'
 }
 
 export default function HomePage() {
   const { profile } = useAuth()
   const { recommendation, checkin, isGenerating, generateAdvice, hasCheckin } = useCoach()
+  const { coachStatus, setCoachStatus, actionPlan, actionPlanDatum, setActionPlan } = useCoachStore()
+
   const [showReasoning, setShowReasoning] = useState(false)
-  const [coachStatus, setCoachStatus] = useState<CoachStatus | null>(null)
   const [berekenend, setBerekenend] = useState(false)
   const [laden, setLaden] = useState(true)
-  const [actionPlan, setActionPlan] = useState<Array<{tijd: string; actie: string}> | null>(null)
   const [generatingPlan, setGeneratingPlan] = useState(false)
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
+  const score = coachStatus?.coach_score ?? null
+  const vandaag = new Date().toISOString().split('T')[0]
+  const heeftRisicos = coachStatus?.risk_flags && coachStatus.risk_flags.length > 0
 
+  // Laad coach status
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0]
-    fetch('/api/status')
+    // Check store eerst
+    if (coachStatus && coachStatus.date === vandaag) {
+      setLaden(false)
+      return
+    }
+
+    // Check localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const opgeslaanDatum = window.localStorage.getItem('coach_status_datum')
+        const opgeslaanStatus = window.localStorage.getItem('coach_status_data')
+        if (opgeslaanDatum === vandaag && opgeslaanStatus) {
+          const parsed = JSON.parse(opgeslaanStatus)
+          setCoachStatus(parsed)
+          setLaden(false)
+          return
+        }
+      } catch { /* */ }
+    }
+
+    // Ophalen van server
+    setLaden(false)
+    setBerekenend(true)
+    fetch('/api/status', { method: 'POST' })
       .then(r => r.json())
       .then(data => {
-        if (data && data.coach_score !== null && data.date === today) {
-          setCoachStatus(data)
-          setLaden(false)
-        } else {
-          setLaden(false)
-          setBerekenend(true)
-          fetch('/api/status', { method: 'POST' })
-            .then(r => r.json())
-            .then(nieuw => setCoachStatus(nieuw))
-            .catch(() => {})
-            .finally(() => setBerekenend(false))
-
-          // Laad ook action plan
-          fetch('/api/action-plan')
-            .then(r => r.json())
-            .then(d => { if (d.plan) setActionPlan(d.plan) })
-            .catch(() => {})
+        setCoachStatus(data)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('coach_status_data', JSON.stringify(data))
+          window.localStorage.setItem('coach_status_datum', vandaag)
         }
       })
-      .catch(() => setLaden(false))
+      .catch(() => {})
+      .finally(() => setBerekenend(false))
   }, [])
 
-  const genereerDagplan = async () => {
-    setGeneratingPlan(true)
-    try {
-      const res = await fetch('/api/action-plan', { method: 'POST' })
-      const data = await res.json()
-      if (data.plan) {
-        setActionPlan(data.plan)
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('dagplan_data', JSON.stringify(data.plan))
-          window.localStorage.setItem('dagplan_datum', new Date().toISOString().split('T')[0])
+  // Laad dagplan
+  useEffect(() => {
+    // Check store eerst
+    if (actionPlan && actionPlanDatum === vandaag) return
+
+    // Check localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const opgeslaanDatum = window.localStorage.getItem('dagplan_datum')
+        const opgeslaanPlan = window.localStorage.getItem('dagplan_data')
+        if (opgeslaanDatum === vandaag && opgeslaanPlan) {
+          const parsed = JSON.parse(opgeslaanPlan)
+          setActionPlan(parsed, vandaag)
         }
-      }
-    } catch {
-      //
-    } finally {
-      setGeneratingPlan(false)
+      } catch { /* */ }
     }
-  }
+  }, [])
 
   const berekenCoachScore = async () => {
     setBerekenend(true)
@@ -112,15 +114,29 @@ export default function HomePage() {
       const res = await fetch('/api/status', { method: 'POST' })
       const data = await res.json()
       setCoachStatus(data)
-    } catch {
-      //
-    } finally {
-      setBerekenend(false)
-    }
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('coach_status_data', JSON.stringify(data))
+        window.localStorage.setItem('coach_status_datum', vandaag)
+      }
+    } catch { /* */ }
+    finally { setBerekenend(false) }
   }
 
-  const score = coachStatus?.coach_score ?? null
-  const heeftRisicos = coachStatus?.risk_flags && coachStatus.risk_flags.length > 0
+  const genereerDagplan = async () => {
+    setGeneratingPlan(true)
+    try {
+      const res = await fetch('/api/action-plan', { method: 'POST' })
+      const data = await res.json()
+      if (data.plan) {
+        setActionPlan(data.plan, vandaag)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('dagplan_data', JSON.stringify(data.plan))
+          window.localStorage.setItem('dagplan_datum', vandaag)
+        }
+      }
+    } catch { /* */ }
+    finally { setGeneratingPlan(false) }
+  }
 
   return (
     <AppShell>
@@ -137,14 +153,14 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Daily Briefing — Coach Score */}
+        {/* Coach Score */}
         <Card className={cn('p-5', getScoreBg(score))}>
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-xs text-slate-400 uppercase tracking-wider">Coach Score</p>
                 {coachStatus && (
-                  <div className={`w-2 h-2 rounded-full ${coachStatus.date === new Date().toISOString().split('T')[0] ? 'bg-green-400' : 'bg-red-400'}`} />
+                  <div className={`w-2 h-2 rounded-full ${coachStatus.date === vandaag ? 'bg-green-400' : 'bg-red-400'}`} />
                 )}
               </div>
               <div className="flex items-end gap-2">
@@ -165,16 +181,12 @@ export default function HomePage() {
                 </p>
               )}
             </div>
-            <button
-              onClick={berekenCoachScore}
-              disabled={berekenend}
-              className="w-9 h-9 rounded-xl bg-slate-800/50 flex items-center justify-center active:bg-slate-700 disabled:opacity-50"
-            >
+            <button onClick={berekenCoachScore} disabled={berekenend}
+              className="w-9 h-9 rounded-xl bg-slate-800/50 flex items-center justify-center active:bg-slate-700 disabled:opacity-50">
               <RefreshCw size={16} className={cn('text-slate-400', berekenend && 'animate-spin')} />
             </button>
           </div>
 
-          {/* Sub scores */}
           {coachStatus && (
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -193,7 +205,7 @@ export default function HomePage() {
 
         {/* Risico's */}
         {heeftRisicos && (
-          <div className={cn('rounded-xl px-4 py-3 border flex items-start gap-3', getRisicoKleur('gemiddeld'))}>
+          <div className={cn('rounded-xl px-4 py-3 border flex items-start gap-3', getRisicoKleur())}>
             <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-semibold mb-1">Aandachtspunten</p>
@@ -215,10 +227,8 @@ export default function HomePage() {
               <p className="text-lg font-semibold text-white leading-snug mb-3">
                 {recommendation.recommendation}
               </p>
-              <button
-                onClick={() => setShowReasoning(!showReasoning)}
-                className="flex items-center gap-2 text-sm text-primary-400"
-              >
+              <button onClick={() => setShowReasoning(!showReasoning)}
+                className="flex items-center gap-2 text-sm text-primary-400">
                 {showReasoning ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 Waarom?
               </button>
@@ -255,37 +265,57 @@ export default function HomePage() {
         ) : checkin && (
           <Card className="px-4 py-3">
             <p className="text-xs text-slate-500 mb-3">Check-in vandaag</p>
-            <div className="flex gap-4">
-              <div className="flex-1 text-center">
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <div className="text-center">
                 <p className="text-2xl font-bold text-white">{checkin.feeling_score}</p>
                 <p className="text-xs text-slate-400 mt-0.5">Gevoel</p>
               </div>
-              <div className="w-px bg-coach-border" />
-              <div className="flex-1 text-center">
+              <div className="text-center">
                 <p className="text-2xl font-bold text-white">{checkin.energy_score}</p>
                 <p className="text-xs text-slate-400 mt-0.5">Energie</p>
               </div>
-              <div className="w-px bg-coach-border" />
-              <div className="flex-1 text-center">
+              <div className="text-center">
                 <p className="text-2xl font-bold text-white">{checkin.has_pain ? 'ja' : 'nee'}</p>
                 <p className="text-xs text-slate-400 mt-0.5">Pijn</p>
               </div>
             </div>
+            {((checkin as {stress_score?: number}).stress_score || (checkin as {motivation_score?: number}).motivation_score || (checkin as {soreness_score?: number}).soreness_score) && (
+              <>
+                <div className="h-px bg-coach-border my-2" />
+                <div className="grid grid-cols-3 gap-2">
+                  {(checkin as {stress_score?: number}).stress_score && (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-orange-400">{(checkin as {stress_score?: number}).stress_score}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Stress</p>
+                    </div>
+                  )}
+                  {(checkin as {motivation_score?: number}).motivation_score && (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-green-400">{(checkin as {motivation_score?: number}).motivation_score}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Motivatie</p>
+                    </div>
+                  )}
+                  {(checkin as {soreness_score?: number}).soreness_score && (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-red-400">{(checkin as {soreness_score?: number}).soreness_score}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Spierpijn</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </Card>
         )}
 
-        {/* Daily Action Plan */}
+        {/* Dagplan */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-primary-400">
               <Clock size={18} />
               <span className="text-sm font-medium">Dagplan</span>
             </div>
-            <button
-              onClick={genereerDagplan}
-              disabled={generatingPlan}
-              className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50"
-            >
+            <button onClick={genereerDagplan} disabled={generatingPlan}
+              className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50">
               <RefreshCw size={14} className={cn('text-slate-400', generatingPlan && 'animate-spin')} />
             </button>
           </div>
@@ -305,11 +335,8 @@ export default function HomePage() {
           ) : (
             <div className="text-center py-2">
               <p className="text-slate-400 text-sm mb-3">Genereer je dagplan op basis van je data</p>
-              <button
-                onClick={genereerDagplan}
-                disabled={generatingPlan}
-                className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm active:bg-primary-700 disabled:opacity-50"
-              >
+              <button onClick={genereerDagplan} disabled={generatingPlan}
+                className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm active:bg-primary-700 disabled:opacity-50">
                 {generatingPlan ? 'Bezig...' : 'Maak dagplan'}
               </button>
             </div>
