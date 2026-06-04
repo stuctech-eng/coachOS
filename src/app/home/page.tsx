@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { AppShell } from '@/components/layout'
@@ -55,6 +55,8 @@ export default function HomePage() {
   const [coachStatus, setCoachStatus] = useState<CoachStatus | null>(null)
   const [berekenend, setBerekenend] = useState(false)
   const [laden, setLaden] = useState(true)
+  const [actionPlan, setActionPlan] = useState<Array<{tijd: string; actie: string}> | null>(null)
+  const [generatingPlan, setGeneratingPlan] = useState(false)
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
 
@@ -74,10 +76,29 @@ export default function HomePage() {
             .then(nieuw => setCoachStatus(nieuw))
             .catch(() => {})
             .finally(() => setBerekenend(false))
+
+          // Laad ook action plan
+          fetch('/api/action-plan')
+            .then(r => r.json())
+            .then(d => { if (d.plan) setActionPlan(d.plan) })
+            .catch(() => {})
         }
       })
       .catch(() => setLaden(false))
   }, [])
+
+  const genereerDagplan = async () => {
+    setGeneratingPlan(true)
+    try {
+      const res = await fetch('/api/action-plan', { method: 'POST' })
+      const data = await res.json()
+      if (data.plan) setActionPlan(data.plan)
+    } catch {
+      //
+    } finally {
+      setGeneratingPlan(false)
+    }
+  }
 
   const berekenCoachScore = async () => {
     setBerekenend(true)
@@ -246,6 +267,48 @@ export default function HomePage() {
             </div>
           </Card>
         )}
+
+        {/* Daily Action Plan */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-primary-400">
+              <Clock size={18} />
+              <span className="text-sm font-medium">Dagplan</span>
+            </div>
+            <button
+              onClick={genereerDagplan}
+              disabled={generatingPlan}
+              className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={cn('text-slate-400', generatingPlan && 'animate-spin')} />
+            </button>
+          </div>
+          {generatingPlan ? (
+            <div className="flex flex-col gap-2">
+              {[1,2,3].map(i => <div key={i} className="h-10 bg-slate-800 rounded-xl animate-pulse" />)}
+            </div>
+          ) : actionPlan && actionPlan.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {actionPlan.map((item, i) => (
+                <div key={i} className="flex items-start gap-3 bg-slate-800/50 rounded-xl px-3 py-2.5">
+                  <span className="text-xs text-primary-400 font-mono font-semibold flex-shrink-0 mt-0.5 w-10">{item.tijd}</span>
+                  <p className="text-sm text-slate-200 leading-snug">{item.actie}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-slate-400 text-sm mb-3">Genereer je dagplan op basis van je data</p>
+              <button
+                onClick={genereerDagplan}
+                disabled={generatingPlan}
+                className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm active:bg-primary-700 disabled:opacity-50"
+              >
+                {generatingPlan ? 'Bezig...' : 'Maak dagplan'}
+              </button>
+            </div>
+          )}
+        </Card>
 
         {/* Snelle links */}
         <div className="grid grid-cols-2 gap-3">
