@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
       blessuresRes,
       lifeEventsRes,
       herhalendeEventsRes,
+      metrics7dRes,
+      status7dRes,
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
@@ -85,6 +87,16 @@ export async function POST(req: NextRequest) {
         .select('type, start_hour, end_hour, notes, recurrence')
         .eq('user_id', user.id)
         .not('recurrence', 'is', null),
+      supabase.from('health_metrics')
+        .select('date, hrv, resting_hr, sleep_duration, steps')
+        .eq('user_id', user.id)
+        .gte('date', zevenDagenGeleden)
+        .order('date', { ascending: true }),
+      supabase.from('daily_status')
+        .select('date, coach_score, recovery_score')
+        .eq('user_id', user.id)
+        .gte('date', zevenDagenGeleden)
+        .order('date', { ascending: true }),
     ])
 
     const profile = profileRes.data
@@ -97,6 +109,22 @@ export async function POST(req: NextRequest) {
     const memory = memoryRes.data || []
     const blessures = blessuresRes.data || []
     const lifeEvents = lifeEventsRes.data || []
+    const metrics7d = metrics7dRes.data || []
+    const status7d = status7dRes.data || []
+
+    // Bereken trends
+    function trendRichting(waarden: number[]): string {
+      if (waarden.length < 3) return 'onvoldoende data'
+      const eerste = waarden.slice(0, Math.ceil(waarden.length/2)).reduce((a,b)=>a+b,0)/Math.ceil(waarden.length/2)
+      const laatste = waarden.slice(Math.floor(waarden.length/2)).reduce((a,b)=>a+b,0)/waarden.slice(Math.floor(waarden.length/2)).length
+      const d = ((laatste-eerste)/eerste)*100
+      return d > 5 ? 'stijgend' : d < -5 ? 'dalend' : 'stabiel'
+    }
+
+    const hrv7 = metrics7d.filter(m => m.hrv).map(m => m.hrv as number)
+    const slaap7 = metrics7d.filter(m => m.sleep_duration).map(m => m.sleep_duration as number)
+    const score7 = status7d.filter(s => s.coach_score).map(s => s.coach_score as number)
+
     const herhalendeEvents = (herhalendeEventsRes.data || []).filter(
       (he: {type: string}) => !lifeEvents.find((e: {type: string}) => e.type === he.type)
     )
@@ -217,6 +245,18 @@ export async function POST(req: NextRequest) {
       blessures.forEach(b => {
         context.push(`- ${b.body_part}${b.pain_score ? ` (pijn: ${b.pain_score}/10)` : ''}${b.notes ? ': ' + b.notes : ''}`)
       })
+      context.push(``)
+    }
+
+    // Trends
+    const trendRegels: string[] = []
+    if (hrv7.length >= 3) trendRegels.push(`HRV trend: ${trendRichting(hrv7)} (gem. ${Math.round(hrv7.reduce((a,b)=>a+b,0)/hrv7.length)}ms, nu ${hrv7[hrv7.length-1]}ms)`)
+    if (slaap7.length >= 3) trendRegels.push(`Slaap trend: ${trendRichting(slaap7)} (gem. ${Math.round(slaap7.reduce((a,b)=>a+b,0)/slaap7.length*10)/10}u)`)
+    if (score7.length >= 3) trendRegels.push(`Coach Score trend: ${trendRichting(score7)} (gem. ${Math.round(score7.reduce((a,b)=>a+b,0)/score7.length)})`)
+
+    if (trendRegels.length > 0) {
+      context.push(`TRENDS (7 DAGEN):`)
+      trendRegels.forEach(r => context.push(`- ${r}`))
       context.push(``)
     }
 

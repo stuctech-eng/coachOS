@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Brain, TrendingUp, AlertTriangle, Star, RefreshCw, Heart, Activity, Moon, Footprints, ArrowLeft } from 'lucide-react'
+import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle, Star, RefreshCw, Heart, Activity, Moon, Footprints, ArrowLeft } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { cn } from '@/utils'
@@ -23,6 +23,23 @@ interface HealthMetric {
   sleep_duration: number | null
   weight: number | null
   calories_burned: number | null
+}
+
+interface TrendItem {
+  gemiddelde: number
+  laatste: number
+  richting: 'stijgend' | 'dalend' | 'stabiel' | 'onvoldoende data'
+  beschrijving: string
+  aantalDagen: number
+}
+
+interface Trends {
+  hrv: TrendItem | null
+  resting_hr: TrendItem | null
+  slaap: TrendItem | null
+  stappen: TrendItem | null
+  coach_score: TrendItem | null
+  samenvatting: string[]
 }
 
 const typeConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
@@ -140,6 +157,7 @@ export default function InsightsPage() {
   const router = useRouter()
   const [insights, setInsights] = useState<MemoryItem[]>([])
   const [metrics, setMetrics] = useState<HealthMetric[]>([])
+  const [trends, setTrends] = useState<Trends | null>(null)
   const [loading, setLoading] = useState(true)
   const [analysing, setAnalysing] = useState(false)
   const [message, setMessage] = useState('')
@@ -148,9 +166,11 @@ export default function InsightsPage() {
     Promise.all([
       fetch('/api/memory').then(r => r.json()),
       fetch('/api/health/metrics').then(r => r.json()),
-    ]).then(([memoryData, healthData]) => {
+      fetch('/api/trends').then(r => r.json()),
+    ]).then(([memoryData, healthData, trendsData]) => {
       setInsights(memoryData || [])
       setMetrics(healthData.metrics || [])
+      setTrends(trendsData)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
@@ -195,6 +215,49 @@ export default function InsightsPage() {
         {message && (
           <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl px-4 py-3">
             <p className="text-primary-400 text-sm">{message}</p>
+          </div>
+        )}
+
+        {/* Trends samenvatting */}
+        {trends && trends.samenvatting && trends.samenvatting.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {trends.samenvatting.map((s, i) => (
+              <div key={i} className="flex items-start gap-3 bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-3">
+                <AlertTriangle size={16} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-orange-300">{s}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Trend indicatoren */}
+        {trends && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Trends</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'HRV', trend: trends.hrv },
+                { label: 'Hartslag', trend: trends.resting_hr },
+                { label: 'Slaap', trend: trends.slaap },
+                { label: 'Coach Score', trend: trends.coach_score },
+              ].map(({ label, trend }) => (
+                trend && (
+                  <Card key={label} className="p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-slate-400">{label}</p>
+                      {trend.richting === 'stijgend' && <TrendingUp size={14} className="text-green-400" />}
+                      {trend.richting === 'dalend' && <TrendingDown size={14} className="text-red-400" />}
+                      {trend.richting === 'stabiel' && <Minus size={14} className="text-slate-400" />}
+                    </div>
+                    <p className={cn('text-lg font-bold',
+                      trend.richting === 'stijgend' ? 'text-green-400' :
+                      trend.richting === 'dalend' ? 'text-red-400' : 'text-slate-300'
+                    )}>{trend.laatste}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">gem. {trend.gemiddelde} · {trend.aantalDagen}d</p>
+                  </Card>
+                )
+              ))}
+            </div>
           </div>
         )}
 
