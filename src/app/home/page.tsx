@@ -92,7 +92,13 @@ export default function HomePage() {
     try {
       const res = await fetch('/api/action-plan', { method: 'POST' })
       const data = await res.json()
-      if (data.plan) setActionPlan(data.plan)
+      if (data.plan) {
+        setActionPlan(data.plan)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('dagplan_data', JSON.stringify(data.plan))
+          window.localStorage.setItem('dagplan_datum', new Date().toISOString().split('T')[0])
+        }
+      }
     } catch {
       //
     } finally {
