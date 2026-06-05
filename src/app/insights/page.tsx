@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle, Star, RefreshCw, Heart, Activity, Moon, Footprints, ArrowLeft } from 'lucide-react'
 import { AppShell } from '@/components/layout'
@@ -162,34 +162,42 @@ export default function InsightsPage() {
   const [analysing, setAnalysing] = useState(false)
   const [message, setMessage] = useState('')
 
+  const runAnalysis = useCallback(async (silent = false) => {
+    if (!silent) setAnalysing(true)
+    setMessage('')
+    try {
+      const res = await fetch('/api/memory', { method: 'POST' })
+      const data = await res.json()
+      if (!silent) setMessage(data.message || 'Analyse klaar')
+      const updated = await fetch('/api/memory').then(r => r.json())
+      setInsights(updated || [])
+    } catch {
+      if (!silent) setMessage('Analyse mislukt')
+    } finally {
+      if (!silent) setAnalysing(false)
+    }
+  }, [])
+
   useEffect(() => {
     Promise.all([
       fetch('/api/memory').then(r => r.json()),
       fetch('/api/health/metrics').then(r => r.json()),
       fetch('/api/trends').then(r => r.json()),
     ]).then(([memoryData, healthData, trendsData]) => {
-      setInsights(memoryData || [])
+      const insightsData: MemoryItem[] = memoryData || []
+      setInsights(insightsData)
       setMetrics(healthData.metrics || [])
       setTrends(trendsData)
       setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
 
-  const runAnalysis = async () => {
-    setAnalysing(true)
-    setMessage('')
-    try {
-      const res = await fetch('/api/memory', { method: 'POST' })
-      const data = await res.json()
-      setMessage(data.message || 'Analyse klaar')
-      const updated = await fetch('/api/memory').then(r => r.json())
-      setInsights(updated || [])
-    } catch {
-      setMessage('Analyse mislukt')
-    } finally {
-      setAnalysing(false)
-    }
-  }
+      // Automatisch analyseren als laatste analyse niet van vandaag is
+      const vandaag = new Date().toISOString().split('T')[0]
+      const laatsteAnalyse = insightsData[0]?.created_at?.split('T')[0]
+      if (laatsteAnalyse !== vandaag) {
+        runAnalysis(true)
+      }
+    }).catch(() => setLoading(false))
+  }, [runAnalysis])
 
   return (
     <AppShell showNav={false}>
@@ -204,7 +212,7 @@ export default function InsightsPage() {
             <p className="text-slate-400 text-xs">Gezondheid & coach analyse</p>
           </div>
           <button
-            onClick={runAnalysis}
+            onClick={() => runAnalysis(false)}
             disabled={analysing}
             className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center text-slate-400 active:bg-slate-700 disabled:opacity-50"
           >
@@ -321,7 +329,7 @@ export default function InsightsPage() {
         {/* Coach memory */}
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach inzichten</p>
-          {loading ? (
+          {loading || analysing ? (
             <div className="flex flex-col gap-3">
               {[1, 2, 3].map(i => (
                 <div key={i} className="h-20 rounded-2xl bg-coach-card animate-pulse" />
@@ -334,7 +342,7 @@ export default function InsightsPage() {
               <p className="text-slate-400 text-sm mt-1 leading-relaxed">
                 Doe minimaal 3 check-ins en tik op vernieuwen om je eerste inzichten te genereren.
               </p>
-              <Button onClick={runAnalysis} loading={analysing} className="mt-4 mx-auto">
+              <Button onClick={() => runAnalysis(false)} loading={analysing} className="mt-4 mx-auto">
                 Analyseer nu
               </Button>
             </Card>
