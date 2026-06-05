@@ -54,9 +54,7 @@ function formatDatum(dateStr: string): string {
   return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
 }
 
-type StrokeColor = string
-
-function getStrokeColor(kleur: string): StrokeColor {
+function getStrokeColor(kleur: string): string {
   if (kleur.includes('red'))    return '#f87171'
   if (kleur.includes('blue'))   return '#60a5fa'
   if (kleur.includes('green'))  return '#4ade80'
@@ -65,13 +63,7 @@ function getStrokeColor(kleur: string): StrokeColor {
 }
 
 function GrafiekKaart({
-  titel,
-  icoon: Icoon,
-  kleur,
-  data,
-  dataKey,
-  eenheid,
-  leeg,
+  titel, icoon: Icoon, kleur, data, dataKey, eenheid, leeg,
 }: {
   titel: string
   icoon: React.ElementType
@@ -95,11 +87,7 @@ function GrafiekKaart({
     )
   }
 
-  const chartData = gefilterd.map(d => ({
-    datum: formatDatum(d.date),
-    waarde: d[dataKey] as number,
-  }))
-
+  const chartData = gefilterd.map(d => ({ datum: formatDatum(d.date), waarde: d[dataKey] as number }))
   const waarden = chartData.map(d => d.waarde)
   const gemiddeld = Math.round(waarden.reduce((a, b) => a + b, 0) / waarden.length * 10) / 10
   const laatste = waarden[waarden.length - 1]
@@ -120,33 +108,14 @@ function GrafiekKaart({
       <ResponsiveContainer width="100%" height={80}>
         <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2d333b" vertical={false} />
-          <XAxis
-            dataKey="datum"
-            tick={{ fontSize: 9, fill: '#64748b' }}
-            tickLine={false}
-            axisLine={false}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            domain={['auto', 'auto']}
-            tick={{ fontSize: 9, fill: '#64748b' }}
-            tickLine={false}
-            axisLine={false}
-            width={30}
-          />
+          <XAxis dataKey="datum" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+          <YAxis domain={['auto', 'auto']} tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} width={30} />
           <Tooltip
             contentStyle={{ backgroundColor: '#1c2128', border: '1px solid #2d333b', borderRadius: 8, fontSize: 11 }}
             labelStyle={{ color: '#94a3b8' }}
             formatter={(value: number) => [`${value} ${eenheid}`, titel]}
           />
-          <Line
-            type="monotone"
-            dataKey="waarde"
-            stroke={stroke}
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
+          <Line type="monotone" dataKey="waarde" stroke={stroke} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
         </LineChart>
       </ResponsiveContainer>
     </Card>
@@ -162,42 +131,46 @@ export default function InsightsPage() {
   const [analysing, setAnalysing] = useState(false)
   const [message, setMessage] = useState('')
 
+  const laadInsights = useCallback(async () => {
+    const data = await fetch('/api/memory').then(r => r.json())
+    const lijst: MemoryItem[] = data || []
+    setInsights(lijst)
+    return lijst
+  }, [])
+
   const runAnalysis = useCallback(async (silent = false) => {
     if (!silent) setAnalysing(true)
     setMessage('')
     try {
-      const res = await fetch('/api/memory', { method: 'POST' })
-      const data = await res.json()
-      if (!silent) setMessage(data.message || 'Analyse klaar')
-      const updated = await fetch('/api/memory').then(r => r.json())
-      setInsights(updated || [])
+      await fetch('/api/memory', { method: 'POST' })
+      // Altijd opnieuw laden na analyse — ook als er geen nieuwe zijn
+      await laadInsights()
+      if (!silent) setMessage('Analyse klaar')
     } catch {
       if (!silent) setMessage('Analyse mislukt')
     } finally {
       if (!silent) setAnalysing(false)
     }
-  }, [])
+  }, [laadInsights])
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/memory').then(r => r.json()),
+      laadInsights(),
       fetch('/api/health/metrics').then(r => r.json()),
       fetch('/api/trends').then(r => r.json()),
-    ]).then(([memoryData, healthData, trendsData]) => {
-      const insightsData: MemoryItem[] = memoryData || []
-      setInsights(insightsData)
+    ]).then(([insightsData, healthData, trendsData]) => {
       setMetrics(healthData.metrics || [])
       setTrends(trendsData)
       setLoading(false)
 
-      // Automatisch analyseren als laatste analyse niet van vandaag is
+      // Stil analyseren als laatste analyse niet van vandaag is
       const vandaag = new Date().toISOString().split('T')[0]
       const laatsteAnalyse = insightsData[0]?.created_at?.split('T')[0]
       if (laatsteAnalyse !== vandaag) {
         runAnalysis(true)
       }
     }).catch(() => setLoading(false))
-  }, [runAnalysis])
+  }, [laadInsights, runAnalysis])
 
   return (
     <AppShell showNav={false}>
@@ -226,7 +199,6 @@ export default function InsightsPage() {
           </div>
         )}
 
-        {/* Trends samenvatting */}
         {trends && trends.samenvatting && trends.samenvatting.length > 0 && (
           <div className="flex flex-col gap-2">
             {trends.samenvatting.map((s, i) => (
@@ -238,7 +210,6 @@ export default function InsightsPage() {
           </div>
         )}
 
-        {/* Trend indicatoren */}
         {trends && (
           <div>
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Trends</p>
@@ -269,14 +240,11 @@ export default function InsightsPage() {
           </div>
         )}
 
-        {/* Gezondheid grafieken */}
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Gezondheid — 14 dagen</p>
           {loading ? (
             <div className="flex flex-col gap-3">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-32 rounded-2xl bg-coach-card animate-pulse" />
-              ))}
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-2xl bg-coach-card animate-pulse" />)}
             </div>
           ) : metrics.length === 0 ? (
             <Card className="p-4 text-center">
@@ -286,54 +254,19 @@ export default function InsightsPage() {
             </Card>
           ) : (
             <div className="flex flex-col gap-3">
-              <GrafiekKaart
-                titel="HRV"
-                icoon={Activity}
-                kleur="text-purple-400"
-                data={metrics}
-                dataKey="hrv"
-                eenheid="ms"
-                leeg="Nog geen HRV data"
-              />
-              <GrafiekKaart
-                titel="Hartslag"
-                icoon={Heart}
-                kleur="text-red-400"
-                data={metrics}
-                dataKey="resting_hr"
-                eenheid="bpm"
-                leeg="Nog geen hartslag data"
-              />
-              <GrafiekKaart
-                titel="Stappen"
-                icoon={Footprints}
-                kleur="text-green-400"
-                data={metrics}
-                dataKey="steps"
-                eenheid="stappen"
-                leeg="Nog geen stappen data"
-              />
-              <GrafiekKaart
-                titel="Slaap"
-                icoon={Moon}
-                kleur="text-blue-400"
-                data={metrics}
-                dataKey="sleep_duration"
-                eenheid="uur"
-                leeg="Nog geen slaap data"
-              />
+              <GrafiekKaart titel="HRV" icoon={Activity} kleur="text-purple-400" data={metrics} dataKey="hrv" eenheid="ms" leeg="Nog geen HRV data" />
+              <GrafiekKaart titel="Hartslag" icoon={Heart} kleur="text-red-400" data={metrics} dataKey="resting_hr" eenheid="bpm" leeg="Nog geen hartslag data" />
+              <GrafiekKaart titel="Stappen" icoon={Footprints} kleur="text-green-400" data={metrics} dataKey="steps" eenheid="stappen" leeg="Nog geen stappen data" />
+              <GrafiekKaart titel="Slaap" icoon={Moon} kleur="text-blue-400" data={metrics} dataKey="sleep_duration" eenheid="uur" leeg="Nog geen slaap data" />
             </div>
           )}
         </div>
 
-        {/* Coach memory */}
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach inzichten</p>
-          {loading || analysing ? (
+          {loading ? (
             <div className="flex flex-col gap-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-20 rounded-2xl bg-coach-card animate-pulse" />
-              ))}
+              {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-2xl bg-coach-card animate-pulse" />)}
             </div>
           ) : insights.length === 0 ? (
             <Card className="p-6 text-center">

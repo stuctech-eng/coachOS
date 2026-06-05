@@ -27,19 +27,17 @@ export async function POST() {
     dertig.setDate(dertig.getDate() - 30)
     const vanDatum = dertig.toISOString().split('T')[0]
 
-    const [checkinsRes, metricsRes, activiteitenRes, statusRes, existingRes] = await Promise.all([
+    const [checkinsRes, metricsRes, activiteitenRes, statusRes] = await Promise.all([
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('health_metrics').select('date, hrv, resting_hr, sleep_duration, steps').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('activity_sessions').select('date, duration, activities(name)').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('daily_status').select('date, coach_score, recovery_score, training_score, risk_flags').eq('user_id', user.id).gte('date', vanDatum).order('date'),
-      supabase.from('coach_memory').select('content').eq('user_id', user.id).order('created_at', { ascending: false }).limit(15),
     ])
 
     const checkins = checkinsRes.data || []
     const metrics = metricsRes.data || []
     const activiteiten = activiteitenRes.data || []
     const statussen = statusRes.data || []
-    const bestaand = existingRes.data || []
 
     if (checkins.length < 5 && metrics.length < 5) {
       return NextResponse.json({ message: 'Nog te weinig data voor patronen' })
@@ -63,11 +61,9 @@ export async function POST() {
       `${s.date}: coach ${s.coach_score}, herstel ${s.recovery_score}${s.risk_flags?.length ? `, risicos: ${(s.risk_flags as string[]).join(', ')}` : ''}`
     ).join('\n')
 
-    const bestaandTekst = bestaand.length > 0 ? bestaand.map(m => `- ${m.content}`).join('\n') : 'Geen bestaande patronen'
-
     const systemPrompt = `Je bent een AI coach die langetermijnpatronen detecteert in gezondheids- en trainingsdata.
 
-Analyseer de data van de laatste 30 dagen en detecteer maximaal 4 NIEUWE, SPECIFIEKE patronen.
+Analyseer de data van de laatste 30 dagen en detecteer maximaal 4 SPECIFIEKE patronen.
 
 CHECK-INS:
 ${checkinTekst || 'Geen data'}
@@ -81,16 +77,11 @@ ${activiteitenTekst || 'Geen data'}
 COACH SCORES:
 ${statusTekst || 'Geen data'}
 
-BESTAANDE PATRONEN (niet herhalen):
-${bestaandTekst}
-
 REGELS:
 - Detecteer alleen patronen die BEWEZEN zijn door meerdere datapunten
 - Geen voor de hand liggende conclusies
 - Wees specifiek: niet "slaap is belangrijk" maar "HRV daalt consistent na nachten korter dan 6u"
 - Patronen over trainingsreactie, herstel, leefstijl en prestatie zijn het waardevolst
-- Genereer ALLEEN nieuwe patronen die nog niet in de bestaande lijst staan
-- Geef lege array als er geen nieuwe betrouwbare patronen zijn
 
 Reageer ALLEEN in dit JSON formaat:
 {
@@ -110,7 +101,7 @@ Confidence: 0-100`
         model: 'claude-sonnet-4-20250514',
         max_tokens: 600,
         system: systemPrompt,
-        messages: [{ role: 'user', content: 'Analyseer de data en detecteer nieuwe patronen.' }],
+        messages: [{ role: 'user', content: 'Analyseer de data en detecteer patronen.' }],
       }),
     })
 
@@ -125,25 +116,19 @@ Confidence: 0-100`
         insights = parsed.insights || []
       }
     } catch {
-      return NextResponse.json({ message: 'Geen nieuwe patronen gevonden' })
+      return NextResponse.json({ message: 'Geen patronen gevonden' })
     }
 
     if (insights.length === 0) {
-      return NextResponse.json({ message: 'Geen nieuwe patronen gevonden' })
+      return NextResponse.json({ message: 'Geen patronen gevonden' })
     }
 
-    // Deduplicatie
-    const bestaandContent = bestaand.map(m => m.content.toLowerCase())
-    const nieuweInsights = insights.filter(insight =>
-      !bestaandContent.some(b => b.includes(insight.content.toLowerCase().slice(0, 30)))
-    )
+    // Verwijder alle bestaande patronen van deze gebruiker
+    await supabase.from('coach_memory').delete().eq('user_id', user.id)
 
-    if (nieuweInsights.length === 0) {
-      return NextResponse.json({ message: 'Alle patronen al bekend' })
-    }
-
+    // Sla nieuwe patronen op
     await supabase.from('coach_memory').insert(
-      nieuweInsights.map(insight => ({
+      insights.map(insight => ({
         user_id: user.id,
         memory_type: insight.type || 'pattern',
         content: insight.content,
@@ -152,12 +137,12 @@ Confidence: 0-100`
     )
 
     return NextResponse.json({
-      message: `${nieuweInsights.length} nieuwe patronen opgeslagen`,
-      insights: nieuweInsights.length,
+      message: `${insights.length} inzichten opgeslagen`,
+      insights: insights.length,
     })
 
   } catch (error) {
-    console.error('Memory 2.0 error:', error)
+    console.error('Memory error:', error)
     return NextResponse.json({ error: 'Analyse mislukt' }, { status: 500 })
   }
 }
