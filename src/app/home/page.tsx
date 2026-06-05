@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Zap } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -9,6 +9,14 @@ import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { getGreeting, formatDate } from '@/utils'
 import { cn } from '@/utils'
+
+interface Prediction {
+  titel: string
+  voorspelling: string
+  kans: number
+  actie: string
+  type: 'positief' | 'waarschuwing'
+}
 
 function getScoreLabel(score: number | null): string {
   if (!score) return '—'
@@ -46,6 +54,8 @@ export default function HomePage() {
   const [berekenend, setBerekenend] = useState(false)
   const [laden, setLaden] = useState(true)
   const [generatingPlan, setGeneratingPlan] = useState(false)
+  const [predictions, setPredictions] = useState<Prediction[] | null>(null)
+  const [generatingPredictions, setGeneratingPredictions] = useState(false)
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
   const score = coachStatus?.coach_score ?? null
@@ -54,13 +64,10 @@ export default function HomePage() {
 
   // Laad coach status
   useEffect(() => {
-    // Check store eerst
     if (coachStatus && coachStatus.date === vandaag) {
       setLaden(false)
       return
     }
-
-    // Check localStorage
     if (typeof window !== 'undefined') {
       try {
         const opgeslaanDatum = window.localStorage.getItem('coach_status_datum')
@@ -73,8 +80,6 @@ export default function HomePage() {
         }
       } catch { /* */ }
     }
-
-    // Ophalen van server
     setLaden(false)
     setBerekenend(true)
     fetch('/api/status', { method: 'POST' })
@@ -92,10 +97,7 @@ export default function HomePage() {
 
   // Laad dagplan
   useEffect(() => {
-    // Check store eerst
     if (actionPlan && actionPlanDatum === vandaag) return
-
-    // Check localStorage
     if (typeof window !== 'undefined') {
       try {
         const opgeslaanDatum = window.localStorage.getItem('dagplan_datum')
@@ -106,6 +108,33 @@ export default function HomePage() {
         }
       } catch { /* */ }
     }
+  }, [])
+
+  // Laad voorspellingen
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const opgeslaanDatum = window.localStorage.getItem('predictions_datum')
+        const opgeslaanPredictions = window.localStorage.getItem('predictions_data')
+        if (opgeslaanDatum === vandaag && opgeslaanPredictions) {
+          setPredictions(JSON.parse(opgeslaanPredictions))
+          return
+        }
+      } catch { /* */ }
+    }
+    // Haal op van server als vandaag al gegenereerd
+    fetch('/api/predictions')
+      .then(r => r.json())
+      .then(data => {
+        if (data.predictions) {
+          setPredictions(data.predictions)
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('predictions_data', JSON.stringify(data.predictions))
+            window.localStorage.setItem('predictions_datum', vandaag)
+          }
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const berekenCoachScore = async () => {
@@ -136,6 +165,22 @@ export default function HomePage() {
       }
     } catch { /* */ }
     finally { setGeneratingPlan(false) }
+  }
+
+  const genereerVoorspellingen = async () => {
+    setGeneratingPredictions(true)
+    try {
+      const res = await fetch('/api/predictions', { method: 'POST' })
+      const data = await res.json()
+      if (data.predictions) {
+        setPredictions(data.predictions)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('predictions_data', JSON.stringify(data.predictions))
+          window.localStorage.setItem('predictions_datum', vandaag)
+        }
+      }
+    } catch { /* */ }
+    finally { setGeneratingPredictions(false) }
   }
 
   return (
@@ -186,7 +231,6 @@ export default function HomePage() {
               <RefreshCw size={16} className={cn('text-slate-400', berekenend && 'animate-spin')} />
             </button>
           </div>
-
           {coachStatus && (
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -307,6 +351,61 @@ export default function HomePage() {
           </Card>
         )}
 
+        {/* Voorspellingen */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-primary-400">
+              <Zap size={18} />
+              <span className="text-sm font-medium">Voorspellingen</span>
+            </div>
+            <button onClick={genereerVoorspellingen} disabled={generatingPredictions}
+              className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50">
+              <RefreshCw size={14} className={cn('text-slate-400', generatingPredictions && 'animate-spin')} />
+            </button>
+          </div>
+          {generatingPredictions ? (
+            <div className="flex flex-col gap-2">
+              {[1, 2, 3].map(i => <div key={i} className="h-16 bg-slate-800 rounded-xl animate-pulse" />)}
+            </div>
+          ) : predictions && predictions.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {predictions.map((p, i) => (
+                <div key={i} className={cn(
+                  'rounded-xl px-4 py-3 border',
+                  p.type === 'positief'
+                    ? 'bg-green-500/8 border-green-500/20'
+                    : 'bg-orange-500/8 border-orange-500/20'
+                )}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      {p.type === 'positief'
+                        ? <TrendingUp size={14} className="text-green-400" />
+                        : <AlertTriangle size={14} className="text-orange-400" />
+                      }
+                      <p className={cn('text-sm font-semibold',
+                        p.type === 'positief' ? 'text-green-400' : 'text-orange-400'
+                      )}>{p.titel}</p>
+                    </div>
+                    <span className={cn('text-xs font-mono',
+                      p.type === 'positief' ? 'text-green-500' : 'text-orange-500'
+                    )}>{p.kans}%</span>
+                  </div>
+                  <p className="text-slate-300 text-xs leading-relaxed mb-1">{p.voorspelling}</p>
+                  <p className="text-slate-500 text-xs">{p.actie}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-slate-400 text-sm mb-3">Voorspellingen op basis van jouw trends</p>
+              <button onClick={genereerVoorspellingen} disabled={generatingPredictions}
+                className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm active:bg-primary-700 disabled:opacity-50">
+                {generatingPredictions ? 'Bezig...' : 'Genereer voorspellingen'}
+              </button>
+            </div>
+          )}
+        </Card>
+
         {/* Dagplan */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
@@ -321,7 +420,7 @@ export default function HomePage() {
           </div>
           {generatingPlan ? (
             <div className="flex flex-col gap-2">
-              {[1,2,3].map(i => <div key={i} className="h-10 bg-slate-800 rounded-xl animate-pulse" />)}
+              {[1, 2, 3].map(i => <div key={i} className="h-10 bg-slate-800 rounded-xl animate-pulse" />)}
             </div>
           ) : actionPlan && actionPlan.length > 0 ? (
             <div className="flex flex-col gap-2">
