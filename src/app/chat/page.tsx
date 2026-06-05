@@ -25,18 +25,16 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [laden, setLaden] = useState(true)
+  const [wisBevestiging, setWisBevestiging] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Laad gesprek van vandaag bij openen
   useEffect(() => {
     if (typeof window === 'undefined') return
     const vandaag = getVandaag()
-
     try {
       const opgeslaanDatum = window.localStorage.getItem('chat_datum')
       const opgeslaanBerichten = window.localStorage.getItem('chat_berichten')
-
       if (opgeslaanDatum === vandaag && opgeslaanBerichten) {
         const parsed = JSON.parse(opgeslaanBerichten)
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -46,13 +44,10 @@ export default function ChatPage() {
         window.localStorage.removeItem('chat_berichten')
         window.localStorage.setItem('chat_datum', vandaag)
       }
-    } catch {
-      //
-    }
+    } catch { /* */ }
     setLaden(false)
   }, [])
 
-  // Sla berichten op bij elke wijziging
   useEffect(() => {
     if (laden || typeof window === 'undefined') return
     if (messages.length > 0) {
@@ -67,15 +62,10 @@ export default function ChatPage() {
 
   async function stuurBericht(tekst: string) {
     if (!tekst.trim() || loading) return
-
-    const nieuweBerichten: Message[] = [
-      ...messages,
-      { role: 'user', content: tekst.trim() },
-    ]
+    const nieuweBerichten: Message[] = [...messages, { role: 'user', content: tekst.trim() }]
     setMessages(nieuweBerichten)
     setInput('')
     setLoading(true)
-
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -87,10 +77,7 @@ export default function ChatPage() {
         setMessages(prev => [...prev, { role: 'assistant', content: data.message }])
       }
     } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Er ging iets mis. Probeer het opnieuw.'
-      }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Er ging iets mis. Probeer het opnieuw.' }])
     } finally {
       setLoading(false)
     }
@@ -99,6 +86,7 @@ export default function ChatPage() {
   function wisGesprek() {
     setMessages([])
     localStorage.removeItem('chat_berichten')
+    setWisBevestiging(false)
   }
 
   if (laden) {
@@ -123,13 +111,35 @@ export default function ChatPage() {
           </div>
           {messages.length > 0 && (
             <button
-              onClick={wisGesprek}
+              onClick={() => setWisBevestiging(true)}
               className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center active:bg-slate-700"
             >
               <Trash2 size={16} className="text-slate-400" />
             </button>
           )}
         </div>
+
+        {/* Bevestiging wissen */}
+        {wisBevestiging && (
+          <div className="mx-5 mb-4 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex-shrink-0">
+            <p className="text-white text-sm font-medium mb-1">Gesprek wissen?</p>
+            <p className="text-slate-400 text-xs mb-4">De coach geschiedenis wordt permanent verwijderd. Dit kan niet ongedaan worden gemaakt.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setWisBevestiging(false)}
+                className="flex-1 py-2 rounded-xl bg-slate-700 text-slate-300 text-sm active:bg-slate-600"
+              >
+                Annuleer
+              </button>
+              <button
+                onClick={wisGesprek}
+                className="flex-1 py-2 rounded-xl bg-red-500/20 text-red-400 text-sm border border-red-500/30 active:bg-red-500/30"
+              >
+                Wis gesprek
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Berichten */}
         <div className="flex-1 overflow-y-auto px-5 pb-4">
@@ -144,7 +154,6 @@ export default function ChatPage() {
                   <p className="text-slate-400 text-xs mt-0.5">Ik ken je data. Stel me een vraag over je training, herstel of gezondheid.</p>
                 </div>
               </div>
-
               <p className="text-xs text-slate-500 px-1">Suggesties:</p>
               <div className="flex flex-col gap-2">
                 {SUGGESTIES.map((s, i) => (
@@ -181,7 +190,6 @@ export default function ChatPage() {
                   </div>
                 </div>
               ))}
-
               {loading && (
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-xl bg-slate-700 flex items-center justify-center flex-shrink-0 mt-1">
