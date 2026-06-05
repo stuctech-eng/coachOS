@@ -26,6 +26,78 @@ function gemiddelde(waarden: number[]): number {
   return Math.round(waarden.reduce((a, b) => a + b, 0) / waarden.length * 10) / 10
 }
 
+function buildGoalContext(goals: UserGoal[]): string {
+  if (goals.length === 0) return ''
+
+  const goalTitles = goals.map(g => g.title.toLowerCase())
+
+  // Detecteer doel types
+  const isMarathon = goalTitles.some(t => t.includes('marathon') || t.includes('hardlopen') || t.includes('lopen') || t.includes('race') || t.includes('duurloop'))
+  const isAfvallen = goalTitles.some(t => t.includes('afvallen') || t.includes('gewicht') || t.includes('afslank') || t.includes('vet'))
+  const isKracht = goalTitles.some(t => t.includes('kracht') || t.includes('spier') || t.includes('gym') || t.includes('gewichthef') || t.includes('sterk'))
+  const isFietsen = goalTitles.some(t => t.includes('fiets') || t.includes('wielren') || t.includes('cycling'))
+  const isGezondheid = goalTitles.some(t => t.includes('gezond') || t.includes('conditie') || t.includes('fit') || t.includes('algemeen'))
+
+  const focusPunten: string[] = []
+  const prioriteiten: string[] = []
+
+  if (isMarathon || isFietsen) {
+    focusPunten.push('trainingsbelasting en duurvermogen')
+    prioriteiten.push(
+      'Prioriteer trainingsvolume en -kwaliteit boven alles',
+      'HRV en herstel bepalen of een geplande training door kan gaan',
+      'Slaap is cruciaal voor aanpassing aan trainingsbelasting',
+      'Waarschuw direct als overtraining signalen optreden',
+      'Geef specifiek advies over intensiteit: rustig, matig of hoog',
+      'Denk in trainingsblokken: opbouw, piek, herstel'
+    )
+  }
+
+  if (isAfvallen) {
+    focusPunten.push('consistentie, dagelijkse beweging en energiebalans')
+    prioriteiten.push(
+      'Stappen en dagelijkse activiteit zijn even belangrijk als gestructureerde training',
+      'Consistentie over weken is belangrijker dan perfecte sessies',
+      'Energie en motivatie score bepalen het type activiteit van vandaag',
+      'Benoem altijd de calorische impact van keuzes',
+      'Slaap en stress hebben directe invloed op vetverbranding — benoem dit',
+      'Kleine dagelijkse overwinningen zijn even waardevol als grote trainingsprestaties'
+    )
+  }
+
+  if (isKracht) {
+    focusPunten.push('spierherstel, trainingsfrequentie en progressieve overbelasting')
+    prioriteiten.push(
+      'Spierpijn score bepaalt of een spiergroep getraind kan worden',
+      'Herstel tussen krachttrainingen is cruciaal — minstens 48u per spiergroep',
+      'HRV onder gemiddelde = hersteldag, geen zware krachttraining',
+      'Eiwitinname en slaap zijn de twee belangrijkste hersteltools',
+      'Geef concrete sets/reps suggesties als de conditie het toelaat',
+      'Blessures aan specifieke lichaamsdelen sluiten bepaalde oefeningen uit'
+    )
+  }
+
+  if (isGezondheid || (!isMarathon && !isAfvallen && !isKracht && !isFietsen)) {
+    focusPunten.push('algehele gezondheid, herstel en dagelijkse beweging')
+    prioriteiten.push(
+      'Balans tussen activiteit en herstel staat centraal',
+      'Slaap, stress en stappen zijn de drie belangrijkste indicatoren',
+      'Kleine dagelijkse gewoontes zijn waardevoller dan extreme sessies',
+      'Benoem positieve trends om motivatie te ondersteunen',
+      'Geef praktische adviezen die passen in het dagelijks leven'
+    )
+  }
+
+  return `DOEL-SPECIFIEKE COACHING FOCUS:
+De gebruiker wil bereiken: ${goals.map(g => g.title).join(', ')}
+Primaire focus: ${focusPunten.join(' en ')}
+
+Coaching prioriteiten voor dit doel:
+${prioriteiten.map(p => '- ' + p).join('\n')}
+
+`
+}
+
 export function buildDailyCoachPrompt(
   profile: Profile,
   goals: UserGoal[],
@@ -75,6 +147,8 @@ export function buildDailyCoachPrompt(
     activiteitenText = 'RECENTE ACTIVITEITEN:\n' + recenteActiviteiten.map(a => '- ' + a).join('\n') + '\n\n'
   }
 
+  const goalContext = buildGoalContext(goals)
+
   return `Je bent CoachOS, de persoonlijke coach van ${name}. Je bent geen app of dashboard — je bent een ervaren coach die deze atleet door en door kent.
 
 COACH PERSOONLIJKHEID:
@@ -93,7 +167,7 @@ PROFIEL: ${name}, ${profile.age || 'leeftijd onbekend'} jaar, niveau: ${profile.
 DOELEN:
 ${goalsList}
 
-CHECK-IN VANDAAG: ${checkinText}
+${goalContext}CHECK-IN VANDAAG: ${checkinText}
 
 HERSTELSTATUS: ${recovery.score}/100 — ${recovery.status}
 
@@ -104,7 +178,7 @@ ${memoryList}
 
 Reageer ALLEEN in dit JSON formaat:
 {
-  "recommendation": "Persoonlijk advies voor vandaag in 1-2 zinnen als een echte coach",
-  "reasoning": "Onderbouwing in 2-3 zinnen: interpreteer de data, vergelijk met trends, leg uit waarom dit advies past bij deze atleet op dit moment"
+  "recommendation": "Persoonlijk advies voor vandaag in 1-2 zinnen als een echte coach — specifiek gericht op het doel",
+  "reasoning": "Onderbouwing in 2-3 zinnen: interpreteer de data, vergelijk met trends, leg uit waarom dit advies past bij dit specifieke doel van deze atleet op dit moment"
 }`
 }
