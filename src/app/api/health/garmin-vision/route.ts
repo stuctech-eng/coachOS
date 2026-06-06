@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import Anthropic from '@anthropic-ai/sdk'
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -250,60 +250,43 @@ export async function POST(req: NextRequest) {
     const base64 = Buffer.from(buffer).toString('base64')
     const mediaType = (imageFile.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/webp'
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-    const visionResponse = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: mediaType, data: base64 },
-            },
-            {
-              type: 'text',
-              text: `Dit is een screenshot van de Garmin Connect "In één oogopslag" pagina.
-Lees alle zichtbare waarden uit en retourneer ALLEEN een JSON object, zonder markdown of uitleg.
-
-Gebruik dit exacte schema:
-{
-  "resting_hr": <getal bpm>,
-  "body_battery": {
-    "current": <huidig getal>,
-    "charged": <opgeladen getal>,
-    "spent": <leeg getal>
-  },
-  "sleep": {
-    "score": <getal 0-100>,
-    "duration": "<bijv. 8u 46m>"
-  },
-  "hrv": {
-    "avg_7d_ms": <getal in ms — dit is het 7-daags gemiddelde>,
-    "status": "<bijv. Evenwichtig>"
-  },
-  "calories": {
-    "active": <getal>,
-    "rest": <getal>,
-    "total": <getal>
-  },
-  "steps": {
-    "value": <getal>,
-    "goal": <getal onder de cirkel>
-  }
-}
-
-Als een waarde niet zichtbaar is, gebruik null.
-Retourneer ALLEEN het JSON object.`,
-            },
-          ],
-        },
-      ],
+    const visionRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 1024,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: base64 },
+              },
+              {
+                type: 'text',
+                text: 'Dit is een screenshot van de Garmin Connect "In één oogopslag" pagina.\nLees alle zichtbare waarden uit en retourneer ALLEEN een JSON object, zonder markdown of uitleg.\n\nGebruik dit exacte schema:\n{\n  "resting_hr": 43,\n  "body_battery": { "current": 66, "charged": 55, "spent": 36 },\n  "sleep": { "score": 84, "duration": "8u 46m" },\n  "hrv": { "avg_7d_ms": 49, "status": "Evenwichtig" },\n  "calories": { "active": 285, "rest": 1401, "total": 1686 },\n  "steps": { "value": 6811, "goal": 6870 }\n}\n\nAls een waarde niet zichtbaar is, gebruik null.\nRetourneer ALLEEN het JSON object.',
+              },
+            ],
+          },
+        ],
+      }),
     })
 
-    const rawText = visionResponse.content[0].type === 'text' ? visionResponse.content[0].text : ''
+    if (!visionRes.ok) {
+      const errText = await visionRes.text()
+      console.error('[garmin-vision] Anthropic error:', errText)
+      return NextResponse.json({ error: 'AI kon de afbeelding niet verwerken.' }, { status: 502 })
+    }
+
+    const visionData = await visionRes.json()
+    const rawText: string = visionData.content?.[0]?.text ?? ''
+
 
     let rawJson: Record<string, unknown>
     try {
