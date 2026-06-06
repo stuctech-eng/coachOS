@@ -178,9 +178,11 @@ function NieuwEventSheet({ onClose, onSave }: {
     if (!gekozenType) return
     setSaving(true)
     try {
+      const uur = startHour !== null ? startHour : 9
+      const startTimeISO = new Date(`${startDate}T${String(uur).padStart(2,'0')}:00:00`).toISOString()
       await onSave({
         type: gekozenType.type,
-        start_time: new Date(startDate + 'T' + String(startHour ?? 9).padStart(2,'0') + ':00:00').toISOString(),
+        start_time: startTimeISO,
         recovery_impact: gekozenType.recovery_impact,
         stress_load: gekozenType.stress_load,
         sleep_disruption: gekozenType.sleep_disruption,
@@ -193,6 +195,8 @@ function NieuwEventSheet({ onClose, onSave }: {
         vacation_type: vacationType || null,
         notes: notes || null,
       })
+    } catch (err) {
+      console.error('Opslaan mislukt:', err)
     } finally {
       setSaving(false)
     }
@@ -618,17 +622,25 @@ export default function LifeEventsPage() {
   }
 
   async function slaEventOp(eventData: Partial<LifeEvent>) {
-    const res = await fetch('/api/life-events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(eventData),
-    })
-    const data = await res.json()
-    if (data.event) {
-      setEvents(prev => [data.event, ...prev])
-      setShowSheet(false)
-      setMessage('✅ Event toegevoegd')
-      setTimeout(() => setMessage(''), 2000)
+    try {
+      const res = await fetch('/api/life-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData),
+      })
+      const data = await res.json()
+      if (data.event) {
+        setEvents(prev => [data.event, ...prev])
+        setShowSheet(false)
+        setMessage('✅ Event toegevoegd')
+        setTimeout(() => setMessage(''), 2000)
+      } else {
+        setMessage('❌ ' + (data.error || 'Opslaan mislukt'))
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch {
+      setMessage('❌ Verbindingsfout')
+      setTimeout(() => setMessage(''), 3000)
     }
   }
 
