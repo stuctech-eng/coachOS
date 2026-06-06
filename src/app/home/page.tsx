@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Zap } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Zap, Camera } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -9,6 +10,7 @@ import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { getGreeting, formatDate } from '@/utils'
 import { cn } from '@/utils'
+import { createBrowserClient } from '@supabase/ssr'
 
 interface Prediction {
   titel: string
@@ -49,6 +51,7 @@ export default function HomePage() {
   const { profile } = useAuth()
   const { recommendation, checkin, isGenerating, generateAdvice, hasCheckin } = useCoach()
   const { coachStatus, setCoachStatus, actionPlan, actionPlanDatum, setActionPlan } = useCoachStore()
+  const router = useRouter()
 
   const [showReasoning, setShowReasoning] = useState(false)
   const [berekenend, setBerekenend] = useState(false)
@@ -56,11 +59,30 @@ export default function HomePage() {
   const [generatingPlan, setGeneratingPlan] = useState(false)
   const [predictions, setPredictions] = useState<Prediction[] | null>(null)
   const [generatingPredictions, setGeneratingPredictions] = useState(false)
+  const [garminImported, setGarminImported] = useState(true) // default true = geen banner
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
   const score = coachStatus?.coach_score ?? null
   const vandaag = new Date().toISOString().split('T')[0]
   const heeftRisicos = coachStatus?.risk_flags && coachStatus.risk_flags.length > 0
+
+  // Check Garmin import vandaag
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+    )
+    const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+
+    supabase
+      .from('garmin_imports')
+      .select('id')
+      .eq('date', vandaagAms)
+      .eq('status', 'confirmed')
+      .single()
+      .then(({ data }) => setGarminImported(!!data))
+      .catch(() => setGarminImported(true)) // bij fout: geen banner tonen
+  }, [])
 
   // Laad coach status
   useEffect(() => {
@@ -122,7 +144,6 @@ export default function HomePage() {
         }
       } catch { /* */ }
     }
-    // Haal op van server als vandaag al gegenereerd
     fetch('/api/predictions')
       .then(r => r.json())
       .then(data => {
@@ -197,6 +218,23 @@ export default function HomePage() {
             <Bell size={20} />
           </button>
         </div>
+
+        {/* Garmin reminder banner */}
+        {!garminImported && (
+          <button
+            onClick={() => router.push('/settings/garmin-import')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-left active:bg-blue-500/15 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <Camera size={16} className="text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-400">Garmin data importeren</p>
+              <p className="text-xs text-slate-500 mt-0.5">Vandaag nog geen screenshot geüpload</p>
+            </div>
+            <ChevronDown size={16} className="text-blue-400/50 -rotate-90 flex-shrink-0" />
+          </button>
+        )}
 
         {/* Coach Score */}
         <Card className={cn('p-5', getScoreBg(score))}>

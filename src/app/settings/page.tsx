@@ -1,7 +1,7 @@
 'use client'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { LogOut, User, Target, Info, ChevronRight, ChevronDown, Activity, RefreshCw, CheckCircle, XCircle, Heart, Copy, Key, Zap, Calendar } from 'lucide-react'
+import { LogOut, User, Target, Info, ChevronRight, ChevronDown, Activity, RefreshCw, CheckCircle, XCircle, Heart, Copy, Key, Zap, Calendar, Camera } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -210,12 +210,29 @@ export default function SettingsPage() {
             <StravaSection />
           </Suspense>
           <AppleHealthSection />
+
+          {/* Garmin Import */}
+          <Card className="p-4 mt-3">
+            <button
+              onClick={() => router.push('/settings/garmin-import')}
+              className="flex items-center gap-3 w-full"
+            >
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                <Camera size={20} className="text-blue-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-white font-semibold text-sm">Garmin Import</p>
+                <p className="text-slate-400 text-xs">Screenshot uploaden voor dagdata</p>
+              </div>
+              <ChevronRight size={16} className="text-slate-600" />
+            </button>
+          </Card>
         </div>
 
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Over</p>
           <Card>
-            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v4.0.0</span>} />
+            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v4.2.0</span>} />
           </Card>
         </div>
 
