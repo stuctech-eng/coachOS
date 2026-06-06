@@ -635,12 +635,12 @@ export default function LifeEventsPage() {
         setMessage('✅ Event toegevoegd')
         setTimeout(() => setMessage(''), 2000)
       } else {
-        setMessage('❌ ' + (data.error || 'Opslaan mislukt'))
-        setTimeout(() => setMessage(''), 3000)
+        throw new Error(data.error || 'Opslaan mislukt')
       }
-    } catch {
-      setMessage('❌ Verbindingsfout')
-      setTimeout(() => setMessage(''), 3000)
+    } catch (err) {
+      setMessage('❌ ' + String(err))
+      setTimeout(() => setMessage(''), 4000)
+      throw err
     }
   }
 
