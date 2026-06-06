@@ -40,31 +40,32 @@ export async function POST(req: NextRequest) {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
     const body = await req.json()
-    if (!body.type) return NextResponse.json({ error: 'Type verplicht' }, { status: 400 })
     const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('life_events')
       .insert({
         user_id: user.id,
         type: body.type,
-        start_time: body.start_time || new Date().toISOString(),
-        end_time: body.end_time || null,
-        recovery_impact: body.recovery_impact || 0,
-        stress_load: body.stress_load || 0,
-        sleep_disruption: body.sleep_disruption || 0,
-        notes: body.notes || null,
+        start_time: body.start_time,
+        recovery_impact: body.recovery_impact ?? 1,
+        stress_load: body.stress_load ?? 1,
+        sleep_disruption: body.sleep_disruption ?? 1,
         start_hour: body.start_hour ?? null,
         end_hour: body.end_hour ?? null,
-        recurrence: body.recurrence || null,
-        recurrence_interval: body.recurrence_interval || null,
+        recurrence: body.recurrence ?? null,
+        recurrence_days: body.recurrence_days ?? null,
+        recurrence_end_date: body.recurrence_end_date ?? null,
+        end_date: body.end_date ?? null,
+        vacation_type: body.vacation_type ?? null,
+        notes: body.notes ?? null,
       })
       .select()
       .single()
     if (error) throw error
     return NextResponse.json({ event: data })
   } catch (error) {
-    console.error('Life event POST error:', error)
-    return NextResponse.json({ error: 'Toevoegen mislukt' }, { status: 500 })
+    console.error('Life events POST error:', error)
+    return NextResponse.json({ error: 'Opslaan mislukt' }, { status: 500 })
   }
 }
 
@@ -73,30 +74,26 @@ export async function PATCH(req: NextRequest) {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
     const body = await req.json()
-    if (!body.id) return NextResponse.json({ error: 'ID verplicht' }, { status: 400 })
     const supabase = createAdminClient()
-
-    const update: Record<string, unknown> = {}
-    if (body.notes !== undefined)            update.notes            = body.notes
-    if (body.recovery_impact !== undefined)  update.recovery_impact  = body.recovery_impact
-    if (body.stress_load !== undefined)      update.stress_load      = body.stress_load
-    if (body.sleep_disruption !== undefined) update.sleep_disruption = body.sleep_disruption
-    if (body.end_time !== undefined)         update.end_time         = body.end_time
-    if (body.start_hour !== undefined)       update.start_hour       = body.start_hour
-    if (body.end_hour !== undefined)         update.end_hour         = body.end_hour
-    if (body.recurrence !== undefined)       update.recurrence       = body.recurrence
-
+    const updates: Record<string, unknown> = {}
+    if (body.notes !== undefined) updates.notes = body.notes
+    if (body.start_hour !== undefined) updates.start_hour = body.start_hour
+    if (body.end_hour !== undefined) updates.end_hour = body.end_hour
+    if (body.recurrence !== undefined) updates.recurrence = body.recurrence
+    if (body.recurrence_days !== undefined) updates.recurrence_days = body.recurrence_days
+    if (body.recurrence_end_date !== undefined) updates.recurrence_end_date = body.recurrence_end_date
+    if (body.end_date !== undefined) updates.end_date = body.end_date
+    if (body.vacation_type !== undefined) updates.vacation_type = body.vacation_type
     const { error } = await supabase
       .from('life_events')
-      .update(update)
+      .update(updates)
       .eq('id', body.id)
       .eq('user_id', user.id)
-
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Life event PATCH error:', error)
-    return NextResponse.json({ error: 'Updaten mislukt' }, { status: 500 })
+    console.error('Life events PATCH error:', error)
+    return NextResponse.json({ error: 'Bijwerken mislukt' }, { status: 500 })
   }
 }
 
@@ -106,11 +103,13 @@ export async function DELETE(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'ID verplicht' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'Geen ID' }, { status: 400 })
     const supabase = createAdminClient()
-    await supabase.from('life_events').delete().eq('id', id).eq('user_id', user.id)
+    const { error } = await supabase.from('life_events').delete().eq('id', id).eq('user_id', user.id)
+    if (error) throw error
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (error) {
+    console.error('Life events DELETE error:', error)
     return NextResponse.json({ error: 'Verwijderen mislukt' }, { status: 500 })
   }
 }
