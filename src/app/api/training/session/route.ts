@@ -197,7 +197,10 @@ Retourneer ALLEEN dit JSON object, zonder markdown:
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('[training/session] Supabase error:', error.message, error.code, error.details)
+      return NextResponse.json({ error: 'Opslaan mislukt', detail: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       session_id: saved.id,
@@ -207,7 +210,8 @@ Retourneer ALLEEN dit JSON object, zonder markdown:
       adjusted: effectiefIntensity !== intensity,
     })
   } catch (err) {
-    console.error('[training/session]', err)
-    return NextResponse.json({ error: 'Server fout' }, { status: 500 })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[training/session] CATCH:', msg)
+    return NextResponse.json({ error: 'Server fout', detail: msg }, { status: 500 })
   }
 }
