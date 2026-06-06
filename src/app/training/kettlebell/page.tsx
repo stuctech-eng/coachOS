@@ -512,20 +512,5 @@ function SectieBlok({ titel, oefeningen, fase }: { titel: string; oefeningen: Oe
   )
 }
 
-function faseKleur(fase: Fase): string {
-  if (fase === 'warmup') return 'text-orange-400'
-  if (fase === 'blocks') return 'text-primary-400'
-  return 'text-green-400'
-}
 
-function faseBg(fase: Fase): string {
-  if (fase === 'warmup') return 'bg-orange-500/10 border-orange-500/20'
-  if (fase === 'blocks') return 'bg-primary-500/10 border-primary-500/20'
-  return 'bg-green-500/10 border-green-500/20'
-}
 
-function formatTijd(sec: number): string {
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`
-}
