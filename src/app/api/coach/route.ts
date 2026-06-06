@@ -56,7 +56,7 @@ export async function POST() {
     zeven.setDate(zeven.getDate() - 7)
     const zevenDagenGeleden = zeven.toISOString().split('T')[0]
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -88,6 +88,13 @@ export async function POST() {
         .eq('status', 'confirmed')
         .gte('date', zevenDagenGeleden)
         .order('date', { ascending: true }),
+      // Training resultaten
+      supabase.from('training_results')
+        .select('rating, actual_duration, completed_at')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .order('completed_at', { ascending: false })
+        .limit(5),
     ])
 
     const profile = profileRes.data
@@ -97,6 +104,18 @@ export async function POST() {
     const garminDatum = garminRes.data?.date || null
     const garminIsVandaag = garminDatum === vandaagAms
     const garminWeek = garminWeekRes.data || []
+    const trainingsResultaten = trainingsRes.data || []
+
+    // Trainingshistorie voor coach
+    const trainingsCoachContext = trainingsResultaten.length > 0 ? (() => {
+      const metRating = trainingsResultaten.filter(t => t.rating)
+      const gemRating = metRating.length > 0
+        ? Math.round(metRating.reduce((a, t) => a + (t.rating || 0), 0) / metRating.length * 10) / 10
+        : null
+      return `\nTrainingshistorie (laatste ${trainingsResultaten.length} sessies):` +
+        (gemRating ? `\nGemiddelde rating: ${gemRating}/10` : '') +
+        `\nGemiddelde duur: ${Math.round(trainingsResultaten.reduce((a, t) => a + (t.actual_duration || 0), 0) / trainingsResultaten.length)} min`
+    })() : ''
 
     // Garmin data als fallback voor health_metrics
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -175,7 +194,7 @@ export async function POST() {
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext
+    ) + garminContext + trainingsCoachContext
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
 

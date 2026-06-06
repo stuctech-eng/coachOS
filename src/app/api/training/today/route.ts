@@ -79,7 +79,7 @@ export async function POST() {
     const [
       profileRes, statusRes, checkinRes, metricsRes,
       blessuresRes, lifeEventsRes, goalsRes,
-      metrics7dRes, activiteitenRes,
+      metrics7dRes, activiteitenRes, trainingsRes, garminRes,
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -101,6 +101,19 @@ export async function POST() {
         .eq('user_id', user.id)
         .gte('date', zeven.toISOString().split('T')[0])
         .order('date', { ascending: false }),
+      supabase.from('training_results')
+        .select('rating, actual_duration, completed_at')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .order('completed_at', { ascending: false })
+        .limit(3),
+      supabase.from('garmin_imports')
+        .select('parsed_data')
+        .eq('user_id', user.id)
+        .eq('status', 'confirmed')
+        .order('date', { ascending: false })
+        .limit(1)
+        .single(),
     ])
 
     const status = statusRes.data
@@ -111,6 +124,19 @@ export async function POST() {
     const goals = goalsRes.data || []
     const metrics7d = metrics7dRes.data || []
     const activiteiten = activiteitenRes.data || []
+    const trainingen = trainingsRes.data || []
+    const garmin = garminRes.data?.parsed_data || null
+
+    // Trainingsresultaten voor context
+    const gemRating = trainingen.length > 0
+      ? Math.round(trainingen.filter(t => t.rating).reduce((a, t) => a + (t.rating || 0), 0) / trainingen.filter(t => t.rating).length * 10) / 10
+      : null
+    const trainingsHistorie = trainingen.length > 0
+      ? `Laatste ${trainingen.length} trainingen — gem. rating: ${gemRating}/10, duur: ${Math.round(trainingen.reduce((a, t) => a + (t.actual_duration || 0), 0) / trainingen.length)} min`
+      : 'Nog geen trainingsresultaten'
+    const garminContext = garmin
+      ? `Garmin: hartslag ${garmin.resting_hr || '?'} bpm, Body Battery ${garmin.body_battery?.current || '?'}, slaap ${garmin.sleep?.score || '?'}/100, HRV ${garmin.hrv?.avg_7d_ms || '?'} ms`
+      : ''
 
     const dagNummer = new Date().getDay()
     const isWeekend = dagNummer === 0 || dagNummer === 6
@@ -128,6 +154,8 @@ export async function POST() {
       goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',
       metrics7d.length > 0 ? `HRV trend: ${metrics7d.filter(m => m.hrv).map(m => m.hrv).join(' → ')}` : '',
       activiteiten.length > 0 ? `Trainingen afgelopen week: ${activiteiten.length} sessies, totaal ${activiteiten.reduce((s, a) => s + (a.duration || 0), 0)} min` : 'Geen trainingen afgelopen week',
+      trainingsHistorie,
+      garminContext,
     ].filter(Boolean).join('\n')
 
     const systemPrompt = `Je bent Coach AI van CoachOS. Je analyseert de gezondheidsdata en beslist wat de gebruiker vandaag moet doen.
