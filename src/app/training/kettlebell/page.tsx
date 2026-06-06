@@ -484,7 +484,6 @@ function KettlebellInner() {
 
   return null
 }
-}
 
 export default function KettlebellPage() {
   return (
