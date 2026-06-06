@@ -1,11 +1,12 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle, Star, RefreshCw, Heart, Activity, Moon, Footprints, ArrowLeft } from 'lucide-react'
+import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle, Star, RefreshCw, Activity, Moon, Footprints, ArrowLeft, Heart, Zap, Battery } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { cn } from '@/utils'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { createBrowserClient } from '@supabase/ssr'
 
 interface MemoryItem {
   id: string
@@ -15,14 +16,16 @@ interface MemoryItem {
   created_at: string
 }
 
-interface HealthMetric {
+interface GarminImport {
   date: string
-  resting_hr: number | null
-  hrv: number | null
-  steps: number | null
-  sleep_duration: number | null
-  weight: number | null
-  calories_burned: number | null
+  parsed_data: {
+    resting_hr: number | null
+    body_battery: { current: number | null; charged: number | null; spent: number | null }
+    sleep: { score: number | null; duration_minutes: number | null }
+    hrv: { avg_7d_ms: number | null; status: string | null }
+    calories: { active: number | null; rest: number | null; total: number | null }
+    steps: { value: number | null; goal: number | null }
+  }
 }
 
 interface TrendItem {
@@ -54,26 +57,18 @@ function formatDatum(dateStr: string): string {
   return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
 }
 
-function getStrokeColor(kleur: string): string {
-  if (kleur.includes('red'))    return '#f87171'
-  if (kleur.includes('blue'))   return '#60a5fa'
-  if (kleur.includes('green'))  return '#4ade80'
-  if (kleur.includes('purple')) return '#a78bfa'
-  return '#818cf8'
-}
-
-function GrafiekKaart({
-  titel, icoon: Icoon, kleur, data, dataKey, eenheid, leeg,
+// Generieke grafiek voor Garmin data
+function GarminGrafiek({
+  titel, icoon: Icoon, kleur, data, eenheid, leeg,
 }: {
   titel: string
   icoon: React.ElementType
   kleur: string
-  data: HealthMetric[]
-  dataKey: keyof HealthMetric
+  data: Array<{ datum: string; waarde: number | null }>
   eenheid: string
   leeg: string
 }) {
-  const gefilterd = data.filter(d => d[dataKey] !== null && d[dataKey] !== undefined)
+  const gefilterd = data.filter(d => d.waarde !== null && d.waarde !== undefined) as Array<{ datum: string; waarde: number }>
 
   if (gefilterd.length === 0) {
     return (
@@ -87,11 +82,19 @@ function GrafiekKaart({
     )
   }
 
-  const chartData = gefilterd.map(d => ({ datum: formatDatum(d.date), waarde: d[dataKey] as number }))
-  const waarden = chartData.map(d => d.waarde)
+  const waarden = gefilterd.map(d => d.waarde)
   const gemiddeld = Math.round(waarden.reduce((a, b) => a + b, 0) / waarden.length * 10) / 10
   const laatste = waarden[waarden.length - 1]
-  const stroke = getStrokeColor(kleur)
+
+  const strokeColors: Record<string, string> = {
+    'text-purple-400': '#a78bfa',
+    'text-red-400': '#f87171',
+    'text-blue-400': '#60a5fa',
+    'text-green-400': '#4ade80',
+    'text-orange-400': '#fb923c',
+    'text-yellow-400': '#facc15',
+  }
+  const stroke = strokeColors[kleur] || '#818cf8'
 
   return (
     <Card className="p-4">
@@ -104,9 +107,9 @@ function GrafiekKaart({
           {laatste} <span className="text-xs font-normal text-slate-400">{eenheid}</span>
         </p>
       </div>
-      <p className="text-xs text-slate-500 mb-3">gemiddeld {gemiddeld} {eenheid}</p>
+      <p className="text-xs text-slate-500 mb-3">gemiddeld {gemiddeld} {eenheid} · {gefilterd.length} dagen</p>
       <ResponsiveContainer width="100%" height={80}>
-        <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+        <LineChart data={gefilterd} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2d333b" vertical={false} />
           <XAxis dataKey="datum" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
           <YAxis domain={['auto', 'auto']} tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} width={30} />
@@ -125,7 +128,7 @@ function GrafiekKaart({
 export default function InsightsPage() {
   const router = useRouter()
   const [insights, setInsights] = useState<MemoryItem[]>([])
-  const [metrics, setMetrics] = useState<HealthMetric[]>([])
+  const [garminData, setGarminData] = useState<GarminImport[]>([])
   const [trends, setTrends] = useState<Trends | null>(null)
   const [loading, setLoading] = useState(true)
   const [analysing, setAnalysing] = useState(false)
@@ -138,12 +141,34 @@ export default function InsightsPage() {
     return lijst
   }, [])
 
+  const laadGarminData = useCallback(async () => {
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+      )
+      const veertienDagenGeleden = new Date()
+      veertienDagenGeleden.setDate(veertienDagenGeleden.getDate() - 14)
+      const vanDatum = veertienDagenGeleden.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+
+      const { data } = await supabase
+        .from('garmin_imports')
+        .select('date, parsed_data')
+        .eq('status', 'confirmed')
+        .gte('date', vanDatum)
+        .order('date', { ascending: true })
+
+      setGarminData(data || [])
+    } catch {
+      setGarminData([])
+    }
+  }, [])
+
   const runAnalysis = useCallback(async (silent = false) => {
     if (!silent) setAnalysing(true)
     setMessage('')
     try {
       await fetch('/api/memory', { method: 'POST' })
-      // Altijd opnieuw laden na analyse — ook als er geen nieuwe zijn
       await laadInsights()
       if (!silent) setMessage('Analyse klaar')
     } catch {
@@ -156,21 +181,32 @@ export default function InsightsPage() {
   useEffect(() => {
     Promise.all([
       laadInsights(),
-      fetch('/api/health/metrics').then(r => r.json()),
+      laadGarminData(),
       fetch('/api/trends').then(r => r.json()),
-    ]).then(([insightsData, healthData, trendsData]) => {
-      setMetrics(healthData.metrics || [])
+    ]).then(([insightsData, , trendsData]) => {
       setTrends(trendsData)
       setLoading(false)
 
-      // Stil analyseren als laatste analyse niet van vandaag is
       const vandaag = new Date().toISOString().split('T')[0]
       const laatsteAnalyse = insightsData[0]?.created_at?.split('T')[0]
       if (laatsteAnalyse !== vandaag) {
         runAnalysis(true)
       }
     }).catch(() => setLoading(false))
-  }, [laadInsights, runAnalysis])
+  }, [laadInsights, laadGarminData, runAnalysis])
+
+  // Bouw grafiek data uit Garmin imports
+  const hartslag = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.resting_hr ?? null }))
+  const bodyBattery = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.body_battery?.current ?? null }))
+  const slaapscore = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.sleep?.score ?? null }))
+  const slaapDuur = garminData.map(g => ({
+    datum: formatDatum(g.date),
+    waarde: g.parsed_data?.sleep?.duration_minutes
+      ? Math.round(g.parsed_data.sleep.duration_minutes / 60 * 10) / 10
+      : null
+  }))
+  const hrv = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.hrv?.avg_7d_ms ?? null }))
+  const stappen = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.steps?.value ?? null }))
 
   return (
     <AppShell showNav={false}>
@@ -240,28 +276,38 @@ export default function InsightsPage() {
           </div>
         )}
 
+        {/* Garmin grafieken */}
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Gezondheid — 14 dagen</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Garmin — 14 dagen</p>
           {loading ? (
             <div className="flex flex-col gap-3">
-              {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-2xl bg-coach-card animate-pulse" />)}
+              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-32 rounded-2xl bg-coach-card animate-pulse" />)}
             </div>
-          ) : metrics.length === 0 ? (
-            <Card className="p-4 text-center">
-              <Heart size={32} className="text-slate-600 mx-auto mb-2" />
-              <p className="text-sm text-slate-400">Nog geen health data</p>
-              <p className="text-xs text-slate-500 mt-1">Voer de CoachOS Sync opdracht uit</p>
+          ) : garminData.length === 0 ? (
+            <Card className="p-5 text-center">
+              <Zap size={32} className="text-slate-600 mx-auto mb-2" />
+              <p className="text-sm text-slate-400">Nog geen Garmin data</p>
+              <p className="text-xs text-slate-500 mt-1 mb-4">Importeer dagelijks via Instellingen → Garmin Import</p>
+              <button
+                onClick={() => router.push('/settings/garmin-import')}
+                className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-xl text-sm border border-blue-500/20"
+              >
+                Garmin Import →
+              </button>
             </Card>
           ) : (
             <div className="flex flex-col gap-3">
-              <GrafiekKaart titel="HRV" icoon={Activity} kleur="text-purple-400" data={metrics} dataKey="hrv" eenheid="ms" leeg="Nog geen HRV data" />
-              <GrafiekKaart titel="Hartslag" icoon={Heart} kleur="text-red-400" data={metrics} dataKey="resting_hr" eenheid="bpm" leeg="Nog geen hartslag data" />
-              <GrafiekKaart titel="Stappen" icoon={Footprints} kleur="text-green-400" data={metrics} dataKey="steps" eenheid="stappen" leeg="Nog geen stappen data" />
-              <GrafiekKaart titel="Slaap" icoon={Moon} kleur="text-blue-400" data={metrics} dataKey="sleep_duration" eenheid="uur" leeg="Nog geen slaap data" />
+              <GarminGrafiek titel="Rusthartslag" icoon={Heart} kleur="text-red-400" data={hartslag} eenheid="bpm" leeg="Nog geen hartslag data" />
+              <GarminGrafiek titel="Body Battery" icoon={Battery} kleur="text-blue-400" data={bodyBattery} eenheid="" leeg="Nog geen Body Battery data" />
+              <GarminGrafiek titel="Slaapscore" icoon={Moon} kleur="text-purple-400" data={slaapscore} eenheid="/100" leeg="Nog geen slaapscore data" />
+              <GarminGrafiek titel="Slaapduur" icoon={Moon} kleur="text-blue-400" data={slaapDuur} eenheid="uur" leeg="Nog geen slaapduur data" />
+              <GarminGrafiek titel="HRV (7d gem.)" icoon={Activity} kleur="text-green-400" data={hrv} eenheid="ms" leeg="Nog geen HRV data" />
+              <GarminGrafiek titel="Stappen" icoon={Footprints} kleur="text-orange-400" data={stappen} eenheid="stappen" leeg="Nog geen stappen data" />
             </div>
           )}
         </div>
 
+        {/* Coach inzichten */}
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach inzichten</p>
           {loading ? (

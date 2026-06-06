@@ -1,7 +1,7 @@
 'use client'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { LogOut, User, Target, Info, ChevronRight, ChevronDown, Activity, RefreshCw, CheckCircle, XCircle, Heart, Copy, Key, Zap, Calendar, Camera } from 'lucide-react'
+import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Zap, Calendar, Camera } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -72,104 +72,6 @@ function StravaSection() {
   )
 }
 
-function AppleHealthSection() {
-  const [apiKey, setApiKey] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/health/apikey')
-      .then(r => r.json())
-      .then(d => setApiKey(d.key))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
-
-  const generateKey = async () => {
-    setGenerating(true)
-    try {
-      const res = await fetch('/api/health/apikey', { method: 'POST' })
-      const data = await res.json()
-      setApiKey(data.key)
-    } catch {
-      //
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  const copyKey = async () => {
-    if (!apiKey) return
-    await navigator.clipboard.writeText(apiKey)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const appUrl = 'https://coach-os-tau.vercel.app'
-
-  return (
-    <Card className="p-4 mt-3">
-      <button onClick={() => setOpen(!open)} className="flex items-center gap-3 w-full">
-        <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
-          <Heart size={20} className="text-red-400" />
-        </div>
-        <div className="flex-1 text-left">
-          <p className="text-white font-semibold text-sm">Apple Health</p>
-          <p className="text-slate-400 text-xs">Via iPhone Shortcut</p>
-        </div>
-        {apiKey && <CheckCircle size={18} className="text-coach-green" />}
-        <ChevronDown size={16} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && loading ? (
-        <div className="h-8 bg-slate-800 rounded animate-pulse mt-3" />
-      ) : open && apiKey ? (
-        <>
-          <div className="bg-slate-900 rounded-xl p-3 mb-3 mt-3">
-            <p className="text-xs text-slate-500 mb-1">API Key</p>
-            <div className="flex items-center gap-2">
-              <p className="text-xs text-primary-400 font-mono flex-1 truncate">{apiKey}</p>
-              <button onClick={copyKey} className="flex-shrink-0 p-1.5 rounded-lg bg-slate-800 active:bg-slate-700">
-                {copied
-                  ? <CheckCircle size={14} className="text-coach-green" />
-                  : <Copy size={14} className="text-slate-400" />
-                }
-              </button>
-            </div>
-          </div>
-          <div className="bg-slate-900 rounded-xl p-3 mb-3">
-            <p className="text-xs text-slate-500 mb-2">Shortcut instellen</p>
-            <ol className="text-xs text-slate-400 space-y-1.5 list-none">
-              <li>1. Open <span className="text-white">Opdrachten</span> app</li>
-              <li>2. Tik <span className="text-white">+</span> nieuw shortcut</li>
-              <li>3. Voeg toe: <span className="text-white">Gezondheid → Zoek gezondheidsmonsters</span></li>
-              <li>4. Kies: Hartslagfrequentie, afgelopen 1 dag</li>
-              <li>5. Herhaal voor: HRV, Stappen, Gewicht, Slaap, Actieve energie</li>
-              <li>6. Voeg toe: <span className="text-white">Haal inhoud van URL op</span></li>
-              <li>7. URL: <span className="text-primary-400 break-all">{appUrl}/api/health/shortcut</span></li>
-              <li>8. Methode: POST, Header: x-api-key = jouw key, JSON velden koppelen</li>
-              <li>9. Automatisering: elke dag 07:00</li>
-            </ol>
-          </div>
-          <Button onClick={generateKey} loading={generating} variant="secondary" fullWidth size="sm">
-            <Key size={14} className="mr-2" />
-            Nieuwe API key genereren
-          </Button>
-        </>
-      ) : open ? (
-        <div className="mt-3">
-          <Button onClick={generateKey} loading={generating} variant="secondary" fullWidth size="sm">
-            <Key size={14} className="mr-2" />
-            API key aanmaken
-          </Button>
-        </div>
-      ) : null}
-    </Card>
-  )
-}
-
 export default function SettingsPage() {
   const { profile, user, signOut } = useAuth()
   const router = useRouter()
@@ -209,9 +111,7 @@ export default function SettingsPage() {
           <Suspense fallback={<Card className="p-4 h-24 animate-pulse" />}>
             <StravaSection />
           </Suspense>
-          <AppleHealthSection />
 
-          {/* Garmin Import */}
           <Card className="p-4 mt-3">
             <button
               onClick={() => router.push('/settings/garmin-import')}

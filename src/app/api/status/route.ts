@@ -21,6 +21,21 @@ async function getUser() {
   return user
 }
 
+// Haal meest recente bevestigde Garmin import op
+async function getGarminData(supabase: ReturnType<typeof createAdminClient>, userId: string) {
+  const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+  const { data } = await supabase
+    .from('garmin_imports')
+    .select('parsed_data, date')
+    .eq('user_id', userId)
+    .eq('status', 'confirmed')
+    .gte('date', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    .order('date', { ascending: false })
+    .limit(1)
+    .single()
+  return { data: data?.parsed_data || null, date: data?.date || null, isVandaag: data?.date === vandaagAms }
+}
+
 // GET — haal huidige daily status op
 export async function GET() {
   try {
@@ -52,12 +67,10 @@ export async function POST() {
     const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
 
-    // 30 dagen geleden
     const dertigDagenGeleden = new Date()
     dertigDagenGeleden.setDate(dertigDagenGeleden.getDate() - 30)
     const vanDatum = dertigDagenGeleden.toISOString().split('T')[0]
 
-    // Haal alle data op
     const [
       profileRes,
       checkinRes,
@@ -67,6 +80,7 @@ export async function POST() {
       checkins30Res,
       blessuresRes,
       lifeEventsRes,
+      garminRes,
     ] = await Promise.all([
       supabase.from('profiles').select('available_time').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -76,30 +90,36 @@ export async function POST() {
       supabase.from('daily_checkins').select('date, energy_score, feeling_score').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('injuries').select('active').eq('user_id', user.id).eq('active', true),
       supabase.from('life_events').select('type, recovery_impact, stress_load, sleep_disruption').eq('user_id', user.id).gte('start_time', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()),
+      getGarminData(supabase, user.id),
     ])
 
     const profile = profileRes.data
     const checkin = checkinRes.data
-    const metricsVandaag = metricsVandaagRes.data
-    const metrics30 = metrics30Res.data || []
-    const activiteiten30 = activiteiten30Res.data || []
-    const checkins30 = checkins30Res.data || []
     const heeftBlessure = (blessuresRes.data?.length || 0) > 0
     const lifeEvents = (lifeEventsRes.data || []) as Array<{ recovery_impact: number; stress_load: number; sleep_disruption: number }>
+    const garmin = garminRes.data
 
-    // Life event penalty berekenen
+    // Garmin data gebruiken als metrics voor herstelberekening indien aanwezig
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metricsVandaag = metricsVandaagRes.data || (garmin ? {
+      hrv: garmin.hrv?.avg_7d_ms || null,
+      resting_hr: garmin.resting_hr || null,
+      sleep_duration: garmin.sleep?.duration_minutes ? Math.round(garmin.sleep.duration_minutes / 60) : null,
+      sleep_score: garmin.sleep?.score || null,
+      steps: garmin.steps?.value || null,
+      body_battery: garmin.body_battery?.current || null,
+    } : null)
+
     const lifeEventPenalty = lifeEvents.reduce((acc, e) => {
       return acc + (e.recovery_impact * 5) + (e.sleep_disruption * 3)
     }, 0)
 
-    // Bereken scores
     const recovery = calculateRecoveryScore(checkin, metricsVandaag, lifeEventPenalty)
-    const training = calculateTrainingScore(activiteiten30, profile?.available_time || null)
-    const lifestyle = calculateLifestyleScore(metrics30)
+    const training = calculateTrainingScore(activiteiten30Res.data || [], profile?.available_time || null)
+    const lifestyle = calculateLifestyleScore(metrics30Res.data || [])
     const coachScore = calculateCoachScore(recovery.score, training.score, lifestyle.score)
-    const risks = detectRisks(metrics30, checkins30, activiteiten30, heeftBlessure)
+    const risks = detectRisks(metrics30Res.data || [], checkins30Res.data || [], activiteiten30Res.data || [], heeftBlessure)
 
-    // Sla op in daily_status
     const { data: saved, error } = await supabase
       .from('daily_status')
       .upsert({
@@ -118,7 +138,6 @@ export async function POST() {
 
     if (error) throw error
 
-    // Trigger memory analyse op achtergrond
     const appUrlForMemory = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
     fetch(appUrlForMemory + '/api/memory', { method: 'POST' }).catch(() => {})
 
@@ -129,6 +148,7 @@ export async function POST() {
       lifestyle,
       coachScore,
       risks,
+      garmin_used: !!garmin,
     })
 
   } catch (error) {

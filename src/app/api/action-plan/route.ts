@@ -54,12 +54,12 @@ export async function POST() {
 
     const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
+    const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
     const { dag, isWeekend, dagNummer } = getDagInfo()
 
-    const [profileRes, checkinRes, metricsRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes] = await Promise.all([
+    const [profileRes, checkinRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes, garminRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
-      supabase.from('health_metrics').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('injuries').select('body_part, pain_score').eq('user_id', user.id).eq('active', true),
       supabase.from('life_events')
@@ -71,30 +71,34 @@ export async function POST() {
         .select('type, start_hour, end_hour, notes, recurrence, recurrence_days')
         .eq('user_id', user.id)
         .not('recurrence', 'is', null),
+      supabase.from('garmin_imports')
+        .select('parsed_data, date')
+        .eq('user_id', user.id)
+        .eq('status', 'confirmed')
+        .order('date', { ascending: false })
+        .limit(1)
+        .single(),
     ])
 
     const profile = profileRes.data
     const checkin = checkinRes.data
-    const metrics = metricsRes.data
     const status = statusRes.data
     const blessures = blessuresRes.data || []
     const lifeEvents = lifeEventsRes.data || []
     const goals = goalsRes.data || []
     const herhalendeEvents = herhalendeEventsRes.data || []
+    const garmin = garminRes.data?.parsed_data || null
+    const garminDatum = garminRes.data?.date || null
+    const garminIsVandaag = garminDatum === vandaagAms
 
-    // Filter herhalende events correct op dag
     const relevanteHerhalendeEvents = herhalendeEvents.filter(he => {
-      // Werkevents op weekend tonen alleen als ze specifiek za/zo hebben
       if (isWeekend && WERK_TYPES.includes(he.type)) {
         const days = he.recurrence_days as number[] | null
         if (!days) return false
         return days.includes(dagNummer)
       }
-      // Werkdagen herhaling niet op weekend
       if (he.recurrence === 'workdays' && isWeekend) return false
-      // Weekend herhaling niet op werkdag
       if (he.recurrence === 'weekend' && !isWeekend) return false
-      // Wekelijks/aangepast — check dag
       if (he.recurrence === 'weekly' || he.recurrence === 'biweekly' || he.recurrence === 'custom') {
         const days = he.recurrence_days as number[] | null
         return days ? days.includes(dagNummer) : true
@@ -102,7 +106,6 @@ export async function POST() {
       return true
     })
 
-    // Combineer — voorkom duplicaten
     const alleEvents = [...lifeEvents]
     relevanteHerhalendeEvents.forEach(he => {
       if (!alleEvents.find(e => e.type === he.type)) alleEvents.push(he)
@@ -112,11 +115,25 @@ export async function POST() {
     const score = status?.coach_score || 50
     const herstel = status?.recovery_score || 50
 
+    // Garmin context string
+    let garminContext = ''
+    if (garmin) {
+      const label = garminIsVandaag ? 'vandaag' : 'gisteren'
+      garminContext = [
+        `Garmin data (${label}):`,
+        garmin.resting_hr ? `- Rusthartslag: ${garmin.resting_hr} bpm` : '',
+        garmin.body_battery?.current !== null ? `- Body Battery: ${garmin.body_battery.current} (opgeladen +${garmin.body_battery.charged}, verbruikt -${garmin.body_battery.spent})` : '',
+        garmin.sleep?.score ? `- Slaapscore: ${garmin.sleep.score}/100 (${Math.floor((garmin.sleep.duration_minutes || 0) / 60)}u ${(garmin.sleep.duration_minutes || 0) % 60}m)` : '',
+        garmin.hrv?.avg_7d_ms ? `- HRV 7d gem.: ${garmin.hrv.avg_7d_ms} ms (${garmin.hrv.status || ''})` : '',
+        garmin.steps?.value ? `- Stappen: ${garmin.steps.value.toLocaleString('nl-NL')}` : '',
+      ].filter(Boolean).join('\n')
+    }
+
     const context = [
-      `Dag: ${dag} ${isWeekend ? '(WEEKEND — vrije dag, geen werkverplichtingen)' : '(werkdag)'}`,
+      `Dag: ${dag} ${isWeekend ? '(WEEKEND — vrije dag)' : '(werkdag)'}`,
       `Coach Score: ${score}/100, Herstel: ${herstel}/100`,
       checkin ? `Gevoel: ${checkin.feeling_score}/10, Energie: ${checkin.energy_score}/10, Stress: ${(checkin as {stress_score?: number}).stress_score || '?'}/10` : 'Geen check-in',
-      metrics ? `Slaap: ${metrics.sleep_duration || '?'}u, HRV: ${metrics.hrv || '?'}ms` : '',
+      garminContext,
       blessures.length > 0 ? `Blessures: ${blessures.map(b => b.body_part).join(', ')}` : '',
       alleEvents.length > 0 ? `Vandaag actieve events: ${alleEvents.map(e => {
         const tijden = e.start_hour !== null && e.end_hour !== null
@@ -135,12 +152,14 @@ ${context}
 
 INSTRUCTIES:
 - Het is vandaag ${dag}${isWeekend
-  ? '. Het is WEEKEND — geen werk, geen diensten. Plan activiteiten op realistische tijden voor een vrije dag (niet te vroeg tenzij de persoon vroeg opstaat).'
+  ? '. Het is WEEKEND — geen werk. Plan activiteiten op realistische tijden voor een vrije dag.'
   : '.'}
-- Alleen events die VANDAAG actief zijn meenemen (zie "Vandaag actieve events")
-- Als er geen werkevents zijn, ga dan NIET uit van werktijden
-- Houd rekening met blessures: geen oefeningen die pijnlijke lichaamsdelen belasten
-- Coach score onder 50: focus op herstel, niet op training
+- Gebruik de Garmin data (Body Battery, slaap, HRV) als leidraad voor intensiteit
+- Body Battery onder 50: focus op herstel en lichte activiteit
+- Slaapscore onder 70: extra herstelmoment inplannen
+- HRV status "laag" of "ongebalanceerd": geen intensieve training
+- Houd rekening met blessures
+- Coach score onder 50: focus op herstel
 - Maak 3-5 concrete acties verspreid over de dag
 - Gebruik GEEN markdown, geen bold, geen bullets
 

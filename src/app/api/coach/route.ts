@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
@@ -40,6 +42,7 @@ export async function POST() {
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
     const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
+    const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
     const { data: cached } = await supabase
       .from('coach_recommendations')
@@ -49,12 +52,11 @@ export async function POST() {
       .single()
     if (cached?.recommendation) return NextResponse.json(cached)
 
-    // Zeven dagen geleden
     const zeven = new Date()
     zeven.setDate(zeven.getDate() - 7)
     const zevenDagenGeleden = zeven.toISOString().split('T')[0]
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -71,12 +73,43 @@ export async function POST() {
         .gte('date', zevenDagenGeleden)
         .order('date', { ascending: false })
         .limit(5),
+      // Garmin vandaag of gisteren
+      supabase.from('garmin_imports')
+        .select('parsed_data, date')
+        .eq('user_id', user.id)
+        .eq('status', 'confirmed')
+        .order('date', { ascending: false })
+        .limit(1)
+        .single(),
+      // Garmin 7 dagen voor trends
+      supabase.from('garmin_imports')
+        .select('parsed_data, date')
+        .eq('user_id', user.id)
+        .eq('status', 'confirmed')
+        .gte('date', zevenDagenGeleden)
+        .order('date', { ascending: true }),
     ])
 
     const profile = profileRes.data
     if (!profile) return NextResponse.json({ error: 'Profiel niet gevonden' }, { status: 404 })
 
-    const recovery = calculateRecoveryScore(checkinRes.data || null, metricsRes.data || null)
+    const garmin = garminRes.data?.parsed_data || null
+    const garminDatum = garminRes.data?.date || null
+    const garminIsVandaag = garminDatum === vandaagAms
+    const garminWeek = garminWeekRes.data || []
+
+    // Garmin data als fallback voor health_metrics
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metricsVandaag = metricsRes.data || (garmin ? {
+      hrv: garmin.hrv?.avg_7d_ms || null,
+      resting_hr: garmin.resting_hr || null,
+      sleep_duration: garmin.sleep?.duration_minutes ? Math.round(garmin.sleep.duration_minutes / 60) : null,
+      sleep_score: garmin.sleep?.score || null,
+      steps: garmin.steps?.value || null,
+      body_battery: garmin.body_battery?.current || null,
+    } : null)
+
+    const recovery = calculateRecoveryScore(checkinRes.data || null, metricsVandaag || null)
 
     await supabase.from('daily_status').upsert({
       user_id: user.id, date: today,
@@ -85,9 +118,10 @@ export async function POST() {
       status_color: recovery.color,
     })
 
-    // Week metrics verwerken
+    // Week metrics — gebruik Garmin data als health_metrics leeg is
     let weekMetrics: WeekMetrics | null = null
     const weekData = weekMetricsRes.data || []
+
     if (weekData.length > 0) {
       weekMetrics = {
         hrv: weekData.filter(d => d.hrv).map(d => d.hrv as number),
@@ -96,12 +130,35 @@ export async function POST() {
         steps: weekData.filter(d => d.steps).map(d => d.steps as number),
         dates: weekData.map(d => d.date),
       }
+    } else if (garminWeek.length > 0) {
+      // Garmin week data als fallback
+      weekMetrics = {
+        hrv: garminWeek.filter(g => g.parsed_data?.hrv?.avg_7d_ms).map(g => g.parsed_data.hrv.avg_7d_ms as number),
+        resting_hr: garminWeek.filter(g => g.parsed_data?.resting_hr).map(g => g.parsed_data.resting_hr as number),
+        sleep_duration: garminWeek.filter(g => g.parsed_data?.sleep?.duration_minutes).map(g => Math.round(g.parsed_data.sleep.duration_minutes / 60)),
+        steps: garminWeek.filter(g => g.parsed_data?.steps?.value).map(g => g.parsed_data.steps.value as number),
+        dates: garminWeek.map(g => g.date),
+      }
     }
 
-    // Recente activiteiten verwerken
+    // Garmin context voor coach prompt
+    let garminContext = ''
+    if (garmin) {
+      const label = garminIsVandaag ? 'vandaag' : 'gisteren'
+      garminContext = [
+        `\nGarmin data (${label}):`,
+        garmin.resting_hr ? `Rusthartslag: ${garmin.resting_hr} bpm` : '',
+        garmin.body_battery?.current !== null ? `Body Battery: ${garmin.body_battery.current} (opgeladen +${garmin.body_battery.charged}, verbruikt -${garmin.body_battery.spent})` : '',
+        garmin.sleep?.score ? `Slaapscore: ${garmin.sleep.score}/100, duur: ${Math.floor((garmin.sleep.duration_minutes || 0) / 60)}u ${(garmin.sleep.duration_minutes || 0) % 60}m` : '',
+        garmin.hrv?.avg_7d_ms ? `HRV 7d gem.: ${garmin.hrv.avg_7d_ms} ms — status: ${garmin.hrv.status || 'onbekend'}` : '',
+        garmin.steps?.value ? `Stappen: ${garmin.steps.value.toLocaleString('nl-NL')} (doel: ${(garmin.steps.goal || 0).toLocaleString('nl-NL')})` : '',
+        garmin.calories?.total ? `Calorieën: ${garmin.calories.total} kcal (actief: ${garmin.calories.active})` : '',
+      ].filter(Boolean).join('\n')
+    }
+
     const recenteActiviteiten: string[] = (activiteitenRes.data || []).map(a => {
       const activiteit = a.activities as { name: string } | { name: string }[] | null
-      const naam = (Array.isArray(activiteit) ? activiteit[0]?.name : activiteit?.name) || "Activiteit"
+      const naam = (Array.isArray(activiteit) ? activiteit[0]?.name : activiteit?.name) || 'Activiteit'
       const duur = a.duration ? a.duration + ' min' : ''
       const afstand = (a.metrics as { distance?: number })?.distance
         ? ((a.metrics as { distance?: number }).distance! / 1000).toFixed(1) + ' km'
@@ -113,12 +170,12 @@ export async function POST() {
       profile,
       goalsRes.data || [],
       checkinRes.data || null,
-      metricsRes.data || null,
+      metricsVandaag,
       recovery,
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    )
+    ) + garminContext
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
 
