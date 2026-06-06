@@ -84,7 +84,6 @@ export default function TrainingPage() {
   const vandaag = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
-    // Check localStorage cache
     if (typeof window !== 'undefined') {
       try {
         const cachedDatum = window.localStorage.getItem('training_instructie_datum')
@@ -96,7 +95,6 @@ export default function TrainingPage() {
         }
       } catch { /* */ }
     }
-    // Haal op van server
     fetch('/api/training/today')
       .then(r => r.json())
       .then(data => {
@@ -127,6 +125,15 @@ export default function TrainingPage() {
     } catch { /* */ } finally { setGenereren(false) }
   }
 
+  function startKettlebell() {
+    if (!instruction) return
+    const intensity = instruction.intensity || 'medium'
+    const duration = instruction.duration || 30
+    router.push(`/training/kettlebell?intensity=${intensity}&duration=${duration}`)
+  }
+
+  const isKettlebell = instruction?.training_allowed && instruction?.training_type === 'kettlebell'
+
   const totaalDuur = instruction ? (
     (instruction.training_allowed && instruction.duration ? instruction.duration : 0) +
     instruction.recovery_modules.reduce((s, m) => s + m.duration, 0)
@@ -148,7 +155,6 @@ export default function TrainingPage() {
           </button>
         </div>
 
-        {/* Coach AI plan */}
         {laden || genereren ? (
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-2xl bg-coach-card animate-pulse" />)}
@@ -170,7 +176,7 @@ export default function TrainingPage() {
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Vandaag voor jou</p>
 
-              {/* Training */}
+              {/* Kettlebell training */}
               {instruction.training_allowed && instruction.training_type && (
                 <div className="flex items-center gap-3 mb-3 pb-3 border-b border-coach-border">
                   <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
@@ -189,7 +195,6 @@ export default function TrainingPage() {
                       )}
                     </div>
                   </div>
-                  <span className="text-xs text-slate-600 bg-slate-800 px-2 py-1 rounded-lg">Binnenkort</span>
                 </div>
               )}
 
@@ -213,15 +218,24 @@ export default function TrainingPage() {
               })}
             </Card>
 
-            {/* Start knop */}
-            {instruction.recovery_modules.length > 0 && (
+            {/* START knop — kettlebell of recovery */}
+            {isKettlebell ? (
+              <button
+                onClick={startKettlebell}
+                className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700"
+              >
+                <Play size={22} fill="white" />
+                Start kettlebell training
+              </button>
+            ) : instruction.recovery_modules.length > 0 ? (
               <button
                 onClick={() => router.push(getModuleRoute(instruction.recovery_modules[0]))}
-                className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700">
+                className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700"
+              >
                 <Play size={22} fill="white" />
                 Start
               </button>
-            )}
+            ) : null}
 
             {!instruction.training_allowed && (
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3">
