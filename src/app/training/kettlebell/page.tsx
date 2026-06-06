@@ -150,7 +150,7 @@ function KettlebellInner() {
   // Laad bestaande sessie of genereer nieuwe
   useEffect(() => {
     if (scherm === 'laden' && sessionIdParam) {
-      fetch('/api/training/session')
+      fetch('/api/training/session', { credentials: 'include' })
         .then(r => r.json())
         .then(data => {
           if (data?.session) {
@@ -173,6 +173,7 @@ function KettlebellInner() {
     try {
       const res = await fetch('/api/training/session', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ intensity: intensityParam, duration: durationParam }),
       })
