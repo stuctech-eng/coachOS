@@ -225,6 +225,7 @@ function KettlebellInner() {
     const duurMinuten = startTijd ? Math.round((Date.now() - startTijd.getTime()) / 60000) : null
     setOpgeslagen(true)
     await fetch('/api/training/complete', {
+      credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
