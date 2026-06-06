@@ -291,13 +291,6 @@ export default function TrainingPage() {
           )}
         </div>
 
-        {/* Test Kettlebell — tijdelijk */}
-        <button
-          onClick={() => router.push('/training/kettlebell?intensity=medium&duration=30')}
-          className="w-full py-3 rounded-xl border border-primary-500/30 text-primary-400 text-sm font-medium active:bg-primary-500/10"
-        >
-          🏋️ Test Kettlebell Training
-        </button>
 
       </div>
     </AppShell>

@@ -1,7 +1,7 @@
 'use client'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Zap, Calendar, Camera } from 'lucide-react'
+import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Zap, Calendar, Camera, BarChart2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -103,6 +103,8 @@ export default function SettingsPage() {
             <Row icon={Zap} label="Blessures" onClick={() => router.push('/injuries')} />
             <div className="h-px bg-coach-border mx-4" />
             <Row icon={Calendar} label="Levensgebeurtenissen" onClick={() => router.push('/life-events')} />
+            <div className="h-px bg-coach-border mx-4" />
+            <Row icon={BarChart2} label="Activiteiten" onClick={() => router.push('/activities')} />
           </Card>
         </div>
 
