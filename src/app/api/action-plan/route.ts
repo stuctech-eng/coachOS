@@ -16,6 +16,17 @@ async function getUser() {
   return user
 }
 
+function getDagInfo(): { dag: string; isWeekend: boolean; dagNummer: number } {
+  const now = new Date()
+  const dagen = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag']
+  const dagNummer = now.getDay()
+  return {
+    dag: dagen[dagNummer],
+    isWeekend: dagNummer === 0 || dagNummer === 6,
+    dagNummer,
+  }
+}
+
 export async function GET() {
   try {
     const user = await getUser()
@@ -43,6 +54,7 @@ export async function POST() {
 
     const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
+    const { dag, isWeekend } = getDagInfo()
 
     const zeven = new Date()
     zeven.setDate(zeven.getDate() - 7)
@@ -78,11 +90,12 @@ export async function POST() {
     const herstel = status?.recovery_score || 50
 
     const context = [
+      `Dag: ${dag} ${isWeekend ? '(WEEKEND — geen werkverplichtingen, meer vrijheid voor herstel en activiteit)' : '(werkdag)'}`,
       `Coach Score: ${score}/100, Herstel: ${herstel}/100`,
       checkin ? `Gevoel: ${checkin.feeling_score}/10, Energie: ${checkin.energy_score}/10, Stress: ${(checkin as {stress_score?: number}).stress_score || '?'}/10` : 'Geen check-in',
       metrics ? `Slaap: ${metrics.sleep_duration || '?'}u, HRV: ${metrics.hrv || '?'}ms` : '',
       blessures.length > 0 ? `Blessures: ${blessures.map(b => b.body_part).join(', ')}` : '',
-      alleEvents.length > 0 ? `Life events (inclusief herhalende): ${alleEvents.map(e => {
+      alleEvents.length > 0 ? `Life events: ${alleEvents.map(e => {
         const tijden = e.start_hour !== null && e.end_hour !== null ? ` ${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour).padStart(2,'0')}:00` : ''
         const notitie = e.notes ? ` (${e.notes})` : ''
         const herhaling = e.recurrence ? ` [${e.recurrence}]` : ''
@@ -97,12 +110,13 @@ DATA VANDAAG:
 ${context}
 
 INSTRUCTIES:
+- Het is vandaag ${dag}${isWeekend ? ' (weekend). Houd rekening met de relaxtere structuur van het weekend — geen werk, meer ruimte voor beweging, herstel en ontspanning. Plan activiteiten op logische tijden voor een vrije dag.' : '. Plan activiteiten buiten werktijden.'}
 - Plan acties BUITEN werktijden als er een dienst is (vroege dienst 06:00-15:00 = acties na 15:00)
 - Als de notitie zegt "momenteel alleen dagdiensten" — behandel het dan als dagdienst, niet als vroege dienst
 - Houd rekening met blessures: geen oefeningen die pijnlijke lichaamsdelen belasten
 - Coach score onder 50: focus op herstel, niet op training
-- Maak 3-5 concrete acties verspreid over vrije uren
-- Elke actie heeft een realistisch tijdstip en is specifiek uitvoerbaar
+- Maak 3-5 concrete acties verspreid over de dag
+- Elke actie heeft een realistisch tijdstip voor ${isWeekend ? 'een vrije dag' : 'een werkdag'}
 - Gebruik GEEN markdown, geen bold, geen bullets
 
 Reageer ALLEEN in dit JSON formaat:
@@ -141,7 +155,6 @@ Reageer ALLEEN in dit JSON formaat:
 
     if (acties.length === 0) return NextResponse.json({ error: 'Geen acties gegenereerd' }, { status: 500 })
 
-    // Sla op in coach_recommendations
     await supabase
       .from('coach_recommendations')
       .update({ action_plan: acties })

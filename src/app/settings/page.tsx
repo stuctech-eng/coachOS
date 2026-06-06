@@ -1,7 +1,7 @@
 'use client'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { LogOut, User, Target, Info, ChevronRight, ChevronDown, Activity, RefreshCw, CheckCircle, XCircle, Heart, Copy, Key, Zap, Calendar, BarChart2 } from 'lucide-react'
+import { LogOut, User, Target, Info, ChevronRight, ChevronDown, Activity, RefreshCw, CheckCircle, XCircle, Heart, Copy, Key, Zap, Calendar } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -127,7 +127,7 @@ function AppleHealthSection() {
         <div className="h-8 bg-slate-800 rounded animate-pulse mt-3" />
       ) : open && apiKey ? (
         <>
-          <div className="bg-slate-900 rounded-xl p-3 mb-3">
+          <div className="bg-slate-900 rounded-xl p-3 mb-3 mt-3">
             <p className="text-xs text-slate-500 mb-1">API Key</p>
             <div className="flex items-center gap-2">
               <p className="text-xs text-primary-400 font-mono flex-1 truncate">{apiKey}</p>
@@ -139,7 +139,6 @@ function AppleHealthSection() {
               </button>
             </div>
           </div>
-
           <div className="bg-slate-900 rounded-xl p-3 mb-3">
             <p className="text-xs text-slate-500 mb-2">Shortcut instellen</p>
             <ol className="text-xs text-slate-400 space-y-1.5 list-none">
@@ -154,17 +153,18 @@ function AppleHealthSection() {
               <li>9. Automatisering: elke dag 07:00</li>
             </ol>
           </div>
-
           <Button onClick={generateKey} loading={generating} variant="secondary" fullWidth size="sm">
             <Key size={14} className="mr-2" />
             Nieuwe API key genereren
           </Button>
         </>
       ) : open ? (
-        <Button onClick={generateKey} loading={generating} variant="secondary" fullWidth size="sm">
-          <Key size={14} className="mr-2" />
-          API key aanmaken
-        </Button>
+        <div className="mt-3">
+          <Button onClick={generateKey} loading={generating} variant="secondary" fullWidth size="sm">
+            <Key size={14} className="mr-2" />
+            API key aanmaken
+          </Button>
+        </div>
       ) : null}
     </Card>
   )
@@ -201,8 +201,6 @@ export default function SettingsPage() {
             <Row icon={Zap} label="Blessures" onClick={() => router.push('/injuries')} />
             <div className="h-px bg-coach-border mx-4" />
             <Row icon={Calendar} label="Levensgebeurtenissen" onClick={() => router.push('/life-events')} />
-            <div className="h-px bg-coach-border mx-4" />
-            <Row icon={BarChart2} label="Inzichten & Grafieken" onClick={() => router.push('/insights')} />
           </Card>
         </div>
 
@@ -217,7 +215,7 @@ export default function SettingsPage() {
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Over</p>
           <Card>
-            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v2.0.0</span>} />
+            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v4.0.0</span>} />
           </Card>
         </div>
 
