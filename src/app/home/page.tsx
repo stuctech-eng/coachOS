@@ -68,20 +68,25 @@ export default function HomePage() {
 
   // Check Garmin import vandaag
   useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-    )
-    const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-
-    supabase
-      .from('garmin_imports')
-      .select('id')
-      .eq('date', vandaagAms)
-      .eq('status', 'confirmed')
-      .single()
-      .then(({ data }) => setGarminImported(!!data))
-      .catch(() => setGarminImported(true)) // bij fout: geen banner tonen
+    const checkGarmin = async () => {
+      try {
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+        )
+        const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+        const { data } = await supabase
+          .from('garmin_imports')
+          .select('id')
+          .eq('date', vandaagAms)
+          .eq('status', 'confirmed')
+          .single()
+        setGarminImported(!!data)
+      } catch {
+        setGarminImported(true) // bij fout: geen banner tonen
+      }
+    }
+    checkGarmin()
   }, [])
 
   // Laad coach status
