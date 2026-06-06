@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle, Star, RefreshCw, Activity, Moon, Footprints, ArrowLeft, Heart, Zap, Battery } from 'lucide-react'
+import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle, Star, RefreshCw, Activity, Moon, Footprints, ArrowLeft, Heart, Zap, Battery, ChevronDown } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { cn } from '@/utils'
@@ -57,7 +57,27 @@ function formatDatum(dateStr: string): string {
   return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
 }
 
-// Generieke grafiek voor Garmin data
+// Inklapbare sectie header
+function SectieHeader({ titel, open, onToggle, badge }: { titel: string; open: boolean; onToggle: () => void; badge?: number }) {
+  return (
+    <button
+      onClick={onToggle}
+      className="flex items-center justify-between w-full px-1 py-1"
+    >
+      <div className="flex items-center gap-2">
+        <p className="text-xs text-slate-500 uppercase tracking-wider">{titel}</p>
+        {badge !== undefined && badge > 0 && (
+          <span className="text-xs bg-slate-700 text-slate-400 rounded-full px-1.5 py-0.5 font-mono">{badge}</span>
+        )}
+      </div>
+      <ChevronDown
+        size={14}
+        className={cn('text-slate-500 transition-transform duration-200', open && 'rotate-180')}
+      />
+    </button>
+  )
+}
+
 function GarminGrafiek({
   titel, icoon: Icoon, kleur, data, eenheid, leeg,
 }: {
@@ -134,6 +154,11 @@ export default function InsightsPage() {
   const [analysing, setAnalysing] = useState(false)
   const [message, setMessage] = useState('')
 
+  // Secties standaard ingeklapt
+  const [garminOpen, setGarminOpen] = useState(false)
+  const [inzichtenOpen, setInzichtenOpen] = useState(false)
+  const [trendsOpen, setTrendsOpen] = useState(false)
+
   const laadInsights = useCallback(async () => {
     const data = await fetch('/api/memory').then(r => r.json())
     const lijst: MemoryItem[] = data || []
@@ -195,7 +220,6 @@ export default function InsightsPage() {
     }).catch(() => setLoading(false))
   }, [laadInsights, laadGarminData, runAnalysis])
 
-  // Bouw grafiek data uit Garmin imports
   const hartslag = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.resting_hr ?? null }))
   const bodyBattery = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.body_battery?.current ?? null }))
   const slaapscore = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.sleep?.score ?? null }))
@@ -212,6 +236,7 @@ export default function InsightsPage() {
     <AppShell showNav={false}>
       <div className="px-5 py-6 flex flex-col gap-5">
 
+        {/* Header */}
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/settings')} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
             <ArrowLeft size={20} className="text-slate-400" />
@@ -235,6 +260,7 @@ export default function InsightsPage() {
           </div>
         )}
 
+        {/* Waarschuwingen altijd zichtbaar */}
         {trends && trends.samenvatting && trends.samenvatting.length > 0 && (
           <div className="flex flex-col gap-2">
             {trends.samenvatting.map((s, i) => (
@@ -246,10 +272,15 @@ export default function InsightsPage() {
           </div>
         )}
 
-        {trends && (
-          <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Trends</p>
-            <div className="grid grid-cols-2 gap-2">
+        {/* Trends sectie */}
+        <div>
+          <SectieHeader
+            titel="Trends"
+            open={trendsOpen}
+            onToggle={() => setTrendsOpen(v => !v)}
+          />
+          {trendsOpen && trends && (
+            <div className="grid grid-cols-2 gap-2 mt-3">
               {[
                 { label: 'HRV', trend: trends.hrv },
                 { label: 'Hartslag', trend: trends.resting_hr },
@@ -273,82 +304,100 @@ export default function InsightsPage() {
                 )
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Garmin grafieken */}
+        {/* Garmin sectie */}
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Garmin — 14 dagen</p>
-          {loading ? (
-            <div className="flex flex-col gap-3">
-              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-32 rounded-2xl bg-coach-card animate-pulse" />)}
-            </div>
-          ) : garminData.length === 0 ? (
-            <Card className="p-5 text-center">
-              <Zap size={32} className="text-slate-600 mx-auto mb-2" />
-              <p className="text-sm text-slate-400">Nog geen Garmin data</p>
-              <p className="text-xs text-slate-500 mt-1 mb-4">Importeer dagelijks via Instellingen → Garmin Import</p>
-              <button
-                onClick={() => router.push('/settings/garmin-import')}
-                className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-xl text-sm border border-blue-500/20"
-              >
-                Garmin Import →
-              </button>
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <GarminGrafiek titel="Rusthartslag" icoon={Heart} kleur="text-red-400" data={hartslag} eenheid="bpm" leeg="Nog geen hartslag data" />
-              <GarminGrafiek titel="Body Battery" icoon={Battery} kleur="text-blue-400" data={bodyBattery} eenheid="" leeg="Nog geen Body Battery data" />
-              <GarminGrafiek titel="Slaapscore" icoon={Moon} kleur="text-purple-400" data={slaapscore} eenheid="/100" leeg="Nog geen slaapscore data" />
-              <GarminGrafiek titel="Slaapduur" icoon={Moon} kleur="text-blue-400" data={slaapDuur} eenheid="uur" leeg="Nog geen slaapduur data" />
-              <GarminGrafiek titel="HRV (7d gem.)" icoon={Activity} kleur="text-green-400" data={hrv} eenheid="ms" leeg="Nog geen HRV data" />
-              <GarminGrafiek titel="Stappen" icoon={Footprints} kleur="text-orange-400" data={stappen} eenheid="stappen" leeg="Nog geen stappen data" />
+          <SectieHeader
+            titel={`Garmin — 14 dagen`}
+            open={garminOpen}
+            onToggle={() => setGarminOpen(v => !v)}
+            badge={garminData.length}
+          />
+          {garminOpen && (
+            <div className="mt-3">
+              {loading ? (
+                <div className="flex flex-col gap-3">
+                  {[1, 2, 3].map(i => <div key={i} className="h-32 rounded-2xl bg-coach-card animate-pulse" />)}
+                </div>
+              ) : garminData.length === 0 ? (
+                <Card className="p-5 text-center">
+                  <Zap size={32} className="text-slate-600 mx-auto mb-2" />
+                  <p className="text-sm text-slate-400">Nog geen Garmin data</p>
+                  <p className="text-xs text-slate-500 mt-1 mb-4">Importeer dagelijks via Instellingen → Garmin Import</p>
+                  <button
+                    onClick={() => router.push('/settings/garmin-import')}
+                    className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-xl text-sm border border-blue-500/20"
+                  >
+                    Garmin Import →
+                  </button>
+                </Card>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <GarminGrafiek titel="Rusthartslag" icoon={Heart} kleur="text-red-400" data={hartslag} eenheid="bpm" leeg="Nog geen hartslag data" />
+                  <GarminGrafiek titel="Body Battery" icoon={Battery} kleur="text-blue-400" data={bodyBattery} eenheid="" leeg="Nog geen Body Battery data" />
+                  <GarminGrafiek titel="Slaapscore" icoon={Moon} kleur="text-purple-400" data={slaapscore} eenheid="/100" leeg="Nog geen slaapscore data" />
+                  <GarminGrafiek titel="Slaapduur" icoon={Moon} kleur="text-blue-400" data={slaapDuur} eenheid="uur" leeg="Nog geen slaapduur data" />
+                  <GarminGrafiek titel="HRV (7d gem.)" icoon={Activity} kleur="text-green-400" data={hrv} eenheid="ms" leeg="Nog geen HRV data" />
+                  <GarminGrafiek titel="Stappen" icoon={Footprints} kleur="text-orange-400" data={stappen} eenheid="stappen" leeg="Nog geen stappen data" />
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Coach inzichten */}
+        {/* Coach inzichten sectie */}
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach inzichten</p>
-          {loading ? (
-            <div className="flex flex-col gap-3">
-              {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-2xl bg-coach-card animate-pulse" />)}
-            </div>
-          ) : insights.length === 0 ? (
-            <Card className="p-6 text-center">
-              <Brain size={40} className="text-slate-600 mx-auto mb-3" />
-              <p className="text-white font-semibold">Nog geen inzichten</p>
-              <p className="text-slate-400 text-sm mt-1 leading-relaxed">
-                Doe minimaal 3 check-ins en tik op vernieuwen om je eerste inzichten te genereren.
-              </p>
-              <Button onClick={() => runAnalysis(false)} loading={analysing} className="mt-4 mx-auto">
-                Analyseer nu
-              </Button>
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {insights.map(insight => {
-                const config = typeConfig[insight.memory_type] || typeConfig.pattern
-                const Icon = config.icon
-                return (
-                  <Card key={insight.id} className="p-4">
-                    <div className="flex gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
-                        <Icon size={18} className={config.color} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={cn('text-xs font-semibold', config.color)}>{config.label}</span>
-                          {insight.confidence && (
-                            <span className="text-xs text-slate-500">{insight.confidence}% zekerheid</span>
-                          )}
+          <SectieHeader
+            titel="Coach inzichten"
+            open={inzichtenOpen}
+            onToggle={() => setInzichtenOpen(v => !v)}
+            badge={insights.length}
+          />
+          {inzichtenOpen && (
+            <div className="mt-3">
+              {loading ? (
+                <div className="flex flex-col gap-3">
+                  {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-2xl bg-coach-card animate-pulse" />)}
+                </div>
+              ) : insights.length === 0 ? (
+                <Card className="p-6 text-center">
+                  <Brain size={40} className="text-slate-600 mx-auto mb-3" />
+                  <p className="text-white font-semibold">Nog geen inzichten</p>
+                  <p className="text-slate-400 text-sm mt-1 leading-relaxed">
+                    Doe minimaal 3 check-ins en tik op vernieuwen om je eerste inzichten te genereren.
+                  </p>
+                  <Button onClick={() => runAnalysis(false)} loading={analysing} className="mt-4 mx-auto">
+                    Analyseer nu
+                  </Button>
+                </Card>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {insights.map(insight => {
+                    const config = typeConfig[insight.memory_type] || typeConfig.pattern
+                    const Icon = config.icon
+                    return (
+                      <Card key={insight.id} className="p-4">
+                        <div className="flex gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
+                            <Icon size={18} className={config.color} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={cn('text-xs font-semibold', config.color)}>{config.label}</span>
+                              {insight.confidence && (
+                                <span className="text-xs text-slate-500">{insight.confidence}% zekerheid</span>
+                              )}
+                            </div>
+                            <p className="text-slate-200 text-sm leading-relaxed">{insight.content}</p>
+                          </div>
                         </div>
-                        <p className="text-slate-200 text-sm leading-relaxed">{insight.content}</p>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
