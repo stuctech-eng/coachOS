@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Play, Pause, ChevronRight, CheckCircle, X, Dumbbell, Clock, Zap, Star } from 'lucide-react'
 import { cn } from '@/utils'
@@ -127,7 +127,7 @@ function Timer({ seconden, onKlaar }: { seconden: number; onKlaar: () => void })
 
 // ─── Hoofd pagina ─────────────────────────────────────────────────────────────
 
-export default function KettlebellPage() {
+function KettlebellInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -484,6 +484,19 @@ export default function KettlebellPage() {
 
   return null
 }
+}
+
+export default function KettlebellPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center gap-6 px-6">
+        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <KettlebellInner />
+    </Suspense>
+  )
+}
 
 // ── SectieBlok helper ────────────────────────────────────────────────────────
 
@@ -511,6 +524,3 @@ function SectieBlok({ titel, oefeningen, fase }: { titel: string; oefeningen: Oe
     </div>
   )
 }
-
-
-
