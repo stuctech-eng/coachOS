@@ -145,6 +145,7 @@ function KettlebellInner() {
 
   // Rating voor afsluiting
   const [rating, setRating] = useState<number | null>(null)
+  const [notes, setNotes] = useState<string>('')
   const [opgeslagen, setOpgeslagen] = useState(false)
 
   // Laad bestaande sessie of genereer nieuwe
@@ -233,6 +234,7 @@ function KettlebellInner() {
         completed,
         duration_minutes: duurMinuten,
         rating,
+        notes: notes.trim() || null,
       }),
     })
   }
@@ -465,6 +467,18 @@ function KettlebellInner() {
               {rating <= 3 ? 'Zwaar' : rating <= 6 ? 'Goed' : rating <= 8 ? 'Sterk' : 'Top sessie!'}
             </p>
           )}
+        </div>
+
+        {/* Opmerkingen */}
+        <div className="w-full max-w-xs">
+          <p className="text-sm text-slate-400 mb-2">Opmerkingen (optioneel)</p>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Bijv. schouders voelden zwaar, veel energie vandaag..."
+            rows={3}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:border-primary-500/50"
+          />
         </div>
 
         <button

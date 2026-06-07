@@ -20,7 +20,8 @@
     "lucide-react": "^0.400.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.4.0",
-    "recharts": "^2.12.7"
+    "recharts": "^2.12.7",
+    "sharp": "^0.33.0"
   },
   "devDependencies": {
     "typescript": "^5",

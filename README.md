@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 4.5.1
+- Versie: 4.8.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjst.supabase.co
@@ -16,6 +16,7 @@
 - State: Zustand
 - Styling: Tailwind CSS
 - Hosting: Vercel
+- Afbeelding compressie: sharp ^0.33.0
 
 ---
 
@@ -31,7 +32,6 @@ Observe → Learn → Predict → Coach → Execute → Learn Again
 - bepaalt training vs herstel vs rust
 - analyseert alle data + trends + Garmin data + trainingshistorie
 - genereert dagplannen + voorspellingen
-- interpreteert resultaten
 
 ### Trainer AI (✅ gebouwd — Kettlebell v2, adaptief)
 Input: { intensity, duration, experience_level, body_battery, ratings_laatste_3, injuries }
@@ -50,7 +50,7 @@ USER DATA + GARMIN DATA + TRAININGSRESULTATEN → COACH AI → TRAINER AI / RECO
 2. Trainer AI bepaalt nooit training noodzaak
 3. Recovery AI bepaalt nooit herstel noodzaak
 4. Home = dagelijkse actie
-5. Progressie = eigen tab (niet verstopt)
+5. Progressie = eigen tab
 6. Training = uitvoering
 7. Coach = AI interface
 
@@ -59,7 +59,7 @@ USER DATA + GARMIN DATA + TRAININGSRESULTATEN → COACH AI → TRAINER AI / RECO
 # Navigatie V4.5
 Home | Training | Progressie | Coach | Instellingen
 
-Inzichten is geen tab meer — bereikbaar via Instellingen.
+Inzichten bereikbaar via Instellingen.
 
 ---
 
@@ -67,18 +67,42 @@ Inzichten is geen tab meer — bereikbaar via Instellingen.
 
 ## Garmin Import (✅ primaire databron)
 - Dagelijkse screenshot van Garmin Connect "In één oogopslag"
-- Claude Vision leest uit: rusthartslag, Body Battery, slaapscore, slaapduur, HRV (7d gem.), calorieën, stappen
-- Pipeline: foto → Vision → normalize → validate → store → confirm
+- Foto wordt automatisch gecomprimeerd (800px, JPEG 80%) voor Vision call
+- Claude Vision leest uit: rusthartslag, Body Battery, slaapscore, slaapduur, HRV (7d gem.), stress, ademhaling
+- Pipeline: foto → compress → Vision → normalize → validate → store → confirm
 - Daily lock: één confirmed record per user per dag (Europe/Amsterdam)
 - Reminder banner op Home als import nog niet gedaan
+
+## Garmin Import Schema (v4.7)
+```json
+{
+  "resting_hr": 46,
+  "body_battery": { "current": 83, "charged": 49, "spent": 8 },
+  "sleep": { "score": 83, "duration_minutes": 408 },
+  "hrv": { "avg_7d_ms": 49, "status": "balanced" },
+  "stress": 18,
+  "breathing": {
+    "current_brpm": 20,
+    "avg_awake_brpm": 15,
+    "avg_sleep_brpm": 13
+  },
+  "meta": { "source": "garmin_screenshot", "parsed_at": "timestamp" }
+}
+```
 
 ## Apple Health (❌ niet in gebruik)
 ## Strava (✅ actief)
 
 ---
 
-# Recovery System V1 (✅)
+# Home — Garmin indicator bolletje
+- 🟢 Groen = Garmin import vandaag bevestigd
+- 🟡 Amber = Garmin import van gisteren
+- ⚪ Grijs = Geen recente Garmin data
 
+---
+
+# Recovery System V1 (✅)
 Ademhaling: Box Breathing, 4-7-8, Coherent, Stress Reset
 Mobiliteit: Nek & Schouders, Heupen, Full Body
 Wandeling: Herstelwandeling
@@ -106,9 +130,9 @@ Blessures overschrijven altijd alles.
 ### Sessie opbouw
 Hinge → Squat → Push/Pull → Carry/Core → Finisher
 
-### Feedback per sessie
+### Feedback per sessie (v4.8)
 - Rating 1-10
-- Vrij tekstveld (opgeslagen in training_results.notes)
+- Vrij tekstveld "Opmerkingen" — opgeslagen in training_results.notes
 
 ---
 
@@ -141,7 +165,7 @@ src/
       recovery/
         complete/route.ts                 klaar (v4.2)
       health/
-        garmin-vision/route.ts            klaar (v4.3)
+        garmin-vision/route.ts            klaar (v4.8 — sharp compressie)
         shortcut/route.ts                 niet actief
         apikey/route.ts                   niet actief
         metrics/route.ts                  niet actief
@@ -152,39 +176,32 @@ src/
     login/page.tsx                        klaar
     register/page.tsx                     klaar
     onboarding/page.tsx                   klaar
-    home/page.tsx                         klaar (v4.3)
+    home/page.tsx                         klaar (v4.7 — Garmin indicator bolletje)
     checkin/page.tsx                      klaar (v3.5)
-    insights/page.tsx                     klaar (v4.3) — niet meer in navigatie
-    progressie/page.tsx                   ⬜ nog te bouwen (v4.6)
+    insights/page.tsx                     klaar (v4.7 — stress + ademhaling grafieken)
+    progressie/page.tsx                   klaar (v4.6)
     settings/page.tsx                     klaar (v4.4)
     profile/page.tsx                      klaar
     goals/page.tsx                        klaar
-    activities/page.tsx                   klaar (v4.5.1 — terugknop)
+    activities/page.tsx                   klaar (v4.5.1)
     weekly/page.tsx                       klaar
     chat/page.tsx                         klaar (v3.6)
     injuries/page.tsx                     klaar (v3.3)
     life-events/page.tsx                  klaar (v4.1)
     training/
       page.tsx                            klaar (v4.4)
-      kettlebell/page.tsx                 ⬜ feedbackveld toevoegen (v4.6)
+      kettlebell/page.tsx                 klaar (v4.8 — feedbackveld notes)
       recovery/
         breathing/page.tsx                klaar (v4.2)
         mobility/page.tsx                 klaar (v4.2)
         walk/page.tsx                     klaar (v4.2)
     settings/
-      garmin-import/page.tsx              klaar (v4.3)
+      garmin-import/page.tsx              klaar (v4.7)
     layout.tsx                            klaar
     page.tsx                              klaar
   components/
     ui/index.tsx                          klaar (v3.5)
     layout/index.tsx                      klaar (v4.5.1 — Progressie tab)
-  core/
-    ai-engine/recovery-engine.ts          klaar (v3.5)
-    engines/
-      training-engine.ts                  klaar (v3.0)
-      lifestyle-engine.ts                 klaar (v3.0)
-      coach-score-engine.ts               klaar (v3.0)
-      risk-engine.ts                      klaar (v3.0)
   hooks/
     useAuth.ts                            klaar
     useCoach.ts                           klaar (v3.5)
@@ -208,104 +225,44 @@ src/
 - activity_sessions
 - activity_templates
 - strava_tokens
-- health_api_keys (niet actief)
 - knowledge_observations
 - ai_conversations
 - daily_status
 - injuries (v3.3)
 - life_events (v4.1)
 - training_sessions (v4.4)
-- training_results (v4.4) — bevat rating + notes
+- training_results (v4.4) — rating + notes
 - recovery_sessions (v4.2)
 - recovery_results (v4.2)
-- garmin_imports (v4.3 — primaire health databron)
+- garmin_imports (v4.3 — primaire databron)
 
 ---
 
-# Garmin Vision Import — Schema
-
-```json
-{
-  "resting_hr": 43,
-  "body_battery": { "current": 66, "charged": 55, "spent": 36 },
-  "sleep": { "score": 84, "duration_minutes": 526 },
-  "hrv": { "avg_7d_ms": 49, "status": "balanced" },
-  "calories": { "active": 285, "rest": 1401, "total": 1686 },
-  "steps": { "value": 6811, "goal": 6870 },
-  "meta": { "source": "garmin_screenshot", "parsed_at": "timestamp" }
-}
-```
-
----
-
-# Huidige Staat (v4.5.1)
+# Huidige Staat (v4.8.0)
 
 Werkend:
 - Login, onboarding, profiel, doelen, blessures
 - Check-in, weekly review, levensgebeurtenissen
-- Home: Coach Score + Dagplan + Voorspellingen + Garmin reminder
+- Home: Coach Score + Dagplan + Voorspellingen + Garmin reminder + indicator bolletje
 - Coach Score automatisch berekend (Garmin-aware)
 - Risk Engine, AI Coach Chat, Coach memory
-- Inzichten: Garmin grafieken + Trends + Coach inzichten (via Instellingen)
+- Inzichten: Garmin grafieken (hartslag, BB, slaap, HRV, stress, ademhaling) + Trends
 - Dagplan weekend-aware + Garmin-aware
-- Goal-specific coaching
 - Strava sync
-- Garmin Vision Import
+- Garmin Vision Import — automatische compressie + stress + ademhaling schema
 - Recovery AI volledig
-- Trainer AI Kettlebell — adaptief, 25 oefeningen, progressielogica
-- Coach AI krijgt trainingsresultaten mee in context
-- Activiteiten bereikbaar via Instellingen (met terugknop)
+- Trainer AI Kettlebell — adaptief, 25 oefeningen, progressielogica, feedbackveld
+- Progressie dashboard
+- Activiteiten via Instellingen
 - Navigatie: Home | Training | Progressie | Coach | Instellingen
-
-Bekende issues:
-- Trends tonen pas na 3+ Garmin imports
-- Progressie pagina nog niet gebouwd
-- Feedbackveld (notes) nog niet in kettlebell UI
 
 ---
 
 # Nog Te Bouwen
 
-## Stap 8 — Progressie Dashboard + Feedbackveld (v4.6)
-
-### A. Progressie pagina — `/progressie/page.tsx`
-Vandaag:
-- Body Battery (uit laatste Garmin import)
-- Herstelstatus (uit daily_status)
-- Aanbevolen training (uit training/today)
-
-Deze week:
-- Aantal trainingen
-- Gem. rating
-- Totale trainingstijd
-- Trend (stijgend/dalend/stabiel)
-
-Deze maand:
-- Zelfde maar breder
-
-Persoonlijke records:
-- Langste streak actieve dagen
-- Beste week (meeste trainingen)
-- Hoogste rating ooit
-- Totale trainingstijd all-time
-
-Grafieken:
-- Rating trend (lijn)
-- Trainingstijd per week (bar)
-
-### B. Feedbackveld — `training/kettlebell/page.tsx`
-Na training toevoegen:
-- Rating slider 1-10 (al aanwezig)
-- Vrij tekstveld "Hoe voelde het?"
-- Opslaan via `api/training/complete` → `notes` kolom
-
-### C. Inzichten bereikbaar via Instellingen
-- Link toevoegen in settings/page.tsx
-
-## Stap 9 — Performance AI (later)
-- Analyseert trainingsresultaten over tijd
-- Vergelijkt verwachte vs werkelijke progressie
-- Stuurt Coach AI bij
+## Volgende (v4.9)
+- Coach AI stress + ademhaling meenemen in context
+- Performance AI — trainingsresultaten analyseren over tijd
 
 ---
 
@@ -318,10 +275,10 @@ Na training toevoegen:
 - E5 Daily Action Plan: ✅
 - E6 Goal-specific Coaching: ✅
 - E7 Second Brain: ⏳ groeit
-- E8 Training Execution (Trainer AI): ✅ adaptief
+- E8 Training Execution (Trainer AI): ✅ adaptief + feedback
 - E9 Recovery Execution (Recovery AI): ✅
-- E10 Garmin Vision Import: ✅
-- E11 Progressie Dashboard: ⬜
+- E10 Garmin Vision Import: ✅ stress + ademhaling + compressie
+- E11 Progressie Dashboard: ✅
 
 ---
 
@@ -345,7 +302,7 @@ Na training toevoegen:
 - Volledige bestanden als zip
 - Bestandsnaam eindigt altijd op .zip
 - Na download iPhone: naam + .zip toevoegen
-- README updaten na elke grote wijziging
+- README altijd meegeleverd in zip, zelfde naam als zip
 - Taal UI: Nederlands
 - Design: Dark mode first, mobile-first
 
@@ -353,13 +310,16 @@ Na training toevoegen:
 
 # Versiehistorie
 - v1.0.0 t/m v3.7.0: zie vorige versies
-- v4.0.0: Architectuur V4.0 + Navigatie herstructurering
+- v4.0.0: Architectuur V4.0
 - v4.1.0: Levensgebeurtenissen V2
 - v4.2.0: Recovery AI volledig
-- v4.3.0: Garmin Vision Import — Coach AI Garmin-aware
-- v4.4.0: Trainer AI Kettlebell — live begeleiding + Trends Garmin-aware
-- v4.5.0: Trainer AI adaptief — 25 oefeningen + progressielogica + Coach AI trainingshistorie
-- v4.5.1: Navigatie Progressie tab + Activiteiten terugknop
+- v4.3.0: Garmin Vision Import
+- v4.4.0: Trainer AI Kettlebell
+- v4.5.0: Trainer AI adaptief — 25 oefeningen
+- v4.5.1: Navigatie Progressie tab + terugknop
+- v4.6.0: Progressie dashboard
+- v4.7.0: Garmin schema stress + ademhaling + indicator bolletje
+- v4.8.0: Sharp compressie Garmin foto + feedbackveld kettlebell
 
 ---
 
@@ -401,4 +361,5 @@ en help me verder met CoachOS
 - Database: createAdminClient()
 - Navigatie: router.push() — nooit router.back()
 - Anthropic: directe fetch naar api.anthropic.com — geen SDK
+- Afbeelding compressie: sharp — resize 800px, JPEG 80%
 - Pagina's zonder AppShell: altijd aanroepen via router.push vanuit ingelogde pagina

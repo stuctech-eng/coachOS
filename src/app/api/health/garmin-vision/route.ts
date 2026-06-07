@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
+import sharp from 'sharp'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -223,9 +224,14 @@ export async function POST(req: NextRequest) {
       }, { status: 409 })
     }
 
-    const buffer = await imageFile.arrayBuffer()
-    const base64 = Buffer.from(buffer).toString('base64')
-    const mediaType = (imageFile.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/webp'
+    // Comprimeer afbeelding voor Vision call (bespaart tokens)
+    const rawBuffer = Buffer.from(await imageFile.arrayBuffer())
+    const compressedBuffer = await sharp(rawBuffer)
+      .resize({ width: 800, withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer()
+    const base64 = compressedBuffer.toString('base64')
+    const mediaType = 'image/jpeg' as const
 
     const visionRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
