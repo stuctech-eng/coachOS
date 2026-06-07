@@ -207,7 +207,7 @@ export default function HoeWerktHetPage() {
   const router = useRouter()
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white overflow-y-auto">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-14 pb-6">
         <button
