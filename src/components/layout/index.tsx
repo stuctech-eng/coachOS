@@ -1,15 +1,15 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Dumbbell, BarChart2, MessageCircle, Settings } from 'lucide-react'
+import { Home, Dumbbell, TrendingUp, MessageCircle, Settings } from 'lucide-react'
 import { cn } from '@/utils'
 
 const navItems = [
-  { href: '/home',       icon: Home,          label: 'Home' },
-  { href: '/training',   icon: Dumbbell,      label: 'Training' },
-  { href: '/insights',   icon: BarChart2,     label: 'Inzichten' },
+  { href: '/home',       icon: Home,        label: 'Home' },
+  { href: '/training',   icon: Dumbbell,    label: 'Training' },
+  { href: '/progressie', icon: TrendingUp,  label: 'Progressie' },
   { href: '/chat',       icon: MessageCircle, label: 'Coach' },
-  { href: '/settings',   icon: Settings,      label: 'Instellingen' },
+  { href: '/settings',   icon: Settings,    label: 'Instellingen' },
 ]
 
 export function BottomNav() {

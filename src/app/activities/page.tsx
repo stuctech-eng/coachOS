@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import { BottomNav } from '@/components/layout'
 
 interface ActivityMetrics {
@@ -54,6 +56,7 @@ function formatDatum(dateStr: string): string {
 }
 
 export default function ActiviteitenPage() {
+  const router = useRouter()
   const [sessions, setSessions] = useState<ActivitySession[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
@@ -116,7 +119,13 @@ export default function ActiviteitenPage() {
   return (
     <div className="min-h-screen bg-[#0d1117] text-white pb-24">
       {/* Header */}
-      <div className="px-4 pt-14 pb-4">
+      <div className="flex items-center gap-3 px-4 pt-14 pb-4">
+        <button
+          onClick={() => router.push('/settings')}
+          className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center active:bg-white/10"
+        >
+          <ArrowLeft size={20} className="text-slate-400" />
+        </button>
         <h1 className="text-2xl font-bold text-white">Activiteiten</h1>
       </div>
 
