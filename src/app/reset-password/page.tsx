@@ -17,23 +17,32 @@ function ResetPasswordContent() {
   const [bericht, setBericht] = useState('')
 
   useEffect(() => {
-    // Check if we have a session from the reset link
-    const checkSession = async () => {
-      const { data: { session } } = await browserClient.auth.getSession()
-      if (session) {
-        setFase('instellen')
-      }
+    // Supabase stuurt token via hash fragment: #access_token=...&type=recovery
+    const hash = window.location.hash
+    if (hash && hash.includes('type=recovery')) {
+      // Supabase verwerkt de hash automatisch via onAuthStateChange
+      const { data: { subscription } } = browserClient.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+          setFase('instellen')
+          subscription.unsubscribe()
+        }
+      })
+      return () => subscription.unsubscribe()
     }
 
-    // Supabase stuurt token via hash fragment of query params
+    // Code via query param (PKCE flow)
     const code = searchParams.get('code')
     if (code) {
       browserClient.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (!error) setFase('instellen')
       })
-    } else {
-      checkSession()
+      return
     }
+
+    // Check bestaande sessie
+    browserClient.auth.getSession().then(({ data: { session } }) => {
+      if (session) setFase('instellen')
+    })
   }, [searchParams])
 
   async function aanvragen() {
