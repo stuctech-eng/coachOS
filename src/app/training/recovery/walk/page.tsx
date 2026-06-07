@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { X, Play, Pause, StopCircle } from 'lucide-react'
+import { X, Play, Pause } from 'lucide-react'
 
 function WalkSession() {
   const router = useRouter()
@@ -180,7 +180,7 @@ function WalkSession() {
           onClick={stopVroeg}
           className="w-16 h-16 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center active:bg-red-500/30"
         >
-          <StopCircle size={20} className="text-red-400" />
+          <X size={20} className="text-red-400" />
         </button>
       </div>
       {gepauzeerd && <p className="text-slate-600 text-xs pb-4 -mt-8">Gepauzeerd</p>}
