@@ -274,7 +274,7 @@ export default function TrainingPage() {
                 return (
                   <button key={i} onClick={() => router.push(route)}
                     className="flex items-center gap-3 w-full active:opacity-70">
-                    <Card className="p-3 flex items-center gap-3 w-full">
+                    <div className="p-3 flex items-center gap-3 w-full bg-coach-card rounded-2xl border border-coach-border">
                       <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0', getModuleBg(item.type))}>
                         <Icon size={18} className={getModuleKleur(item.type)} />
                       </div>
@@ -283,7 +283,7 @@ export default function TrainingPage() {
                         <p className="text-slate-500 text-xs">{item.sub} · {item.duration} min</p>
                       </div>
                       <ChevronRight size={14} className="text-slate-600" />
-                    </Card>
+                    </div>
                   </button>
                 )
               })}
