@@ -273,7 +273,7 @@ export default function TrainingPage() {
                 const route = getModuleRoute(item)
                 return (
                   <button key={i} onClick={() => router.push(route)}
-                    className="flex items-center gap-3 w-full active:opacity-70">
+                    className="w-full active:opacity-70 text-left">
                     <div className="p-3 flex items-center gap-3 w-full bg-coach-card rounded-2xl border border-coach-border">
                       <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0', getModuleBg(item.type))}>
                         <Icon size={18} className={getModuleKleur(item.type)} />

@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Brain, Dumbbell, Wind, TrendingUp, Battery, Moon, Heart, Zap, Clock, Camera, BarChart2, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
+import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
 
 interface Sectie {
@@ -207,7 +208,7 @@ export default function HoeWerktHetPage() {
   const router = useRouter()
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white overflow-y-auto">
+    <AppShell showNav={false}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-14 pb-6">
         <button
@@ -239,6 +240,6 @@ export default function HoeWerktHetPage() {
           </p>
         </div>
       </div>
-    </div>
+    </AppShell>
   )
 }
