@@ -194,7 +194,8 @@ Reageer ALLEEN in dit JSON formaat:
   "duration": 25,
   "recovery_modules": [
     { "type": "breathing", "subtype": "box_breathing", "duration": 6, "label": "Box Breathing" },
-    { "type": "mobility", "subtype": "hips", "duration": 10, "label": "Heup mobiliteit" }
+    { "type": "mobility", "subtype": "hips", "duration": 10, "label": "Heup mobiliteit" },
+    { "type": "walk", "subtype": "recovery_walk", "duration": 20, "label": "Herstelwandeling" }
   ],
   "reason": "Korte reden voor de beslissing",
   "coach_message": "Persoonlijk bericht aan de gebruiker"

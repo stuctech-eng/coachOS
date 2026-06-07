@@ -36,31 +36,31 @@ function getIntensityKleur(intensity: string | null): string {
   return 'text-green-400'
 }
 
-function getModuleIcon(type: string) {
+function getModuleIcon(type: string, subtype?: string) {
+  if (type === 'walk' || subtype === 'recovery_walk') return Footprints
   if (type === 'breathing') return Wind
   if (type === 'mobility') return Zap
-  if (type === 'walk') return Footprints
   return Wind
 }
 
-function getModuleKleur(type: string): string {
+function getModuleKleur(type: string, subtype?: string): string {
+  if (type === 'walk' || subtype === 'recovery_walk') return 'text-teal-400'
   if (type === 'breathing') return 'text-blue-400'
   if (type === 'mobility') return 'text-green-400'
-  if (type === 'walk') return 'text-teal-400'
   return 'text-purple-400'
 }
 
-function getModuleBg(type: string): string {
+function getModuleBg(type: string, subtype?: string): string {
+  if (type === 'walk' || subtype === 'recovery_walk') return 'bg-teal-500/20'
   if (type === 'breathing') return 'bg-blue-500/20'
   if (type === 'mobility') return 'bg-green-500/20'
-  if (type === 'walk') return 'bg-teal-500/20'
   return 'bg-purple-500/20'
 }
 
 function getModuleRoute(module: RecoveryModule): string {
   if (module.type === 'breathing') return `/training/recovery/breathing?subtype=${module.subtype}&duration=${module.duration}&label=${encodeURIComponent(module.label)}`
   if (module.type === 'mobility') return `/training/recovery/mobility?subtype=${module.subtype}&duration=${module.duration}&label=${encodeURIComponent(module.label)}`
-  if (module.type === 'walk') return `/training/recovery/walk?duration=${module.duration}`
+  if (module.type === 'walk' || module.subtype === 'recovery_walk') return `/training/recovery/walk?duration=${module.duration}`
   return '/training'
 }
 
@@ -200,13 +200,13 @@ export default function TrainingPage() {
 
               {/* Recovery modules */}
               {instruction.recovery_modules.map((module, i) => {
-                const Icon = getModuleIcon(module.type)
+                const Icon = getModuleIcon(module.type, module.subtype)
                 const route = getModuleRoute(module)
                 return (
                   <button key={i} onClick={() => router.push(route)}
                     className="flex items-center gap-3 w-full mb-2 last:mb-0 active:opacity-70">
-                    <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0', getModuleBg(module.type))}>
-                      <Icon size={20} className={getModuleKleur(module.type)} />
+                    <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0', getModuleBg(module.type, module.subtype))}>
+                      <Icon size={20} className={getModuleKleur(module.type, module.subtype)} />
                     </div>
                     <div className="flex-1 text-left">
                       <p className="text-white font-medium text-sm">{module.label}</p>
