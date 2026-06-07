@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 4.8.0
+- Versie: 4.9.3
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjst.supabase.co
@@ -73,7 +73,7 @@ Inzichten bereikbaar via Instellingen.
 - Daily lock: één confirmed record per user per dag (Europe/Amsterdam)
 - Reminder banner op Home als import nog niet gedaan
 
-## Garmin Import Schema (v4.7)
+## Garmin Import Schema
 ```json
 {
   "resting_hr": 46,
@@ -105,7 +105,7 @@ Inzichten bereikbaar via Instellingen.
 # Recovery System V1 (✅)
 Ademhaling: Box Breathing, 4-7-8, Coherent, Stress Reset
 Mobiliteit: Nek & Schouders, Heupen, Full Body
-Wandeling: Herstelwandeling
+Wandeling: Herstelwandeling ✅ (v4.9.3 fix)
 
 ---
 
@@ -130,7 +130,7 @@ Blessures overschrijven altijd alles.
 ### Sessie opbouw
 Hinge → Squat → Push/Pull → Carry/Core → Finisher
 
-### Feedback per sessie (v4.8)
+### Feedback per sessie
 - Rating 1-10
 - Vrij tekstveld "Opmerkingen" — opgeslagen in training_results.notes
 
@@ -160,12 +160,12 @@ src/
       trents/route.ts                     klaar (v4.4 — alias)
       training/
         today/route.ts                    klaar (v4.5)
-        session/route.ts                  klaar (v4.5 — 25 oefeningen + progressie)
+        session/route.ts                  klaar (v4.5)
         complete/route.ts                 klaar (v4.4)
       recovery/
         complete/route.ts                 klaar (v4.2)
       health/
-        garmin-vision/route.ts            klaar (v4.8 — sharp compressie)
+        garmin-vision/route.ts            klaar (v4.8)
         shortcut/route.ts                 niet actief
         apikey/route.ts                   niet actief
         metrics/route.ts                  niet actief
@@ -176,11 +176,13 @@ src/
     login/page.tsx                        klaar
     register/page.tsx                     klaar
     onboarding/page.tsx                   klaar
-    home/page.tsx                         klaar (v4.7 — Garmin indicator bolletje)
+    home/page.tsx                         klaar (v4.7)
     checkin/page.tsx                      klaar (v3.5)
-    insights/page.tsx                     klaar (v4.7 — stress + ademhaling grafieken)
+    insights/page.tsx                     klaar (v4.7)
     progressie/page.tsx                   klaar (v4.6)
-    settings/page.tsx                     klaar (v4.4)
+    settings/page.tsx                     klaar (v4.9.1)
+    settings/hoe-werkt-het/page.tsx       klaar (v4.9.3 — AppShell scroll fix)
+    settings/garmin-import/page.tsx       klaar (v4.7)
     profile/page.tsx                      klaar
     goals/page.tsx                        klaar
     activities/page.tsx                   klaar (v4.5.1)
@@ -189,19 +191,17 @@ src/
     injuries/page.tsx                     klaar (v3.3)
     life-events/page.tsx                  klaar (v4.1)
     training/
-      page.tsx                            klaar (v4.4)
-      kettlebell/page.tsx                 klaar (v4.8 — feedbackveld notes)
+      page.tsx                            klaar (v4.9.3 — bibliotheek button fix)
+      kettlebell/page.tsx                 klaar (v4.8)
       recovery/
         breathing/page.tsx                klaar (v4.2)
         mobility/page.tsx                 klaar (v4.2)
-        walk/page.tsx                     klaar (v4.2)
-    settings/
-      garmin-import/page.tsx              klaar (v4.7)
+        walk/page.tsx                     klaar (v4.9.3 — herschreven)
     layout.tsx                            klaar
     page.tsx                              klaar
   components/
     ui/index.tsx                          klaar (v3.5)
-    layout/index.tsx                      klaar (v4.5.1 — Progressie tab)
+    layout/index.tsx                      klaar (v4.5.1)
   hooks/
     useAuth.ts                            klaar
     useCoach.ts                           klaar (v3.5)
@@ -238,7 +238,7 @@ src/
 
 ---
 
-# Huidige Staat (v4.8.0)
+# Huidige Staat (v4.9.3)
 
 Werkend:
 - Login, onboarding, profiel, doelen, blessures
@@ -246,21 +246,23 @@ Werkend:
 - Home: Coach Score + Dagplan + Voorspellingen + Garmin reminder + indicator bolletje
 - Coach Score automatisch berekend (Garmin-aware)
 - Risk Engine, AI Coach Chat, Coach memory
-- Inzichten: Garmin grafieken (hartslag, BB, slaap, HRV, stress, ademhaling) + Trends
+- Inzichten: Garmin grafieken + Trends + Coach inzichten
 - Dagplan weekend-aware + Garmin-aware
 - Strava sync
-- Garmin Vision Import — automatische compressie + stress + ademhaling schema
-- Recovery AI volledig
+- Garmin Vision Import — automatische compressie
+- Recovery AI volledig — ademhaling, mobiliteit, wandeling
 - Trainer AI Kettlebell — adaptief, 25 oefeningen, progressielogica, feedbackveld
 - Progressie dashboard
 - Activiteiten via Instellingen
+- Inzichten via Instellingen
+- Hoe werkt CoachOS — uitvoerige uitlegpagina (scrollt)
 - Navigatie: Home | Training | Progressie | Coach | Instellingen
 
 ---
 
 # Nog Te Bouwen
 
-## Volgende (v4.9)
+## Volgende (v5.0)
 - Coach AI stress + ademhaling meenemen in context
 - Performance AI — trainingsresultaten analyseren over tijd
 
@@ -275,10 +277,11 @@ Werkend:
 - E5 Daily Action Plan: ✅
 - E6 Goal-specific Coaching: ✅
 - E7 Second Brain: ⏳ groeit
-- E8 Training Execution (Trainer AI): ✅ adaptief + feedback
+- E8 Training Execution (Trainer AI): ✅
 - E9 Recovery Execution (Recovery AI): ✅
-- E10 Garmin Vision Import: ✅ stress + ademhaling + compressie
+- E10 Garmin Vision Import: ✅
 - E11 Progressie Dashboard: ✅
+- E12 Gebruikersuitleg: ✅
 
 ---
 
@@ -300,11 +303,11 @@ Werkend:
 # Afspraken
 - Altijd overleg voor code
 - Volledige bestanden als zip
-- Bestandsnaam eindigt altijd op .zip
-- Na download iPhone: naam + .zip toevoegen
+- Bestandsnaam eindigt altijd op .zip — ook na download iPhone naam + .zip toevoegen
 - README altijd meegeleverd in zip, zelfde naam als zip
 - Taal UI: Nederlands
 - Design: Dark mode first, mobile-first
+- Na elke versie: "Hoe werkt CoachOS" pagina bijwerken als er iets veranderd of bijgekomen is
 
 ---
 
@@ -319,7 +322,11 @@ Werkend:
 - v4.5.1: Navigatie Progressie tab + terugknop
 - v4.6.0: Progressie dashboard
 - v4.7.0: Garmin schema stress + ademhaling + indicator bolletje
-- v4.8.0: Sharp compressie Garmin foto + feedbackveld kettlebell
+- v4.8.0: Sharp compressie + feedbackveld kettlebell
+- v4.9.0: Hoe werkt CoachOS uitlegpagina
+- v4.9.1: Garmin boven profiel + HelpCircle link + wandeling button fix poging
+- v4.9.2: Walk herschreven + scroll fix poging
+- v4.9.3: AppShell scroll fix hoe-werkt-het + walk definitief fix + bibliotheek button
 
 ---
 
@@ -338,6 +345,7 @@ en help me verder met CoachOS
 3. Supabase tabel aanmaken indien nodig
 4. RLS policy: CREATE POLICY "Users own data" ON tabel FOR ALL USING (auth.uid() = user_id);
 5. Altijd volledig bestand
+6. "Hoe werkt CoachOS" bijwerken als er iets veranderd of bijgekomen is
 
 ## Bug flow
 1. Buildlog → exacte fout lezen
@@ -347,6 +355,7 @@ en help me verder met CoachOS
 5. 404 → mapnaam exact controleren
 6. Supabase 400 → ontbrekende kolom (ADD COLUMN IF NOT EXISTS)
 7. 401 op API → altijd aanroepen via router.push vanuit ingelogde pagina
+8. Pagina scrollt niet → body heeft h-screen overflow-hidden → gebruik AppShell
 
 ## Voor Dick altijd
 - Zip → naam + .zip → uitpakken → Working Copy → push
@@ -363,3 +372,4 @@ en help me verder met CoachOS
 - Anthropic: directe fetch naar api.anthropic.com — geen SDK
 - Afbeelding compressie: sharp — resize 800px, JPEG 80%
 - Pagina's zonder AppShell: altijd aanroepen via router.push vanuit ingelogde pagina
+- Pagina's die moeten scrollen: gebruik AppShell — body heeft overflow-hidden
