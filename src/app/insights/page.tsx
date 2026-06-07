@@ -23,8 +23,8 @@ interface GarminImport {
     body_battery: { current: number | null; charged: number | null; spent: number | null }
     sleep: { score: number | null; duration_minutes: number | null }
     hrv: { avg_7d_ms: number | null; status: string | null }
-    calories: { active: number | null; rest: number | null; total: number | null }
-    steps: { value: number | null; goal: number | null }
+    stress: number | null
+    breathing: { current_brpm: number | null; avg_awake_brpm: number | null; avg_sleep_brpm: number | null }
   }
 }
 
@@ -40,7 +40,6 @@ interface Trends {
   hrv: TrendItem | null
   resting_hr: TrendItem | null
   slaap: TrendItem | null
-  stappen: TrendItem | null
   coach_score: TrendItem | null
   samenvatting: string[]
 }
@@ -234,7 +233,8 @@ export default function InsightsPage() {
     waarde: g.parsed_data?.sleep?.duration_minutes ? Math.round(g.parsed_data.sleep.duration_minutes / 60 * 10) / 10 : null
   }))
   const hrv = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.hrv?.avg_7d_ms ?? null }))
-  const stappen = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.steps?.value ?? null }))
+  const stress = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.stress ?? null }))
+  const ademhaling = garminData.map(g => ({ datum: formatDatum(g.date), waarde: g.parsed_data?.breathing?.avg_sleep_brpm ?? null }))
 
   return (
     <AppShell showNav={false}>
@@ -344,7 +344,8 @@ export default function InsightsPage() {
                 <GarminGrafiek titel="Slaapscore" icoon={Moon} kleur="text-purple-400" data={slaapscore} eenheid="/100" leeg="Nog geen slaapscore data" />
                 <GarminGrafiek titel="Slaapduur" icoon={Moon} kleur="text-blue-400" data={slaapDuur} eenheid="uur" leeg="Nog geen slaapduur data" />
                 <GarminGrafiek titel="HRV (7d gem.)" icoon={Activity} kleur="text-green-400" data={hrv} eenheid="ms" leeg="Nog geen HRV data" />
-                <GarminGrafiek titel="Stappen" icoon={Footprints} kleur="text-orange-400" data={stappen} eenheid="stappen" leeg="Nog geen stappen data" />
+                <GarminGrafiek titel="Stress" icoon={Zap} kleur="text-orange-400" data={stress} eenheid="" leeg="Nog geen stress data" />
+                <GarminGrafiek titel="Ademhaling (slaap)" icoon={Activity} kleur="text-teal-400" data={ademhaling} eenheid="brpm" leeg="Nog geen ademhaling data" />
               </div>
             )
           )}

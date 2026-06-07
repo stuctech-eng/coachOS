@@ -18,8 +18,8 @@ interface GarminParsed {
   body_battery: { current: number | null; charged: number | null; spent: number | null }
   sleep: { score: number | null; duration_minutes: number | null }
   hrv: { avg_7d_ms: number | null; status: string | null }
-  calories: { active: number | null; rest: number | null; total: number | null }
-  steps: { value: number | null; goal: number | null }
+  stress: number | null
+  breathing: { current_brpm: number | null; avg_awake_brpm: number | null; avg_sleep_brpm: number | null }
 }
 
 interface ImportResult {
@@ -169,7 +169,7 @@ export default function GarminImportPage() {
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-xs">
-                {['Rusthartslag', 'Body Battery', 'Slaap', 'HRV (7d gem.)', 'Calorieën', 'Stappen'].map((label) => (
+                {['Rusthartslag', 'Body Battery', 'Slaap', 'HRV (7d gem.)', 'Stress', 'Ademhaling'].map((label) => (
                   <div key={label} className="rounded-lg bg-white/5 px-2.5 py-2 text-white/60 text-center">
                     {label}
                   </div>
@@ -265,22 +265,16 @@ export default function GarminImportPage() {
                 flagged={result.validation_flags.some(f => f.field === 'hrv.avg_7d_ms')}
               />
               <DataRow
-                label="Calorieën"
-                value={result.parsed.calories.total !== null ? `${result.parsed.calories.total} kcal` : '–'}
-                sub={result.parsed.calories.active !== null
-                  ? `${result.parsed.calories.active} actief · ${result.parsed.calories.rest} rust`
-                  : undefined}
-                flagged={result.validation_flags.some(f => f.field.startsWith('calories'))}
+                label="Stress"
+                value={result.parsed.stress !== null ? `${result.parsed.stress}` : '–'}
+                sub={result.parsed.stress !== null ? (result.parsed.stress <= 25 ? 'Laag' : result.parsed.stress <= 50 ? 'Licht' : result.parsed.stress <= 75 ? 'Matig' : 'Hoog') : undefined}
+                flagged={result.validation_flags.some(f => f.field === 'stress')}
               />
               <DataRow
-                label="Stappen"
-                value={result.parsed.steps.value !== null
-                  ? result.parsed.steps.value.toLocaleString('nl-NL')
-                  : '–'}
-                sub={result.parsed.steps.goal !== null
-                  ? `doel: ${result.parsed.steps.goal.toLocaleString('nl-NL')}`
-                  : undefined}
-                flagged={result.validation_flags.some(f => f.field === 'steps.value')}
+                label="Ademhaling"
+                value={result.parsed.breathing.current_brpm !== null ? `${result.parsed.breathing.current_brpm} brpm` : '–'}
+                sub={result.parsed.breathing.avg_sleep_brpm !== null ? `slaap: ${result.parsed.breathing.avg_sleep_brpm} brpm` : undefined}
+                flagged={result.validation_flags.some(f => f.field.startsWith('breathing'))}
                 last
               />
             </div>

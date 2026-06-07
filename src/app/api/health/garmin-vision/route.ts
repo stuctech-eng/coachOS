@@ -22,14 +22,11 @@ interface GarminParsed {
     avg_7d_ms: number | null
     status: string | null
   }
-  calories: {
-    active: number | null
-    rest: number | null
-    total: number | null
-  }
-  steps: {
-    value: number | null
-    goal: number | null
+  stress: number | null
+  breathing: {
+    current_brpm: number | null
+    avg_awake_brpm: number | null
+    avg_sleep_brpm: number | null
   }
   meta: {
     source: 'garmin_screenshot'
@@ -101,14 +98,11 @@ function normalizeGarminData(raw: any): GarminParsed {
       avg_7d_ms: toNumber(raw?.hrv?.avg_7d_ms ?? raw?.hrv_ms ?? raw?.hrv),
       status: normalizeHrvStatus(raw?.hrv?.status ?? raw?.hrv_status ?? raw?.hrv_status_label),
     },
-    calories: {
-      active: toNumber(raw?.calories?.active ?? raw?.actieve_calories ?? raw?.active_calories),
-      rest: toNumber(raw?.calories?.rest ?? raw?.rust_calories ?? raw?.resting_calories),
-      total: toNumber(raw?.calories?.total ?? raw?.totale_calories ?? raw?.total_calories),
-    },
-    steps: {
-      value: toNumber(raw?.steps?.value ?? raw?.stappen ?? raw?.steps),
-      goal: toNumber(raw?.steps?.goal ?? raw?.stappen_doel ?? raw?.steps_goal),
+    stress: toNumber(raw?.stress ?? raw?.stress_score ?? raw?.stressniveau),
+    breathing: {
+      current_brpm: toNumber(raw?.breathing?.current_brpm ?? raw?.ademhaling ?? raw?.breathing_rate),
+      avg_awake_brpm: toNumber(raw?.breathing?.avg_awake_brpm ?? raw?.gem_wakker_brpm),
+      avg_sleep_brpm: toNumber(raw?.breathing?.avg_sleep_brpm ?? raw?.slaapademhaling ?? raw?.sleep_breathing),
     },
     meta: {
       source: 'garmin_screenshot',
@@ -135,9 +129,9 @@ function validateGarminData(data: GarminParsed): { flags: ValidationFlag[]; conf
     { field: 'sleep.score', value: data.sleep.score, min: 0, max: 100 },
     { field: 'sleep.duration_minutes', value: data.sleep.duration_minutes, min: 60, max: 840 },
     { field: 'hrv.avg_7d_ms', value: data.hrv.avg_7d_ms, min: 10, max: 200 },
-    { field: 'calories.active', value: data.calories.active, min: 0, max: 5000 },
-    { field: 'calories.rest', value: data.calories.rest, min: 800, max: 4000 },
-    { field: 'steps.value', value: data.steps.value, min: 0, max: 60000 },
+    { field: 'stress', value: data.stress, min: 0, max: 100 },
+    { field: 'breathing.avg_sleep_brpm', value: data.breathing.avg_sleep_brpm, min: 8, max: 25 },
+    { field: 'breathing.current_brpm', value: data.breathing.current_brpm, min: 8, max: 30 },
   ]
 
   for (const check of rangeChecks) {
@@ -158,23 +152,6 @@ function validateGarminData(data: GarminParsed): { flags: ValidationFlag[]; conf
     }
   }
 
-  // Cross-field: calories totaal = actief + rust
-  if (
-    data.calories.active !== null &&
-    data.calories.rest !== null &&
-    data.calories.total !== null
-  ) {
-    const expectedTotal = data.calories.active + data.calories.rest
-    const diff = Math.abs(expectedTotal - data.calories.total)
-    if (diff > 10) {
-      flags.push({
-        field: 'calories.total',
-        value: data.calories.total,
-        reason: `Totaal (${data.calories.total}) komt niet overeen met actief + rust (${expectedTotal})`,
-        severity: 'warning',
-      })
-    }
-  }
 
   const errorCount = flags.filter((f) => f.severity === 'error').length
   const warningCount = flags.filter((f) => f.severity === 'warning').length
@@ -270,7 +247,7 @@ export async function POST(req: NextRequest) {
               },
               {
                 type: 'text',
-                text: 'Dit is een screenshot van de Garmin Connect "In één oogopslag" pagina.\nLees alle zichtbare waarden uit en retourneer ALLEEN een JSON object, zonder markdown of uitleg.\n\nGebruik dit exacte schema:\n{\n  "resting_hr": 43,\n  "body_battery": { "current": 66, "charged": 55, "spent": 36 },\n  "sleep": { "score": 84, "duration": "8u 46m" },\n  "hrv": { "avg_7d_ms": 49, "status": "Evenwichtig" },\n  "calories": { "active": 285, "rest": 1401, "total": 1686 },\n  "steps": { "value": 6811, "goal": 6870 }\n}\n\nAls een waarde niet zichtbaar is, gebruik null.\nRetourneer ALLEEN het JSON object.',
+                text: 'Dit is een screenshot van de Garmin Connect "In één oogopslag" pagina.\nLees alle zichtbare waarden uit en retourneer ALLEEN een JSON object, zonder markdown of uitleg.\n\nGebruik dit exacte schema:\n{\n  "resting_hr": 46,\n  "body_battery": { "current": 83, "charged": 49, "spent": 8 },\n  "sleep": { "score": 83, "duration": "6u 48m" },\n  "hrv": { "avg_7d_ms": 49, "status": "Evenwichtig" },\n  "stress": 18,\n  "breathing": { "current_brpm": 20, "avg_awake_brpm": 15, "avg_sleep_brpm": 13 }\n}\n\nAls een waarde niet zichtbaar is, gebruik null.\nRetourneer ALLEEN het JSON object.',
               },
             ],
           },

@@ -60,6 +60,7 @@ export default function HomePage() {
   const [predictions, setPredictions] = useState<Prediction[] | null>(null)
   const [generatingPredictions, setGeneratingPredictions] = useState(false)
   const [garminImported, setGarminImported] = useState(true) // default true = geen banner
+  const [garminDatum, setGarminDatum] = useState<string | null>(null)
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
   const score = coachStatus?.coach_score ?? null
@@ -75,15 +76,21 @@ export default function HomePage() {
           process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
         )
         const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-        const { data } = await supabase
+        const gisterenAms = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+        // Check vandaag
+        const { data: vandaagData } = await supabase
           .from('garmin_imports')
-          .select('id')
-          .eq('date', vandaagAms)
+          .select('id, date')
           .eq('status', 'confirmed')
+          .gte('date', gisterenAms)
+          .order('date', { ascending: false })
+          .limit(1)
           .single()
-        setGarminImported(!!data)
+        setGarminImported(vandaagData?.date === vandaagAms)
+        setGarminDatum(vandaagData?.date ?? null)
       } catch {
-        setGarminImported(true) // bij fout: geen banner tonen
+        setGarminImported(true)
+        setGarminDatum(null)
       }
     }
     checkGarmin()
@@ -247,9 +254,22 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-xs text-slate-400 uppercase tracking-wider">Coach Score</p>
-                {coachStatus && (
-                  <div className={`w-2 h-2 rounded-full ${coachStatus.date === vandaag ? 'bg-green-400' : 'bg-red-400'}`} />
-                )}
+                {(() => {
+                  // Garmin import indicator
+                  const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+                  const gisterenAms = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+                  // garminImported = vandaag bevestigd
+                  // We need to also check if it was yesterday
+                  const vandaagAms2 = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+                  const gisterenAms2 = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+                  if (garminDatum === vandaagAms2) {
+                    return <div className="w-2 h-2 rounded-full bg-green-400" title="Garmin import vandaag ✓" />
+                  }
+                  if (garminDatum === gisterenAms2) {
+                    return <div className="w-2 h-2 rounded-full bg-amber-400" title="Garmin import van gisteren" />
+                  }
+                  return <div className="w-2 h-2 rounded-full bg-slate-500" title="Geen recente Garmin data" />
+                })()}
               </div>
               <div className="flex items-end gap-2">
                 {laden || berekenend ? (
