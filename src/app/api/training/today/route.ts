@@ -76,11 +76,7 @@ export async function POST() {
     const zeven = new Date()
     zeven.setDate(zeven.getDate() - 7)
 
-    const [
-      profileRes, statusRes, checkinRes, metricsRes,
-      blessuresRes, lifeEventsRes, goalsRes,
-      metrics7dRes, activiteitenRes, trainingsRes, garminRes,
-    ] = await Promise.all([
+    const [profileRes, statusRes, checkinRes, metricsRes, blessuresRes, lifeEventsRes, goalsRes, metrics7dRes, activiteitenRes, trainingsRes, garminRes, performanceRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -114,6 +110,13 @@ export async function POST() {
         .order('date', { ascending: false })
         .limit(1)
         .single(),
+      supabase.from('coach_recommendations')
+        .select('recommendation')
+        .eq('user_id', user.id)
+        .eq('type', 'performance_ai')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
     ])
 
     const status = statusRes.data
@@ -125,12 +128,22 @@ export async function POST() {
     const metrics7d = metrics7dRes.data || []
     const activiteiten = activiteitenRes.data || []
     const trainingen = trainingsRes.data || []
+    const performance = (() => {
+      try {
+        const rec = performanceRes.data?.recommendation
+        return rec ? JSON.parse(rec) : null
+      } catch { return null }
+    })()
     const garmin = garminRes.data?.parsed_data || null
 
     // Trainingsresultaten voor context
     const gemRating = trainingen.length > 0
       ? Math.round(trainingen.filter(t => t.rating).reduce((a, t) => a + (t.rating || 0), 0) / trainingen.filter(t => t.rating).length * 10) / 10
       : null
+    const performanceContext = performance
+      ? `Performance AI: trend=${performance.progressie_trend}, consistentie=${performance.consistentie}, herstel=${performance.herstel_na_training}, niveau_gereed=${performance.niveau_gereed}. ${performance.samenvatting}`
+      : ''
+
     const trainingsHistorie = trainingen.length > 0
       ? `Laatste ${trainingen.length} trainingen — gem. rating: ${gemRating}/10, duur: ${Math.round(trainingen.reduce((a, t) => a + (t.actual_duration || 0), 0) / trainingen.length)} min`
       : 'Nog geen trainingsresultaten'
@@ -159,6 +172,7 @@ export async function POST() {
       metrics7d.length > 0 ? `HRV trend: ${metrics7d.filter(m => m.hrv).map(m => m.hrv).join(' → ')}` : '',
       activiteiten.length > 0 ? `Trainingen afgelopen week: ${activiteiten.length} sessies, totaal ${activiteiten.reduce((s, a) => s + (a.duration || 0), 0)} min` : 'Geen trainingen afgelopen week',
       trainingsHistorie,
+      performanceContext,
       garminContext,
     ].filter(Boolean).join('\n')
 
