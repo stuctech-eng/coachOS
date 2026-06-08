@@ -149,11 +149,11 @@ export async function POST() {
       checkin ? `Check-in: gevoel ${checkin.feeling_score}/10, energie ${checkin.energy_score}/10, stress ${(checkin as {stress_score?: number}).stress_score || '?'}/10, spierpijn ${(checkin as {soreness_score?: number}).soreness_score || '?'}/10` : 'Geen check-in vandaag',
       metrics ? `Gezondheid: HRV ${metrics.hrv || '?'}ms, hartslag ${metrics.resting_hr || '?'}bpm, slaap ${metrics.sleep_duration || '?'}u` : '',
       blessures.length > 0 ? `Actieve blessures: ${blessures.map(b => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ')}` : '',
-      lifeEvents.length > 0 ? `Levensgebeurtenissen: ${lifeEvents.map((e: {type: string; start_hour?: number|null; end_hour?: number|null; notes?: string|null}) => {
+      lifeEvents.length > 0 ? ('Levensgebeurtenissen: ' + lifeEvents.map((e: {type: string; start_hour?: number|null; end_hour?: number|null; notes?: string|null}) => {
         const tijd = e.start_hour !== null && e.start_hour !== undefined && e.end_hour !== null && e.end_hour !== undefined
-          ? \` \${String(e.start_hour).padStart(2,'0')}:00-\${String(e.end_hour).padStart(2,'0')}:00\` : ''
-        return e.type + tijd + (e.notes ? \` (\${e.notes})\` : '')
-      }).join(', ')}` : '',
+          ? ' ' + String(e.start_hour).padStart(2,'0') + ':00-' + String(e.end_hour).padStart(2,'0') + ':00' : ''
+        return e.type + tijd + (e.notes ? ' (' + e.notes + ')' : '')
+      }).join(', ')) : '',
       isWeekend ? 'Het is weekend — meer tijd beschikbaar voor training' : 'Het is een werkdag',
       goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',
       metrics7d.length > 0 ? `HRV trend: ${metrics7d.filter(m => m.hrv).map(m => m.hrv).join(' → ')}` : '',
