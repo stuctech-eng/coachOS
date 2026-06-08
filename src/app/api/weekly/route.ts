@@ -23,11 +23,17 @@ export async function GET() {
 
     const supabase = createAdminClient()
 
-    // Huidige week: maandag t/m zondag
+    // Toon altijd de afgesloten week
+    // Op maandag: vorige week (ma-zo). Andere dagen: lopende week als er data is, anders vorige week
     const now = new Date()
-    const dag = now.getDay()
+    const dag = now.getDay() // 0=zo, 1=ma, 2=di...
+    const dagVanMaandag = dag === 0 ? 6 : dag - 1 // dagen since maandag
+    
+    // Als het maandag is of de lopende week minder dan 2 dagen heeft: vorige week tonen
+    const toonVorigeWeek = dagVanMaandag <= 1
+    
     const maandag = new Date(now)
-    maandag.setDate(now.getDate() - (dag === 0 ? 6 : dag - 1))
+    maandag.setDate(now.getDate() - dagVanMaandag - (toonVorigeWeek ? 7 : 0))
     maandag.setHours(0, 0, 0, 0)
     const zondag = new Date(maandag)
     zondag.setDate(maandag.getDate() + 6)
@@ -78,7 +84,7 @@ export async function GET() {
     }, 0) / 1000
 
     return NextResponse.json({
-      week: { van: vanDatum, tot: totDatum },
+      week: { van: vanDatum, tot: totDatum, label: toonVorigeWeek ? 'Vorige week' : 'Deze week' },
       stats: {
         checkins: checkins.length,
         gem_gevoel: gemGevoel,
@@ -109,8 +115,10 @@ export async function POST() {
     // Haal week data op
     const now = new Date()
     const dag = now.getDay()
+    const dagVanMaandag = dag === 0 ? 6 : dag - 1
+    const toonVorigeWeek = dagVanMaandag <= 1
     const maandag = new Date(now)
-    maandag.setDate(now.getDate() - (dag === 0 ? 6 : dag - 1))
+    maandag.setDate(now.getDate() - dagVanMaandag - (toonVorigeWeek ? 7 : 0))
     const vanDatum = maandag.toISOString().split('T')[0]
     const zondag = new Date(maandag)
     zondag.setDate(maandag.getDate() + 6)
