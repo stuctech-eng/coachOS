@@ -124,8 +124,6 @@ export async function POST(req: NextRequest) {
     const memory = memoryRes.data || []
     const garminLatest = garminRes.data?.parsed_data || null
     const trainingen = trainingsRes.data || []
-    const garminLatest = garminRes.data?.parsed_data || null
-    const trainingen = trainingsRes.data || []
     const blessures = blessuresRes.data || []
     const lifeEvents = lifeEventsRes.data || []
     const metrics7d = metrics7dRes.data || []
