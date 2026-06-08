@@ -73,6 +73,8 @@ export async function POST() {
       activiteitenRes,
       blessuresRes,
       lifeEventsRes,
+      garminRes,
+      trainingsRes,
       goalsRes,
     ] = await Promise.all([
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -97,6 +99,8 @@ export async function POST() {
     const blessures = blessuresRes.data || []
     const lifeEvents = lifeEventsRes.data || []
     const goals = goalsRes.data || []
+    const garminLatest = garminRes.data?.parsed_data || null
+    const trainingen = trainingsRes.data || []
 
     // Bereken trends
     const scores = status7d.filter(s => s.coach_score).map(s => s.coach_score as number)
@@ -134,7 +138,9 @@ export async function POST() {
         const tijd = e.start_hour !== null && e.start_hour !== undefined ? ` ${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour).padStart(2,'0')}:00` : ''
         return e.type + tijd
       }).join(', ')}` : '',
-      goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',
+      garminLatest ? `Garmin: BB ${garminLatest.body_battery?.current || '?'}, slaap ${garminLatest.sleep?.score || '?'}/100, HRV ${garminLatest.hrv?.avg_7d_ms || '?'}ms, stress ${garminLatest.stress || '?'}` : '',
+      trainingen.length > 0 ? `Trainingen: ${trainingen.length} sessies` : '',
+      goals.length > 0 ? `Doelen: ${goals.map((g: {title: string}) => g.title).join(', ')}` : '',
     ].filter(Boolean).join('\n')
 
     const systemPrompt = `Je bent een data-gedreven sport coach die op basis van trends en patronen concrete voorspellingen maakt.
