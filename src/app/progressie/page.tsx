@@ -134,14 +134,13 @@ export default function ProgressiePage() {
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', weekStart(0)).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', maandGeleden.toISOString()).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).order('completed_at', { ascending: false }),
-      supabase.from('coach_recommendations').select('recommendation').eq('type', 'performance_ai').order('created_at', { ascending: false }).limit(1).single(),
+      fetch('/api/performance', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
 
     setGarmin(garminRes.data?.parsed_data || null)
-    try {
-      const rec = performanceRes.data?.recommendation
-      if (rec) setPerformance(JSON.parse(rec))
-    } catch { /* */ }
+    if (performanceRes && !performanceRes.error) {
+      setPerformance(performanceRes)
+    }
     setDagStatus(statusRes.data || null)
     setWeekResultaten(weekRes.data || [])
     setMaandResultaten(maandRes.data || [])
