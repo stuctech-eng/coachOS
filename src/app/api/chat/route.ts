@@ -370,3 +370,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Chat mislukt' }, { status: 500 })
   }
 }
+ 
+ 
