@@ -56,7 +56,7 @@ export async function POST() {
     zeven.setDate(zeven.getDate() - 7)
     const zevenDagenGeleden = zeven.toISOString().split('T')[0]
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, lifeEventsRes, blessuresRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -95,6 +95,14 @@ export async function POST() {
         .eq('completed', true)
         .order('completed_at', { ascending: false })
         .limit(5),
+      supabase.from('life_events')
+        .select('type, start_hour, end_hour, notes, recurrence, recurrence_days')
+        .eq('user_id', user.id)
+        .not('recurrence', 'is', null),
+      supabase.from('injuries')
+        .select('body_part, pain_score')
+        .eq('user_id', user.id)
+        .eq('active', true),
     ])
 
     const profile = profileRes.data
@@ -104,6 +112,25 @@ export async function POST() {
     const garminDatum = garminRes.data?.date || null
     const garminIsVandaag = garminDatum === vandaagAms
     const garminWeek = garminWeekRes.data || []
+    const lifeEvents = lifeEventsRes.data || []
+    const blessures = blessuresRes.data || []
+
+    const vandaagNummer = new Date().getDay()
+    const isWeekend = vandaagNummer === 0 || vandaagNummer === 6
+    const WERK_TYPES = ['nachtdienst', 'avonddienst', 'vroege_dienst', 'dagdienst', 'thuiswerken', 'lange_dag']
+    const werkEvents = lifeEvents.filter((e: {type: string; recurrence?: string|null; recurrence_days?: number[]|null}) =>
+      WERK_TYPES.includes(e.type) && (
+        e.recurrence === 'daily' ||
+        (e.recurrence === 'weekdays' && !isWeekend) ||
+        (e.recurrence_days && e.recurrence_days.includes(vandaagNummer))
+      )
+    )
+    const werkContext = werkEvents.length > 0
+      ? `Werktijden vandaag: ${werkEvents.map((e: {type: string; start_hour?: number|null; end_hour?: number|null}) => `${e.type} ${e.start_hour !== null && e.start_hour !== undefined ? `${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour).padStart(2,'0')}:00` : ''}`).join(', ')}`
+      : ''
+    const blessureContext = blessures.length > 0
+      ? `Actieve blessures: ${blessures.map((b: {body_part: string; pain_score: number}) => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ')}`
+      : ''
     const trainingsResultaten = trainingsRes.data || []
 
     // Trainingshistorie voor coach
@@ -194,7 +221,7 @@ export async function POST() {
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext
+    ) + garminContext + trainingsCoachContext + (werkContext ? '\n' + werkContext : '') + (blessureContext ? '\n' + blessureContext : '')
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
 

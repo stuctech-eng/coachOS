@@ -57,7 +57,7 @@ export async function POST() {
     const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
     const { dag, isWeekend, dagNummer } = getDagInfo()
 
-    const [profileRes, checkinRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes, garminRes] = await Promise.all([
+    const [profileRes, checkinRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes, garminRes, trainingsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -78,6 +78,12 @@ export async function POST() {
         .order('date', { ascending: false })
         .limit(1)
         .single(),
+      supabase.from('training_results')
+        .select('rating, actual_duration, completed_at')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .order('completed_at', { ascending: false })
+        .limit(5),
     ])
 
     const profile = profileRes.data
@@ -88,6 +94,13 @@ export async function POST() {
     const goals = goalsRes.data || []
     const herhalendeEvents = herhalendeEventsRes.data || []
     const garmin = garminRes.data?.parsed_data || null
+    const trainingen = trainingsRes.data || []
+    const gemRating = trainingen.filter((t: {rating: number|null}) => t.rating).length > 0
+      ? Math.round(trainingen.filter((t: {rating: number|null}) => t.rating).reduce((a: number, t: {rating: number|null}) => a + (t.rating || 0), 0) / trainingen.filter((t: {rating: number|null}) => t.rating).length * 10) / 10
+      : null
+    const trainingsContext = trainingen.length > 0
+      ? `Trainingshistorie: ${trainingen.length} sessies, gem. rating ${gemRating}/10`
+      : 'Nog geen trainingen'
     const garminDatum = garminRes.data?.date || null
     const garminIsVandaag = garminDatum === vandaagAms
 
@@ -143,6 +156,7 @@ export async function POST() {
         return e.type + tijden + notitie
       }).join(', ')}` : isWeekend ? 'Geen werkverplichtingen vandaag' : '',
       goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',
+      trainingsContext,
     ].filter(Boolean).join('\n')
 
     const systemPrompt = `Je bent een ervaren coach die een concreet dagplan maakt voor ${naam}.
@@ -161,6 +175,7 @@ INSTRUCTIES:
 - Houd rekening met blessures
 - Coach score onder 50: focus op herstel
 - Maak 3-5 concrete acties verspreid over de dag
+- Plan NOOIT activiteiten tijdens werktijd — als iemand 06:00-15:00 werkt, plan dan alleen voor 06:00 of na 15:00
 - Gebruik GEEN markdown, geen bold, geen bullets
 
 Reageer ALLEEN in dit JSON formaat:
