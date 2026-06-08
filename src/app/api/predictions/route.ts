@@ -85,7 +85,7 @@ export async function POST() {
       supabase.from('activity_sessions').select('date, duration, metrics').eq('user_id', user.id).gte('date', dertigDagenGeleden).order('date', { ascending: false }).limit(10),
       supabase.from('injuries').select('body_part, pain_score').eq('user_id', user.id).eq('active', true),
       supabase.from('life_events').select('type, start_time, recovery_impact, start_hour, end_hour').eq('user_id', user.id).gte('start_time', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()),
-      supabase.from('garmin_imports').select('parsed_data, date').eq('user_id', user.id).eq('status', 'confirmed').order('date', { ascending: false }).limit(3),
+      supabase.from('garmin_imports').select('parsed_data, date').eq('user_id', user.id).eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
       supabase.from('training_results').select('rating, actual_duration, completed_at').eq('user_id', user.id).eq('completed', true).order('completed_at', { ascending: false }).limit(5),
       supabase.from('user_goals').select('title').eq('user_id', user.id).eq('status', 'active'),
     ])
