@@ -47,13 +47,13 @@ export async function POST(req: NextRequest) {
       metrics7Res,
       activiteitenRes,
       memoryRes,
+      garminRes,
+      trainingsRes,
       blessuresRes,
       lifeEventsRes,
       herhalendeEventsRes,
       metrics7dRes,
       status7dRes,
-      garminRes,
-      trainingsRes,
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
@@ -221,6 +221,27 @@ export async function POST(req: NextRequest) {
       context.push(``)
     }
 
+    // Garmin
+    if (garminLatest) {
+      context.push(`GARMIN VANDAAG:`)
+      context.push(`Body Battery: ${garminLatest.body_battery?.current || '?'}/100`)
+      context.push(`Slaap: ${garminLatest.sleep?.score || '?'}/100, ${Math.round((garminLatest.sleep?.duration_minutes || 0) / 60 * 10) / 10}u`)
+      context.push(`HRV: ${garminLatest.hrv?.avg_7d_ms || '?'}ms (${garminLatest.hrv?.status || '?'})`)
+      context.push(`Rusthartslag: ${garminLatest.resting_hr || '?'} bpm`)
+      context.push(`Stress: ${garminLatest.stress || '?'}/100`)
+      context.push(``)
+    }
+
+    // Trainingshistorie
+    if (trainingen.length > 0) {
+      context.push(`TRAININGSHISTORIE (laatste ${trainingen.length} sessies):`)
+      trainingen.forEach((t: {rating: number|null; actual_duration: number|null; completed_at: string; notes: string|null}) => {
+        const datum = new Date(t.completed_at).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
+        context.push(`${datum}: rating ${t.rating || '?'}/10, ${t.actual_duration || '?'} min${t.notes ? ' - "' + t.notes + '"' : ''}`)
+      })
+      context.push(``)
+    }
+
     // Check-in
     if (checkin) {
       context.push(`CHECK-IN VANDAAG:`)
@@ -370,5 +391,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Chat mislukt' }, { status: 500 })
   }
 }
- 
- 
