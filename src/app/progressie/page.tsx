@@ -102,6 +102,15 @@ function berekenStreak(resultaten: TrainingResult[]): number {
 
 export default function ProgressiePage() {
   const [loading, setLoading] = useState(true)
+  const [performance, setPerformance] = useState<{
+    progressie_trend: string
+    consistentie: string
+    herstel_na_training: string
+    niveau_gereed: boolean
+    gem_rating: number | null
+    trainingen_per_week: number | null
+    samenvatting: string
+  } | null>(null)
   const [garmin, setGarmin] = useState<GarminData | null>(null)
   const [dagStatus, setDagStatus] = useState<DagStatus | null>(null)
   const [weekResultaten, setWeekResultaten] = useState<TrainingResult[]>([])
@@ -119,15 +128,20 @@ export default function ProgressiePage() {
     const maandGeleden = new Date()
     maandGeleden.setDate(maandGeleden.getDate() - 30)
 
-    const [garminRes, statusRes, weekRes, maandRes, alleRes] = await Promise.all([
+    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes] = await Promise.all([
       supabase.from('garmin_imports').select('parsed_data').eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
       supabase.from('daily_status').select('coach_score, recovery_score, status_color').eq('date', vandaag).single(),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', weekStart(0)).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', maandGeleden.toISOString()).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).order('completed_at', { ascending: false }),
+      supabase.from('coach_recommendations').select('recommendation').eq('type', 'performance_ai').order('created_at', { ascending: false }).limit(1).single(),
     ])
 
     setGarmin(garminRes.data?.parsed_data || null)
+    try {
+      const rec = performanceRes.data?.recommendation
+      if (rec) setPerformance(JSON.parse(rec))
+    } catch { /* */ }
     setDagStatus(statusRes.data || null)
     setWeekResultaten(weekRes.data || [])
     setMaandResultaten(maandRes.data || [])
@@ -380,6 +394,53 @@ export default function ProgressiePage() {
                   <Line type="monotone" dataKey="rating" stroke="#4ade80" strokeWidth={2} dot={{ r: 3, fill: '#4ade80' }} />
                 </LineChart>
               </ResponsiveContainer>
+            </Card>
+          </div>
+        )}
+
+        {/* ── Performance AI ──────────────────────────────────────── */}
+        {performance && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Performance AI</p>
+            <Card className="p-5">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Progressie trend</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {performance.progressie_trend === 'stijgend' && <TrendingUp size={16} className="text-green-400" />}
+                    {performance.progressie_trend === 'dalend' && <TrendingDown size={16} className="text-red-400" />}
+                    {performance.progressie_trend === 'stabiel' && <Minus size={16} className="text-slate-400" />}
+                    {performance.progressie_trend === 'onvoldoende_data' && <Minus size={16} className="text-slate-500" />}
+                    <p className={cn('text-sm font-semibold capitalize',
+                      performance.progressie_trend === 'stijgend' ? 'text-green-400' :
+                      performance.progressie_trend === 'dalend' ? 'text-red-400' : 'text-slate-400'
+                    )}>{performance.progressie_trend.replace('_', ' ')}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Consistentie</p>
+                  <p className={cn('text-sm font-semibold capitalize mt-1',
+                    performance.consistentie === 'hoog' ? 'text-green-400' :
+                    performance.consistentie === 'laag' ? 'text-red-400' : 'text-slate-400'
+                  )}>{performance.consistentie.replace('_', ' ')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Herstel na training</p>
+                  <p className={cn('text-sm font-semibold capitalize mt-1',
+                    performance.herstel_na_training === 'goed' ? 'text-green-400' :
+                    performance.herstel_na_training === 'slecht' ? 'text-red-400' : 'text-slate-400'
+                  )}>{performance.herstel_na_training.replace('_', ' ')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Niveau gereed</p>
+                  <p className={cn('text-sm font-semibold mt-1',
+                    performance.niveau_gereed ? 'text-green-400' : 'text-slate-400'
+                  )}>{performance.niveau_gereed ? 'Ja ✓' : 'Nog niet'}</p>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-coach-border">
+                <p className="text-xs text-slate-400 leading-relaxed">{performance.samenvatting}</p>
+              </div>
             </Card>
           </div>
         )}

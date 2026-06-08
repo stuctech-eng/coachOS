@@ -157,6 +157,21 @@ const SECTIES: Sectie[] = [
     ],
   },
   {
+    id: 'performance',
+    icoon: TrendingUp,
+    kleur: 'text-green-400',
+    titel: 'Performance AI',
+    intro: 'Performance AI analyseert je trainingsresultaten over tijd en geeft Coach AI concrete inzichten over je progressie.',
+    inhoud: [
+      'Performance AI kijkt naar drie dingen: progressie trend (worden je ratings beter?), consistentie (train je regelmatig genoeg?) en herstel na training (hoe herstelt je Body Battery de dag na een training?).',
+      'Progressie trend wordt bepaald door de gemiddelde rating van je laatste drie sessies te vergelijken met de drie daarvoor. Stijgend = gemiddelde is 0.5 punt of meer omhoog gegaan. Dalend = 0.5 punt of meer omlaag.',
+      'Consistentie kijkt naar het aantal trainingen per week over de afgelopen 30 dagen. Hoog = 3 of meer per week. Gemiddeld = 1.5 tot 3. Laag = minder dan 1.5.',
+      'Herstel na training vergelijkt je Body Battery de dag van training met de dag erna. Als je BB stijgt met 10+ punten na rust = goed herstel. Daalt het? Dan traint je lichaam zwaarder dan het aankan.',
+      'Niveau gereed combineert beide signalen: gem. rating ≥ 8 én Body Battery ≥ 70 → Trainer AI verhoogt automatisch het moeilijkheidsniveau bij de volgende sessie.',
+      'De analyse staat in de Progressie tab en wordt dagelijks gecached. Coach AI gebruikt de samenvatting in zijn dagelijkse analyse.',
+    ],
+  },
+  {
     id: 'blessures',
     icoon: Zap,
     kleur: 'text-amber-400',
