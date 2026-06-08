@@ -116,17 +116,25 @@ export async function POST() {
     zondag.setDate(maandag.getDate() + 6)
     const totDatum = zondag.toISOString().split('T')[0]
 
-    const [profileRes, checkinsRes, metricsRes, activiteitenRes] = await Promise.all([
+    const [profileRes, checkinsRes, metricsRes, activiteitenRes, garminRes, trainingsRes, blessuresRes, lifeEventsRes] = await Promise.all([
       supabase.from('profiles').select('first_name, display_name, experience_level, injury_history').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).gte('date', vanDatum).lte('date', totDatum).order('date'),
       supabase.from('health_metrics').select('*').eq('user_id', user.id).gte('date', vanDatum).lte('date', totDatum).order('date'),
       supabase.from('activity_sessions').select('date, duration, metrics, activities(name)').eq('user_id', user.id).gte('date', vanDatum).lte('date', totDatum),
+      supabase.from('garmin_imports').select('parsed_data, date').eq('user_id', user.id).eq('status', 'confirmed').gte('date', vanDatum).lte('date', totDatum).order('date'),
+      supabase.from('training_results').select('rating, actual_duration, completed_at, notes').eq('user_id', user.id).eq('completed', true).gte('completed_at', new Date(vanDatum).toISOString()).order('completed_at', { ascending: false }),
+      supabase.from('injuries').select('body_part, pain_score').eq('user_id', user.id).eq('active', true),
+      supabase.from('life_events').select('type, start_hour, end_hour, recurrence').eq('user_id', user.id).not('recurrence', 'is', null),
     ])
 
     const checkins = checkinsRes.data || []
     const metrics = metricsRes.data || []
     const activiteiten = activiteitenRes.data || []
     const profile = profileRes.data
+    const garminData = garminRes.data || []
+    const trainingen = trainingsRes.data || []
+    const blessures = blessuresRes.data || []
+    const lifeEvents = lifeEventsRes.data || []
     const naam = profile?.display_name || profile?.first_name || 'de gebruiker'
 
     if (checkins.length === 0 && metrics.length === 0 && activiteiten.length === 0) {

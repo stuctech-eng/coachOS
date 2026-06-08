@@ -27,14 +27,22 @@ export async function POST() {
     dertig.setDate(dertig.getDate() - 30)
     const vanDatum = dertig.toISOString().split('T')[0]
 
-    const [checkinsRes, metricsRes, activiteitenRes, statusRes] = await Promise.all([
+    const [checkinsRes, metricsRes, activiteitenRes, statusRes, garminRes, trainingsRes, blessuresRes, lifeEventsRes] = await Promise.all([
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('health_metrics').select('date, hrv, resting_hr, sleep_duration, steps').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('activity_sessions').select('date, duration, activities(name)').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('daily_status').select('date, coach_score, recovery_score, training_score, risk_flags').eq('user_id', user.id).gte('date', vanDatum).order('date'),
+      supabase.from('garmin_imports').select('parsed_data, date').eq('user_id', user.id).eq('status', 'confirmed').gte('date', vanDatum).order('date', { ascending: false }),
+      supabase.from('training_results').select('rating, actual_duration, completed_at, notes').eq('user_id', user.id).eq('completed', true).gte('completed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()).order('completed_at', { ascending: false }),
+      supabase.from('injuries').select('body_part, pain_score, notes').eq('user_id', user.id).eq('active', true),
+      supabase.from('life_events').select('type, start_hour, end_hour, recurrence, notes').eq('user_id', user.id).not('recurrence', 'is', null),
     ])
 
     const checkins = checkinsRes.data || []
+    const garminData = garminRes.data || []
+    const trainingen = trainingsRes.data || []
+    const blessures = blessuresRes.data || []
+    const lifeEvents = lifeEventsRes.data || []
     const metrics = metricsRes.data || []
     const activiteiten = activiteitenRes.data || []
     const statussen = statusRes.data || []
