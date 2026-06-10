@@ -191,17 +191,30 @@ export default function ProgressiePage() {
     setWeekGrafiek(grafiekData)
     setLoading(false)
 
-    // Laad voorspellingen apart zodat pagina niet blokkeert
+    // Laad voorspellingen — eerst localStorage, dan API
+    try {
+      const cached = localStorage.getItem('predictions_cache')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (parsed?.predictions) setPredictions(parsed.predictions)
+      }
+    } catch { /* */ }
+
     try {
       const predRes = await fetch('/api/predictions', { credentials: 'include' })
       const predData = predRes.ok ? await predRes.json() : null
       if (predData?.predictions) {
         setPredictions(predData.predictions)
+        try { localStorage.setItem('predictions_cache', JSON.stringify(predData)) } catch { /* */ }
       } else {
-        // Geen cache — genereer op achtergrond
         fetch('/api/predictions', { method: 'POST', credentials: 'include' })
           .then(r => r.ok ? r.json() : null)
-          .then(data => { if (data?.predictions) setPredictions(data.predictions) })
+          .then(data => {
+            if (data?.predictions) {
+              setPredictions(data.predictions)
+              try { localStorage.setItem('predictions_cache', JSON.stringify(data)) } catch { /* */ }
+            }
+          })
           .catch(() => {})
       }
     } catch { /* */ }
