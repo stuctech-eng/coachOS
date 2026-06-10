@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, TrendingDown, Minus, Dumbbell, Clock, Star, Zap, Battery, Moon, Trophy, Flame, BarChart2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Dumbbell, Clock, Star, Zap, Battery, Moon, Trophy, Flame, BarChart2 } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
@@ -102,6 +102,15 @@ function berekenStreak(resultaten: TrainingResult[]): number {
 
 export default function ProgressiePage() {
   const [loading, setLoading] = useState(true)
+  const [predictions, setPredictions] = useState<Array<{
+    titel: string; voorspelling: string; kans: number; actie: string; type: 'positief' | 'waarschuwing'
+  }> | null>(null)
+  const [loadData, setLoadData] = useState<{
+    cardio_load_7d: number; strength_load_7d: number; recovery_load_7d: number
+    total_load_7d: number; today_load: number; today_intensity: string
+    load_trend: string; load_trend_pct: number | null; last_heavy_session_days: number | null
+    samenvatting: string
+  } | null>(null)
   const [performance, setPerformance] = useState<{
     progressie_trend: string
     consistentie: string
@@ -128,18 +137,26 @@ export default function ProgressiePage() {
     const maandGeleden = new Date()
     maandGeleden.setDate(maandGeleden.getDate() - 30)
 
-    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes] = await Promise.all([
+    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes, predictionsRes, loadRes] = await Promise.all([
       supabase.from('garmin_imports').select('parsed_data').eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
       supabase.from('daily_status').select('coach_score, recovery_score, status_color').eq('date', vandaag).single(),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', weekStart(0)).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', maandGeleden.toISOString()).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).order('completed_at', { ascending: false }),
       fetch('/api/performance', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/predictions', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
 
     setGarmin(garminRes.data?.parsed_data || null)
     if (performanceRes && !performanceRes.error) {
       setPerformance(performanceRes)
+    }
+    if (predictionsRes?.predictions) {
+      setPredictions(predictionsRes.predictions)
+    }
+    if (loadRes && !loadRes.error) {
+      setLoadData(loadRes)
     }
     setDagStatus(statusRes.data || null)
     setWeekResultaten(weekRes.data || [])
@@ -394,6 +411,79 @@ export default function ProgressiePage() {
                 </LineChart>
               </ResponsiveContainer>
             </Card>
+          </div>
+        )}
+
+        {/* ── Trainingsbelasting ───────────────────────────────────────── */}
+        {loadData && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Trainingsbelasting</p>
+            <Card className="p-5">
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-blue-400">{loadData.cardio_load_7d}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Cardio</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-orange-400">{loadData.strength_load_7d}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Kracht</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-green-400">{loadData.recovery_load_7d}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Herstel</p>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-coach-border">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-slate-400">Totaal 7 dagen</p>
+                  <p className="text-sm font-bold text-white">{loadData.total_load_7d}</p>
+                </div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-slate-400">Vandaag</p>
+                  <p className={cn('text-sm font-semibold capitalize',
+                    loadData.today_intensity === 'hoog' || loadData.today_intensity === 'zeer hoog' ? 'text-orange-400' :
+                    loadData.today_intensity === 'gemiddeld' ? 'text-yellow-400' : 'text-green-400'
+                  )}>{loadData.today_intensity}</p>
+                </div>
+                {loadData.last_heavy_session_days !== null && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-slate-400">Laatste zware sessie</p>
+                    <p className="text-sm text-slate-300">{loadData.last_heavy_session_days}d geleden</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ── Voorspellingen ────────────────────────────────────────────── */}
+        {predictions && predictions.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Voorspellingen</p>
+            <div className="flex flex-col gap-2">
+              {predictions.map((p, i) => (
+                <div key={i} className={cn(
+                  'rounded-xl px-4 py-3 border',
+                  p.type === 'positief' ? 'bg-green-500/8 border-green-500/20' : 'bg-orange-500/8 border-orange-500/20'
+                )}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      {p.type === 'positief'
+                        ? <TrendingUp size={14} className="text-green-400" />
+                        : <AlertTriangle size={14} className="text-orange-400" />}
+                      <p className={cn('text-sm font-semibold',
+                        p.type === 'positief' ? 'text-green-400' : 'text-orange-400'
+                      )}>{p.titel}</p>
+                    </div>
+                    <span className={cn('text-xs font-mono',
+                      p.type === 'positief' ? 'text-green-500' : 'text-orange-500'
+                    )}>{p.kans}%</span>
+                  </div>
+                  <p className="text-slate-300 text-xs leading-relaxed mb-1">{p.voorspelling}</p>
+                  <p className="text-slate-500 text-xs">{p.actie}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

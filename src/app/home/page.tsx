@@ -302,35 +302,69 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Coach Advies */}
+        {/* Vandaag van je Coach */}
         <Card className="p-5">
-          <div className="flex items-center gap-2 text-primary-400 mb-3">
-            <Sparkles size={18} />
-            <span className="text-sm font-medium">Advies voor vandaag</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 text-primary-400">
+              <Sparkles size={18} />
+              <span className="text-sm font-medium">Vandaag van je Coach</span>
+            </div>
+            <button onClick={genereerDagplan} disabled={generatingPlan}
+              className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50">
+              <RefreshCw size={14} className={cn('text-slate-400', generatingPlan && 'animate-spin')} />
+            </button>
           </div>
+
+          {/* Advies */}
           {recommendation ? (
             <>
-              <p className="text-lg font-semibold text-white leading-snug mb-3">
+              <p className="text-base font-semibold text-white leading-snug mb-2">
                 {recommendation.recommendation}
               </p>
               <button onClick={() => setShowReasoning(!showReasoning)}
-                className="flex items-center gap-2 text-sm text-primary-400">
-                {showReasoning ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                className="flex items-center gap-2 text-sm text-primary-400 mb-4">
+                {showReasoning ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 Waarom?
               </button>
               {showReasoning && recommendation.reasoning && (
-                <div className="bg-slate-800/50 rounded-xl p-4 mt-3">
+                <div className="bg-slate-800/50 rounded-xl p-4 mb-4">
                   <p className="text-slate-300 text-sm leading-relaxed">{recommendation.reasoning}</p>
                 </div>
               )}
             </>
           ) : !hasCheckin ? (
-            <p className="text-slate-400 text-sm">Doe eerst je ochtend check-in voor persoonlijk advies.</p>
+            <p className="text-slate-400 text-sm mb-4">Doe eerst je check-in voor persoonlijk advies.</p>
           ) : (
-            <Button onClick={generateAdvice} loading={isGenerating} fullWidth>
-              {isGenerating ? 'Coach denkt na...' : 'Genereer advies'}
-            </Button>
+            <div className="mb-4">
+              <Button onClick={generateAdvice} loading={isGenerating} fullWidth>
+                {isGenerating ? 'Coach denkt na...' : 'Genereer advies'}
+              </Button>
+            </div>
           )}
+
+          {/* Dagplan */}
+          <div className="border-t border-coach-border pt-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Dagplan</p>
+            {generatingPlan ? (
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3].map(i => <div key={i} className="h-10 bg-slate-800 rounded-xl animate-pulse" />)}
+              </div>
+            ) : actionPlan && actionPlan.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {actionPlan.map((item, i) => (
+                  <div key={i} className="flex items-start gap-3 bg-slate-800/50 rounded-xl px-3 py-2.5">
+                    <span className="text-xs text-primary-400 font-mono font-semibold flex-shrink-0 mt-0.5 w-10">{item.tijd}</span>
+                    <p className="text-sm text-slate-200 leading-snug">{item.actie}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <button onClick={genereerDagplan} disabled={generatingPlan}
+                className="w-full py-2.5 bg-slate-800 text-slate-300 rounded-xl text-sm active:bg-slate-700 disabled:opacity-50">
+                {generatingPlan ? 'Bezig...' : 'Maak dagplan'}
+              </button>
+            )}
+          </div>
         </Card>
 
         {/* Check-in */}
@@ -413,41 +447,7 @@ export default function HomePage() {
           </Card>
         </Link>
 
-        {/* Dagplan */}
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-primary-400">
-              <Clock size={18} />
-              <span className="text-sm font-medium">Dagplan</span>
-            </div>
-            <button onClick={genereerDagplan} disabled={generatingPlan}
-              className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50">
-              <RefreshCw size={14} className={cn('text-slate-400', generatingPlan && 'animate-spin')} />
-            </button>
-          </div>
-          {generatingPlan ? (
-            <div className="flex flex-col gap-2">
-              {[1, 2, 3].map(i => <div key={i} className="h-10 bg-slate-800 rounded-xl animate-pulse" />)}
-            </div>
-          ) : actionPlan && actionPlan.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {actionPlan.map((item, i) => (
-                <div key={i} className="flex items-start gap-3 bg-slate-800/50 rounded-xl px-3 py-2.5">
-                  <span className="text-xs text-primary-400 font-mono font-semibold flex-shrink-0 mt-0.5 w-10">{item.tijd}</span>
-                  <p className="text-sm text-slate-200 leading-snug">{item.actie}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-2">
-              <p className="text-slate-400 text-sm mb-3">Genereer je dagplan op basis van je data</p>
-              <button onClick={genereerDagplan} disabled={generatingPlan}
-                className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm active:bg-primary-700 disabled:opacity-50">
-                {generatingPlan ? 'Bezig...' : 'Maak dagplan'}
-              </button>
-            </div>
-          )}
-        </Card>
+
 
         {/* Snelle links */}
         <div className="grid grid-cols-2 gap-3">
