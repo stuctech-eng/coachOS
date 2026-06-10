@@ -56,7 +56,7 @@ export async function POST() {
     zeven.setDate(zeven.getDate() - 7)
     const zevenDagenGeleden = zeven.toISOString().split('T')[0]
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, lifeEventsRes, blessuresRes] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, lifeEventsRes, blessuresRes, loadRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -103,6 +103,7 @@ export async function POST() {
         .select('body_part, pain_score')
         .eq('user_id', user.id)
         .eq('active', true),
+      fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
 
     const profile = profileRes.data
@@ -112,6 +113,10 @@ export async function POST() {
     const garminDatum = garminRes.data?.date || null
     const garminIsVandaag = garminDatum === vandaagAms
     const garminWeek = garminWeekRes.data || []
+    const loadData = loadRes && !loadRes.error ? loadRes : null
+    const loadContext = loadData
+      ? `Trainingsbelasting: cardio ${loadData.cardio_load_7d}, kracht ${loadData.strength_load_7d}, totaal ${loadData.total_load_7d}. Trend: ${loadData.load_trend}. Vandaag: ${loadData.today_intensity}.${loadData.last_heavy_session_days !== null ? ` Laatste zware sessie: ${loadData.last_heavy_session_days} dag(en) geleden.` : ''}`
+      : ''
     const lifeEvents = lifeEventsRes.data || []
     const blessures = blessuresRes.data || []
 
@@ -221,7 +226,7 @@ export async function POST() {
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext + (werkContext ? '\n' + werkContext : '') + (blessureContext ? '\n' + blessureContext : '')
+    ) + garminContext + trainingsCoachContext + (loadContext ? '\n' + loadContext : '') + (werkContext ? '\n' + werkContext : '') + (blessureContext ? '\n' + blessureContext : '')
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
 

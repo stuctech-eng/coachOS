@@ -76,7 +76,7 @@ export async function POST() {
     const zeven = new Date()
     zeven.setDate(zeven.getDate() - 7)
 
-    const [profileRes, statusRes, checkinRes, metricsRes, blessuresRes, lifeEventsRes, goalsRes, metrics7dRes, activiteitenRes, trainingsRes, garminRes, performanceRes] = await Promise.all([
+    const [profileRes, statusRes, checkinRes, metricsRes, blessuresRes, lifeEventsRes, goalsRes, metrics7dRes, activiteitenRes, trainingsRes, garminRes, performanceRes, loadRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -117,6 +117,7 @@ export async function POST() {
         .order('created_at', { ascending: false })
         .limit(1)
         .single(),
+      fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
 
     const status = statusRes.data
@@ -128,6 +129,10 @@ export async function POST() {
     const metrics7d = metrics7dRes.data || []
     const activiteiten = activiteitenRes.data || []
     const trainingen = trainingsRes.data || []
+    const loadData = loadRes && !loadRes.error ? loadRes : null
+    const loadContext = loadData
+      ? `Trainingsbelasting 7 dagen: cardio ${loadData.cardio_load_7d}, kracht ${loadData.strength_load_7d}, totaal ${loadData.total_load_7d}. Trend: ${loadData.load_trend}${loadData.load_trend_pct !== null ? ` (${loadData.load_trend_pct > 0 ? '+' : ''}${loadData.load_trend_pct}%)` : ''}. Vandaag: ${loadData.today_intensity} (${loadData.today_load}).${loadData.last_heavy_session_days !== null ? ` Laatste zware sessie: ${loadData.last_heavy_session_days} dag(en) geleden.` : ''}`
+      : ''
     const performance = (() => {
       try {
         const rec = performanceRes.data?.recommendation
@@ -171,6 +176,7 @@ export async function POST() {
       goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',
       metrics7d.length > 0 ? `HRV trend: ${metrics7d.filter(m => m.hrv).map(m => m.hrv).join(' → ')}` : '',
       activiteiten.length > 0 ? `Trainingen afgelopen week: ${activiteiten.length} sessies, totaal ${activiteiten.reduce((s, a) => s + (a.duration || 0), 0)} min` : 'Geen trainingen afgelopen week',
+      loadContext,
       trainingsHistorie,
       performanceContext,
       garminContext,

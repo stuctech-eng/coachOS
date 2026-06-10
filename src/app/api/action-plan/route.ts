@@ -57,7 +57,7 @@ export async function POST() {
     const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
     const { dag, isWeekend, dagNummer } = getDagInfo()
 
-    const [profileRes, checkinRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes, garminRes, trainingsRes] = await Promise.all([
+    const [profileRes, checkinRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes, garminRes, trainingsRes, loadRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -84,6 +84,7 @@ export async function POST() {
         .eq('completed', true)
         .order('completed_at', { ascending: false })
         .limit(5),
+      fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
 
     const profile = profileRes.data
@@ -94,6 +95,10 @@ export async function POST() {
     const goals = goalsRes.data || []
     const herhalendeEvents = herhalendeEventsRes.data || []
     const garmin = garminRes.data?.parsed_data || null
+    const loadData = loadRes && !loadRes.error ? loadRes : null
+    const loadContext = loadData
+      ? `Trainingsbelasting 7 dagen: cardio ${loadData.cardio_load_7d}, kracht ${loadData.strength_load_7d}, totaal ${loadData.total_load_7d}. Trend: ${loadData.load_trend}. Vandaag: ${loadData.today_intensity}.${loadData.last_heavy_session_days !== null ? ` Laatste zware sessie: ${loadData.last_heavy_session_days} dag(en) geleden.` : ''}`
+      : ''
     const trainingen = trainingsRes.data || []
     const gemRating = trainingen.filter((t: {rating: number|null}) => t.rating).length > 0
       ? Math.round(trainingen.filter((t: {rating: number|null}) => t.rating).reduce((a: number, t: {rating: number|null}) => a + (t.rating || 0), 0) / trainingen.filter((t: {rating: number|null}) => t.rating).length * 10) / 10
@@ -156,6 +161,7 @@ export async function POST() {
         return e.type + tijden + notitie
       }).join(', ')}` : isWeekend ? 'Geen werkverplichtingen vandaag' : '',
       goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',
+      loadContext,
       trainingsContext,
     ].filter(Boolean).join('\n')
 
