@@ -120,6 +120,8 @@ export default function GarminImportPage() {
         body: formData,
       })
       if (!res.ok) throw new Error()
+      // Herbereken Coach Score met nieuwe Garmin data
+      fetch('/api/status', { method: 'POST', credentials: 'include' }).catch(() => {})
       setPhase('done')
     } catch {
       setErrorMsg('Bevestigen mislukt. Probeer opnieuw.')

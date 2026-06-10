@@ -86,8 +86,27 @@ export default function HomePage() {
           .order('date', { ascending: false })
           .limit(1)
           .single()
-        setGarminImported(vandaagData?.date === vandaagAms)
+        const isVandaag = vandaagData?.date === vandaagAms
+        setGarminImported(isVandaag)
         setGarminDatum(vandaagData?.date ?? null)
+
+        // Als Garmin van vandaag is, check of Coach Score ook van vandaag is
+        // Zo niet — herbereken stilletjes op de achtergrond
+        if (isVandaag) {
+          const scoreDatum = window.localStorage.getItem('coach_status_datum')
+          if (scoreDatum !== vandaagAms) {
+            fetch('/api/status', { method: 'POST', credentials: 'include' })
+              .then(r => r.json())
+              .then(data => {
+                if (data?.score !== undefined) {
+                  window.localStorage.setItem('coach_status_datum', vandaagAms)
+                  window.localStorage.setItem('coach_status_data', JSON.stringify(data))
+                  setCoachStatus({ ...data, date: vandaagAms })
+                }
+              })
+              .catch(() => {})
+          }
+        }
       } catch {
         setGarminImported(true)
         setGarminDatum(null)
