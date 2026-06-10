@@ -21,13 +21,18 @@ export async function GET() {
     const user = await getUser()
     if (!user) return NextResponse.json({ predictions: null })
     const supabase = createAdminClient()
-    const today = new Date().toISOString().split('T')[0]
+    // Voorspellingen zijn per week geldig — zoek op maandag van deze week
+    const now = new Date()
+    const dag = now.getDay()
+    const maandag = new Date(now)
+    maandag.setDate(now.getDate() - (dag === 0 ? 6 : dag - 1))
+    const maandagStr = maandag.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
     const { data } = await supabase
       .from('coach_recommendations')
       .select('predictions')
       .eq('user_id', user.id)
-      .eq('date', today)
+      .eq('date', maandagStr)
       .eq('type', 'predictions')
       .single()
 
