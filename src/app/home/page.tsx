@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Zap, Camera, BookOpen } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Camera, BookOpen } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -239,12 +239,12 @@ export default function HomePage() {
                   const gisterenAms = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
                   // garminImported = vandaag bevestigd
                   // We need to also check if it was yesterday
-                  const _vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-                  const _gisterenAms = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-                  if (garminDatum === _vandaagAms) {
+                  const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+                  const gisterenStr = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+                  if (garminDatum === vandaagStr) {
                     return <div className="w-2 h-2 rounded-full bg-green-400" title="Garmin import vandaag ✓" />
                   }
-                  if (garminDatum === _gisterenAms) {
+                  if (garminDatum === gisterenStr) {
                     return <div className="w-2 h-2 rounded-full bg-amber-400" title="Garmin import van gisteren" />
                   }
                   return <div className="w-2 h-2 rounded-full bg-slate-500" title="Geen recente Garmin data" />
