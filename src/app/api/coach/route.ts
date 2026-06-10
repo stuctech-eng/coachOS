@@ -56,7 +56,7 @@ export async function POST() {
     zeven.setDate(zeven.getDate() - 7)
     const zevenDagenGeleden = zeven.toISOString().split('T')[0]
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, lifeEventsRes, blessuresRes, loadRes] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, lifeEventsRes, blessuresRes, journalRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -103,7 +103,11 @@ export async function POST() {
         .select('body_part, pain_score')
         .eq('user_id', user.id)
         .eq('active', true),
-      fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      supabase.from('journal_entries')
+        .select('energy, stress, motivation, note, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(3),
     ])
 
     const profile = profileRes.data
@@ -113,10 +117,16 @@ export async function POST() {
     const garminDatum = garminRes.data?.date || null
     const garminIsVandaag = garminDatum === vandaagAms
     const garminWeek = garminWeekRes.data || []
-    const loadData = loadRes && !loadRes.error ? loadRes : null
-    const loadContext = loadData
-      ? `Trainingsbelasting: cardio ${loadData.cardio_load_7d}, kracht ${loadData.strength_load_7d}, totaal ${loadData.total_load_7d}. Trend: ${loadData.load_trend}. Vandaag: ${loadData.today_intensity}.${loadData.last_heavy_session_days !== null ? ` Laatste zware sessie: ${loadData.last_heavy_session_days} dag(en) geleden.` : ''}`
+    const journalEntries = journalRes.data || []
+    const journalContext = journalEntries.length > 0
+      ? `Dagboek (laatste ${journalEntries.length} notities):\n` + journalEntries.map((j: {energy?: number|null; stress?: number|null; motivation?: number|null; note?: string|null; created_at: string}) => {
+          const tijd = new Date(j.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
+          const datum = new Date(j.created_at).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Amsterdam' })
+          const scores = [j.energy ? 'energie ' + j.energy : '', j.stress ? 'stress ' + j.stress : '', j.motivation ? 'motivatie ' + j.motivation : ''].filter(Boolean).join(', ')
+          return datum + ' ' + tijd + (scores ? ': ' + scores : '') + (j.note ? ' — "' + j.note + '"' : '')
+        }).join('\n')
       : ''
+    const loadContext = ''
     const lifeEvents = lifeEventsRes.data || []
     const blessures = blessuresRes.data || []
 
@@ -226,7 +236,7 @@ export async function POST() {
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext + (loadContext ? '\n' + loadContext : '') + (werkContext ? '\n' + werkContext : '') + (blessureContext ? '\n' + blessureContext : '')
+    ) + garminContext + trainingsCoachContext + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (werkContext ? '\n' + werkContext : '') + (blessureContext ? '\n' + blessureContext : '')
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
 

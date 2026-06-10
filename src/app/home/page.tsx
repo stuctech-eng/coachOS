@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Zap, Camera } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Zap, Camera, BookOpen } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -11,14 +11,6 @@ import { Card, Button } from '@/components/ui'
 import { getGreeting, formatDate } from '@/utils'
 import { cn } from '@/utils'
 import { createBrowserClient } from '@supabase/ssr'
-
-interface Prediction {
-  titel: string
-  voorspelling: string
-  kans: number
-  actie: string
-  type: 'positief' | 'waarschuwing'
-}
 
 function getScoreLabel(score: number | null): string {
   if (!score) return '—'
@@ -57,8 +49,6 @@ export default function HomePage() {
   const [berekenend, setBerekenend] = useState(false)
   const [laden, setLaden] = useState(true)
   const [generatingPlan, setGeneratingPlan] = useState(false)
-  const [predictions, setPredictions] = useState<Prediction[] | null>(null)
-  const [generatingPredictions, setGeneratingPredictions] = useState(false)
   const [garminImported, setGarminImported] = useState(true) // default true = geen banner
   const [garminDatum, setGarminDatum] = useState<string | null>(null)
 
@@ -172,31 +162,7 @@ export default function HomePage() {
     }
   }, [])
 
-  // Laad voorspellingen
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const opgeslaanDatum = window.localStorage.getItem('predictions_datum')
-        const opgeslaanPredictions = window.localStorage.getItem('predictions_data')
-        if (opgeslaanDatum === vandaag && opgeslaanPredictions) {
-          setPredictions(JSON.parse(opgeslaanPredictions))
-          return
-        }
-      } catch { /* */ }
-    }
-    fetch('/api/predictions')
-      .then(r => r.json())
-      .then(data => {
-        if (data.predictions) {
-          setPredictions(data.predictions)
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem('predictions_data', JSON.stringify(data.predictions))
-            window.localStorage.setItem('predictions_datum', vandaag)
-          }
-        }
-      })
-      .catch(() => {})
-  }, [])
+
 
   const berekenCoachScore = async () => {
     setBerekenend(true)
@@ -228,21 +194,7 @@ export default function HomePage() {
     finally { setGeneratingPlan(false) }
   }
 
-  const genereerVoorspellingen = async () => {
-    setGeneratingPredictions(true)
-    try {
-      const res = await fetch('/api/predictions', { method: 'POST' })
-      const data = await res.json()
-      if (data.predictions) {
-        setPredictions(data.predictions)
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('predictions_data', JSON.stringify(data.predictions))
-          window.localStorage.setItem('predictions_datum', vandaag)
-        }
-      }
-    } catch { /* */ }
-    finally { setGeneratingPredictions(false) }
-  }
+
 
   return (
     <AppShell>
@@ -441,60 +393,25 @@ export default function HomePage() {
           </Card>
         )}
 
-        {/* Voorspellingen */}
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-primary-400">
-              <Zap size={18} />
-              <span className="text-sm font-medium">Voorspellingen</span>
-            </div>
-            <button onClick={genereerVoorspellingen} disabled={generatingPredictions}
-              className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50">
-              <RefreshCw size={14} className={cn('text-slate-400', generatingPredictions && 'animate-spin')} />
-            </button>
-          </div>
-          {generatingPredictions ? (
-            <div className="flex flex-col gap-2">
-              {[1, 2, 3].map(i => <div key={i} className="h-16 bg-slate-800 rounded-xl animate-pulse" />)}
-            </div>
-          ) : predictions && predictions.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {predictions.map((p, i) => (
-                <div key={i} className={cn(
-                  'rounded-xl px-4 py-3 border',
-                  p.type === 'positief'
-                    ? 'bg-green-500/8 border-green-500/20'
-                    : 'bg-orange-500/8 border-orange-500/20'
-                )}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      {p.type === 'positief'
-                        ? <TrendingUp size={14} className="text-green-400" />
-                        : <AlertTriangle size={14} className="text-orange-400" />
-                      }
-                      <p className={cn('text-sm font-semibold',
-                        p.type === 'positief' ? 'text-green-400' : 'text-orange-400'
-                      )}>{p.titel}</p>
-                    </div>
-                    <span className={cn('text-xs font-mono',
-                      p.type === 'positief' ? 'text-green-500' : 'text-orange-500'
-                    )}>{p.kans}%</span>
-                  </div>
-                  <p className="text-slate-300 text-xs leading-relaxed mb-1">{p.voorspelling}</p>
-                  <p className="text-slate-500 text-xs">{p.actie}</p>
+
+
+        {/* Dagboek knop */}
+        <Link href="/dagboek">
+          <Card className="px-5 py-4 border border-slate-700/50 active:bg-slate-800/80 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                  <BookOpen size={16} className="text-violet-400" />
                 </div>
-              ))}
+                <div>
+                  <p className="text-white font-semibold text-sm">Dagboek</p>
+                  <p className="text-slate-400 text-xs mt-0.5">Hoe was je dag?</p>
+                </div>
+              </div>
+              <ChevronDown size={16} className="text-slate-500 -rotate-90" />
             </div>
-          ) : (
-            <div className="text-center py-2">
-              <p className="text-slate-400 text-sm mb-3">Voorspellingen op basis van jouw trends</p>
-              <button onClick={genereerVoorspellingen} disabled={generatingPredictions}
-                className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm active:bg-primary-700 disabled:opacity-50">
-                {generatingPredictions ? 'Bezig...' : 'Genereer voorspellingen'}
-              </button>
-            </div>
-          )}
-        </Card>
+          </Card>
+        </Link>
 
         {/* Dagplan */}
         <Card className="p-5">

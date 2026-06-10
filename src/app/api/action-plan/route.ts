@@ -57,7 +57,7 @@ export async function POST() {
     const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
     const { dag, isWeekend, dagNummer } = getDagInfo()
 
-    const [profileRes, checkinRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes, garminRes, trainingsRes, loadRes] = await Promise.all([
+    const [profileRes, checkinRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes, garminRes, trainingsRes, journalRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -84,7 +84,11 @@ export async function POST() {
         .eq('completed', true)
         .order('completed_at', { ascending: false })
         .limit(5),
-      fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      supabase.from('journal_entries')
+        .select('energy, stress, motivation, note, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(3),
     ])
 
     const profile = profileRes.data
@@ -95,11 +99,17 @@ export async function POST() {
     const goals = goalsRes.data || []
     const herhalendeEvents = herhalendeEventsRes.data || []
     const garmin = garminRes.data?.parsed_data || null
-    const loadData = loadRes && !loadRes.error ? loadRes : null
-    const loadContext = loadData
-      ? `Trainingsbelasting 7 dagen: cardio ${loadData.cardio_load_7d}, kracht ${loadData.strength_load_7d}, totaal ${loadData.total_load_7d}. Trend: ${loadData.load_trend}. Vandaag: ${loadData.today_intensity}.${loadData.last_heavy_session_days !== null ? ` Laatste zware sessie: ${loadData.last_heavy_session_days} dag(en) geleden.` : ''}`
-      : ''
+    const loadContext = ''
     const trainingen = trainingsRes.data || []
+    const journalEntries = journalRes.data || []
+    const journalContext = journalEntries.length > 0
+      ? `Dagboek (laatste ${journalEntries.length} notities):\n` + journalEntries.map((j: {energy?: number|null; stress?: number|null; motivation?: number|null; note?: string|null; created_at: string}) => {
+          const tijd = new Date(j.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' })
+          const datum = new Date(j.created_at).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Amsterdam' })
+          const scores = [j.energy ? 'energie ' + j.energy : '', j.stress ? 'stress ' + j.stress : '', j.motivation ? 'motivatie ' + j.motivation : ''].filter(Boolean).join(', ')
+          return datum + ' ' + tijd + (scores ? ': ' + scores : '') + (j.note ? ' — "' + j.note + '"' : '')
+        }).join('\n')
+      : ''
     const gemRating = trainingen.filter((t: {rating: number|null}) => t.rating).length > 0
       ? Math.round(trainingen.filter((t: {rating: number|null}) => t.rating).reduce((a: number, t: {rating: number|null}) => a + (t.rating || 0), 0) / trainingen.filter((t: {rating: number|null}) => t.rating).length * 10) / 10
       : null
@@ -161,6 +171,7 @@ export async function POST() {
         return e.type + tijden + notitie
       }).join(', ')}` : isWeekend ? 'Geen werkverplichtingen vandaag' : '',
       goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',
+      journalContext,
       loadContext,
       trainingsContext,
     ].filter(Boolean).join('\n')
