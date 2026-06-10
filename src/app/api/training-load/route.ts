@@ -195,7 +195,7 @@ export async function GET() {
     // Strava activiteiten
     for (const act of activiteiten) {
       const datum = act.date
-      const naam = (act.activities as { name: string } | null)?.name || 'default'
+      const naam = (act.activities as unknown as { name: string } | null)?.name || 'default'
       const duur = act.duration || 0
       const hr = act.metrics?.avg_hr || null
       const load = berekenSessieLoad(duur, naam, hr)
@@ -238,7 +238,7 @@ export async function GET() {
     // Gedetailleerde 7d loads
     let cardio7d = 0, strength7d = 0, recovery7d = 0
     for (const act of activiteiten.filter(a => zevenDatums.includes(a.date))) {
-      const naam = (act.activities as { name: string } | null)?.name || 'default'
+      const naam = (act.activities as unknown as { name: string } | null)?.name || 'default'
       const sl = berekenSessieLoad(act.duration || 0, naam, act.metrics?.avg_hr || null)
       cardio7d += sl.cardio_load; strength7d += sl.strength_load; recovery7d += sl.recovery_load
     }
