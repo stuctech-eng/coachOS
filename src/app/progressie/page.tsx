@@ -152,7 +152,7 @@ export default function ProgressiePage() {
     const maandGeleden = new Date()
     maandGeleden.setDate(maandGeleden.getDate() - 30)
 
-    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes, memoryRes, predictionsRes, loadRes] = await Promise.all([
+    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes, memoryRes, _predictionsRes, loadRes] = await Promise.all([
       supabase.from('garmin_imports').select('parsed_data').eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
       supabase.from('daily_status').select('recovery_score').eq('date', vandaag).single(),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', weekStart(0)).order('completed_at', { ascending: false }),
@@ -160,7 +160,7 @@ export default function ProgressiePage() {
       supabase.from('training_results').select('*').eq('completed', true).order('completed_at', { ascending: false }),
       fetch('/api/performance', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/memory', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/predictions', { method: 'POST', credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      Promise.resolve(null), // predictions laden apart
       fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
 
@@ -172,7 +172,6 @@ export default function ProgressiePage() {
 
     if (performanceRes && !performanceRes.error) setPerformance(performanceRes)
     if (Array.isArray(memoryRes) && memoryRes.length > 0) setInzichten(memoryRes.slice(0, 5))
-    if (predictionsRes?.predictions) setPredictions(predictionsRes.predictions)
     if (loadRes && !loadRes.error) setLoadData(loadRes)
 
     const grafiekData = []
@@ -191,6 +190,21 @@ export default function ProgressiePage() {
     }
     setWeekGrafiek(grafiekData)
     setLoading(false)
+
+    // Laad voorspellingen apart zodat pagina niet blokkeert
+    try {
+      const predRes = await fetch('/api/predictions', { credentials: 'include' })
+      const predData = predRes.ok ? await predRes.json() : null
+      if (predData?.predictions) {
+        setPredictions(predData.predictions)
+      } else {
+        // Geen cache — genereer op achtergrond
+        fetch('/api/predictions', { method: 'POST', credentials: 'include' })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data?.predictions) setPredictions(data.predictions) })
+          .catch(() => {})
+      }
+    } catch { /* */ }
   }, [])
 
   useEffect(() => { laadData() }, [laadData])
