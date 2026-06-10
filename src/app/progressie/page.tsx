@@ -53,7 +53,8 @@ interface Prediction {
 }
 
 interface Inzicht {
-  observation: string
+  content: string
+  observation?: string
 }
 
 function weekStart(offset = 0): string {
@@ -170,7 +171,7 @@ export default function ProgressiePage() {
     setAlleResultaten(alleRes.data || [])
 
     if (performanceRes && !performanceRes.error) setPerformance(performanceRes)
-    if (memoryRes?.observations) setInzichten(memoryRes.observations.slice(0, 5))
+    if (Array.isArray(memoryRes) && memoryRes.length > 0) setInzichten(memoryRes.slice(0, 5))
     if (predictionsRes?.predictions) setPredictions(predictionsRes.predictions)
     if (loadRes && !loadRes.error) setLoadData(loadRes)
 
@@ -337,7 +338,7 @@ export default function ProgressiePage() {
                 {inzichten.map((ins, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary-400 mt-2 flex-shrink-0" />
-                    <p className="text-sm text-slate-300 leading-relaxed">{ins.observation}</p>
+                    <p className="text-sm text-slate-300 leading-relaxed">{ins.content || ins.observation}</p>
                   </div>
                 ))}
               </div>
