@@ -318,9 +318,32 @@ export default function HomePage() {
           {/* Advies */}
           {recommendation ? (
             <>
-              <p className="text-base font-semibold text-white leading-snug mb-2">
+              <p className="text-base font-semibold text-white leading-snug mb-3">
                 {recommendation.recommendation}
               </p>
+
+              {/* Actieknop */}
+              {(() => {
+                const actie = (recommendation as {actie_type?: string}).actie_type || 'herstel'
+                const config = {
+                  trainen: { label: 'Start Training', kleur: 'bg-green-500 active:bg-green-600', route: '/training' },
+                  herstel: { label: 'Start Herstel', kleur: 'bg-blue-500 active:bg-blue-600', route: '/training' },
+                  rust: { label: 'Rust vandaag', kleur: 'bg-slate-600 active:bg-slate-700', route: null },
+                }[actie] || { label: 'Start', kleur: 'bg-primary-500', route: '/training' }
+                return config.route ? (
+                  <button
+                    onClick={() => router.push(config.route!)}
+                    className={`w-full py-3 rounded-xl text-sm font-semibold text-white mb-3 ${config.kleur}`}
+                  >
+                    {config.label}
+                  </button>
+                ) : (
+                  <div className="w-full py-3 rounded-xl text-sm font-semibold text-slate-400 bg-slate-800 text-center mb-3">
+                    {config.label} ✓
+                  </div>
+                )
+              })()}
+
               <button onClick={() => setShowReasoning(!showReasoning)}
                 className="flex items-center gap-2 text-sm text-primary-400 mb-4">
                 {showReasoning ? <ChevronUp size={14} /> : <ChevronDown size={14} />}

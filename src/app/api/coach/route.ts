@@ -256,6 +256,7 @@ export async function POST() {
 
     let recommendation = 'Een rustige wandeling van 30 minuten'
     let reasoning = 'Op basis van je herstelstatus is lichte beweging de beste keuze vandaag.'
+    let actie_type: 'trainen' | 'herstel' | 'rust' = 'herstel'
 
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/)
@@ -263,6 +264,9 @@ export async function POST() {
         const parsed = JSON.parse(jsonMatch[0])
         if (parsed.recommendation) recommendation = parsed.recommendation
         if (parsed.reasoning) reasoning = parsed.reasoning
+        if (parsed.actie_type && ['trainen', 'herstel', 'rust'].includes(parsed.actie_type)) {
+          actie_type = parsed.actie_type
+        }
       } else if (rawText.length > 10) {
         reasoning = rawText
       }
@@ -274,7 +278,7 @@ export async function POST() {
       .from('coach_recommendations')
       .upsert({
         user_id: user.id, date: today,
-        recommendation, reasoning,
+        recommendation, reasoning, actie_type,
         recovery_status: recovery.status,
         energy_level: checkinRes.data?.energy_score || 5,
       })
