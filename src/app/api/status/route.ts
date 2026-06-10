@@ -155,4 +155,4 @@ export async function POST() {
     console.error('Daily status error:', error)
     return NextResponse.json({ error: 'Berekening mislukt' }, { status: 500 })
   }
-}
+} 

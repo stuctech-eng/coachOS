@@ -391,9 +391,9 @@ export default function HomePage() {
               <Sparkles size={18} />
               <span className="text-sm font-medium">Vandaag van je Coach</span>
             </div>
-            <button onClick={genereerDagplan} disabled={generatingPlan}
+            <button onClick={() => { generateAdvice(); genereerDagplan() }} disabled={isGenerating || generatingPlan}
               className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50">
-              <RefreshCw size={14} className={cn('text-slate-400', generatingPlan && 'animate-spin')} />
+              <RefreshCw size={14} className={cn('text-slate-400', (isGenerating || generatingPlan) && 'animate-spin')} />
             </button>
           </div>
 
