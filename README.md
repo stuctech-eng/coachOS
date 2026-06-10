@@ -3,18 +3,17 @@
 ## Project
 
 - App naam: CoachOS
-- Versie: 5.2.0
+- Versie: 5.3.0
 - App URL: <https://coach-os-tau.vercel.app>
 - GitHub: <https://github.com/stuctech-eng/coachOS>
 - Supabase: <https://fabtmkrzqrrwbvgaugjst.supabase.co>
-- Architectuur: V5.0
 
 ## Stack
 
 - Frontend: Next.js 14.2.29 + TypeScript + PWA
 - Auth: Supabase Auth
 - Database: Supabase PostgreSQL
-- AI: Claude API via /api/ai proxy (geen SDK — directe fetch)
+- AI: Claude API — directe fetch, geen SDK
 - State: Zustand
 - Styling: Tailwind CSS
 - Hosting: Vercel
@@ -22,300 +21,256 @@
 
 -----
 
-# CoachOS V5.0 — Volledige AI Architectuur
-
-## Kernvisie
-
-CoachOS is een AI Coaching Operating System.
-Observe → Learn → Predict → Coach → Execute → Learn Again
-
-## AI Lagen (alle compleet)
-
-### Coach AI (Master Brain — Altijd Leidend)
-
-- bepaalt training vs herstel vs rust
-- analyseert ALLE data: Garmin, check-in, levensgebeurtenissen, werktijden, blessures, trainingshistorie, Performance AI, Training Load
-- genereert dagplannen BUITEN werktijden
-- denkt in belasting (load), niet in sport
-
-### Trainer AI (✅ Kettlebell v2)
-
-- 25 oefeningen, niveau 1-2-3
-- Adaptief op basis van experience, Body Battery, ratings
-- Progressie: rating ≥ 8 + BB ≥ 70 → niveau omhoog
-- Feedbackveld (rating + notes) na elke sessie
-
-### Recovery AI (✅)
-
-- Ademhaling: Box Breathing, 4-7-8, Coherent, Stress Reset
-- Mobiliteit: Nek & Schouders, Heupen, Full Body
-- Wandeling: Herstelwandeling
-
-### Performance AI (✅ v5.1)
-
-- Analyseert trainingsresultaten over 30 dagen
-- Output: progressie_trend, consistentie, herstel_na_training, niveau_gereed
-- Dagelijks gecached, zichtbaar in Progressie tab
-
-### Training Load Layer (✅ v5.2)
-
-- Vertaalt ALLE activiteiten naar uniforme belasting
-- HR modifier: lage HR × 0.8, hoge HR × 1.4
-- Output: cardio_load, strength_load, recovery_load, total_load
-- 7-daagse trend + vandaag intensiteit + laatste zware sessie
-- Coach AI denkt in belasting, niet in sport
-
------
+# Definitieve AI Architectuur
 
 ## System Flow
 
-GARMIN + CHECK-IN + LEVENSGEBEURTENISSEN + WERKTIJDEN + BLESSURES + TRAININGEN
+Garmin + Strava + Check-in + Dagboek + Blessures + Werktijden + Life Events + Performance AI + Training Load Layer
 ↓
-TRAINING LOAD LAYER
+Coach AI — Beslist OF je traint
 ↓
-COACH AI (beslist)
+Trainer AI              Recovery AI
+Beslist HOE             Beslist HOE
+je traint               je herstelt
+↓                       ↓
+Uitvoering              Uitvoering
+↓                       ↓
+Evaluatie               Evaluatie
 ↓
-TRAINER AI / RECOVERY AI (uitvoert)
+Performance AI — Analyseert resultaten
 ↓
-EVALUATIE + FEEDBACK
-↓
-PERFORMANCE AI (analyseert)
-↓
-COACH AI (leert)
+Coach AI
+
+## Rolverdeling (hard gescheiden)
+
+### Coach AI
+
+- Analyseert: Garmin, check-in, dagboek, load, Performance AI, blessures, werktijden
+- Beslist: trainen / herstel / rust
+- Kiest NOOIT oefeningen
+- Ontvangt NOOIT oefeningen als context — alleen belasting + progressie + herstelstatus
+
+### Trainer AI
+
+- Bepaalt: trainingsvorm, oefeningen, sets, reps, duur, rust, intensiteit
+- Kiest automatisch uit beschikbare modules op basis van equipment profiel
+- Gebruikt Training Load Layer voor intensiteit
+
+### Recovery AI
+
+- Ademhaling, mobiliteit, wandeling
+
+### Performance AI
+
+- 30 dagen analyse → progressie_trend, consistentie, herstel_na_training, niveau_gereed
+- Zichtbaar in Progressie tab
+
+### Training Load Layer
+
+- Elke activiteit → cardio_load, strength_load, recovery_load, total_load
+- HR modifier: <110=×0.8 | 110-130=×1.0 | 130-150=×1.2 | >150=×1.4
 
 -----
 
-## AI Context per Route (v5.2 — volledig)
-
-|Route         |Life events|Werktijden|Garmin|Blessures|Trainingen|Performance|Load|
-|--------------|-----------|----------|------|---------|----------|-----------|----|
-|action-plan   |✅          |✅         |✅     |✅        |✅         |—          |✅   |
-|training/today|✅          |✅         |✅     |✅        |✅         |✅          |✅   |
-|coach         |✅          |✅         |✅     |✅        |✅         |—          |✅   |
-|chat          |✅          |✅         |✅     |✅        |✅         |—          |—   |
-|predictions   |✅          |✅         |✅     |✅        |✅         |—          |—   |
-|memory        |✅          |✅         |✅     |✅        |✅         |—          |—   |
-|weekly        |✅          |✅         |✅     |✅        |✅         |—          |—   |
-|performance   |—          |—         |✅     |✅        |✅         |—          |—   |
-|training-load |—          |—         |—     |—        |✅         |—          |—   |
-
------
-
-## Training Load Factoren
-
-|Activiteit|Cardio|Strength|Recovery|
-|----------|------|--------|--------|
-|Hardlopen |0.50  |0.05    |0.05    |
-|Roeien    |0.40  |0.20    |0.05    |
-|Fietsen   |0.35  |0.05    |0.05    |
-|Kettlebell|0.20  |0.40    |0.05    |
-|Wandeling |0.10  |0.00    |0.20    |
-|Ademhaling|0.00  |0.00    |0.50    |
-
-HR modifier: <110 bpm=×0.8 | 110-130=×1.0 | 130-150=×1.2 | >150=×1.4
-
------
-
-## Harde Regels
-
-1. Coach AI is altijd leidend
-1. Coach AI ziet nooit oefeningen — alleen belasting
-1. Plan NOOIT activiteiten tijdens werktijd
-1. Home = dagelijkse actie
-1. Progressie = eigen tab
-1. Training = uitvoering
-1. Coach = AI interface
-
------
-
-# Navigatie V4.5
+# Navigatie
 
 Home | Training | Progressie | Coach | Instellingen
 
-Inzichten bereikbaar via Instellingen.
+## Home — Actiecentrum
+
+- Coach Score
+- Check-in
+- Dagboek knop
+- Vandaag van je Coach (main_action + advice_bullets + actie_type + dagplan)
+- Garmin Status
+
+## Training — Uitvoering
+
+- Vandaag Aanbevolen (Coach AI beslissing + START knop) — V5.4
+- Trainer AI Modules
+- Recovery AI
+
+## Progressie — Analyse
+
+1. Performance AI
+1. Trainingsbelasting
+1. Coach Inzichten
+1. Voorspellingen (wekelijks)
+1. Historisch (inklapbaar)
+
+## Coach — Gesprek
+
+- Chat, Memory, Uitleg adviezen
+
+## Instellingen
+
+- Profiel, Equipment (V5.4), Garmin Import, Hoe werkt CoachOS
 
 -----
 
-# Garmin Import Schema (v4.7)
+# Equipment Profiel (V5.4)
 
-```json
+Jouw equipment:
+
+- Kettlebells ✅
+- Concept2 Roeimachine ✅
+- Indoor Fiets ✅
+- Running ✅
+- Dumbbells ✅
+- Barbell + Gewichten ✅
+- Ab Wheel ✅
+- Bodyweight ✅ (altijd beschikbaar)
+
+DB kolommen (profiles):
+kettlebell_available, concept2_available, cycling_available, running_available,
+dumbbell_available, barbell_available, ab_wheel_available, bodyweight_available
+
+-----
+
+# Evaluatie Na Iedere Sessie (V5.4)
+
+Rating: 1-10
+Perceived Effort: 1-10
+Fatigue After: 1-10
+Soreness: 1-10
+Opmerkingen: vrij tekst
+
+SQL:
+alter table training_results
+add column if not exists perceived_effort int,
+add column if not exists fatigue_after int,
+add column if not exists soreness int,
+add column if not exists soreness_notes text;
+
+-----
+
+# Trainer AI Sportmodules
+
+1. Kettlebell ✅ gebouwd
+1. Rowing (Concept2) ⬜ V5.5
+- Recovery Row, Steady State, Endurance, Tempo, Threshold, Interval, Sprint
+- Meetwaarden: tijd, afstand, hartslag, split/500m, calories, SPM
+1. Running ⬜ V5.6
+- Recovery, Easy, Long, Tempo, Threshold, Interval, Hill, Fartlek
+1. Cycling ⬜ V5.7
+- Recovery, Easy, Endurance, Tempo, Threshold, Interval, Hill
+1. Kettlebell Uitbreiding ⬜ V5.8
+1. Strength ⬜ V5.9
+- Dumbbells + Barbell
+- Squat, Deadlift, Bench, OHP, Row, Pull-Up, Lunge, Bulgarian Split Squat
+1. Bodyweight & Core ⬜ V5.10
+- Ab Wheel + bodyweight
+- Push, Legs, Core, Conditioning
+
+-----
+
+# Coach AI Output Formaat
+
 {
-  "resting_hr": 46,
-  "body_battery": { "current": 83, "charged": 49, "spent": 8 },
-  "sleep": { "score": 83, "duration_minutes": 408 },
-  "hrv": { "avg_7d_ms": 49, "status": "balanced" },
-  "stress": 18,
-  "breathing": { "current_brpm": 20, "avg_awake_brpm": 15, "avg_sleep_brpm": 13 },
-  "meta": { "source": "garmin_screenshot", "parsed_at": "timestamp" }
+“actie_type”: “herstel”,
+“main_action”: “Doe vandaag een herstelwandeling van 30 minuten.”,
+“advice_bullets”: [“Vermijd zware training”, “Drink voldoende water”],
+“reasoning”: “Onderbouwing…”
 }
-```
+
+Cache: coach_recommendations — dagelijks
+Kolommen: recommendation, reasoning, actie_type, advice_bullets
 
 -----
 
-# Garmin indicator bolletje (Home)
+# AI Context per Route (v5.3)
 
-- 🟢 Groen = vandaag bevestigd — Coach Score wordt automatisch herberekend
-- 🟡 Amber = gisteren
-- ⚪ Grijs = geen recente data
-
-Coach Score ververst automatisch na Garmin import (v5.2).
-
------
-
-# Bestandsstructuur
-
-src/
-app/
-api/
-action-plan/route.ts                klaar (v5.2 — load context)
-coach/route.ts                      klaar (v5.2 — load context)
-chat/route.ts                       klaar (v5.0)
-predictions/route.ts                klaar (v5.0)
-memory/route.ts                     klaar (v5.0)
-status/route.ts                     klaar (v4.3)
-weekly/route.ts                     klaar (v5.1)
-performance/route.ts                klaar (v5.1)
-training-load/route.ts              klaar (v5.2 — nieuw)
-training/
-today/route.ts                    klaar (v5.2 — load context)
-session/route.ts                  klaar (v4.5)
-complete/route.ts                 klaar (v4.4)
-recovery/
-complete/route.ts                 klaar (v4.2)
-health/
-garmin-vision/route.ts            klaar (v4.8)
-strava/                             klaar
-home/page.tsx                         klaar (v5.2 — score refresh)
-insights/page.tsx                     klaar (v4.7)
-progressie/page.tsx                   klaar (v5.1)
-settings/page.tsx                     klaar (v4.9.1)
-settings/hoe-werkt-het/page.tsx       klaar (v5.1)
-settings/garmin-import/page.tsx       klaar (v5.2 — score refresh na import)
-training/
-page.tsx                            klaar (v5.0)
-kettlebell/page.tsx                 klaar (v4.8)
-recovery/
-breathing/page.tsx                klaar (v4.2)
-mobility/page.tsx                 klaar (v4.2)
-walk/page.tsx                     klaar (v5.0)
-reset-password/page.tsx               klaar (v4.9.4)
-auth/callback/route.ts                klaar (v4.9.4)
+Route          | Life | Werk | Garmin | Bles | Train | Perf | Load | Dagboek
+action-plan    | ✅   | ✅   | ✅     | ✅   | ✅    | —    | ✅   | ✅
+training/today | ✅   | ✅   | ✅     | ✅   | ✅    | ✅   | ✅   | ✅
+coach          | ✅   | ✅   | ✅     | ✅   | ✅    | —    | ✅   | ✅
+chat           | ✅   | ✅   | ✅     | ✅   | ✅    | —    | —    | —
+predictions    | ✅   | ✅   | ✅     | ✅   | ✅    | —    | —    | —
+memory         | ✅   | ✅   | ✅     | ✅   | ✅    | —    | —    | —
+weekly         | ✅   | ✅   | ✅     | ✅   | ✅    | —    | —    | —
 
 -----
 
 # Supabase Tabellen
 
-profiles, user_goals, daily_checkins, health_metrics(inactief),
-coach_memory, coach_recommendations, activities, activity_sessions,
-activity_templates, strava_tokens, knowledge_observations, ai_conversations,
-daily_status, injuries, life_events, training_sessions,
-training_results(rating+notes), recovery_sessions, recovery_results,
-garmin_imports
+profiles, user_goals, daily_checkins, health_metrics(inactief), coach_memory,
+coach_recommendations, activities, activity_sessions, activity_templates,
+strava_tokens, knowledge_observations, ai_conversations, daily_status,
+injuries, life_events, training_sessions,
+training_results (rating, notes, perceived_effort*, fatigue_after*, soreness*, soreness_notes*),
+recovery_sessions, recovery_results, garmin_imports, journal_entries
 
-coach_recommendations cache types:
+coach_recommendations types:
 
-- action_plan
-- predictions
-- performance_ai
-- training_load
+- action_plan (dagelijks)
+- predictions (wekelijks — maandag)
+- performance_ai (dagelijks)
+- training_load (dagelijks)
+
+*V5.4 kolommen
 
 -----
 
-# Huidige Staat (v5.2.0) — Volledig
+# Huidige Staat (v5.3.0)
 
-Werkend:
+✅ Werkend:
 
 - Login, onboarding, profiel, doelen, blessures, levensgebeurtenissen
-- Check-in, weekly review (vorige week op maandag)
-- Home: Coach Score + Dagplan + Voorspellingen + Garmin reminder + indicator
+- Check-in, dagboek, weekly review (vorige week op maandag)
+- Home: Coach Score + Vandaag van je Coach + Garmin bolletje
 - Coach Score herberekent automatisch na Garmin import
-- Coach AI — volledige context inclusief load layer, plant BUITEN werktijden
-- Inzichten: Garmin grafieken + Trends + Coach inzichten
-- Garmin Vision Import — automatische compressie, stress + ademhaling
+- Coach AI — volledige context, plant BUITEN werktijden
+- Garmin Vision Import — compressie + stress + ademhaling
 - Recovery AI — ademhaling, mobiliteit, wandeling
-- Trainer AI Kettlebell — adaptief, 25 oefeningen, feedbackveld
-- Training Load Layer — HR modifier, 7d trend, alle activiteiten
+- Trainer AI Kettlebell — 25 oefeningen, adaptief
+- Training Load Layer — HR modifier, 7d trend
 - Performance AI — progressie analyse in Progressie tab
-- Progressie dashboard + Performance AI sectie
-- Hoe werkt CoachOS uitlegpagina
-- Wachtwoord vergeten flow
-- Navigatie: Home | Training | Progressie | Coach | Instellingen
+- Progressie tab — definitieve architectuur (conclusie → bewijs)
+- Voorspellingen — wekelijks gegenereerd, localStorage cache
+- Coach Inzichten — patronen uit memory
 
 -----
 
 # Roadmap
 
-## V5.3.0 — Dagboek (volgende stap)
-
-Dagelijkse vrije invoer naast check-in.
-Velden: energie, stress, motivatie, opmerkingen (vrije tekst)
-Coach AI krijgt dagboek als extra context — ziet wat Garmin niet ziet.
-Verschil met check-in: check-in is gestructureerd (sliders), dagboek is vrij tekst.
-
-## V5.4.0 — Evaluatieloop uitbreiden
-
-Na training toevoegen:
-
-- Hoe zwaar voelde het? (1-10)
-- Vermoeidheid achteraf (1-10)
-- Spierpijn (ja/nee + locatie)
-  Trainer AI gebruikt dit voor progressie. Coach AI krijgt alleen samenvatting.
-
-## V5.5.0 — Running Module (Trainer AI)
-
-- Herstelrun, duurloop, tempo, interval
-- Route via Strava of handmatig
-- Pace, afstand, hartslag
-
-## V5.6.0 — Cycling Module (Trainer AI)
-
-- Herstelrit, duurtraining, interval, tempo
-- Power zones indien beschikbaar
-
-## V5.7.0 — Rowing Module (Trainer AI)
-
-- Intervallen, duurtraining
-- Split times, slagfrequentie
-
-## V5.8.0 — Strength / Bodyweight uitbreiding
-
-- Dumbbell, barbell, bodyweight
-- Automatische progressie per oefening
+Fase 1 ✅  V5.2.0 Training Load Layer
+Fase 2 ✅  V5.3.0 Home + Dagboek + Progressie architectuur
+Fase 3     V5.4.0 Trainer Fundament
+- Equipment profiel (Instellingen)
+- Training tab herindeling (Vandaag Aanbevolen + START)
+- Evaluatie uitbreiden (effort, fatigue, soreness)
+Fase 4     V5.5.0  Rowing Module (Concept2)
+V5.6.0  Running Module
+V5.7.0  Cycling Module
+V5.8.0  Kettlebell Uitbreiding
+V5.9.0  Strength Module (dumbbells + barbell)
+V5.10.0 Bodyweight & Core Module
 
 -----
 
 # Evoluties Status
 
-- E1 Pattern Discovery: ✅
-- E2 Trend Engine: ✅
-- E3 Prediction Engine: ✅
-- E4 Coach Personality: ✅
-- E5 Daily Action Plan: ✅
-- E6 Goal-specific Coaching: ✅
-- E7 Second Brain: ⏳ groeit
-- E8 Training Execution (Trainer AI): ✅
-- E9 Recovery Execution (Recovery AI): ✅
-- E10 Garmin Vision Import: ✅
-- E11 Progressie Dashboard: ✅
-- E12 Gebruikersuitleg: ✅
-- E13 Performance AI: ✅
-- E14 Training Load Layer: ✅
-- E15 Dagboek: ⬜ V5.3
-- E16 Evaluatieloop uitgebreid: ⬜ V5.4
-- E17 Running Module: ⬜ V5.5
-- E18 Cycling Module: ⬜ V5.6
-- E19 Rowing Module: ⬜ V5.7
-- E20 Strength/Bodyweight: ⬜ V5.8
+E1-E17: ✅ (zie vorige versies)
+E18 Equipment profiel:        ⬜ V5.4
+E19 Evaluatieloop uitgebreid: ⬜ V5.4
+E20 Training tab herindeling: ⬜ V5.4
+E21 Rowing Module:            ⬜ V5.5
+E22 Running Module:           ⬜ V5.6
+E23 Cycling Module:           ⬜ V5.7
+E24 Kettlebell uitbreiding:   ⬜ V5.8
+E25 Strength Module:          ⬜ V5.9
+E26 Bodyweight & Core:        ⬜ V5.10
 
 -----
 
 # Versiehistorie
 
-- v4.0.0 t/m v4.9.4: zie vorige sessies
+- v4.0–4.9: Architectuur, Recovery/Trainer AI, Garmin, Progressie
 - v5.0.0: Volledige AI context alle routes
-- v5.0.1-5.0.5: Bug fixes routes
-- v5.1.0: Performance AI + Progressie tab + Weekly fix
+- v5.0.1–5.0.5: Bug fixes
+- v5.1.0: Performance AI + Progressie tab
 - v5.2.0: Training Load Layer + Coach Score refresh
+- v5.3.0: Home herindeling + Dagboek + Progressie architectuur + Voorspellingen wekelijks
 
 -----
 
@@ -329,27 +284,24 @@ en help me verder met CoachOS
 
 # Standaard Werkwijze
 
-## Nieuwe bestanden checklist
+## Voor elke wijziging
 
-1. ‘use client’ bovenaan pagina
-1. export const dynamic = ‘force-dynamic’ bovenaan API route
-1. RLS policy indien nieuwe tabel
-1. Altijd volledig bestand
-1. README bijwerken
-1. Hoe werkt CoachOS bijwerken indien relevant
-1. TypeScript checken: npx tsc –noEmit
+1. git pull
+1. npx tsc –noEmit
+1. Bestanden lezen
+1. Checken: force-dynamic, destructuring, unused imports, braces
+1. Na wijziging: TypeScript opnieuw checken
+1. Dan pas zippen
 
 ## Bug flow
 
-1. Buildlog → exacte fout lezen
-1. TypeScript: clone repo lokaal → npx tsc –noEmit
-1. Destructuring telt altijd queries — check met script
-1. Pagina scrollt niet → gebruik AppShell
-1. Icon crash → controleer lucide-react 0.400
-1. 401 → aanroepen via router.push vanuit ingelogde pagina
-1. .data?.parsed_data fout → query mist .single()
-1. Type cast fout → gebruik ‘as unknown as Type’
-1. API route fetch andere API route → NIET DOEN — geeft build fout
+1. Buildlog → exacte fout
+1. TypeScript lokaal: npx tsc –noEmit
+1. Destructuring telt altijd queries
+1. Pagina scrollt niet → AppShell
+1. Type cast → as unknown as Type
+1. API route mag GEEN andere API route fetchen (server-side)
+1. Cache leeg → check type filter op coach_recommendations
 
 ## Technische standaarden
 
@@ -360,21 +312,14 @@ en help me verder met CoachOS
 - Navigatie: router.push() — nooit router.back()
 - Anthropic: directe fetch — geen SDK
 - Afbeelding: sharp resize 800px JPEG 80%
-- API routes mogen NIET andere API routes fetchen (server-side)
-- Pagina’s die scrollen: gebruik AppShell
 
 ## Voor Dick altijd
 
-- Zip → naam + .zip → uitpakken → Working Copy → push
+- Zip → naam + .zip → Working Copy → push
 - Na deploy testen
 - Overleggen voor bouwen
-- README + Hoe werkt CoachOS altijd bijwerken
+- README bijwerken na elke versie
 - Secrets NOOIT in de chat
-
-## Strava Setup
-
-- Client ID: 254388
-- Callback: coach-os-tau.vercel.app
 
 ## Environment Variables (Vercel)
 
