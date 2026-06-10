@@ -98,10 +98,19 @@ export default function HomePage() {
             fetch('/api/status', { method: 'POST', credentials: 'include' })
               .then(r => r.json())
               .then(data => {
-                if (data?.score !== undefined) {
+                if (data?.coach_score !== undefined) {
+                  const statusData = {
+                    coach_score: data.coach_score ?? null,
+                    recovery_score: data.recovery_score ?? null,
+                    training_score: data.training_score ?? null,
+                    lifestyle_score: data.lifestyle_score ?? null,
+                    risk_flags: data.risk_flags || [],
+                    status_color: data.status_color || 'orange',
+                    date: vandaagAms,
+                  }
                   window.localStorage.setItem('coach_status_datum', vandaagAms)
-                  window.localStorage.setItem('coach_status_data', JSON.stringify(data))
-                  setCoachStatus({ ...data, date: vandaagAms })
+                  window.localStorage.setItem('coach_status_data', JSON.stringify(statusData))
+                  setCoachStatus(statusData)
                 }
               })
               .catch(() => {})
@@ -557,5 +566,4 @@ export default function HomePage() {
       </div>
     </AppShell>
   )
-} 
-
+}
