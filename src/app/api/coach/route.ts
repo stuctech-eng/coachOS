@@ -50,7 +50,7 @@ export async function POST() {
       .eq('user_id', user.id)
       .eq('date', today)
       .single()
-    if (cached?.recommendation) return NextResponse.json(cached)
+    if (cached?.recommendation && cached?.advice_bullets) return NextResponse.json(cached)
 
     const zeven = new Date()
     zeven.setDate(zeven.getDate() - 7)
