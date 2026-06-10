@@ -51,6 +51,7 @@ export async function POST() {
       .select('predictions')
       .eq('user_id', user.id)
       .eq('date', today)
+      .eq('type', 'predictions')
       .single()
 
     if (cached?.predictions) {
@@ -207,8 +208,9 @@ Reageer ALLEEN in dit JSON formaat:
       .upsert({
         user_id: user.id,
         date: today,
+        type: 'predictions',
         predictions,
-      }, { onConflict: 'user_id,date' })
+      }, { onConflict: 'user_id,type,date' })
 
     return NextResponse.json({ predictions })
 
