@@ -160,15 +160,7 @@ export default function ProgressiePage() {
       supabase.from('training_results').select('*').eq('completed', true).order('completed_at', { ascending: false }),
       fetch('/api/performance', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/memory', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch('/api/predictions', { credentials: 'include' })
-        .then(r => r.ok ? r.json() : null)
-        .then(async data => {
-          if (data?.predictions) return data
-          // Geen cache — genereer nieuwe voorspellingen
-          const post = await fetch('/api/predictions', { method: 'POST', credentials: 'include' })
-          return post.ok ? post.json() : null
-        })
-        .catch(() => null),
+      fetch('/api/predictions', { method: 'POST', credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
 
