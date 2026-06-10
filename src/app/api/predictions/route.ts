@@ -28,6 +28,7 @@ export async function GET() {
       .select('predictions')
       .eq('user_id', user.id)
       .eq('date', today)
+      .eq('type', 'predictions')
       .single()
 
     return NextResponse.json({ predictions: data?.predictions || null })
