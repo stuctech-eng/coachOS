@@ -1,7 +1,7 @@
 'use client'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Zap, Calendar, Camera, BarChart2, HelpCircle } from 'lucide-react'
+import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Zap, Calendar, Camera, BarChart2, HelpCircle, Wrench } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -110,6 +110,22 @@ export default function SettingsPage() {
           </button>
         </Card>
 
+        <Card className="p-4">
+          <button
+            onClick={() => router.push('/settings/equipment')}
+            className="flex items-center gap-3 w-full"
+          >
+            <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
+              <Wrench size={20} className="text-green-400" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-white font-semibold text-sm">Equipment</p>
+              <p className="text-slate-400 text-xs">Beschikbare trainingsmiddelen</p>
+            </div>
+            <ChevronRight size={16} className="text-slate-600" />
+          </button>
+        </Card>
+
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Profiel</p>
           <Card>
@@ -141,7 +157,7 @@ export default function SettingsPage() {
           <Card>
             <Row icon={HelpCircle} label="Hoe werkt CoachOS" onClick={() => router.push('/settings/hoe-werkt-het')} />
             <div className="h-px bg-coach-border mx-4" />
-            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v4.9.0</span>} />
+            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v5.4.0</span>} />
           </Card>
         </div>
 

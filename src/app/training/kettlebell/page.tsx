@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Play, Pause, ChevronRight, CheckCircle, X, Dumbbell, Clock, Zap, Star } from 'lucide-react'
+import { Play, Pause, ChevronRight, CheckCircle, X, Dumbbell, Clock } from 'lucide-react'
 import { cn } from '@/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -145,6 +145,9 @@ function KettlebellInner() {
 
   // Rating voor afsluiting
   const [rating, setRating] = useState<number | null>(null)
+  const [perceivedEffort, setPerceivedEffort] = useState<number | null>(null)
+  const [fatigueAfter, setFatigueAfter] = useState<number | null>(null)
+  const [soreness, setSoreness] = useState<number | null>(null)
   const [notes, setNotes] = useState<string>('')
   const [opgeslagen, setOpgeslagen] = useState(false)
 
@@ -234,6 +237,9 @@ function KettlebellInner() {
         completed,
         duration_minutes: duurMinuten,
         rating,
+        perceived_effort: perceivedEffort,
+        fatigue_after: fatigueAfter,
+        soreness: soreness,
         notes: notes.trim() || null,
       }),
     })
