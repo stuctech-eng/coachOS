@@ -284,16 +284,15 @@ export default function HomePage() {
                 <p className="text-xs text-slate-400 uppercase tracking-wider">Coach Score</p>
                 {(() => {
                   // Garmin import indicator
-                  const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
                   const gisterenAms = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
                   // garminImported = vandaag bevestigd
                   // We need to also check if it was yesterday
-                  const vandaagAms2 = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-                  const gisterenAms2 = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-                  if (garminDatum === vandaagAms2) {
+                  const _vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+                  const _gisterenAms = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+                  if (garminDatum === _vandaagAms) {
                     return <div className="w-2 h-2 rounded-full bg-green-400" title="Garmin import vandaag ✓" />
                   }
-                  if (garminDatum === gisterenAms2) {
+                  if (garminDatum === _gisterenAms) {
                     return <div className="w-2 h-2 rounded-full bg-amber-400" title="Garmin import van gisteren" />
                   }
                   return <div className="w-2 h-2 rounded-full bg-slate-500" title="Geen recente Garmin data" />
