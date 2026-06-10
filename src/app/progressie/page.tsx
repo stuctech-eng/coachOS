@@ -102,6 +102,7 @@ function berekenStreak(resultaten: TrainingResult[]): number {
 
 export default function ProgressiePage() {
   const [loading, setLoading] = useState(true)
+  const [inzichten, setInzichten] = useState<Array<{observation: string; pattern_type: string}> | null>(null)
   const [predictions, setPredictions] = useState<Array<{
     titel: string; voorspelling: string; kans: number; actie: string; type: 'positief' | 'waarschuwing'
   }> | null>(null)
@@ -137,13 +138,14 @@ export default function ProgressiePage() {
     const maandGeleden = new Date()
     maandGeleden.setDate(maandGeleden.getDate() - 30)
 
-    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes, predictionsRes, loadRes] = await Promise.all([
+    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes, predictionsRes, loadRes, memoryRes] = await Promise.all([
       supabase.from('garmin_imports').select('parsed_data').eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
       supabase.from('daily_status').select('coach_score, recovery_score, status_color').eq('date', vandaag).single(),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', weekStart(0)).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', maandGeleden.toISOString()).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).order('completed_at', { ascending: false }),
       fetch('/api/performance', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/memory', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/predictions', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
@@ -157,6 +159,9 @@ export default function ProgressiePage() {
     }
     if (loadRes && !loadRes.error) {
       setLoadData(loadRes)
+    }
+    if (memoryRes?.observations) {
+      setInzichten(memoryRes.observations.slice(0, 5))
     }
     setDagStatus(statusRes.data || null)
     setWeekResultaten(weekRes.data || [])
@@ -529,6 +534,23 @@ export default function ProgressiePage() {
               </div>
               <div className="pt-3 border-t border-coach-border">
                 <p className="text-xs text-slate-400 leading-relaxed">{performance.samenvatting}</p>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ── Coach Inzichten ─────────────────────────────────────────── */}
+        {inzichten && inzichten.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach Inzichten</p>
+            <Card className="p-5">
+              <div className="flex flex-col gap-3">
+                {inzichten.map((ins, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary-400 mt-2 flex-shrink-0" />
+                    <p className="text-sm text-slate-300 leading-relaxed">{ins.observation}</p>
+                  </div>
+                ))}
               </div>
             </Card>
           </div>

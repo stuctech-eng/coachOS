@@ -404,6 +404,28 @@ export default function HomePage() {
                 {recommendation.recommendation}
               </p>
 
+              {/* Advice bullets */}
+              {(() => {
+                const bullets: string[] = (() => {
+                  try {
+                    const ab = (recommendation as {advice_bullets?: string | string[]}).advice_bullets
+                    if (Array.isArray(ab)) return ab
+                    if (typeof ab === 'string') return JSON.parse(ab)
+                    return []
+                  } catch { return [] }
+                })()
+                return bullets.length > 0 ? (
+                  <ul className="mb-3 flex flex-col gap-1">
+                    {bullets.map((b, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                        <span className="text-primary-400 mt-0.5 flex-shrink-0">•</span>
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null
+              })()}
+
               {/* Actieknop */}
               {(() => {
                 const actie = (recommendation as {actie_type?: string}).actie_type || 'herstel'

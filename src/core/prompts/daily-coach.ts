@@ -178,13 +178,19 @@ ${memoryList}
 
 Reageer ALLEEN in dit JSON formaat:
 {
-  "actie_type": "trainen",
-  "recommendation": "Persoonlijk advies voor vandaag in 1-2 zinnen als een echte coach — specifiek gericht op het doel",
+  "actie_type": "herstel",
+  "main_action": "Doe vandaag een herstelwandeling van 30 minuten na je vroege dienst.",
+  "advice_bullets": [
+    "Vermijd zware training",
+    "Drink voldoende water",
+    "Focus op slaap vanavond"
+  ],
   "reasoning": "Onderbouwing in 2-3 zinnen: interpreteer de data, vergelijk met trends, leg uit waarom dit advies past bij dit specifieke doel van deze atleet op dit moment"
 }
 
-actie_type is ALTIJD één van: "trainen", "herstel", "rust"
-- trainen = actieve training vandaag
-- herstel = herstelactiviteit (wandelen, ademhaling, mobiliteit)
-- rust = volledige rust, geen activiteit`
+Regels:
+- actie_type is ALTIJD één van: "trainen", "herstel", "rust"
+- main_action: 1 concrete actie voor vandaag
+- advice_bullets: 2-4 korte actiegerichte adviezen, elk max 6 woorden
+- reasoning: onderbouwing voor de gebruiker`
 }

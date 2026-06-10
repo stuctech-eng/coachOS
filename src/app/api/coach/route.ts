@@ -257,15 +257,26 @@ export async function POST() {
     let recommendation = 'Een rustige wandeling van 30 minuten'
     let reasoning = 'Op basis van je herstelstatus is lichte beweging de beste keuze vandaag.'
     let actie_type: 'trainen' | 'herstel' | 'rust' = 'herstel'
+    let main_action = ''
+    let advice_bullets: string[] = []
 
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
-        if (parsed.recommendation) recommendation = parsed.recommendation
+        if (parsed.main_action) {
+          main_action = parsed.main_action
+          recommendation = parsed.main_action
+        } else if (parsed.recommendation) {
+          recommendation = parsed.recommendation
+          main_action = parsed.recommendation
+        }
         if (parsed.reasoning) reasoning = parsed.reasoning
         if (parsed.actie_type && ['trainen', 'herstel', 'rust'].includes(parsed.actie_type)) {
           actie_type = parsed.actie_type
+        }
+        if (Array.isArray(parsed.advice_bullets)) {
+          advice_bullets = parsed.advice_bullets.slice(0, 4)
         }
       } else if (rawText.length > 10) {
         reasoning = rawText
@@ -278,7 +289,7 @@ export async function POST() {
       .from('coach_recommendations')
       .upsert({
         user_id: user.id, date: today,
-        recommendation, reasoning, actie_type,
+        recommendation, reasoning, actie_type, advice_bullets: JSON.stringify(advice_bullets),
         recovery_status: recovery.status,
         energy_level: checkinRes.data?.energy_score || 5,
       })
