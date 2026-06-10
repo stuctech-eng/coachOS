@@ -1,13 +1,11 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, Dumbbell, Clock, Star, Zap, Battery, Moon, Trophy, Flame, BarChart2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Dumbbell, Clock, Star, Battery, Moon, Trophy, Flame, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
 import { createBrowserClient } from '@supabase/ssr'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TrainingResult {
   id: string
@@ -19,19 +17,44 @@ interface TrainingResult {
 }
 
 interface GarminData {
-  resting_hr: number | null
   body_battery: { current: number | null }
-  sleep: { score: number | null; duration_minutes: number | null }
-  hrv: { avg_7d_ms: number | null; status: string | null }
+  sleep: { score: number | null }
 }
 
 interface DagStatus {
-  coach_score: number | null
   recovery_score: number | null
-  status_color: string | null
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+interface PerformanceData {
+  progressie_trend: string
+  consistentie: string
+  herstel_na_training: string
+  niveau_gereed: boolean
+  samenvatting: string
+}
+
+interface LoadData {
+  cardio_load_7d: number
+  strength_load_7d: number
+  recovery_load_7d: number
+  total_load_7d: number
+  today_intensity: string
+  load_trend: string
+  load_trend_pct: number | null
+  last_heavy_session_days: number | null
+}
+
+interface Prediction {
+  titel: string
+  voorspelling: string
+  kans: number
+  actie: string
+  type: 'positief' | 'waarschuwing'
+}
+
+interface Inzicht {
+  observation: string
+}
 
 function weekStart(offset = 0): string {
   const d = new Date()
@@ -58,7 +81,7 @@ function herstelLabel(score: number | null): string {
   return 'Laag'
 }
 
-function herstelKleur(score: number | null): string {
+function kleurScore(score: number | null): string {
   if (!score) return 'text-slate-400'
   if (score >= 75) return 'text-green-400'
   if (score >= 60) return 'text-blue-400'
@@ -73,74 +96,64 @@ function bbKleur(bb: number | null): string {
   return 'text-red-400'
 }
 
+function trendKleur(trend: string): string {
+  if (trend === 'stijgend') return 'text-green-400'
+  if (trend === 'dalend') return 'text-red-400'
+  return 'text-slate-400'
+}
+
 function berekenStreak(resultaten: TrainingResult[]): number {
   if (resultaten.length === 0) return 0
   const datums = [...new Set(
-    resultaten
-      .filter(r => r.completed)
-      .map(r => r.completed_at.split('T')[0])
+    resultaten.filter(r => r.completed).map(r => r.completed_at.split('T')[0])
   )].sort().reverse()
-
   let streak = 0
-  const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-  let check = vandaag
-
+  let check = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
   for (const datum of datums) {
     if (datum === check) {
       streak++
       const d = new Date(check)
       d.setDate(d.getDate() - 1)
       check = d.toLocaleDateString('en-CA')
-    } else {
-      break
-    }
+    } else break
   }
   return streak
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function gemRating(resultaten: TrainingResult[]): number | null {
+  const metRating = resultaten.filter(r => r.rating)
+  if (metRating.length === 0) return null
+  return Math.round(metRating.reduce((a, r) => a + (r.rating || 0), 0) / metRating.length * 10) / 10
+}
 
 export default function ProgressiePage() {
   const [loading, setLoading] = useState(true)
-  const [inzichten, setInzichten] = useState<Array<{observation: string; pattern_type: string}> | null>(null)
-  const [predictions, setPredictions] = useState<Array<{
-    titel: string; voorspelling: string; kans: number; actie: string; type: 'positief' | 'waarschuwing'
-  }> | null>(null)
-  const [loadData, setLoadData] = useState<{
-    cardio_load_7d: number; strength_load_7d: number; recovery_load_7d: number
-    total_load_7d: number; today_load: number; today_intensity: string
-    load_trend: string; load_trend_pct: number | null; last_heavy_session_days: number | null
-    samenvatting: string
-  } | null>(null)
-  const [performance, setPerformance] = useState<{
-    progressie_trend: string
-    consistentie: string
-    herstel_na_training: string
-    niveau_gereed: boolean
-    gem_rating: number | null
-    trainingen_per_week: number | null
-    samenvatting: string
-  } | null>(null)
+  const [historischOpen, setHistorischOpen] = useState(false)
+
   const [garmin, setGarmin] = useState<GarminData | null>(null)
   const [dagStatus, setDagStatus] = useState<DagStatus | null>(null)
   const [weekResultaten, setWeekResultaten] = useState<TrainingResult[]>([])
   const [maandResultaten, setMaandResultaten] = useState<TrainingResult[]>([])
   const [alleResultaten, setAlleResultaten] = useState<TrainingResult[]>([])
-  const [weekGrafiek, setWeekGrafiek] = useState<Array<{ week: string; minuten: number; trainingen: number }>>([])
+  const [weekGrafiek, setWeekGrafiek] = useState<Array<{ week: string; minuten: number }>>([])
+
+  const [performance, setPerformance] = useState<PerformanceData | null>(null)
+  const [loadData, setLoadData] = useState<LoadData | null>(null)
+  const [inzichten, setInzichten] = useState<Inzicht[] | null>(null)
+  const [predictions, setPredictions] = useState<Prediction[] | null>(null)
 
   const laadData = useCallback(async () => {
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
     )
-
     const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
     const maandGeleden = new Date()
     maandGeleden.setDate(maandGeleden.getDate() - 30)
 
-    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes, predictionsRes, loadRes, memoryRes] = await Promise.all([
+    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes, memoryRes, predictionsRes, loadRes] = await Promise.all([
       supabase.from('garmin_imports').select('parsed_data').eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
-      supabase.from('daily_status').select('coach_score, recovery_score, status_color').eq('date', vandaag).single(),
+      supabase.from('daily_status').select('recovery_score').eq('date', vandaag).single(),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', weekStart(0)).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', maandGeleden.toISOString()).order('completed_at', { ascending: false }),
       supabase.from('training_results').select('*').eq('completed', true).order('completed_at', { ascending: false }),
@@ -151,24 +164,16 @@ export default function ProgressiePage() {
     ])
 
     setGarmin(garminRes.data?.parsed_data || null)
-    if (performanceRes && !performanceRes.error) {
-      setPerformance(performanceRes)
-    }
-    if (predictionsRes?.predictions) {
-      setPredictions(predictionsRes.predictions)
-    }
-    if (loadRes && !loadRes.error) {
-      setLoadData(loadRes)
-    }
-    if (memoryRes?.observations) {
-      setInzichten(memoryRes.observations.slice(0, 5))
-    }
     setDagStatus(statusRes.data || null)
     setWeekResultaten(weekRes.data || [])
     setMaandResultaten(maandRes.data || [])
     setAlleResultaten(alleRes.data || [])
 
-    // Bouw week grafiek (laatste 8 weken)
+    if (performanceRes && !performanceRes.error) setPerformance(performanceRes)
+    if (memoryRes?.observations) setInzichten(memoryRes.observations.slice(0, 5))
+    if (predictionsRes?.predictions) setPredictions(predictionsRes.predictions)
+    if (loadRes && !loadRes.error) setLoadData(loadRes)
+
     const grafiekData = []
     for (let i = 7; i >= 0; i--) {
       const start = new Date(weekStart(-i))
@@ -178,11 +183,9 @@ export default function ProgressiePage() {
         const d = new Date(r.completed_at)
         return d >= start && d < end
       })
-      const weekLabel = start.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
       grafiekData.push({
-        week: weekLabel,
+        week: start.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }),
         minuten: weekData.reduce((a, r) => a + (r.actual_duration || 0), 0),
-        trainingen: weekData.length,
       })
     }
     setWeekGrafiek(grafiekData)
@@ -191,52 +194,27 @@ export default function ProgressiePage() {
 
   useEffect(() => { laadData() }, [laadData])
 
-  // Berekeningen
-  const weekGemRating = weekResultaten.filter(r => r.rating).length > 0
-    ? Math.round(weekResultaten.filter(r => r.rating).reduce((a, r) => a + (r.rating || 0), 0) / weekResultaten.filter(r => r.rating).length * 10) / 10
-    : null
-
+  const weekGemRating = gemRating(weekResultaten)
   const weekTotaalMin = weekResultaten.reduce((a, r) => a + (r.actual_duration || 0), 0)
-
-  const maandGemRating = maandResultaten.filter(r => r.rating).length > 0
-    ? Math.round(maandResultaten.filter(r => r.rating).reduce((a, r) => a + (r.rating || 0), 0) / maandResultaten.filter(r => r.rating).length * 10) / 10
-    : null
-
+  const maandGemRating = gemRating(maandResultaten)
   const maandTotaalMin = maandResultaten.reduce((a, r) => a + (r.actual_duration || 0), 0)
-
-  // Records
   const streak = berekenStreak(alleResultaten)
   const hoogsteRating = alleResultaten.filter(r => r.rating).length > 0
     ? Math.max(...alleResultaten.filter(r => r.rating).map(r => r.rating || 0))
     : null
   const totaalMinuten = alleResultaten.reduce((a, r) => a + (r.actual_duration || 0), 0)
+  const besteWeek = weekGrafiek.reduce((best, w) => w.minuten > best ? w.minuten : best, 0)
 
-  // Beste week
-  const besteWeek = weekGrafiek.reduce((best, w) => w.trainingen > best ? w.trainingen : best, 0)
-
-  // Trend (vergelijk deze week met vorige week)
-  const vorigeWeekMin = weekGrafiek[weekGrafiek.length - 2]?.minuten || 0
-  const dezeWeekMin = weekGrafiek[weekGrafiek.length - 1]?.minuten || weekTotaalMin
-  const trend = dezeWeekMin > vorigeWeekMin * 1.1 ? 'stijgend' : dezeWeekMin < vorigeWeekMin * 0.9 ? 'dalend' : 'stabiel'
-
-  // Rating grafiek data
   const ratingGrafiek = alleResultaten
-    .filter(r => r.rating)
-    .slice(-10)
-    .reverse()
-    .map((r, i) => ({
-      sessie: `#${i + 1}`,
-      rating: r.rating,
-    }))
+    .filter(r => r.rating).slice(-10).reverse()
+    .map((r, i) => ({ sessie: `#${i + 1}`, rating: r.rating }))
 
   if (loading) {
     return (
       <AppShell>
         <div className="px-5 py-6 flex flex-col gap-4">
           <h1 className="text-2xl font-bold text-white">Progressie</h1>
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-28 rounded-2xl bg-coach-card animate-pulse" />
-          ))}
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-28 rounded-2xl bg-coach-card animate-pulse" />)}
         </div>
       </AppShell>
     )
@@ -245,181 +223,59 @@ export default function ProgressiePage() {
   return (
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-5 pb-8">
-
         <h1 className="text-2xl font-bold text-white">Progressie</h1>
 
-        {/* ── Vandaag ──────────────────────────────────────────────────── */}
-        <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Vandaag</p>
-          <Card className="p-5">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Battery size={14} className={bbKleur(garmin?.body_battery?.current ?? null)} />
-                  <p className="text-xs text-slate-400">Body Battery</p>
-                </div>
-                <p className={cn('text-2xl font-bold', bbKleur(garmin?.body_battery?.current ?? null))}>
-                  {garmin?.body_battery?.current ?? '—'}
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Zap size={14} className={herstelKleur(dagStatus?.recovery_score ?? null)} />
-                  <p className="text-xs text-slate-400">Herstel</p>
-                </div>
-                <p className={cn('text-sm font-semibold mt-1', herstelKleur(dagStatus?.recovery_score ?? null))}>
-                  {herstelLabel(dagStatus?.recovery_score ?? null)}
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Moon size={14} className="text-purple-400" />
-                  <p className="text-xs text-slate-400">Slaap</p>
-                </div>
-                <p className="text-2xl font-bold text-purple-400">
-                  {garmin?.sleep?.score ?? '—'}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* ── Deze week ─────────────────────────────────────────────────── */}
-        <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Deze week</p>
-          <Card className="p-5">
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Trainingen</p>
-                <p className="text-3xl font-bold text-white">{weekResultaten.length}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Gem. rating</p>
-                <p className="text-3xl font-bold text-primary-400">{weekGemRating ?? '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Totale tijd</p>
-                <p className="text-2xl font-bold text-white">{formatDuur(weekTotaalMin)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Trend</p>
-                <div className="flex items-center gap-1.5 mt-1">
-                  {trend === 'stijgend' && <TrendingUp size={18} className="text-green-400" />}
-                  {trend === 'dalend' && <TrendingDown size={18} className="text-red-400" />}
-                  {trend === 'stabiel' && <Minus size={18} className="text-slate-400" />}
-                  <p className={cn('text-sm font-semibold capitalize',
-                    trend === 'stijgend' ? 'text-green-400' :
-                    trend === 'dalend' ? 'text-red-400' : 'text-slate-400'
-                  )}>{trend}</p>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* ── Deze maand ────────────────────────────────────────────────── */}
-        <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Deze maand</p>
-          <Card className="p-5">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center">
-                <p className="text-xs text-slate-400 mb-1">Trainingen</p>
-                <p className="text-2xl font-bold text-white">{maandResultaten.length}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-slate-400 mb-1">Gem. rating</p>
-                <p className="text-2xl font-bold text-primary-400">{maandGemRating ?? '—'}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-slate-400 mb-1">Totale tijd</p>
-                <p className="text-xl font-bold text-white">{formatDuur(maandTotaalMin)}</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* ── Persoonlijke records ──────────────────────────────────────── */}
-        <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Persoonlijke records</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Flame size={16} className="text-orange-400" />
-                <p className="text-xs text-slate-400">Huidige streak</p>
-              </div>
-              <p className="text-3xl font-bold text-orange-400">{streak}</p>
-              <p className="text-xs text-slate-500 mt-0.5">dagen actief</p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy size={16} className="text-yellow-400" />
-                <p className="text-xs text-slate-400">Beste week</p>
-              </div>
-              <p className="text-3xl font-bold text-yellow-400">{besteWeek}</p>
-              <p className="text-xs text-slate-500 mt-0.5">trainingen</p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Star size={16} className="text-primary-400" />
-                <p className="text-xs text-slate-400">Hoogste rating</p>
-              </div>
-              <p className="text-3xl font-bold text-primary-400">{hoogsteRating ?? '—'}</p>
-              <p className="text-xs text-slate-500 mt-0.5">van de 10</p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock size={16} className="text-green-400" />
-                <p className="text-xs text-slate-400">Totale tijd</p>
-              </div>
-              <p className="text-2xl font-bold text-green-400">{formatDuur(totaalMinuten)}</p>
-              <p className="text-xs text-slate-500 mt-0.5">all-time</p>
-            </Card>
-          </div>
-        </div>
-
-        {/* ── Trainingstijd per week ────────────────────────────────────── */}
-        {weekGrafiek.some(w => w.minuten > 0) && (
+        {/* 1. Performance AI */}
+        {performance ? (
           <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Trainingstijd per week</p>
-            <Card className="p-4">
-              <ResponsiveContainer width="100%" height={120}>
-                <BarChart data={weekGrafiek} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2d333b" vertical={false} />
-                  <XAxis dataKey="week" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} width={30} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1c2128', border: '1px solid #2d333b', borderRadius: 8, fontSize: 11 }}
-                    formatter={(v: number) => [`${v} min`, 'Tijd']}
-                  />
-                  <Bar dataKey="minuten" fill="#818cf8" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Performance AI</p>
+            <Card className="p-5">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Progressie trend</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {performance.progressie_trend === 'stijgend' && <TrendingUp size={16} className="text-green-400" />}
+                    {performance.progressie_trend === 'dalend' && <TrendingDown size={16} className="text-red-400" />}
+                    {(performance.progressie_trend === 'stabiel' || performance.progressie_trend === 'onvoldoende_data') && <Minus size={16} className="text-slate-400" />}
+                    <p className={cn('text-sm font-semibold capitalize', trendKleur(performance.progressie_trend))}>
+                      {performance.progressie_trend.replace(/_/g, ' ')}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Consistentie</p>
+                  <p className={cn('text-sm font-semibold capitalize mt-1',
+                    performance.consistentie === 'hoog' ? 'text-green-400' :
+                    performance.consistentie === 'laag' ? 'text-red-400' : 'text-slate-400'
+                  )}>{performance.consistentie.replace(/_/g, ' ')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Herstel na training</p>
+                  <p className={cn('text-sm font-semibold capitalize mt-1',
+                    performance.herstel_na_training === 'goed' ? 'text-green-400' :
+                    performance.herstel_na_training === 'slecht' ? 'text-red-400' : 'text-slate-400'
+                  )}>{performance.herstel_na_training.replace(/_/g, ' ')}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Niveau gereed</p>
+                  <p className={cn('text-sm font-semibold mt-1',
+                    performance.niveau_gereed ? 'text-green-400' : 'text-slate-400'
+                  )}>{performance.niveau_gereed ? 'Ja ✓' : 'Nog niet'}</p>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-coach-border">
+                <p className="text-xs text-slate-400 leading-relaxed">{performance.samenvatting}</p>
+              </div>
             </Card>
           </div>
+        ) : (
+          <Card className="p-5 text-center">
+            <BarChart2 size={28} className="text-slate-600 mx-auto mb-2" />
+            <p className="text-slate-400 text-sm">Performance AI heeft meer trainingen nodig</p>
+          </Card>
         )}
 
-        {/* ── Rating trend ──────────────────────────────────────────────── */}
-        {ratingGrafiek.length >= 3 && (
-          <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Rating trend</p>
-            <Card className="p-4">
-              <ResponsiveContainer width="100%" height={100}>
-                <LineChart data={ratingGrafiek} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2d333b" vertical={false} />
-                  <XAxis dataKey="sessie" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} width={20} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1c2128', border: '1px solid #2d333b', borderRadius: 8, fontSize: 11 }}
-                    formatter={(v: number) => [`${v}/10`, 'Rating']}
-                  />
-                  <Line type="monotone" dataKey="rating" stroke="#4ade80" strokeWidth={2} dot={{ r: 3, fill: '#4ade80' }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </Card>
-          </div>
-        )}
-
-        {/* ── Trainingsbelasting ───────────────────────────────────────── */}
+        {/* 2. Trainingsbelasting */}
         {loadData && (
           <div>
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Trainingsbelasting</p>
@@ -438,12 +294,23 @@ export default function ProgressiePage() {
                   <p className="text-xs text-slate-500 mt-0.5">Herstel</p>
                 </div>
               </div>
-              <div className="pt-3 border-t border-coach-border">
-                <div className="flex items-center justify-between mb-1">
+              <div className="pt-3 border-t border-coach-border flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
                   <p className="text-xs text-slate-400">Totaal 7 dagen</p>
                   <p className="text-sm font-bold text-white">{loadData.total_load_7d}</p>
                 </div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-400">Trend</p>
+                  <div className="flex items-center gap-1">
+                    {loadData.load_trend === 'stijgend' && <TrendingUp size={12} className="text-green-400" />}
+                    {loadData.load_trend === 'dalend' && <TrendingDown size={12} className="text-red-400" />}
+                    {loadData.load_trend === 'stabiel' && <Minus size={12} className="text-slate-400" />}
+                    <p className={cn('text-sm font-semibold capitalize', trendKleur(loadData.load_trend))}>
+                      {loadData.load_trend}{loadData.load_trend_pct !== null ? ` (${loadData.load_trend_pct > 0 ? '+' : ''}${loadData.load_trend_pct}%)` : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
                   <p className="text-xs text-slate-400">Vandaag</p>
                   <p className={cn('text-sm font-semibold capitalize',
                     loadData.today_intensity === 'hoog' || loadData.today_intensity === 'zeer hoog' ? 'text-orange-400' :
@@ -461,7 +328,24 @@ export default function ProgressiePage() {
           </div>
         )}
 
-        {/* ── Voorspellingen ────────────────────────────────────────────── */}
+        {/* 3. Coach Inzichten */}
+        {inzichten && inzichten.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach Inzichten</p>
+            <Card className="p-5">
+              <div className="flex flex-col gap-3">
+                {inzichten.map((ins, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary-400 mt-2 flex-shrink-0" />
+                    <p className="text-sm text-slate-300 leading-relaxed">{ins.observation}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* 4. Voorspellingen */}
         {predictions && predictions.length > 0 && (
           <div>
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Voorspellingen</p>
@@ -492,77 +376,195 @@ export default function ProgressiePage() {
           </div>
         )}
 
-        {/* ── Performance AI ──────────────────────────────────────── */}
-        {performance && (
-          <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Performance AI</p>
-            <Card className="p-5">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-slate-400 mb-1">Progressie trend</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    {performance.progressie_trend === 'stijgend' && <TrendingUp size={16} className="text-green-400" />}
-                    {performance.progressie_trend === 'dalend' && <TrendingDown size={16} className="text-red-400" />}
-                    {performance.progressie_trend === 'stabiel' && <Minus size={16} className="text-slate-400" />}
-                    {performance.progressie_trend === 'onvoldoende_data' && <Minus size={16} className="text-slate-500" />}
-                    <p className={cn('text-sm font-semibold capitalize',
-                      performance.progressie_trend === 'stijgend' ? 'text-green-400' :
-                      performance.progressie_trend === 'dalend' ? 'text-red-400' : 'text-slate-400'
-                    )}>{performance.progressie_trend.replace('_', ' ')}</p>
+        {/* 5. Historisch (inklapbaar) */}
+        <div>
+          <button onClick={() => setHistorischOpen(!historischOpen)} className="w-full">
+            <Card className="p-4 active:bg-slate-800/80 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-white">Historisch</p>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <p className="text-xs text-slate-400">{maandResultaten.length} trainingen deze maand</p>
+                    {maandGemRating && <p className="text-xs text-slate-400">gem. {maandGemRating}/10</p>}
+                    {streak > 0 && <p className="text-xs text-slate-400">streak {streak}d</p>}
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-400 mb-1">Consistentie</p>
-                  <p className={cn('text-sm font-semibold capitalize mt-1',
-                    performance.consistentie === 'hoog' ? 'text-green-400' :
-                    performance.consistentie === 'laag' ? 'text-red-400' : 'text-slate-400'
-                  )}>{performance.consistentie.replace('_', ' ')}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 mb-1">Herstel na training</p>
-                  <p className={cn('text-sm font-semibold capitalize mt-1',
-                    performance.herstel_na_training === 'goed' ? 'text-green-400' :
-                    performance.herstel_na_training === 'slecht' ? 'text-red-400' : 'text-slate-400'
-                  )}>{performance.herstel_na_training.replace('_', ' ')}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 mb-1">Niveau gereed</p>
-                  <p className={cn('text-sm font-semibold mt-1',
-                    performance.niveau_gereed ? 'text-green-400' : 'text-slate-400'
-                  )}>{performance.niveau_gereed ? 'Ja ✓' : 'Nog niet'}</p>
-                </div>
-              </div>
-              <div className="pt-3 border-t border-coach-border">
-                <p className="text-xs text-slate-400 leading-relaxed">{performance.samenvatting}</p>
+                {historischOpen
+                  ? <ChevronUp size={18} className="text-slate-400 flex-shrink-0" />
+                  : <ChevronDown size={18} className="text-slate-400 flex-shrink-0" />
+                }
               </div>
             </Card>
-          </div>
-        )}
+          </button>
 
-        {/* ── Coach Inzichten ─────────────────────────────────────────── */}
-        {inzichten && inzichten.length > 0 && (
-          <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach Inzichten</p>
-            <Card className="p-5">
-              <div className="flex flex-col gap-3">
-                {inzichten.map((ins, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary-400 mt-2 flex-shrink-0" />
-                    <p className="text-sm text-slate-300 leading-relaxed">{ins.observation}</p>
+          {historischOpen && (
+            <div className="flex flex-col gap-4 mt-3">
+
+              {/* Vandaag */}
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Vandaag</p>
+                <Card className="p-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Battery size={12} className={bbKleur(garmin?.body_battery?.current ?? null)} />
+                        <p className="text-xs text-slate-400">BB</p>
+                      </div>
+                      <p className={cn('text-xl font-bold', bbKleur(garmin?.body_battery?.current ?? null))}>
+                        {garmin?.body_battery?.current ?? '—'}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-400 mb-1">Herstel</p>
+                      <p className={cn('text-sm font-semibold mt-1', kleurScore(dagStatus?.recovery_score ?? null))}>
+                        {herstelLabel(dagStatus?.recovery_score ?? null)}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Moon size={12} className="text-purple-400" />
+                        <p className="text-xs text-slate-400">Slaap</p>
+                      </div>
+                      <p className="text-xl font-bold text-purple-400">
+                        {garmin?.sleep?.score ?? '—'}
+                      </p>
+                    </div>
                   </div>
-                ))}
+                </Card>
               </div>
-            </Card>
-          </div>
-        )}
+
+              {/* Week & Maand */}
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Deze week</p>
+                <Card className="p-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center">
+                      <p className="text-xs text-slate-400 mb-1">Trainingen</p>
+                      <p className="text-2xl font-bold text-white">{weekResultaten.length}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-400 mb-1">Gem. rating</p>
+                      <p className="text-2xl font-bold text-primary-400">{weekGemRating ?? '—'}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-400 mb-1">Tijd</p>
+                      <p className="text-xl font-bold text-white">{formatDuur(weekTotaalMin)}</p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Deze maand</p>
+                <Card className="p-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center">
+                      <p className="text-xs text-slate-400 mb-1">Trainingen</p>
+                      <p className="text-2xl font-bold text-white">{maandResultaten.length}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-400 mb-1">Gem. rating</p>
+                      <p className="text-2xl font-bold text-primary-400">{maandGemRating ?? '—'}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-slate-400 mb-1">Tijd</p>
+                      <p className="text-xl font-bold text-white">{formatDuur(maandTotaalMin)}</p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Records */}
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Persoonlijke records</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Flame size={14} className="text-orange-400" />
+                      <p className="text-xs text-slate-400">Streak</p>
+                    </div>
+                    <p className="text-2xl font-bold text-orange-400">{streak}</p>
+                    <p className="text-xs text-slate-500">dagen actief</p>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Trophy size={14} className="text-yellow-400" />
+                      <p className="text-xs text-slate-400">Beste week</p>
+                    </div>
+                    <p className="text-2xl font-bold text-yellow-400">{besteWeek}</p>
+                    <p className="text-xs text-slate-500">minuten</p>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Star size={14} className="text-primary-400" />
+                      <p className="text-xs text-slate-400">Hoogste rating</p>
+                    </div>
+                    <p className="text-2xl font-bold text-primary-400">{hoogsteRating ?? '—'}</p>
+                    <p className="text-xs text-slate-500">van de 10</p>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock size={14} className="text-green-400" />
+                      <p className="text-xs text-slate-400">Totale tijd</p>
+                    </div>
+                    <p className="text-xl font-bold text-green-400">{formatDuur(totaalMinuten)}</p>
+                    <p className="text-xs text-slate-500">all-time</p>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Grafieken */}
+              {weekGrafiek.some(w => w.minuten > 0) && (
+                <div>
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Trainingstijd per week</p>
+                  <Card className="p-4">
+                    <ResponsiveContainer width="100%" height={120}>
+                      <BarChart data={weekGrafiek} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#2d333b" vertical={false} />
+                        <XAxis dataKey="week" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} width={30} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#1c2128', border: '1px solid #2d333b', borderRadius: 8, fontSize: 11 }}
+                          formatter={(v: number) => [`${v} min`, 'Tijd']}
+                        />
+                        <Bar dataKey="minuten" fill="#818cf8" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Card>
+                </div>
+              )}
+
+              {ratingGrafiek.length >= 3 && (
+                <div>
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Rating trend</p>
+                  <Card className="p-4">
+                    <ResponsiveContainer width="100%" height={100}>
+                      <LineChart data={ratingGrafiek} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#2d333b" vertical={false} />
+                        <XAxis dataKey="sessie" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} />
+                        <YAxis domain={[0, 10]} tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} width={20} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#1c2128', border: '1px solid #2d333b', borderRadius: 8, fontSize: 11 }}
+                          formatter={(v: number) => [`${v}/10`, 'Rating']}
+                        />
+                        <Line type="monotone" dataKey="rating" stroke="#4ade80" strokeWidth={2} dot={{ r: 3, fill: '#4ade80' }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Card>
+                </div>
+              )}
+
+            </div>
+          )}
+        </div>
 
         {/* Lege staat */}
-        {alleResultaten.length === 0 && (
+        {alleResultaten.length === 0 && !performance && (
           <Card className="p-8 text-center">
             <Dumbbell size={40} className="text-slate-600 mx-auto mb-3" />
             <p className="text-white font-semibold">Nog geen trainingen</p>
             <p className="text-slate-400 text-sm mt-1 leading-relaxed">
-              Voltooi je eerste kettlebell training om hier progressie te zien.
+              Voltooi je eerste training om hier progressie te zien.
             </p>
           </Card>
         )}
