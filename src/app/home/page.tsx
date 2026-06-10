@@ -302,6 +302,88 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* Check-in */}
+        {!hasCheckin ? (
+          <Link href="/checkin">
+            <Card className="px-5 py-4 border border-primary-500/30 bg-primary-500/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-semibold text-sm">Ochtend check-in</p>
+                  <p className="text-slate-400 text-xs mt-0.5">Hoe voel je je vandaag?</p>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center text-primary-400">
+                  <ChevronDown size={16} className="-rotate-90" />
+                </div>
+              </div>
+            </Card>
+          </Link>
+        ) : checkin && (
+          <Card className="px-4 py-3">
+            <p className="text-xs text-slate-500 mb-3">Check-in vandaag</p>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-white">{checkin.feeling_score}</p>
+                <p className="text-xs text-slate-400 mt-0.5">Gevoel</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-white">{checkin.energy_score}</p>
+                <p className="text-xs text-slate-400 mt-0.5">Energie</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-white">{checkin.has_pain ? 'ja' : 'nee'}</p>
+                <p className="text-xs text-slate-400 mt-0.5">Pijn</p>
+              </div>
+            </div>
+            {((checkin as {stress_score?: number}).stress_score || (checkin as {motivation_score?: number}).motivation_score || (checkin as {soreness_score?: number}).soreness_score) && (
+              <>
+                <div className="h-px bg-coach-border my-2" />
+                <div className="grid grid-cols-3 gap-2">
+                  {(checkin as {stress_score?: number}).stress_score && (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-orange-400">{(checkin as {stress_score?: number}).stress_score}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Stress</p>
+                    </div>
+                  )}
+                  {(checkin as {motivation_score?: number}).motivation_score && (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-green-400">{(checkin as {motivation_score?: number}).motivation_score}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Motivatie</p>
+                    </div>
+                  )}
+                  {(checkin as {soreness_score?: number}).soreness_score && (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-red-400">{(checkin as {soreness_score?: number}).soreness_score}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Spierpijn</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </Card>
+        )}
+
+
+
+        {/* Dagboek knop */}
+        <Link href="/dagboek">
+          <Card className="px-5 py-4 border border-slate-700/50 active:bg-slate-800/80 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                  <BookOpen size={16} className="text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold text-sm">Dagboek</p>
+                  <p className="text-slate-400 text-xs mt-0.5">Hoe was je dag?</p>
+                </div>
+              </div>
+              <ChevronDown size={16} className="text-slate-500 -rotate-90" />
+            </div>
+          </Card>
+        </Link>
+
+
+
         {/* Vandaag van je Coach */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
@@ -389,88 +471,6 @@ export default function HomePage() {
             )}
           </div>
         </Card>
-
-        {/* Check-in */}
-        {!hasCheckin ? (
-          <Link href="/checkin">
-            <Card className="px-5 py-4 border border-primary-500/30 bg-primary-500/5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white font-semibold text-sm">Ochtend check-in</p>
-                  <p className="text-slate-400 text-xs mt-0.5">Hoe voel je je vandaag?</p>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center text-primary-400">
-                  <ChevronDown size={16} className="-rotate-90" />
-                </div>
-              </div>
-            </Card>
-          </Link>
-        ) : checkin && (
-          <Card className="px-4 py-3">
-            <p className="text-xs text-slate-500 mb-3">Check-in vandaag</p>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-white">{checkin.feeling_score}</p>
-                <p className="text-xs text-slate-400 mt-0.5">Gevoel</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-white">{checkin.energy_score}</p>
-                <p className="text-xs text-slate-400 mt-0.5">Energie</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-white">{checkin.has_pain ? 'ja' : 'nee'}</p>
-                <p className="text-xs text-slate-400 mt-0.5">Pijn</p>
-              </div>
-            </div>
-            {((checkin as {stress_score?: number}).stress_score || (checkin as {motivation_score?: number}).motivation_score || (checkin as {soreness_score?: number}).soreness_score) && (
-              <>
-                <div className="h-px bg-coach-border my-2" />
-                <div className="grid grid-cols-3 gap-2">
-                  {(checkin as {stress_score?: number}).stress_score && (
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-orange-400">{(checkin as {stress_score?: number}).stress_score}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Stress</p>
-                    </div>
-                  )}
-                  {(checkin as {motivation_score?: number}).motivation_score && (
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-green-400">{(checkin as {motivation_score?: number}).motivation_score}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Motivatie</p>
-                    </div>
-                  )}
-                  {(checkin as {soreness_score?: number}).soreness_score && (
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-red-400">{(checkin as {soreness_score?: number}).soreness_score}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Spierpijn</p>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </Card>
-        )}
-
-
-
-        {/* Dagboek knop */}
-        <Link href="/dagboek">
-          <Card className="px-5 py-4 border border-slate-700/50 active:bg-slate-800/80 transition-colors">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
-                  <BookOpen size={16} className="text-violet-400" />
-                </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">Dagboek</p>
-                  <p className="text-slate-400 text-xs mt-0.5">Hoe was je dag?</p>
-                </div>
-              </div>
-              <ChevronDown size={16} className="text-slate-500 -rotate-90" />
-            </div>
-          </Card>
-        </Link>
-
-
 
         {/* Snelle links */}
         <div className="grid grid-cols-2 gap-3">
