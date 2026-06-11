@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Play, Pause, ChevronLeft, Check, RotateCcw } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, Check, RotateCcw } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
@@ -182,10 +182,14 @@ function LearningLayer({
 }
 
 // ─── Workout Engine ───────────────────────────────────────────────────────────
+// Flow:
+// Oefening 1: uitleg → Ready → Start → sets automatisch → rust met volgende uitleg
+// Oefening 2+: automatisch start → sets → rust met volgende uitleg
+// Navigatie: Volgende (skip) / Terug (vorige oefening)
 
 function WorkoutEngine({
   schema, currentSegment, completedSegments, elapsedSeconds,
-  onComplete, onNextSegment, onTick
+  onComplete, onNextSegment, onPrevSegment, onTick
 }: {
   schema: TrainingSchema
   currentSegment: number
@@ -193,52 +197,92 @@ function WorkoutEngine({
   elapsedSeconds: number
   onComplete: () => void
   onNextSegment: () => void
+  onPrevSegment: () => void
   onTick: () => void
 }) {
-  const [running, setRunning] = useState(true)
-  const [restTimer, setRestTimer] = useState<number | null>(null)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const seg = schema.segments[currentSegment] as KettlebellSegment
+  const nextSeg = schema.segments[currentSegment + 1] as KettlebellSegment | undefined
+  const isFirst = currentSegment === 0
+  const isLast = currentSegment === schema.segments.length - 1
+  const totalSets = seg.sets || 1
+
+  // Workout state
+  const [phase, setPhase] = useState<'ready' | 'active' | 'rest'>( isFirst ? 'ready' : 'active')
+  const [currentSet, setCurrentSet] = useState(1)
+  const [restTimer, setRestTimer] = useState(0)
+  const [showNextInfo, setShowNextInfo] = useState(false)
+
+  const tickRef = useRef<NodeJS.Timeout | null>(null)
   const restRef = useRef<NodeJS.Timeout | null>(null)
 
-  const seg = schema.segments[currentSegment] as KettlebellSegment
-  const isLast = currentSegment === schema.segments.length - 1
-
+  // Reset state when segment changes
   useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(onTick, 1000)
+    setPhase(currentSegment === 0 ? 'ready' : 'active')
+    setCurrentSet(1)
+    setRestTimer(0)
+    setShowNextInfo(false)
+    return () => {
+      if (restRef.current) clearInterval(restRef.current)
     }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [running, onTick])
+  }, [currentSegment])
 
-  function handleSegmentDone() {
-    if (restRef.current) clearTimeout(restRef.current)
-    const restSec = seg.rest_sec || 60
+  // Elapsed tick
+  useEffect(() => {
+    if (phase === 'active') {
+      tickRef.current = setInterval(onTick, 1000)
+    }
+    return () => { if (tickRef.current) clearInterval(tickRef.current) }
+  }, [phase, onTick])
+
+  function startRest(isLastSet: boolean) {
+    if (restRef.current) clearInterval(restRef.current)
+    const restSec = isLastSet ? (seg.rest_sec || 60) : Math.floor((seg.rest_sec || 60) / 2)
+    const isLastOefening = isLastSet && isLast
+    setPhase('rest')
     setRestTimer(restSec)
-    setRunning(false)
+    // Toon volgende uitleg bij laatste set rust
+    if (isLastSet && nextSeg) setShowNextInfo(true)
     let t = restSec
     restRef.current = setInterval(() => {
       t--
       setRestTimer(t)
       if (t <= 0) {
         clearInterval(restRef.current!)
-        setRestTimer(null)
-        setRunning(true)
-        if (isLast) onComplete()
-        else onNextSegment()
+        setShowNextInfo(false)
+        if (isLastSet) {
+          if (isLastOefening) onComplete()
+          else onNextSegment()
+        } else {
+          setCurrentSet(s => s + 1)
+          setPhase('active')
+        }
       }
     }, 1000)
   }
 
-  useEffect(() => {
-    return () => {
-      if (restRef.current) clearInterval(restRef.current)
-    }
-  }, [])
+  function handleSetDone() {
+    const isLastSet = currentSet >= totalSets
+    startRest(isLastSet)
+  }
+
+  function handleSkip() {
+    if (restRef.current) clearInterval(restRef.current)
+    setShowNextInfo(false)
+    if (isLast) onComplete()
+    else onNextSegment()
+  }
+
+  function handlePrev() {
+    if (restRef.current) clearInterval(restRef.current)
+    setShowNextInfo(false)
+    onPrevSegment()
+  }
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Voortgang */}
-      <div className="flex items-center gap-2">
+
+      {/* Voortgang oefeningen */}
+      <div className="flex items-center gap-1.5">
         {schema.segments.map((_, i) => (
           <div key={i} className={cn('flex-1 h-1.5 rounded-full transition-all',
             completedSegments.includes(i) ? 'bg-green-500' :
@@ -247,53 +291,125 @@ function WorkoutEngine({
         ))}
       </div>
 
-      {/* Elapsed timer */}
+      {/* Timer */}
       <div className="text-center">
         <p className="text-3xl font-mono font-bold text-white">{formatTime(elapsedSeconds)}</p>
-        <p className="text-xs text-slate-500 mt-1">{currentSegment + 1} / {schema.segments.length} oefeningen</p>
+        <p className="text-xs text-slate-500 mt-1">{currentSegment + 1} / {schema.segments.length}</p>
       </div>
 
-      {/* Rust timer */}
-      {restTimer !== null && (
-        <Card className="p-5 text-center bg-amber-500/10 border-amber-500/20">
-          <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">Rust</p>
-          <p className="text-5xl font-mono font-bold text-amber-400">{restTimer}s</p>
-          <p className="text-slate-400 text-sm mt-2">Volgende: {(schema.segments[currentSegment + 1] as KettlebellSegment)?.exercise || '—'}</p>
-        </Card>
-      )}
-
-      {/* Huidige oefening */}
-      {restTimer === null && (
-        <Card className="p-5">
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Nu</p>
-          <h2 className="text-2xl font-bold text-white mb-2">{seg.exercise || seg.type}</h2>
-          {seg.reps && <p className="text-4xl font-bold text-primary-400">{seg.sets} × {seg.reps}</p>}
-          {!seg.reps && seg.duration_sec && (
-            <p className="text-4xl font-bold text-primary-400">{seg.sets} × {seg.duration_sec}s</p>
-          )}
-          {seg.cue && (
-            <p className="text-sm text-slate-300 mt-3 pt-3 border-t border-coach-border">{seg.cue}</p>
-          )}
-        </Card>
-      )}
-
-      {/* Controls */}
-      {restTimer === null && (
-        <div className="flex gap-3">
+      {/* READY fase — alleen oefening 1 */}
+      {phase === 'ready' && (
+        <>
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Oefening 1</p>
+            <h2 className="text-2xl font-bold text-white mb-2">{seg.exercise || seg.type}</h2>
+            <p className="text-3xl font-bold text-primary-400 mb-3">
+              {seg.reps ? `${totalSets} × ${seg.reps} herh.` : `${totalSets} × ${seg.duration_sec}s`}
+            </p>
+            {seg.instruction && (
+              <p className="text-sm text-slate-300 leading-relaxed mb-2">{seg.instruction}</p>
+            )}
+            {seg.cue && (
+              <div className="mt-3 pt-3 border-t border-coach-border">
+                <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-1">Focuspunt</p>
+                <p className="text-sm text-white">{seg.cue}</p>
+              </div>
+            )}
+          </Card>
           <button
-            onClick={() => setRunning(!running)}
-            className="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center active:bg-slate-700"
+            onClick={() => setPhase('active')}
+            className="w-full py-4 bg-green-500 text-white rounded-xl text-lg font-bold active:bg-green-600"
           >
-            {running ? <Pause size={20} className="text-white" /> : <Play size={20} className="text-white" />}
+            Ready — Start Training
+          </button>
+        </>
+      )}
+
+      {/* ACTIVE fase */}
+      {phase === 'active' && (
+        <>
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-slate-500 uppercase tracking-wider">Nu bezig</p>
+              <div className="flex gap-1">
+                {Array.from({ length: totalSets }, (_, i) => (
+                  <div key={i} className={cn('w-6 h-1.5 rounded-full',
+                    i < currentSet - 1 ? 'bg-green-500' :
+                    i === currentSet - 1 ? 'bg-primary-500' : 'bg-slate-700'
+                  )} />
+                ))}
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-1">{seg.exercise || seg.type}</h2>
+            <p className="text-xs text-slate-400 mb-3">Set {currentSet} van {totalSets}</p>
+            <p className="text-4xl font-bold text-primary-400">
+              {seg.reps ? `${seg.reps} herh.` : `${seg.duration_sec}s`}
+            </p>
+            {seg.cue && (
+              <p className="text-sm text-slate-400 mt-3 pt-3 border-t border-coach-border">{seg.cue}</p>
+            )}
+          </Card>
+
+          <button
+            onClick={handleSetDone}
+            className="w-full py-4 bg-primary-500 text-white rounded-xl text-lg font-bold active:bg-primary-600"
+          >
+            {currentSet >= totalSets ? (isLast ? 'Klaar ✓' : 'Volgende oefening →') : `Set ${currentSet} klaar →`}
+          </button>
+        </>
+      )}
+
+      {/* REST fase */}
+      {phase === 'rest' && (
+        <>
+          <Card className="p-5 text-center bg-amber-500/10 border-amber-500/20">
+            <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">
+              {showNextInfo ? 'Laatste rust' : `Rust na set ${currentSet - 1}`}
+            </p>
+            <p className="text-6xl font-mono font-bold text-amber-400">{restTimer}s</p>
+            {!showNextInfo && (
+              <p className="text-slate-400 text-sm mt-2">Set {currentSet} van {totalSets} volgt</p>
+            )}
+          </Card>
+
+          {/* Uitleg volgende oefening tijdens laatste rust */}
+          {showNextInfo && nextSeg && (
+            <Card className="p-5 border-primary-500/30 bg-primary-500/5">
+              <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-2">Volgende oefening</p>
+              <h3 className="text-lg font-bold text-white mb-1">{nextSeg.exercise}</h3>
+              <p className="text-sm text-primary-400 mb-2">
+                {nextSeg.reps ? `${nextSeg.sets} × ${nextSeg.reps} herh.` : `${nextSeg.sets} × ${nextSeg.duration_sec}s`}
+              </p>
+              {nextSeg.instruction && (
+                <p className="text-sm text-slate-300 leading-relaxed">{nextSeg.instruction}</p>
+              )}
+              {nextSeg.cue && (
+                <p className="text-xs text-primary-400 mt-2">💡 {nextSeg.cue}</p>
+              )}
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Navigatie */}
+      {phase !== 'ready' && (
+        <div className="flex gap-2">
+          <button
+            onClick={handlePrev}
+            disabled={currentSegment === 0}
+            className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold active:bg-slate-700 disabled:opacity-30"
+          >
+            ← Terug
           </button>
           <button
-            onClick={handleSegmentDone}
-            className="flex-1 py-3.5 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600"
+            onClick={handleSkip}
+            className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold active:bg-slate-700"
           >
-            {isLast ? 'Klaar ✓' : 'Volgende →'}
+            {isLast ? 'Afronden →' : 'Overslaan →'}
           </button>
         </div>
       )}
+
     </div>
   )
 }
@@ -487,6 +603,17 @@ export default function SessionPage() {
     })
   }
 
+  function handlePrevSegment() {
+    setSession(prev => {
+      if (!prev || prev.current_segment === 0) return prev
+      return {
+        ...prev,
+        current_segment: prev.current_segment - 1,
+        completed_segments: prev.completed_segments.filter(i => i !== prev.current_segment - 1),
+      }
+    })
+  }
+
   async function handleSave(result: SessionResult) {
     if (!session) return
     setSaving(true)
@@ -625,6 +752,7 @@ export default function SessionPage() {
             elapsedSeconds={session.elapsed_seconds}
             onTick={handleTick}
             onNextSegment={handleNextSegment}
+            onPrevSegment={handlePrevSegment}
             onComplete={() => updateStatus('evaluation')}
           />
         )}
