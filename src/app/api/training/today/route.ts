@@ -261,13 +261,10 @@ Reageer ALLEEN in dit JSON formaat:
   "coach_message": "Persoonlijk bericht aan de gebruiker"
 }`
 
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
+    const aiRes = await fetch(appUrl + '/api/ai', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
@@ -283,8 +280,30 @@ Reageer ALLEEN in dit JSON formaat:
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/)
       if (jsonMatch) instruction = JSON.parse(jsonMatch[0])
-    } catch {
-      return NextResponse.json({ error: 'Generatie mislukt' }, { status: 500 })
+    } catch (parseErr) {
+      console.error('Parse error:', parseErr, 'Raw:', rawText.slice(0, 200))
+      // Fallback schema als parse faalt
+      instruction = {
+        training_allowed: true,
+        training_type: 'kettlebell',
+        title: 'Kettlebell sessie',
+        intensity: 'medium',
+        duration: 30,
+        segments: [
+          { type: 'kettlebell', exercise: 'Two Hand Swing', sets: 4, reps: 15, duration_sec: null, rest_sec: 60, level: 1,
+            instruction: 'Hinge vanuit de heupen, drijf met de heupen vooruit om de swing te starten.',
+            cue: 'Heupen drijven, niet tillen', common_errors: ['Rug rolt', 'Armen trekken'] },
+          { type: 'kettlebell', exercise: 'Goblet Squat', sets: 3, reps: 12, duration_sec: null, rest_sec: 60, level: 1,
+            instruction: 'Houd de kettlebell voor de borst, zak diep door de knieën.',
+            cue: 'Borst omhoog, knieën naar buiten', common_errors: ['Rug rolt voorover'] },
+          { type: 'kettlebell', exercise: 'Clean & Press', sets: 3, reps: 8, duration_sec: null, rest_sec: 90, level: 2,
+            instruction: 'Clean naar rack positie, dan press boven het hoofd.',
+            cue: 'Elleboog hoog bij clean', common_errors: ['Bell slaat tegen de pols'] },
+        ] as unknown[],
+        recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
+        reason: 'Standaard sessie',
+        coach_message: 'Goede training vandaag!',
+      } as TrainingInstruction
     }
 
     if (!instruction) return NextResponse.json({ error: 'Geen instructie gegenereerd' }, { status: 500 })
