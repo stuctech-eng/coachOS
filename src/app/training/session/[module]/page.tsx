@@ -174,7 +174,7 @@ function LearningLayer({
         )}
         <button onClick={onNext}
           className="flex-1 py-3.5 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600">
-          {index === total - 1 ? 'Start Workout →' : 'Volgende →'}
+          {index === total - 1 ? 'Ready →' : 'Volgende →'}
         </button>
       </div>
     </div>
@@ -207,7 +207,7 @@ function WorkoutEngine({
   const totalSets = seg.sets || 1
 
   // Workout state
-  const [phase, setPhase] = useState<'ready' | 'active' | 'rest'>( isFirst ? 'ready' : 'active')
+  const [phase, setPhase] = useState<'start' | 'active' | 'rest'>(isFirst ? 'start' : 'active')
   const [currentSet, setCurrentSet] = useState(1)
   const [restTimer, setRestTimer] = useState(0)
   const [showNextInfo, setShowNextInfo] = useState(false)
@@ -217,7 +217,7 @@ function WorkoutEngine({
 
   // Reset state when segment changes
   useEffect(() => {
-    setPhase(currentSegment === 0 ? 'ready' : 'active')
+    setPhase('active') // oefening 2+ start automatisch
     setCurrentSet(1)
     setRestTimer(0)
     setShowNextInfo(false)
@@ -297,30 +297,24 @@ function WorkoutEngine({
         <p className="text-xs text-slate-500 mt-1">{currentSegment + 1} / {schema.segments.length}</p>
       </div>
 
-      {/* READY fase — alleen oefening 1 */}
-      {phase === 'ready' && (
+      {/* START fase — wacht op Start knop */}
+      {phase === 'start' && (
         <>
           <Card className="p-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Oefening 1</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Oefening 1 — Klaar?</p>
             <h2 className="text-2xl font-bold text-white mb-2">{seg.exercise || seg.type}</h2>
             <p className="text-3xl font-bold text-primary-400 mb-3">
               {seg.reps ? `${totalSets} × ${seg.reps} herh.` : `${totalSets} × ${seg.duration_sec}s`}
             </p>
-            {seg.instruction && (
-              <p className="text-sm text-slate-300 leading-relaxed mb-2">{seg.instruction}</p>
-            )}
             {seg.cue && (
-              <div className="mt-3 pt-3 border-t border-coach-border">
-                <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-1">Focuspunt</p>
-                <p className="text-sm text-white">{seg.cue}</p>
-              </div>
+              <p className="text-sm text-slate-400">{seg.cue}</p>
             )}
           </Card>
           <button
             onClick={() => setPhase('active')}
             className="w-full py-4 bg-green-500 text-white rounded-xl text-lg font-bold active:bg-green-600"
           >
-            Ready — Start Training
+            ▶ Start
           </button>
         </>
       )}
@@ -392,7 +386,7 @@ function WorkoutEngine({
       )}
 
       {/* Navigatie */}
-      {phase !== 'ready' && (
+      {phase !== 'start' && (
         <div className="flex gap-2">
           <button
             onClick={handlePrev}
