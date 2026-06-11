@@ -398,10 +398,15 @@ export default function SessionPage() {
     }
     // Geen geldige sessie of geen segments — wis en genereer opnieuw
     clearSession()
-    // Genereer nieuw schema via training/today
-    fetch('/api/training/today', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+    // Genereer nieuw schema — eerst GET (cache), dan POST (nieuw genereren)
+    const generate = async () => {
+      try {
+        const tryGet = await fetch('/api/training/today', { credentials: 'include' })
+        const getData = tryGet.ok ? await tryGet.json() : null
+        const data = getData?.instruction
+          ? getData
+          : await fetch('/api/training/today', { method: 'POST', credentials: 'include' }).then(r => r.ok ? r.json() : null)
+
         if (data) {
           const instruction = data.instruction || data
           const schema: TrainingSchema = {
@@ -425,9 +430,9 @@ export default function SessionPage() {
           saveSession(newSession)
           setSession(newSession)
         }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      } catch { /* */ } finally { setLoading(false) }
+    }
+    generate()
   }, [module])
 
   // Auto-save op state changes
