@@ -385,6 +385,7 @@ export default function SessionPage() {
   const [session, setSession] = useState<LiveSessionState | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [learningIndex, setLearningIndex] = useState(0)
 
   // Laad sessie — herstel of genereer nieuw
@@ -399,46 +400,39 @@ export default function SessionPage() {
     // Geen geldige sessie of geen segments — wis en genereer opnieuw
     clearSession()
     // Genereer nieuw schema — eerst GET (cache), dan POST (nieuw genereren)
-    const generate = async () => {
-      try {
-        const tryGet = await fetch('/api/training/today', { credentials: 'include' })
-        const getData = tryGet.ok ? await tryGet.json() : null
-        
-        let data = null
-        if (getData?.instruction) {
-          data = getData
-        } else {
-          const postRes = await fetch('/api/training/today', { method: 'POST', credentials: 'include' })
-          data = postRes.ok ? await postRes.json() : null
-          if (!postRes.ok) console.error('POST failed:', postRes.status, await postRes.text().catch(() => ''))
+    // Lees training instructie uit localStorage — gegenereerd door Training tab
+    try {
+      const cached = localStorage.getItem('training_instructie_data')
+      if (cached) {
+        const instruction = JSON.parse(cached)
+        const schema: TrainingSchema = {
+          module,
+          title: instruction.title || `${module.charAt(0).toUpperCase() + module.slice(1)} sessie`,
+          duration: instruction.duration || 30,
+          intensity: instruction.intensity || 'medium',
+          segments: instruction.segments || instruction.exercises || [],
+          coach_message: instruction.coach_message || instruction.reason || '',
         }
-
-        if (data) {
-          const instruction = data.instruction || data
-          const schema: TrainingSchema = {
-            module,
-            title: instruction.title || `${module.charAt(0).toUpperCase() + module.slice(1)} sessie`,
-            duration: instruction.duration || 30,
-            intensity: instruction.intensity || 'medium',
-            segments: instruction.segments || instruction.exercises || [],
-            coach_message: instruction.coach_message || instruction.reason || '',
-          }
-          const newSession: LiveSessionState = {
-            session_id: generateSessionId(),
-            module,
-            status: 'schema',
-            schema,
-            started_at: new Date().toISOString(),
-            current_segment: 0,
-            completed_segments: [],
-            elapsed_seconds: 0,
-          }
-          saveSession(newSession)
-          setSession(newSession)
+        const newSession: LiveSessionState = {
+          session_id: generateSessionId(),
+          module,
+          status: 'schema',
+          schema,
+          started_at: new Date().toISOString(),
+          current_segment: 0,
+          completed_segments: [],
+          elapsed_seconds: 0,
         }
-      } catch { /* */ } finally { setLoading(false) }
+        saveSession(newSession)
+        setSession(newSession)
+      } else {
+        setError('Geen training schema gevonden. Ga eerst naar de Training tab.')
+      }
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setLoading(false)
     }
-    generate()
   }, [module])
 
   // Auto-save op state changes
@@ -505,9 +499,14 @@ export default function SessionPage() {
     return (
       <AppShell>
         <div className="px-5 py-6 text-center">
-          <p className="text-slate-400">Kon geen sessie laden. Probeer opnieuw.</p>
+          <p className="text-slate-400">Kon geen sessie laden.</p>
+          {error && <p className="text-red-400 text-xs mt-2 px-4">{error}</p>}
+          <button onClick={() => { clearSession(); window.location.reload() }}
+            className="mt-4 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm">
+            Opnieuw proberen
+          </button>
           <button onClick={() => router.push('/training')}
-            className="mt-4 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm">
+            className="mt-3 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm block mx-auto">
             Terug
           </button>
         </div>
