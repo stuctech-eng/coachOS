@@ -5,6 +5,7 @@ import { Dumbbell, Wind, Footprints, Zap, Play, RefreshCw, Clock, ChevronRight, 
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
+import type { TrainingModule } from '@/types/training-engine'
 
 interface RecoveryModule {
   type: 'breathing' | 'mobility' | 'walk' | 'relaxation'
@@ -16,8 +17,10 @@ interface RecoveryModule {
 interface TrainingInstruction {
   training_allowed: boolean
   training_type: string | null
+  title?: string
   intensity: 'light' | 'medium' | 'heavy' | null
   duration: number | null
+  segments?: unknown[]
   recovery_modules: RecoveryModule[]
   reason: string
   coach_message: string
@@ -62,6 +65,26 @@ function getModuleRoute(module: RecoveryModule): string {
   if (module.type === 'mobility') return `/training/recovery/mobility?subtype=${module.subtype}&duration=${module.duration}&label=${encodeURIComponent(module.label)}`
   if (module.type === 'walk' || module.subtype === 'recovery_walk') return `/training/recovery/walk?duration=${module.duration}`
   return '/training'
+}
+
+function getTrainingRoute(type: string | null): string {
+  const routes: Record<string, string> = {
+    kettlebell: '/training/session/kettlebell',
+    rowing: '/training/session/rowing',
+    running: '/training/session/running',
+    cycling: '/training/session/cycling',
+    strength: '/training/session/strength',
+    bodyweight: '/training/session/bodyweight',
+  }
+  return routes[type || ''] || '/training/session/kettlebell'
+}
+
+function getModuleLabel(type: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    kettlebell: 'Kettlebell', rowing: 'Roeien', running: 'Hardlopen',
+    cycling: 'Fietsen', strength: 'Kracht', bodyweight: 'Bodyweight',
+  }
+  return labels[type || ''] || 'Training'
 }
 
 const BIBLIOTHEEK = [
@@ -114,6 +137,10 @@ export default function TrainingPage() {
     setGenereren(true)
     try {
       const res = await fetch('/api/training/today', { method: 'POST' })
+      if (!res.ok) {
+        console.error('Training today failed:', res.status)
+        return
+      }
       const data = await res.json()
       if (data.instruction) {
         setInstruction(data.instruction)
@@ -121,15 +148,19 @@ export default function TrainingPage() {
           window.localStorage.setItem('training_instructie_data', JSON.stringify(data.instruction))
           window.localStorage.setItem('training_instructie_datum', vandaag)
         }
+      } else if (data.error) {
+        console.error('Training error:', data.error)
       }
-    } catch { /* */ } finally { setGenereren(false) }
+    } catch (e) {
+      console.error('genereerPlan error:', e)
+    } finally { setGenereren(false) }
   }
 
   function startKettlebell() {
     if (!instruction) return
     const intensity = instruction.intensity || 'medium'
     const duration = instruction.duration || 30
-    router.push(`/training/kettlebell?intensity=${intensity}&duration=${duration}`)
+    router.push(getTrainingRoute(instruction?.training_type || 'kettlebell'))
   }
 
   const isKettlebell = instruction?.training_allowed && instruction?.training_type === 'kettlebell'
@@ -225,7 +256,7 @@ export default function TrainingPage() {
                 className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700"
               >
                 <Play size={22} fill="white" />
-                Start kettlebell training
+                Start {getModuleLabel(instruction?.training_type)}
               </button>
             ) : instruction.recovery_modules.length > 0 ? (
               <button
