@@ -47,6 +47,7 @@ export async function GET() {
       .select('training_instruction')
       .eq('user_id', user.id)
       .eq('date', today)
+      .eq('type', 'training_today')
       .single()
     return NextResponse.json({ instruction: data?.training_instruction || null })
   } catch {
@@ -69,6 +70,7 @@ export async function POST() {
       .select('training_instruction')
       .eq('user_id', user.id)
       .eq('date', today)
+      .eq('type', 'training_today')
       .single()
 
     if (cached?.training_instruction) {
@@ -214,8 +216,9 @@ Reageer ALLEEN in dit JSON formaat:
     await supabase.from('coach_recommendations').upsert({
       user_id: user.id,
       date: today,
+      type: 'training_today',
       training_instruction: instruction,
-    }, { onConflict: 'user_id,date' })
+    }, { onConflict: 'user_id,date,type' })
 
     return NextResponse.json({ instruction })
 

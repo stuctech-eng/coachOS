@@ -289,10 +289,11 @@ export async function POST() {
       .from('coach_recommendations')
       .upsert({
         user_id: user.id, date: today,
+        type: 'coach',
         recommendation, reasoning, actie_type, advice_bullets: JSON.stringify(advice_bullets),
         recovery_status: recovery.status,
         energy_level: checkinRes.data?.energy_score || 5,
-      })
+      }, { onConflict: 'user_id,date,type' })
       .select().single()
 
     if (saveError) throw saveError

@@ -400,39 +400,63 @@ export default function SessionPage() {
     // Geen geldige sessie of geen segments — wis en genereer opnieuw
     clearSession()
     // Genereer nieuw schema — eerst GET (cache), dan POST (nieuw genereren)
-    // Lees training instructie uit localStorage — gegenereerd door Training tab
-    try {
-      const cached = localStorage.getItem('training_instructie_data')
-      if (cached) {
-        const instruction = JSON.parse(cached)
-        const schema: TrainingSchema = {
-          module,
-          title: instruction.title || `${module.charAt(0).toUpperCase() + module.slice(1)} sessie`,
-          duration: instruction.duration || 30,
-          intensity: instruction.intensity || 'medium',
-          segments: instruction.segments || instruction.exercises || [],
-          coach_message: instruction.coach_message || instruction.reason || '',
-        }
-        const newSession: LiveSessionState = {
-          session_id: generateSessionId(),
-          module,
-          status: 'schema',
-          schema,
-          started_at: new Date().toISOString(),
-          current_segment: 0,
-          completed_segments: [],
-          elapsed_seconds: 0,
-        }
-        saveSession(newSession)
-        setSession(newSession)
-      } else {
-        setError('Geen training schema gevonden. Ga eerst naar de Training tab.')
+    // Laad schema: eerst localStorage, dan API
+    const buildSession = (instruction: Record<string, unknown>) => {
+      const schema: TrainingSchema = {
+        module,
+        title: (instruction.title as string) || `${module.charAt(0).toUpperCase() + module.slice(1)} sessie`,
+        duration: (instruction.duration as number) || 30,
+        intensity: (instruction.intensity as 'light' | 'medium' | 'heavy') || 'medium',
+        segments: ((instruction.segments || instruction.exercises || []) as TrainingSegment[]),
+        coach_message: (instruction.coach_message as string) || (instruction.reason as string) || '',
       }
-    } catch (e) {
-      setError(String(e))
-    } finally {
-      setLoading(false)
+      const newSession: LiveSessionState = {
+        session_id: generateSessionId(),
+        module,
+        status: 'schema',
+        schema,
+        started_at: new Date().toISOString(),
+        current_segment: 0,
+        completed_segments: [],
+        elapsed_seconds: 0,
+      }
+      saveSession(newSession)
+      setSession(newSession)
     }
+
+    const run = async () => {
+      try {
+        // Eerst localStorage proberen
+        const cached = localStorage.getItem('training_instructie_data')
+        if (cached) {
+          const instruction = JSON.parse(cached)
+          if (instruction && instruction.segments && instruction.segments.length > 0) {
+            buildSession(instruction)
+            return
+          }
+        }
+
+        // Geen geldige cache — haal op van API
+        const res = await fetch('/api/training/today', { method: 'POST', credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          const instruction = data.instruction || data
+          if (instruction && (instruction.training_type || instruction.segments)) {
+            localStorage.setItem('training_instructie_data', JSON.stringify(instruction))
+            buildSession(instruction)
+          } else {
+            setError('Geen geldig schema ontvangen.')
+          }
+        } else {
+          setError(`Fout ${res.status}: schema generatie mislukt`)
+        }
+      } catch (e) {
+        setError(String(e))
+      } finally {
+        setLoading(false)
+      }
+    }
+    run()
   }, [module])
 
   // Auto-save op state changes
