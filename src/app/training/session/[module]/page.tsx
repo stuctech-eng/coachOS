@@ -403,9 +403,15 @@ export default function SessionPage() {
       try {
         const tryGet = await fetch('/api/training/today', { credentials: 'include' })
         const getData = tryGet.ok ? await tryGet.json() : null
-        const data = getData?.instruction
-          ? getData
-          : await fetch('/api/training/today', { method: 'POST', credentials: 'include' }).then(r => r.ok ? r.json() : null)
+        
+        let data = null
+        if (getData?.instruction) {
+          data = getData
+        } else {
+          const postRes = await fetch('/api/training/today', { method: 'POST', credentials: 'include' })
+          data = postRes.ok ? await postRes.json() : null
+          if (!postRes.ok) console.error('POST failed:', postRes.status, await postRes.text().catch(() => ''))
+        }
 
         if (data) {
           const instruction = data.instruction || data
