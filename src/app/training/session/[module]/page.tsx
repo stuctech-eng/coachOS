@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronLeft, Check, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Pause, Play, SkipForward, Check, X } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
@@ -10,6 +10,17 @@ import type {
   TrainingSegment, KettlebellSegment, SessionResult, TrainingModule
 } from '@/types/training-engine'
 import { SESSION_STORAGE_KEY } from '@/types/training-engine'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ExtendedSessionState extends LiveSessionState {
+  current_set: number
+  workout_phase: 'active' | 'rest' | 'last_rest'
+  rest_seconds: number
+  paused: boolean
+  skipped_segments: number[]
+  completed_sets: number
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,11 +34,11 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-function saveSession(state: LiveSessionState) {
+function saveSession(state: ExtendedSessionState) {
   try { localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(state)) } catch { /* */ }
 }
 
-function loadSession(): LiveSessionState | null {
+function loadSession(): ExtendedSessionState | null {
   try {
     const s = localStorage.getItem(SESSION_STORAGE_KEY)
     return s ? JSON.parse(s) : null
@@ -38,63 +49,58 @@ function clearSession() {
   try { localStorage.removeItem(SESSION_STORAGE_KEY) } catch { /* */ }
 }
 
+function getSeg(schema: TrainingSchema, index: number): KettlebellSegment {
+  return schema.segments[index] as KettlebellSegment
+}
+
 // ─── Schema Layer ─────────────────────────────────────────────────────────────
 
 function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () => void }) {
   const intensiteitLabel = { light: 'Licht', medium: 'Gemiddeld', heavy: 'Zwaar' }
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pb-4">
       <Card className="p-5">
-        <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Vandaag</p>
-        <h2 className="text-xl font-bold text-white mb-1">{schema.title}</h2>
-        <div className="flex items-center gap-3 mt-2">
+        <h2 className="text-xl font-bold text-white mb-2">{schema.title}</h2>
+        <div className="flex items-center gap-3 mb-3">
           <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full">{schema.duration} min</span>
           <span className={cn('text-xs px-3 py-1 rounded-full',
             schema.intensity === 'light' ? 'bg-green-500/20 text-green-400' :
             schema.intensity === 'medium' ? 'bg-amber-500/20 text-amber-400' :
             'bg-red-500/20 text-red-400'
           )}>{intensiteitLabel[schema.intensity]}</span>
+          <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full">{schema.segments.length} oefeningen</span>
         </div>
         {schema.coach_message && (
-          <p className="text-slate-300 text-sm leading-relaxed mt-3 pt-3 border-t border-coach-border">
+          <p className="text-slate-300 text-sm leading-relaxed pt-3 border-t border-coach-border">
             {schema.coach_message}
           </p>
         )}
       </Card>
 
-      <div>
-        <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">
-          Schema — {schema.segments.length} oefeningen
-        </p>
-        <div className="flex flex-col gap-2">
-          {schema.segments.map((seg, i) => (
+      <div className="flex flex-col gap-2">
+        {schema.segments.map((seg, i) => {
+          const kb = seg as KettlebellSegment
+          return (
             <Card key={i} className="px-4 py-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-white">
-                    {(seg as KettlebellSegment).exercise || seg.type}
-                  </p>
+                  <p className="text-sm font-semibold text-white">{kb.exercise || kb.type}</p>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    {(seg as KettlebellSegment).sets && (seg as KettlebellSegment).reps
-                      ? `${(seg as KettlebellSegment).sets} sets × ${(seg as KettlebellSegment).reps} herh.`
-                      : (seg as KettlebellSegment).sets && (seg as KettlebellSegment).duration_sec
-                      ? `${(seg as KettlebellSegment).sets} sets × ${(seg as KettlebellSegment).duration_sec}s`
-                      : `${(seg as { duration_min?: number }).duration_min ?? '—'} min`
-                    }
+                    {kb.reps ? `${kb.sets} sets × ${kb.reps} herh.` :
+                     kb.duration_sec ? `${kb.sets} sets × ${kb.duration_sec}s` : '—'}
+                    {kb.rest_sec ? ` · ${kb.rest_sec}s rust` : ''}
                   </p>
                 </div>
-                <span className="text-xs text-slate-500">#{i + 1}</span>
+                <span className="text-xs text-slate-600 font-mono">#{i + 1}</span>
               </div>
             </Card>
-          ))}
-        </div>
+          )
+        })}
       </div>
 
-      <button
-        onClick={onStart}
-        className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600"
-      >
-        Start Training →
+      <button onClick={onStart}
+        className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold text-base active:bg-primary-600">
+        Training Starten →
       </button>
     </div>
   )
@@ -103,50 +109,34 @@ function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () 
 // ─── Learning Layer ───────────────────────────────────────────────────────────
 
 function LearningLayer({
-  segment, index, total, onNext, onBack
+  segment, onReady, onBack
 }: {
   segment: TrainingSegment
-  index: number
-  total: number
-  onNext: () => void
+  onReady: () => void
   onBack: () => void
 }) {
   const kb = segment as KettlebellSegment
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">{index + 1} / {total}</p>
-        <div className="flex gap-1">
-          {Array.from({ length: total }, (_, i) => (
-            <div key={i} className={cn('h-1 rounded-full transition-all',
-              i < index ? 'bg-primary-500 w-4' :
-              i === index ? 'bg-white w-6' : 'bg-slate-700 w-4'
-            )} />
-          ))}
-        </div>
-      </div>
-
+    <div className="flex flex-col gap-4 pb-4">
       <Card className="p-5">
-        <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Oefening {index + 1}</p>
-        <h2 className="text-xl font-bold text-white mb-1">{kb.exercise || segment.type}</h2>
-        {kb.sets && (
-          <p className="text-sm text-primary-400 mt-1">
-            {kb.reps ? `${kb.sets} × ${kb.reps} herh.` : `${kb.sets} × ${kb.duration_sec}s`}
-            {kb.rest_sec ? ` — ${kb.rest_sec}s rust` : ''}
-          </p>
-        )}
+        <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Eerste oefening</p>
+        <h2 className="text-2xl font-bold text-white mb-1">{kb.exercise || kb.type}</h2>
+        <p className="text-sm text-primary-400 mt-1">
+          {kb.reps ? `${kb.sets} × ${kb.reps} herh.` : `${kb.sets} × ${kb.duration_sec}s`}
+          {kb.rest_sec ? ` · ${kb.rest_sec}s rust` : ''}
+        </p>
       </Card>
 
       {kb.instruction && (
         <Card className="p-5">
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Techniek</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Uitvoering</p>
           <p className="text-sm text-slate-200 leading-relaxed">{kb.instruction}</p>
         </Card>
       )}
 
       {kb.cue && (
         <Card className="p-4 bg-primary-500/10 border-primary-500/20">
-          <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-1">Focuspunt</p>
+          <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-1">Coaching tip</p>
           <p className="text-sm text-white">{kb.cue}</p>
         </Card>
       )}
@@ -157,7 +147,7 @@ function LearningLayer({
           <div className="flex flex-col gap-2">
             {kb.common_errors.map((err, i) => (
               <div key={i} className="flex items-start gap-2">
-                <span className="text-red-400 mt-0.5 flex-shrink-0">✕</span>
+                <span className="text-red-400 mt-0.5 flex-shrink-0 text-xs">✕</span>
                 <p className="text-sm text-slate-300">{err}</p>
               </div>
             ))}
@@ -166,15 +156,13 @@ function LearningLayer({
       )}
 
       <div className="flex gap-3">
-        {index > 0 && (
-          <button onClick={onBack}
-            className="flex-1 py-3.5 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
-            <ChevronLeft size={16} className="inline mr-1" />Vorige
-          </button>
-        )}
-        <button onClick={onNext}
-          className="flex-1 py-3.5 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600">
-          {index === total - 1 ? 'Ready →' : 'Volgende →'}
+        <button onClick={onBack}
+          className="flex-1 py-3.5 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
+          ← Terug
+        </button>
+        <button onClick={onReady}
+          className="flex-1 py-3.5 bg-green-500 text-white rounded-xl font-semibold active:bg-green-600">
+          Ready →
         </button>
       </div>
     </div>
@@ -182,228 +170,206 @@ function LearningLayer({
 }
 
 // ─── Workout Engine ───────────────────────────────────────────────────────────
-// Flow:
-// Oefening 1: uitleg → Ready → Start → sets automatisch → rust met volgende uitleg
-// Oefening 2+: automatisch start → sets → rust met volgende uitleg
-// Navigatie: Volgende (skip) / Terug (vorige oefening)
 
 function WorkoutEngine({
-  schema, currentSegment, completedSegments, elapsedSeconds,
-  onComplete, onNextSegment, onPrevSegment, onTick
+  session, onTick, onNextSet, onNextSegment, onComplete, onPause, onSkipConfirm
 }: {
-  schema: TrainingSchema
-  currentSegment: number
-  completedSegments: number[]
-  elapsedSeconds: number
-  onComplete: () => void
-  onNextSegment: () => void
-  onPrevSegment: () => void
+  session: ExtendedSessionState
   onTick: () => void
+  onNextSet: () => void
+  onNextSegment: () => void
+  onComplete: () => void
+  onPause: () => void
+  onSkipConfirm: () => void
 }) {
-  const seg = schema.segments[currentSegment] as KettlebellSegment
-  const nextSeg = schema.segments[currentSegment + 1] as KettlebellSegment | undefined
-  const isFirst = currentSegment === 0
-  const isLast = currentSegment === schema.segments.length - 1
+  const seg = getSeg(session.schema, session.current_segment)
+  const nextSeg = session.schema.segments[session.current_segment + 1] as KettlebellSegment | undefined
   const totalSets = seg.sets || 1
-
-  // Workout state
-  const [phase, setPhase] = useState<'start' | 'active' | 'rest'>(isFirst ? 'start' : 'active')
-  const [currentSet, setCurrentSet] = useState(1)
-  const [restTimer, setRestTimer] = useState(0)
-  const [showNextInfo, setShowNextInfo] = useState(false)
-
-  const tickRef = useRef<NodeJS.Timeout | null>(null)
+  const isLastSegment = session.current_segment === session.schema.segments.length - 1
   const restRef = useRef<NodeJS.Timeout | null>(null)
+  const tickRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Reset state when segment changes
+  // Tick elapsed time
   useEffect(() => {
-    setPhase('active') // oefening 2+ start automatisch
-    setCurrentSet(1)
-    setRestTimer(0)
-    setShowNextInfo(false)
-    return () => {
-      if (restRef.current) clearInterval(restRef.current)
-    }
-  }, [currentSegment])
-
-  // Elapsed tick
-  useEffect(() => {
-    if (phase === 'active') {
+    if (session.workout_phase === 'active' && !session.paused) {
       tickRef.current = setInterval(onTick, 1000)
     }
     return () => { if (tickRef.current) clearInterval(tickRef.current) }
-  }, [phase, onTick])
+  }, [session.workout_phase, session.paused, onTick])
 
-  function startRest(isLastSet: boolean) {
-    if (restRef.current) clearInterval(restRef.current)
-    const restSec = isLastSet ? (seg.rest_sec || 60) : Math.floor((seg.rest_sec || 60) / 2)
-    const isLastOefening = isLastSet && isLast
-    setPhase('rest')
-    setRestTimer(restSec)
-    // Toon volgende uitleg bij laatste set rust
-    if (isLastSet && nextSeg) setShowNextInfo(true)
-    let t = restSec
-    restRef.current = setInterval(() => {
-      t--
-      setRestTimer(t)
-      if (t <= 0) {
-        clearInterval(restRef.current!)
-        setShowNextInfo(false)
-        if (isLastSet) {
-          if (isLastOefening) onComplete()
-          else onNextSegment()
+  // Rest countdown
+  useEffect(() => {
+    if ((session.workout_phase === 'rest' || session.workout_phase === 'last_rest') && !session.paused && session.rest_seconds > 0) {
+      restRef.current = setInterval(() => {
+        if (session.rest_seconds <= 1) {
+          clearInterval(restRef.current!)
+          if (session.workout_phase === 'last_rest') {
+            if (isLastSegment) onComplete()
+            else onNextSegment()
+          } else {
+            onNextSet()
+          }
         } else {
-          setCurrentSet(s => s + 1)
-          setPhase('active')
+          onTick()
         }
-      }
-    }, 1000)
-  }
+      }, 1000)
+    }
+    return () => { if (restRef.current) clearInterval(restRef.current) }
+  }, [session.workout_phase, session.paused, session.rest_seconds, isLastSegment, onComplete, onNextSegment, onNextSet, onTick])
 
-  function handleSetDone() {
-    const isLastSet = currentSet >= totalSets
-    startRest(isLastSet)
-  }
-
-  function handleSkip() {
+  function handleNext() {
     if (restRef.current) clearInterval(restRef.current)
-    setShowNextInfo(false)
-    if (isLast) onComplete()
-    else onNextSegment()
-  }
-
-  function handlePrev() {
-    if (restRef.current) clearInterval(restRef.current)
-    setShowNextInfo(false)
-    onPrevSegment()
+    if (tickRef.current) clearInterval(tickRef.current)
+    if (session.workout_phase === 'active') {
+      // Skip set → ga naar rust
+      onNextSet()
+    } else if (session.workout_phase === 'rest') {
+      // Skip rust → ga naar volgende set
+      onNextSet()
+    } else if (session.workout_phase === 'last_rest') {
+      // Skip laatste rust → ga naar volgende oefening
+      if (isLastSegment) onComplete()
+      else onNextSegment()
+    }
   }
 
   return (
-    <div className="flex flex-col gap-4">
-
+    <div className="flex flex-col gap-4 pb-4">
       {/* Voortgang oefeningen */}
       <div className="flex items-center gap-1.5">
-        {schema.segments.map((_, i) => (
+        {session.schema.segments.map((_, i) => (
           <div key={i} className={cn('flex-1 h-1.5 rounded-full transition-all',
-            completedSegments.includes(i) ? 'bg-green-500' :
-            i === currentSegment ? 'bg-primary-500' : 'bg-slate-700'
+            session.completed_segments.includes(i) || session.skipped_segments.includes(i) ? 'bg-green-500' :
+            i === session.current_segment ? 'bg-primary-500' : 'bg-slate-700'
           )} />
         ))}
       </div>
 
-      {/* Timer */}
-      <div className="text-center">
-        <p className="text-3xl font-mono font-bold text-white">{formatTime(elapsedSeconds)}</p>
-        <p className="text-xs text-slate-500 mt-1">{currentSegment + 1} / {schema.segments.length}</p>
+      {/* Header info */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-white">
+          {seg.exercise || seg.type}
+          <span className="text-slate-500 font-normal ml-2">{session.current_segment + 1}/{session.schema.segments.length}</span>
+        </p>
+        <p className="text-2xl font-mono font-bold text-white">{formatTime(session.elapsed_seconds)}</p>
       </div>
 
-      {/* START fase — wacht op Start knop */}
-      {phase === 'start' && (
-        <>
-          <Card className="p-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Oefening 1 — Klaar?</p>
-            <h2 className="text-2xl font-bold text-white mb-2">{seg.exercise || seg.type}</h2>
-            <p className="text-3xl font-bold text-primary-400 mb-3">
-              {seg.reps ? `${totalSets} × ${seg.reps} herh.` : `${totalSets} × ${seg.duration_sec}s`}
-            </p>
-            {seg.cue && (
-              <p className="text-sm text-slate-400">{seg.cue}</p>
-            )}
-          </Card>
-          <button
-            onClick={() => setPhase('active')}
-            className="w-full py-4 bg-green-500 text-white rounded-xl text-lg font-bold active:bg-green-600"
-          >
-            ▶ Start
-          </button>
-        </>
-      )}
-
       {/* ACTIVE fase */}
-      {phase === 'active' && (
-        <>
-          <Card className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-slate-500 uppercase tracking-wider">Nu bezig</p>
-              <div className="flex gap-1">
-                {Array.from({ length: totalSets }, (_, i) => (
-                  <div key={i} className={cn('w-6 h-1.5 rounded-full',
-                    i < currentSet - 1 ? 'bg-green-500' :
-                    i === currentSet - 1 ? 'bg-primary-500' : 'bg-slate-700'
-                  )} />
-                ))}
-              </div>
+      {session.workout_phase === 'active' && (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wider">Set {session.current_set} van {totalSets}</p>
+            <div className="flex gap-1">
+              {Array.from({ length: totalSets }, (_, i) => (
+                <div key={i} className={cn('w-5 h-1.5 rounded-full',
+                  i < session.current_set - 1 ? 'bg-green-500' :
+                  i === session.current_set - 1 ? 'bg-primary-500' : 'bg-slate-700'
+                )} />
+              ))}
             </div>
-            <h2 className="text-2xl font-bold text-white mb-1">{seg.exercise || seg.type}</h2>
-            <p className="text-xs text-slate-400 mb-3">Set {currentSet} van {totalSets}</p>
-            <p className="text-4xl font-bold text-primary-400">
-              {seg.reps ? `${seg.reps} herh.` : `${seg.duration_sec}s`}
-            </p>
-            {seg.cue && (
-              <p className="text-sm text-slate-400 mt-3 pt-3 border-t border-coach-border">{seg.cue}</p>
-            )}
-          </Card>
-
-          <button
-            onClick={handleSetDone}
-            className="w-full py-4 bg-primary-500 text-white rounded-xl text-lg font-bold active:bg-primary-600"
-          >
-            {currentSet >= totalSets ? (isLast ? 'Klaar ✓' : 'Volgende oefening →') : `Set ${currentSet} klaar →`}
-          </button>
-        </>
+          </div>
+          <p className="text-5xl font-bold text-primary-400 mb-2">
+            {seg.reps ? `${seg.reps}` : `${seg.duration_sec}s`}
+          </p>
+          <p className="text-slate-400 text-sm">{seg.reps ? 'herhalingen' : 'seconden'}</p>
+          {seg.cue && (
+            <p className="text-sm text-slate-300 mt-3 pt-3 border-t border-coach-border">💡 {seg.cue}</p>
+          )}
+        </Card>
       )}
 
       {/* REST fase */}
-      {phase === 'rest' && (
+      {(session.workout_phase === 'rest' || session.workout_phase === 'last_rest') && (
         <>
           <Card className="p-5 text-center bg-amber-500/10 border-amber-500/20">
             <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">
-              {showNextInfo ? 'Laatste rust' : `Rust na set ${currentSet - 1}`}
+              {session.workout_phase === 'last_rest' ? 'Laatste rust' : `Rust · Set ${session.current_set} volgt`}
             </p>
-            <p className="text-6xl font-mono font-bold text-amber-400">{restTimer}s</p>
-            {!showNextInfo && (
-              <p className="text-slate-400 text-sm mt-2">Set {currentSet} van {totalSets} volgt</p>
-            )}
+            <p className="text-6xl font-mono font-bold text-amber-400">{session.rest_seconds}s</p>
           </Card>
 
           {/* Uitleg volgende oefening tijdens laatste rust */}
-          {showNextInfo && nextSeg && (
-            <Card className="p-5 border-primary-500/30 bg-primary-500/5">
+          {session.workout_phase === 'last_rest' && nextSeg && (
+            <Card className="p-5 border-primary-500/20 bg-primary-500/5">
               <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-2">Volgende oefening</p>
               <h3 className="text-lg font-bold text-white mb-1">{nextSeg.exercise}</h3>
               <p className="text-sm text-primary-400 mb-2">
                 {nextSeg.reps ? `${nextSeg.sets} × ${nextSeg.reps} herh.` : `${nextSeg.sets} × ${nextSeg.duration_sec}s`}
               </p>
-              {nextSeg.instruction && (
-                <p className="text-sm text-slate-300 leading-relaxed">{nextSeg.instruction}</p>
-              )}
-              {nextSeg.cue && (
-                <p className="text-xs text-primary-400 mt-2">💡 {nextSeg.cue}</p>
-              )}
+              {nextSeg.instruction && <p className="text-sm text-slate-300 leading-relaxed">{nextSeg.instruction}</p>}
+              {nextSeg.cue && <p className="text-xs text-primary-400 mt-2">💡 {nextSeg.cue}</p>}
             </Card>
           )}
         </>
       )}
 
-      {/* Navigatie */}
-      {phase !== 'start' && (
-        <div className="flex gap-2">
-          <button
-            onClick={handlePrev}
-            disabled={currentSegment === 0}
-            className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold active:bg-slate-700 disabled:opacity-30"
-          >
-            ← Terug
-          </button>
-          <button
-            onClick={handleSkip}
-            className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold active:bg-slate-700"
-          >
-            {isLast ? 'Afronden →' : 'Overslaan →'}
-          </button>
-        </div>
-      )}
+      {/* Controls */}
+      <div className="flex gap-3">
+        <button onClick={onPause}
+          className="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center active:bg-slate-700 flex-shrink-0">
+          <Pause size={20} className="text-white" />
+        </button>
+        <button onClick={handleNext}
+          className="flex-1 py-3.5 bg-slate-700 text-slate-300 rounded-xl font-semibold active:bg-slate-600 flex items-center justify-center gap-2">
+          <SkipForward size={16} />
+          <span className="text-sm">Next</span>
+        </button>
+        <button onClick={onSkipConfirm}
+          className="w-14 h-14 rounded-xl bg-slate-800 flex items-center justify-center active:bg-slate-700 flex-shrink-0">
+          <X size={18} className="text-slate-400" />
+        </button>
+      </div>
+      <p className="text-xs text-slate-600 text-center">Pause · Next (stap over) · ✕ (oefening overslaan)</p>
+    </div>
+  )
+}
 
+// ─── Voltooid Scherm ──────────────────────────────────────────────────────────
+
+function VoltooïdScherm({
+  session, onEvaluatie
+}: {
+  session: ExtendedSessionState
+  onEvaluatie: () => void
+}) {
+  const voltooid = session.completed_segments.length
+  const overgeslagen = session.skipped_segments.length
+  const totalSets = session.schema.segments.reduce((a, seg) => a + ((seg as KettlebellSegment).sets || 0), 0)
+
+  return (
+    <div className="flex flex-col gap-4 pb-4">
+      <Card className="p-6 text-center">
+        <p className="text-5xl mb-3">🎉</p>
+        <h2 className="text-2xl font-bold text-white mb-1">Training Voltooid!</h2>
+        <p className="text-slate-400 text-sm">{formatTime(session.elapsed_seconds)}</p>
+      </Card>
+
+      <Card className="p-5">
+        <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Statistieken</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-2xl font-bold text-green-400">{voltooid}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Oefeningen voltooid</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-slate-400">{overgeslagen}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Overgeslagen</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-primary-400">{session.completed_sets}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Sets voltooid</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-white">{totalSets}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Totaal sets</p>
+          </div>
+        </div>
+      </Card>
+
+      <button onClick={onEvaluatie}
+        className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600">
+        Evaluatie Starten →
+      </button>
     </div>
   )
 }
@@ -411,16 +377,16 @@ function WorkoutEngine({
 // ─── Evaluatie Layer ──────────────────────────────────────────────────────────
 
 function EvaluatieLayer({
-  actualDuration, onSave, saving
+  actualDuration, onSave, onSkip, saving
 }: {
   actualDuration: number
   onSave: (result: SessionResult) => void
+  onSkip: () => void
   saving: boolean
 }) {
   const [rating, setRating] = useState<number | null>(null)
   const [effort, setEffort] = useState<number | null>(null)
-  const [fatigue, setFatigue] = useState<number | null>(null)
-  const [soreness, setSoreness] = useState<number | null>(null)
+  const [techniek, setTechniek] = useState<number | null>(null)
   const [notes, setNotes] = useState('')
 
   function ScoreRij({ label, value, onChange, kleur }: {
@@ -445,42 +411,40 @@ function EvaluatieLayer({
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <Card className="p-5 text-center">
-        <p className="text-4xl mb-2">🎉</p>
-        <h2 className="text-xl font-bold text-white">Training voltooid!</h2>
-        <p className="text-slate-400 text-sm mt-1">{formatTime(actualDuration * 60)}</p>
-      </Card>
-
+    <div className="flex flex-col gap-5 pb-4">
       <Card className="p-5 flex flex-col gap-5">
-        <ScoreRij label="Rating" value={rating} onChange={setRating} kleur="text-primary-400" />
-        <ScoreRij label="Hoe zwaar voelde het?" value={effort} onChange={setEffort} kleur="text-orange-400" />
-        <ScoreRij label="Vermoeidheid achteraf" value={fatigue} onChange={setFatigue} kleur="text-red-400" />
-        <ScoreRij label="Spierpijn" value={soreness} onChange={setSoreness} kleur="text-purple-400" />
-
+        <ScoreRij label="Hoe zwaar was de training?" value={rating} onChange={setRating} kleur="text-primary-400" />
+        <ScoreRij label="Energie niveau" value={effort} onChange={setEffort} kleur="text-orange-400" />
+        <ScoreRij label="Techniek gevoel" value={techniek} onChange={setTechniek} kleur="text-green-400" />
         <div>
           <p className="text-sm text-slate-300 mb-2">Opmerkingen</p>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="Hoe ging het? Wat voelde goed of zwaar?"
+            placeholder="Hoe ging het?"
             rows={3}
             className="w-full bg-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
         </div>
       </Card>
 
-      <button
-        onClick={() => onSave({
-          rating, perceived_effort: effort, fatigue_after: fatigue,
-          soreness, notes: notes.trim() || null,
-          actual_duration: actualDuration, completed: true,
-        })}
-        disabled={saving || !rating}
-        className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600 disabled:opacity-40"
-      >
-        {saving ? 'Opslaan...' : 'Opslaan & afsluiten'}
-      </button>
+      <div className="flex gap-3">
+        <button onClick={onSkip}
+          className="flex-1 py-3.5 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
+          Overslaan
+        </button>
+        <button
+          onClick={() => onSave({
+            rating, perceived_effort: effort, fatigue_after: null,
+            soreness: null, notes: notes.trim() || null,
+            actual_duration: actualDuration, completed: true,
+          })}
+          disabled={saving || !rating}
+          className="flex-1 py-3.5 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600 disabled:opacity-40"
+        >
+          {saving ? 'Opslaan...' : 'Opslaan'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -492,68 +456,46 @@ export default function SessionPage() {
   const router = useRouter()
   const module = params.module as TrainingModule
 
-  const [session, setSession] = useState<LiveSessionState | null>(null)
+  const [session, setSession] = useState<ExtendedSessionState | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [learningIndex, setLearningIndex] = useState(0)
 
-  // Laad sessie — herstel of genereer nieuw
+  // Overlays
+  const [showPause, setShowPause] = useState(false)
+  const [showStopConfirm, setShowStopConfirm] = useState(false)
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
+  const [showResumeDialog, setShowResumeDialog] = useState(false)
+  const [pendingSession, setPendingSession] = useState<ExtendedSessionState | null>(null)
+
+  // Laad sessie
   useEffect(() => {
     const existing = loadSession()
     const hasSegments = existing?.schema?.segments && existing.schema.segments.length > 0
     if (existing && existing.module === module && existing.status !== 'completed' && hasSegments) {
-      setSession(existing)
+      setPendingSession(existing)
+      setShowResumeDialog(true)
       setLoading(false)
       return
     }
-    // Geen geldige sessie of geen segments — wis en genereer opnieuw
     clearSession()
-    // Genereer nieuw schema — eerst GET (cache), dan POST (nieuw genereren)
-    // Laad schema: eerst localStorage, dan API
-    const buildSession = (instruction: Record<string, unknown>) => {
-      const schema: TrainingSchema = {
-        module,
-        title: (instruction.title as string) || `${module.charAt(0).toUpperCase() + module.slice(1)} sessie`,
-        duration: (instruction.duration as number) || 30,
-        intensity: (instruction.intensity as 'light' | 'medium' | 'heavy') || 'medium',
-        segments: ((instruction.segments || instruction.exercises || []) as TrainingSegment[]),
-        coach_message: (instruction.coach_message as string) || (instruction.reason as string) || '',
-      }
-      const newSession: LiveSessionState = {
-        session_id: generateSessionId(),
-        module,
-        status: 'schema',
-        schema,
-        started_at: new Date().toISOString(),
-        current_segment: 0,
-        completed_segments: [],
-        elapsed_seconds: 0,
-      }
-      saveSession(newSession)
-      setSession(newSession)
-    }
-
     const run = async () => {
       try {
-        // Eerst localStorage proberen
         const cached = localStorage.getItem('training_instructie_data')
         if (cached) {
           const instruction = JSON.parse(cached)
-          if (instruction && instruction.segments && instruction.segments.length > 0) {
-            buildSession(instruction)
+          if (instruction?.segments?.length > 0) {
+            buildAndSetSession(instruction)
             return
           }
         }
-
-        // Geen geldige cache — haal op van API
         const res = await fetch('/api/training/today', { method: 'POST', credentials: 'include' })
         if (res.ok) {
           const data = await res.json()
           const instruction = data.instruction || data
-          if (instruction && (instruction.training_type || instruction.segments)) {
+          if (instruction?.training_type || instruction?.segments) {
             localStorage.setItem('training_instructie_data', JSON.stringify(instruction))
-            buildSession(instruction)
+            buildAndSetSession(instruction)
           } else {
             setError('Geen geldig schema ontvangen.')
           }
@@ -569,15 +511,52 @@ export default function SessionPage() {
     run()
   }, [module])
 
-  // Auto-save op state changes
+  function buildAndSetSession(instruction: Record<string, unknown>) {
+    const schema: TrainingSchema = {
+      module,
+      title: (instruction.title as string) || `${module.charAt(0).toUpperCase() + module.slice(1)} sessie`,
+      duration: (instruction.duration as number) || 30,
+      intensity: (instruction.intensity as 'light' | 'medium' | 'heavy') || 'medium',
+      segments: ((instruction.segments || instruction.exercises || []) as TrainingSegment[]),
+      coach_message: (instruction.coach_message as string) || (instruction.reason as string) || '',
+    }
+    const newSession: ExtendedSessionState = {
+      session_id: generateSessionId(),
+      module,
+      status: 'schema',
+      schema,
+      started_at: new Date().toISOString(),
+      current_segment: 0,
+      completed_segments: [],
+      elapsed_seconds: 0,
+      current_set: 1,
+      workout_phase: 'active',
+      rest_seconds: 0,
+      paused: false,
+      skipped_segments: [],
+      completed_sets: 0,
+    }
+    saveSession(newSession)
+    setSession(newSession)
+  }
+
+  // Auto-save
   useEffect(() => {
     if (session) saveSession(session)
   }, [session])
 
+  // ─── Handlers ───────────────────────────────────────────────────────────────
+
   const handleTick = useCallback(() => {
     setSession(prev => {
-      if (!prev) return prev
-      return { ...prev, elapsed_seconds: prev.elapsed_seconds + 1 }
+      if (!prev || prev.paused) return prev
+      if (prev.workout_phase === 'active') {
+        return { ...prev, elapsed_seconds: prev.elapsed_seconds + 1 }
+      } else {
+        // Rest countdown
+        const newRest = prev.rest_seconds - 1
+        return { ...prev, rest_seconds: newRest }
+      }
     })
   }, [])
 
@@ -585,25 +564,82 @@ export default function SessionPage() {
     setSession(prev => prev ? { ...prev, status } : prev)
   }
 
-  function handleNextSegment() {
+  function handleNextSet() {
     setSession(prev => {
       if (!prev) return prev
-      const next = prev.current_segment + 1
-      return {
-        ...prev,
-        current_segment: next,
-        completed_segments: [...prev.completed_segments, prev.current_segment],
+      const seg = getSeg(prev.schema, prev.current_segment)
+      const totalSets = seg.sets || 1
+      const restSec = seg.rest_sec || 60
+
+      if (prev.workout_phase === 'active') {
+        // Set klaar → rust
+        const isLastSet = prev.current_set >= totalSets
+        return {
+          ...prev,
+          workout_phase: isLastSet ? 'last_rest' : 'rest',
+          rest_seconds: restSec,
+          completed_sets: prev.completed_sets + 1,
+        }
+      } else {
+        // Rust voorbij → volgende set
+        const nextSet = prev.current_set + 1
+        return {
+          ...prev,
+          workout_phase: 'active',
+          current_set: nextSet,
+          rest_seconds: 0,
+        }
       }
     })
   }
 
-  function handlePrevSegment() {
+  function handleNextSegment() {
     setSession(prev => {
-      if (!prev || prev.current_segment === 0) return prev
+      if (!prev) return prev
+      const next = prev.current_segment + 1
+      const nextSeg = getSeg(prev.schema, next)
+      const nextRestSec = nextSeg.rest_sec || 60
       return {
         ...prev,
-        current_segment: prev.current_segment - 1,
-        completed_segments: prev.completed_segments.filter(i => i !== prev.current_segment - 1),
+        current_segment: next,
+        completed_segments: [...prev.completed_segments, prev.current_segment],
+        current_set: 1,
+        workout_phase: 'active',
+        rest_seconds: 0,
+        elapsed_seconds: prev.elapsed_seconds,
+      }
+      void nextRestSec
+    })
+  }
+
+  function handleComplete() {
+    updateStatus('voltooid' as SessionStatus)
+  }
+
+  function handlePause() {
+    setSession(prev => prev ? { ...prev, paused: true } : prev)
+    setShowPause(true)
+  }
+
+  function handleResume() {
+    setShowPause(false)
+    setSession(prev => prev ? { ...prev, paused: false } : prev)
+  }
+
+  function handleSkipSegment() {
+    setShowSkipConfirm(false)
+    setSession(prev => {
+      if (!prev) return prev
+      const next = prev.current_segment + 1
+      const isLast = prev.current_segment === prev.schema.segments.length - 1
+      if (isLast) return { ...prev, status: 'voltooid' as SessionStatus }
+      return {
+        ...prev,
+        current_segment: next,
+        skipped_segments: [...prev.skipped_segments, prev.current_segment],
+        current_set: 1,
+        workout_phase: 'active',
+        rest_seconds: 0,
       }
     })
   }
@@ -616,43 +652,40 @@ export default function SessionPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          module,
-          ...result,
-          training_type: module,
-        }),
+        body: JSON.stringify({ module, ...result, training_type: module }),
       })
       clearSession()
-      setSession(prev => prev ? { ...prev, status: 'completed', result } : prev)
+      setSession(prev => prev ? { ...prev, status: 'completed' } : prev)
       setTimeout(() => router.push('/training'), 1500)
     } catch { /* */ }
     finally { setSaving(false) }
   }
 
+  // ─── Render ─────────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <AppShell>
         <div className="px-5 py-6">
-          <div className="h-8 bg-slate-800 rounded-xl animate-pulse mb-4 w-48" />
           {[1,2,3].map(i => <div key={i} className="h-24 bg-slate-800 rounded-2xl animate-pulse mb-3" />)}
         </div>
       </AppShell>
     )
   }
 
-  if (!session) {
+  if (!session && !showResumeDialog) {
     return (
       <AppShell>
         <div className="px-5 py-6 text-center">
-          <p className="text-slate-400">Kon geen sessie laden.</p>
-          {error && <p className="text-red-400 text-xs mt-2 px-4">{error}</p>}
+          <p className="text-slate-400 mb-2">Kon geen sessie laden.</p>
+          {error && <p className="text-red-400 text-xs mb-4 px-4">{error}</p>}
           <button onClick={() => { clearSession(); window.location.reload() }}
-            className="mt-4 px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm">
+            className="px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm mb-3 block mx-auto">
             Opnieuw proberen
           </button>
           <button onClick={() => router.push('/training')}
-            className="mt-3 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm block mx-auto">
-            Terug
+            className="px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm block mx-auto">
+            Terug naar Training
           </button>
         </div>
       </AppShell>
@@ -664,6 +697,8 @@ export default function SessionPage() {
     cycling: 'Fietsen', strength: 'Kracht', bodyweight: 'Bodyweight',
   }
 
+  const isWorkout = session?.status === 'workout'
+
   return (
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
@@ -672,98 +707,158 @@ export default function SessionPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              if (session.status === 'workout') return // geen back tijdens workout
-              clearSession()
-              router.push('/training')
+              if (isWorkout) {
+                handlePause()
+              } else if (session?.status === 'learning') {
+                updateStatus('schema')
+              } else {
+                clearSession()
+                router.push('/training')
+              }
             }}
-            className={cn('w-9 h-9 flex items-center justify-center rounded-xl',
-              session.status === 'workout' ? 'bg-slate-800/30' : 'bg-white/5'
-            )}
-            disabled={session.status === 'workout'}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10"
           >
-            <ArrowLeft size={18} className={session.status === 'workout' ? 'text-slate-600' : 'text-slate-400'} />
+            <ArrowLeft size={18} className="text-slate-400" />
           </button>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-white">{moduleLabel[module]}</h1>
-            <p className="text-xs text-slate-500 capitalize">{session.status}</p>
+            <p className="text-xs text-slate-500 capitalize">{session?.status || 'laden'}</p>
           </div>
-          {session.status === 'workout' && (
-            <button
-              onClick={() => { clearSession(); router.push('/training') }}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800"
-            >
-              <RotateCcw size={16} className="text-slate-400" />
-            </button>
-          )}
         </div>
 
-        {/* Status indicator */}
-        <div className="flex gap-2">
-          {(['schema', 'learning', 'workout', 'evaluation'] as SessionStatus[]).map((s, i) => (
-            <div key={s} className={cn('flex-1 h-1 rounded-full',
-              session.status === s ? 'bg-primary-500' :
-              ['schema','learning','workout','evaluation'].indexOf(session.status) > i ? 'bg-green-500' :
-              'bg-slate-700'
-            )} />
-          ))}
-        </div>
+        {/* Sessie herstel dialog */}
+        {showResumeDialog && pendingSession && (
+          <Card className="p-5">
+            <p className="text-sm font-semibold text-white mb-1">Actieve training gevonden</p>
+            <p className="text-xs text-slate-400 mb-4">
+              {pendingSession.schema.title} · {formatTime(pendingSession.elapsed_seconds)} bezig
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => { setSession(pendingSession); setShowResumeDialog(false) }}
+                className="flex-1 py-3 bg-primary-500 text-white rounded-xl font-semibold text-sm active:bg-primary-600">
+                Hervatten
+              </button>
+              <button onClick={() => { clearSession(); setPendingSession(null); setShowResumeDialog(false); window.location.reload() }}
+                className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold text-sm active:bg-slate-700">
+                Verwijderen
+              </button>
+            </div>
+          </Card>
+        )}
 
         {/* Layers */}
-        {session.status === 'schema' && (
-          <SchemaLayer
-            schema={session.schema}
-            onStart={() => {
-              setLearningIndex(0)
-              updateStatus(session.schema.segments.length > 0 ? 'learning' : 'workout')
-            }}
-          />
+        {session && !showResumeDialog && (
+          <>
+            {session.status === 'schema' && (
+              <SchemaLayer schema={session.schema} onStart={() => updateStatus('learning')} />
+            )}
+
+            {session.status === 'learning' && (
+              <LearningLayer
+                segment={session.schema.segments[0]}
+                onReady={() => {
+                  setSession(prev => prev ? { ...prev, status: 'workout', workout_phase: 'active', current_set: 1 } : prev)
+                }}
+                onBack={() => updateStatus('schema')}
+              />
+            )}
+
+            {session.status === 'workout' && (
+              <WorkoutEngine
+                session={session}
+                onTick={handleTick}
+                onNextSet={handleNextSet}
+                onNextSegment={handleNextSegment}
+                onComplete={handleComplete}
+                onPause={handlePause}
+                onSkipConfirm={() => setShowSkipConfirm(true)}
+              />
+            )}
+
+            {(session.status as string) === 'voltooid' && (
+              <VoltooïdScherm
+                session={session}
+                onEvaluatie={() => updateStatus('evaluation')}
+              />
+            )}
+
+            {session.status === 'evaluation' && (
+              <EvaluatieLayer
+                actualDuration={Math.round(session.elapsed_seconds / 60)}
+                onSave={handleSave}
+                onSkip={() => {
+                  clearSession()
+                  router.push('/training')
+                }}
+                saving={saving}
+              />
+            )}
+
+            {session.status === 'completed' && (
+              <Card className="p-8 text-center">
+                <Check size={40} className="text-green-400 mx-auto mb-3" />
+                <p className="text-white font-semibold">Opgeslagen!</p>
+              </Card>
+            )}
+          </>
         )}
 
-        {session.status === 'learning' && (
-          <LearningLayer
-            segment={session.schema.segments[learningIndex]}
-            index={learningIndex}
-            total={session.schema.segments.length}
-            onNext={() => {
-              if (learningIndex < session.schema.segments.length - 1) {
-                setLearningIndex(i => i + 1)
-              } else {
-                updateStatus('workout')
-              }
-            }}
-            onBack={() => {
-              if (learningIndex > 0) setLearningIndex(i => i - 1)
-              else updateStatus('schema')
-            }}
-          />
+        {/* Pause Overlay */}
+        {showPause && (
+          <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 px-8">
+            <p className="text-white text-2xl font-bold mb-2">TRAINING GEPAUZEERD</p>
+            <p className="text-slate-400 text-sm mb-8">{session && formatTime(session.elapsed_seconds)}</p>
+            <button onClick={handleResume}
+              className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold mb-3 active:bg-primary-600 flex items-center justify-center gap-2">
+              <Play size={18} /> Hervatten
+            </button>
+            <button onClick={() => { setShowPause(false); setShowStopConfirm(true) }}
+              className="w-full py-3.5 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
+              Stop Training
+            </button>
+          </div>
         )}
 
-        {session.status === 'workout' && (
-          <WorkoutEngine
-            schema={session.schema}
-            currentSegment={session.current_segment}
-            completedSegments={session.completed_segments}
-            elapsedSeconds={session.elapsed_seconds}
-            onTick={handleTick}
-            onNextSegment={handleNextSegment}
-            onPrevSegment={handlePrevSegment}
-            onComplete={() => updateStatus('evaluation')}
-          />
+        {/* Stop bevestiging */}
+        {showStopConfirm && (
+          <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 px-8">
+            <Card className="p-6 w-full">
+              <p className="text-white font-semibold text-center mb-2">Weet je zeker dat je wilt stoppen?</p>
+              <p className="text-slate-400 text-sm text-center mb-6">Je voortgang wordt niet opgeslagen.</p>
+              <div className="flex gap-3">
+                <button onClick={() => { setShowStopConfirm(false); setShowPause(false); clearSession(); router.push('/training') }}
+                  className="flex-1 py-3 bg-red-500/20 text-red-400 rounded-xl font-semibold active:bg-red-500/30">
+                  Ja, stop
+                </button>
+                <button onClick={() => { setShowStopConfirm(false); setShowPause(true) }}
+                  className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
+                  Nee
+                </button>
+              </div>
+            </Card>
+          </div>
         )}
 
-        {session.status === 'evaluation' && (
-          <EvaluatieLayer
-            actualDuration={Math.round(session.elapsed_seconds / 60)}
-            onSave={handleSave}
-            saving={saving}
-          />
-        )}
-
-        {session.status === 'completed' && (
-          <Card className="p-8 text-center">
-            <Check size={40} className="text-green-400 mx-auto mb-3" />
-            <p className="text-white font-semibold">Opgeslagen!</p>
-          </Card>
+        {/* Oefening overslaan bevestiging */}
+        {showSkipConfirm && (
+          <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 px-8">
+            <Card className="p-6 w-full">
+              <p className="text-white font-semibold text-center mb-2">Oefening overslaan?</p>
+              <p className="text-slate-400 text-sm text-center mb-6">
+                {session && getSeg(session.schema, session.current_segment).exercise}
+              </p>
+              <div className="flex gap-3">
+                <button onClick={handleSkipSegment}
+                  className="flex-1 py-3 bg-amber-500/20 text-amber-400 rounded-xl font-semibold active:bg-amber-500/30">
+                  Ja, overslaan
+                </button>
+                <button onClick={() => setShowSkipConfirm(false)}
+                  className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
+                  Nee
+                </button>
+              </div>
+            </Card>
+          </div>
         )}
 
       </div>
