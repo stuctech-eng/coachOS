@@ -390,11 +390,14 @@ export default function SessionPage() {
   // Laad sessie — herstel of genereer nieuw
   useEffect(() => {
     const existing = loadSession()
-    if (existing && existing.module === module && existing.status !== 'completed') {
+    const hasSegments = existing?.schema?.segments && existing.schema.segments.length > 0
+    if (existing && existing.module === module && existing.status !== 'completed' && hasSegments) {
       setSession(existing)
       setLoading(false)
       return
     }
+    // Geen geldige sessie of geen segments — wis en genereer opnieuw
+    clearSession()
     // Genereer nieuw schema via training/today
     fetch('/api/training/today', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
