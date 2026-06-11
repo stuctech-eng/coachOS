@@ -399,14 +399,15 @@ export default function SessionPage() {
     fetch('/api/training/today', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.instruction) {
+        if (data) {
+          const instruction = data.instruction || data
           const schema: TrainingSchema = {
             module,
-            title: data.instruction.title || `${module} sessie`,
-            duration: data.instruction.duration || 30,
-            intensity: data.instruction.intensity || 'medium',
-            segments: data.instruction.exercises || data.instruction.segments || [],
-            coach_message: data.instruction.coach_message || '',
+            title: instruction.title || `${module.charAt(0).toUpperCase() + module.slice(1)} sessie`,
+            duration: instruction.duration || 30,
+            intensity: instruction.intensity || 'medium',
+            segments: instruction.segments || instruction.exercises || [],
+            coach_message: instruction.coach_message || instruction.reason || '',
           }
           const newSession: LiveSessionState = {
             session_id: generateSessionId(),

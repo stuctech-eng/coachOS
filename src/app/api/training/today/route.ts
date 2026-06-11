@@ -19,8 +19,10 @@ async function getUser() {
 export interface TrainingInstruction {
   training_allowed: boolean
   training_type: string | null
+  title?: string
   intensity: 'light' | 'medium' | 'heavy' | null
   duration: number | null
+  segments?: unknown[]
   recovery_modules: RecoveryModule[]
   reason: string
   coach_message: string
@@ -207,8 +209,13 @@ BESLISREGELS:
 - Slechte slaap (< 6u): herstel prioriteit
 - Hoge stress (>= 8): ademhaling aanbevelen voor training
 
-BESCHIKBARE TRAINING TYPES:
-- kettlebell (als training_type)
+BESCHIKBARE TRAINING TYPES (alleen beschikbaar equipment selecteren):
+- kettlebell
+- rowing
+- running  
+- cycling
+- strength
+- bodyweight
 
 BESCHIKBARE RECOVERY MODULES:
 Ademhaling: box_breathing, breathing_478, coherent_breathing, stress_reset
@@ -225,8 +232,23 @@ Reageer ALLEEN in dit JSON formaat:
 {
   "training_allowed": true,
   "training_type": "kettlebell",
+  "title": "Korte kettlebell sessie",
   "intensity": "medium",
   "duration": 25,
+  "segments": [
+    {
+      "type": "kettlebell",
+      "exercise": "Two Hand Swing",
+      "sets": 4,
+      "reps": 15,
+      "duration_sec": null,
+      "rest_sec": 60,
+      "level": 1,
+      "instruction": "Sta met voeten schouderbreedte uit elkaar. Houd de kettlebell met beide handen vast. Hinge vanuit de heupen, niet de knieën. Drijf met de heupen vooruit om de swing te starten.",
+      "cue": "Heupen drijven, niet tillen",
+      "common_errors": ["Knieën buigen te veel", "Rug rolt", "Armen trekken de bell"]
+    }
+  ],
   "recovery_modules": [
     { "type": "breathing", "subtype": "box_breathing", "duration": 6, "label": "Box Breathing" },
     { "type": "mobility", "subtype": "hips", "duration": 10, "label": "Heup mobiliteit" },
