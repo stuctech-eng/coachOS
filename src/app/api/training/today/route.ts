@@ -261,10 +261,13 @@ Reageer ALLEEN in dit JSON formaat:
   "coach_message": "Persoonlijk bericht aan de gebruiker"
 }`
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
-    const aiRes = await fetch(appUrl + '/api/ai', {
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
