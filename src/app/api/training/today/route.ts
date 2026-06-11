@@ -224,9 +224,12 @@ Wandeling: recovery_walk
 
 INSTRUCTIES:
 - Beslis concreet: trainen of herstellen
+- Als training_allowed true: genereer 4-6 oefeningen in segments array
+- Elk segment heeft: exercise, sets, reps of duration_sec, rest_sec, instruction, cue, common_errors
 - Kies altijd minstens 1 recovery module
 - Coach bericht is persoonlijk en motiverend (max 2 zinnen)
 - Gebruik GEEN markdown
+- Geef ALTIJD een volledig geldig JSON object terug
 
 Reageer ALLEEN in dit JSON formaat:
 {
@@ -264,7 +267,7 @@ Reageer ALLEEN in dit JSON formaat:
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
+        max_tokens: 2000,
         system: systemPrompt,
         messages: [{ role: 'user', content: 'Wat moet ik vandaag doen?' }],
       }),
