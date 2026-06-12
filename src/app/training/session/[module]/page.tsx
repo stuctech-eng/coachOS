@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, SkipForward, Check, ChevronRight } from 'lucide-react'
+import { ArrowLeft, SkipForward, Check, ChevronRight, Pause as PauseIcon, Play } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
@@ -19,6 +19,7 @@ interface ExtendedSessionState extends LiveSessionState {
   current_set: number
   workout_phase: WorkoutPhase
   rest_seconds: number
+  active_seconds_left: number  // resterende tijd voor huidige actieve set
   auto_running: boolean       // automatische flow aan of uit
   skipped_segments: number[]
   completed_sets: number
@@ -54,6 +55,39 @@ function clearSession() {
 
 function getSeg(schema: TrainingSchema, index: number): KettlebellSegment {
   return schema.segments[index] as KettlebellSegment
+}
+
+// ─── Tempo per oefening (reps → tijd) ────────────────────────────────────────
+
+type Tempo = 'slow' | 'normal' | 'fast'
+
+const TEMPO_SEC_PER_REP: Record<Tempo, number> = { slow: 4, normal: 3, fast: 2 }
+const TEMPO_STORAGE_KEY = 'coachos_exercise_tempo'
+
+function getTempoMap(): Record<string, Tempo> {
+  try {
+    const raw = localStorage.getItem(TEMPO_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch { return {} }
+}
+
+function getTempo(exercise: string): Tempo {
+  const map = getTempoMap()
+  return map[exercise] || 'normal'
+}
+
+function setTempo(exercise: string, tempo: Tempo) {
+  try {
+    const map = getTempoMap()
+    map[exercise] = tempo
+    localStorage.setItem(TEMPO_STORAGE_KEY, JSON.stringify(map))
+  } catch { /* */ }
+}
+
+function getActiveDuration(seg: KettlebellSegment): number {
+  if (seg.duration_sec) return seg.duration_sec
+  if (seg.reps) return seg.reps * TEMPO_SEC_PER_REP[getTempo(seg.exercise)]
+  return 30
 }
 
 // ─── Schema Layer ─────────────────────────────────────────────────────────────
@@ -199,7 +233,7 @@ function UitlegScherm({
 
 function WorkoutEngine({
   session, onTick, onRestTick, onNextSet, onNextSegment,
-  onComplete, onSkipConfirm, onBackOefening, onVolgendOefening, onNext,
+  onComplete, onBackOefening, onVolgendOefening, onNext, onPause, onTempoChange,
 }: {
   session: ExtendedSessionState
   onTick: () => void
@@ -207,24 +241,36 @@ function WorkoutEngine({
   onNextSet: () => void
   onNextSegment: () => void
   onComplete: () => void
-  onSkipConfirm: () => void
   onBackOefening: () => void
   onVolgendOefening: () => void
   onNext: () => void
+  onPause: () => void
+  onTempoChange: (exercise: string, tempo: Tempo) => void
 }) {
   const seg = getSeg(session.schema, session.current_segment)
   const totalSets = seg.sets || 1
   const isLastSegment = session.current_segment === session.schema.segments.length - 1
   const tickRef = useRef<NodeJS.Timeout | null>(null)
   const restRef = useRef<NodeJS.Timeout | null>(null)
+  const [currentTempo, setCurrentTempo] = useState<Tempo>(getTempo(seg.exercise))
 
-  // Elapsed tick tijdens actieve set
+  useEffect(() => { setCurrentTempo(getTempo(seg.exercise)) }, [seg.exercise])
+
+  // Elapsed tick + actieve set countdown
   useEffect(() => {
     if (session.workout_phase === 'active' && session.auto_running) {
-      tickRef.current = setInterval(onTick, 1000)
+      tickRef.current = setInterval(() => {
+        if (session.active_seconds_left <= 1) {
+          // Tijd voor deze set is voorbij → automatisch naar rust
+          onTick() // elapsed +1
+          onNextSet()
+        } else {
+          onTick()
+        }
+      }, 1000)
     }
     return () => { if (tickRef.current) clearInterval(tickRef.current) }
-  }, [session.workout_phase, session.auto_running, onTick])
+  }, [session.workout_phase, session.auto_running, session.active_seconds_left, onTick, onNextSet])
 
   // Rest countdown
   useEffect(() => {
@@ -281,11 +327,32 @@ function WorkoutEngine({
               ))}
             </div>
           </div>
-          <p className="text-5xl font-bold text-primary-400 mb-1">
-            {seg.reps ? `${seg.reps}` : `${seg.duration_sec}s`}
-          </p>
-          <p className="text-slate-400 text-sm mb-3">{seg.reps ? 'herhalingen' : 'seconden'}</p>
-          {seg.cue && <p className="text-sm text-slate-300 pt-3 border-t border-coach-border">💡 {seg.cue}</p>}
+          <div className="flex items-end justify-between mb-1">
+            <div>
+              <p className="text-5xl font-bold text-primary-400">
+                {seg.reps ? `${seg.reps}` : `${seg.duration_sec}s`}
+              </p>
+              <p className="text-slate-400 text-sm">{seg.reps ? 'herhalingen' : 'seconden'}</p>
+            </div>
+            <p className={cn('text-3xl font-mono font-bold',
+              session.active_seconds_left <= 3 ? 'text-red-400' : 'text-white'
+            )}>{session.active_seconds_left}s</p>
+          </div>
+          {seg.cue && <p className="text-sm text-slate-300 pt-3 mt-2 border-t border-coach-border">💡 {seg.cue}</p>}
+
+          {/* Tempo selector — alleen bij rep-based oefeningen */}
+          {seg.reps && !seg.duration_sec && (
+            <div className="flex gap-2 mt-3 pt-3 border-t border-coach-border">
+              {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
+                <button key={t} onClick={() => onTempoChange(seg.exercise, t)}
+                  className={cn('flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-colors',
+                    currentTempo === t ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
+                  )}>
+                  {t === 'slow' ? 'Slow' : t === 'normal' ? 'Normaal' : 'Fast'}
+                </button>
+              ))}
+            </div>
+          )}
         </Card>
       )}
 
@@ -342,13 +409,11 @@ function WorkoutEngine({
         </div>
       )}
 
-      {/* Oefening overslaan — alleen tijdens active */}
-      {session.workout_phase === 'active' && (
-        <button onClick={onSkipConfirm}
-          className="w-full py-3 bg-slate-800/40 text-slate-500 rounded-xl text-xs active:bg-slate-800">
-          ✕ Oefening overslaan
-        </button>
-      )}
+      {/* Pause knop */}
+      <button onClick={onPause}
+        className="w-full py-3.5 bg-slate-800/60 text-slate-300 rounded-xl text-sm font-semibold active:bg-slate-700 flex items-center justify-center gap-2">
+        <PauseIcon size={16} /> Pause
+      </button>
     </div>
   )
 }
@@ -468,7 +533,7 @@ export default function SessionPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
+  const [showPause, setShowPause] = useState(false)
   const [showStopConfirm, setShowStopConfirm] = useState(false)
   const [showResumeDialog, setShowResumeDialog] = useState(false)
   const [pendingSession, setPendingSession] = useState<ExtendedSessionState | null>(null)
@@ -515,10 +580,12 @@ export default function SessionPage() {
       segments: ((instruction.segments || instruction.exercises || []) as TrainingSegment[]),
       coach_message: (instruction.coach_message as string) || (instruction.reason as string) || '',
     }
+    const firstSeg = schema.segments[0] as KettlebellSegment
     const newSession: ExtendedSessionState = {
       session_id: generateSessionId(), module, status: 'schema', schema,
       started_at: new Date().toISOString(), current_segment: 0, completed_segments: [],
       elapsed_seconds: 0, current_set: 1, workout_phase: 'active', rest_seconds: 0,
+      active_seconds_left: firstSeg ? getActiveDuration(firstSeg) : 30,
       auto_running: false, skipped_segments: [], completed_sets: 0, uitleg_index: 0,
     }
     saveSession(newSession)
@@ -531,7 +598,11 @@ export default function SessionPage() {
   // ─── Tick handlers ──────────────────────────────────────────────────────────
 
   const handleTick = useCallback(() => {
-    setSession(prev => prev && prev.auto_running ? { ...prev, elapsed_seconds: prev.elapsed_seconds + 1 } : prev)
+    setSession(prev => prev && prev.auto_running ? {
+      ...prev,
+      elapsed_seconds: prev.elapsed_seconds + 1,
+      active_seconds_left: Math.max(0, prev.active_seconds_left - 1),
+    } : prev)
   }, [])
 
   const handleRestTick = useCallback(() => {
@@ -556,7 +627,8 @@ export default function SessionPage() {
         const isLastSet = prev.current_set >= totalSets
         return { ...prev, workout_phase: isLastSet ? 'last_rest' : 'rest', rest_seconds: restSec, completed_sets: prev.completed_sets + 1 }
       } else {
-        return { ...prev, workout_phase: 'active', current_set: prev.current_set + 1, rest_seconds: 0 }
+        const seg2 = getSeg(prev.schema, prev.current_segment)
+        return { ...prev, workout_phase: 'active', current_set: prev.current_set + 1, rest_seconds: 0, active_seconds_left: getActiveDuration(seg2) }
       }
     })
   }
@@ -565,10 +637,12 @@ export default function SessionPage() {
     setSession(prev => {
       if (!prev) return prev
       const next = prev.current_segment + 1
+      const nextSeg = getSeg(prev.schema, next)
       return {
         ...prev, current_segment: next,
         completed_segments: [...prev.completed_segments, prev.current_segment],
         current_set: 1, workout_phase: 'active', rest_seconds: 0, auto_running: true,
+        active_seconds_left: getActiveDuration(nextSeg),
       }
     })
   }
@@ -590,10 +664,11 @@ export default function SessionPage() {
         const isLastSet = prev.current_set >= totalSets
         return { ...prev, workout_phase: isLastSet ? 'last_rest' : 'rest', rest_seconds: restSec, completed_sets: prev.completed_sets + 1 }
       } else if (prev.workout_phase === 'rest') {
-        return { ...prev, workout_phase: 'active', current_set: prev.current_set + 1, rest_seconds: 0 }
+        return { ...prev, workout_phase: 'active', current_set: prev.current_set + 1, rest_seconds: 0, active_seconds_left: getActiveDuration(seg) }
       } else if (prev.workout_phase === 'last_rest') {
         if (isLastSegment) return { ...prev, status: 'voltooid' as SessionStatus, auto_running: false }
-        return { ...prev, current_segment: prev.current_segment + 1, completed_segments: [...prev.completed_segments, prev.current_segment], current_set: 1, workout_phase: 'active', rest_seconds: 0 }
+        const nextSeg3 = getSeg(prev.schema, prev.current_segment + 1)
+        return { ...prev, current_segment: prev.current_segment + 1, completed_segments: [...prev.completed_segments, prev.current_segment], current_set: 1, workout_phase: 'active', rest_seconds: 0, active_seconds_left: getActiveDuration(nextSeg3) }
       }
       return prev
     })
@@ -665,6 +740,7 @@ export default function SessionPage() {
   function handleReadyFromUitleg() {
     setSession(prev => {
       if (!prev) return prev
+      const seg = getSeg(prev.schema, prev.current_segment)
       return {
         ...prev,
         status: 'workout',
@@ -672,26 +748,12 @@ export default function SessionPage() {
         auto_running: true,
         current_set: 1,
         rest_seconds: 0,
+        active_seconds_left: getActiveDuration(seg),
       }
     })
   }
 
   // ─── Skip oefening ──────────────────────────────────────────────────────────
-
-  function handleSkipSegment() {
-    setShowSkipConfirm(false)
-    setSession(prev => {
-      if (!prev) return prev
-      const isLast = prev.current_segment === prev.schema.segments.length - 1
-      if (isLast) return { ...prev, status: 'voltooid' as SessionStatus, auto_running: false }
-      const next = prev.current_segment + 1
-      return {
-        ...prev, current_segment: next,
-        skipped_segments: [...prev.skipped_segments, prev.current_segment],
-        current_set: 1, workout_phase: 'active', rest_seconds: 0, auto_running: true,
-      }
-    })
-  }
 
   // ─── Opslaan ────────────────────────────────────────────────────────────────
 
@@ -808,10 +870,19 @@ export default function SessionPage() {
                 onNextSet={handleNextSet}
                 onNextSegment={handleNextSegment}
                 onComplete={handleComplete}
-                onSkipConfirm={() => setShowSkipConfirm(true)}
                 onBackOefening={handleBackOefening}
                 onVolgendOefening={handleVolgendOefening}
                 onNext={handleNext}
+                onPause={() => { setSession(prev => prev ? { ...prev, auto_running: false } : prev); setShowPause(true) }}
+                onTempoChange={(exercise, tempo) => {
+                  setTempo(exercise, tempo)
+                  setSession(prev => {
+                    if (!prev) return prev
+                    const seg = getSeg(prev.schema, prev.current_segment)
+                    if (seg.exercise !== exercise || prev.workout_phase !== 'active') return prev
+                    return { ...prev, active_seconds_left: getActiveDuration(seg) }
+                  })
+                }}
               />
             )}
 
@@ -849,24 +920,23 @@ export default function SessionPage() {
           </>
         )}
 
-        {/* Skip bevestiging */}
-        {showSkipConfirm && (
-          <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 px-8">
-            <Card className="p-6 w-full">
-              <p className="text-white font-semibold text-center mb-2">Oefening overslaan?</p>
-              <p className="text-slate-400 text-sm text-center mb-6">
-                {session && getSeg(session.schema, session.current_segment).exercise}
+        {/* Pause overlay */}
+        {showPause && session && (
+          <div className="fixed inset-0 bg-black/85 flex flex-col items-center justify-center z-50 px-8">
+            <Card className="p-6 w-full text-center">
+              <p className="text-white text-xl font-bold mb-1">⏸ Training Gepauzeerd</p>
+              <p className="text-slate-400 text-sm mb-1">{getSeg(session.schema, session.current_segment).exercise}</p>
+              <p className="text-slate-500 text-xs mb-6">
+                Set {session.current_set} · {formatTime(session.elapsed_seconds)}
               </p>
-              <div className="flex gap-3">
-                <button onClick={handleSkipSegment}
-                  className="flex-1 py-3 bg-amber-500/20 text-amber-400 rounded-xl font-semibold active:bg-amber-500/30">
-                  Ja, overslaan
-                </button>
-                <button onClick={() => setShowSkipConfirm(false)}
-                  className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
-                  Nee
-                </button>
-              </div>
+              <button onClick={() => { setShowPause(false); setSession(prev => prev ? { ...prev, auto_running: true } : prev) }}
+                className="w-full py-3.5 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600 mb-3 flex items-center justify-center gap-2">
+                <Play size={18} /> Hervatten
+              </button>
+              <button onClick={() => { setShowPause(false); setShowStopConfirm(true) }}
+                className="w-full py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
+                Stop Training
+              </button>
             </Card>
           </div>
         )}
