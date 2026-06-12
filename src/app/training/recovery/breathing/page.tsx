@@ -143,11 +143,13 @@ function BreathingSession() {
   // Cirkel animatie
   const cirkelSchaal = huidigeFase?.schaal || 1
   const cirkelKleur = huidigeFase?.kleur || '#60a5fa'
-  // +1: faseTeller wordt aan het einde van een fase synchroon teruggezet naar 0
-  // (zelfde tick als faseIndex wisselt), dus zonder +1 bereikt de ring nooit
-  // de volledige cirkel (max 3/4 bij een 4-sec fase). Met +1 is de ring vol
-  // tijdens de laatste seconde van de fase.
-  const faseVoortgang = Math.min((faseTeller + 1) / (huidigeFase?.duur || 1), 1)
+  // Ring toont voortgang van de HELE ronde (cumulatief over alle fases), niet
+  // per fase. Per-fase progress gaf bij elke fase-overgang een "rewind" van
+  // de ring (bijv. 100% -> 25%), wat extra opvalt bij lange fases zoals
+  // Uitademen (8 sec). Cumulatief vult de ring soepel over de hele ronde en
+  // reset maar één keer per ronde — synchroon met "Ronde X van Y".
+  const faseStartOffset = schema.fases.slice(0, faseIndex).reduce((s, f) => s + f.duur, 0)
+  const faseVoortgang = Math.min((faseStartOffset + faseTeller + 1) / faseDuur, 1)
 
   if (klaar) {
     return (
