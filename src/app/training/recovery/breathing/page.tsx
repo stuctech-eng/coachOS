@@ -59,23 +59,49 @@ function BreathingSession() {
   const schema = SCHEMAS[subtype] || SCHEMAS.box_breathing
   const totaleSec = duurMinuten * 60
   const faseDuur = schema.fases.reduce((s, f) => s + f.duur, 0)
-  const totaalRondes = Math.ceil(totaleSec / faseDuur)
+  // Cumulatieve starttijd (in sec) van elke fase binnen één cyclus, voor het
+  // afleiden van faseIndex/faseTeller uit secondsInCycle
+  const faseOffsets = schema.fases.reduce<number[]>((acc, f, i) => {
+    acc.push(i === 0 ? 0 : acc[i - 1] + schema.fases[i - 1].duur)
+    return acc
+  }, [])
 
   const [gestart, setGestart] = useState(false)
   const [gepauzeerd, setGepauzeerd] = useState(false)
   const [klaar, setKlaar] = useState(false)
-  const [faseIndex, setFaseIndex] = useState(0)
-  const [faseTeller, setFaseTeller] = useState(0)
-  const [ronde, setRonde] = useState(1)
-  const [verlopenSec, setVerlopenSec] = useState(0)
+  const [, setTick] = useState(0) // forceert re-render; tijd komt uit Date.now()
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const startTijdRef = useRef<number>(0)
-  const gepauzeerRef = useRef(false)
+  // ─── Tijd als enige bron van waarheid ──────────────────────────────────────
+  // startTime: moment van starten. pausedAccum: totale gepauzeerde tijd (ms).
+  // pauseStart: moment waarop de huidige pauze begon (null = niet gepauzeerd).
+  const startTimeRef = useRef<number>(0)
+  const pausedAccumRef = useRef<number>(0)
+  const pauseStartRef = useRef<number | null>(null)
 
+  // elapsedSeconds = werkelijk verstreken tijd minus gepauzeerde tijd
+  function getElapsedSeconds(): number {
+    if (!gestart) return 0
+    const now = pauseStartRef.current ?? Date.now()
+    const elapsedMs = now - startTimeRef.current - pausedAccumRef.current
+    return Math.max(0, Math.floor(elapsedMs / 1000))
+  }
+
+  const elapsedSeconds = getElapsedSeconds()
+
+  // Alles afgeleid van elapsedSeconds:
+  const secondsInCycle = elapsedSeconds % faseDuur
+  const ronde = Math.floor(elapsedSeconds / faseDuur) + 1
+  const totaalRondes = Math.ceil(totaleSec / faseDuur)
+
+  // Fase + countdown binnen de fase afleiden uit secondsInCycle
+  let faseIndex = schema.fases.length - 1
+  for (let i = 0; i < schema.fases.length; i++) {
+    if (secondsInCycle < faseOffsets[i] + schema.fases[i].duur) { faseIndex = i; break }
+  }
   const huidigeFase = schema.fases[faseIndex]
+  const faseTeller = secondsInCycle - faseOffsets[faseIndex]
 
-  const slaOpResultaat = useCallback(async () => {
+  const slaOpResultaat = useCallback(async (duurSec: number) => {
     try {
       await fetch('/api/recovery/complete', {
         method: 'POST',
@@ -83,73 +109,71 @@ function BreathingSession() {
         body: JSON.stringify({
           type: 'breathing',
           module: subtype,
-          duration: Math.round(verlopenSec / 60),
+          duration: Math.round(duurSec / 60),
           completion_status: 'completed',
           recovery_impact: 'medium',
         }),
       })
     } catch { /* */ }
-  }, [subtype, verlopenSec])
+  }, [subtype])
 
+  // Eén interval, alleen om de UI te laten her-renderen — geen state-mutaties
+  // op basis van tellers, dus geen drift, geen stale closures, geen restarts
+  // bij fasewissels.
   useEffect(() => {
     if (!gestart || gepauzeerd || klaar) return
+    const interval = setInterval(() => setTick(t => t + 1), 250)
+    return () => clearInterval(interval)
+  }, [gestart, gepauzeerd, klaar])
 
-    intervalRef.current = setInterval(() => {
-      if (gepauzeerRef.current) return
+  // Stop exact op de ingestelde duur (niet op afgeronde rondes)
+  useEffect(() => {
+    if (gestart && !klaar && elapsedSeconds >= totaleSec) {
+      setKlaar(true)
+      slaOpResultaat(totaleSec)
+    }
+  }, [elapsedSeconds, gestart, klaar, totaleSec, slaOpResultaat])
 
-      setVerlopenSec(prev => prev + 1)
-      setFaseTeller(prev => {
-        const volgende = prev + 1
-        if (volgende >= huidigeFase.duur) {
-          setFaseIndex(fi => {
-            const volgendeIndex = (fi + 1) % schema.fases.length
-            if (volgendeIndex === 0) {
-              setRonde(r => {
-                const nieuweRonde = r + 1
-                if (nieuweRonde > totaalRondes) {
-                  setKlaar(true)
-                  slaOpResultaat()
-                }
-                return nieuweRonde
-              })
-            }
-            return volgendeIndex
-          })
-          return 0
-        }
-        return volgende
-      })
-    }, 1000)
-
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [gestart, gepauzeerd, klaar, huidigeFase, schema.fases, totaalRondes, slaOpResultaat])
+  function start() {
+    startTimeRef.current = Date.now()
+    pausedAccumRef.current = 0
+    pauseStartRef.current = null
+    setGestart(true)
+  }
 
   function togglePauze() {
-    gepauzeerRef.current = !gepauzeerRef.current
+    if (!gepauzeerd) {
+      pauseStartRef.current = Date.now()
+    } else if (pauseStartRef.current !== null) {
+      pausedAccumRef.current += Date.now() - pauseStartRef.current
+      pauseStartRef.current = null
+    }
     setGepauzeerd(prev => !prev)
   }
 
   function stop() {
-    if (intervalRef.current) clearInterval(intervalRef.current)
-    slaOpResultaat()
+    slaOpResultaat(elapsedSeconds)
     router.push('/training')
   }
 
-  const voortgang = Math.min(verlopenSec / totaleSec, 1)
-  const restSec = Math.max(totaleSec - verlopenSec, 0)
+  const voortgang = Math.min(elapsedSeconds / totaleSec, 1)
+  const restSec = Math.max(totaleSec - elapsedSeconds, 0)
   const restMin = Math.floor(restSec / 60)
   const restSecRest = restSec % 60
 
   // Cirkel animatie
   const cirkelSchaal = huidigeFase?.schaal || 1
   const cirkelKleur = huidigeFase?.kleur || '#60a5fa'
-  // Ring toont voortgang van de HELE ronde (cumulatief over alle fases), niet
-  // per fase. Per-fase progress gaf bij elke fase-overgang een "rewind" van
-  // de ring (bijv. 100% -> 25%), wat extra opvalt bij lange fases zoals
-  // Uitademen (8 sec). Cumulatief vult de ring soepel over de hele ronde en
-  // reset maar één keer per ronde — synchroon met "Ronde X van Y".
-  const faseStartOffset = schema.fases.slice(0, faseIndex).reduce((s, f) => s + f.duur, 0)
-  const faseVoortgang = Math.min((faseStartOffset + faseTeller + 1) / faseDuur, 1)
+  // elapsedSeconds (geheel getal) is leidend voor fase/ronde/countdown/stop.
+  // Voor de ring gebruiken we de fractionele tijd zodat hij continu en
+  // soepel vult i.p.v. in hele-seconde-stappen.
+  function getElapsedMs(): number {
+    if (!gestart) return 0
+    const now = pauseStartRef.current ?? Date.now()
+    return Math.max(0, now - startTimeRef.current - pausedAccumRef.current)
+  }
+  const secondsInCycleFloat = (getElapsedMs() / 1000) % faseDuur
+  const faseVoortgang = Math.min(secondsInCycleFloat / faseDuur, 1)
 
   if (klaar) {
     return (
@@ -205,7 +229,7 @@ function BreathingSession() {
         </div>
 
         <div className="pb-12">
-          <button onClick={() => setGestart(true)}
+          <button onClick={start}
             className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700">
             <Play size={22} fill="white" />
             Start sessie
@@ -245,7 +269,7 @@ function BreathingSession() {
               strokeDasharray={`${2 * Math.PI * 130}`}
               strokeDashoffset={`${2 * Math.PI * 130 * (1 - faseVoortgang)}`}
               transform="rotate(-90 140 140)"
-              style={{ transition: 'stroke-dashoffset 0.9s linear, stroke 0.5s ease' }} />
+              style={{ transition: 'stroke-dashoffset 0.2s linear, stroke 0.5s ease' }} />
           </svg>
 
           {/* Ademhalingscirkel */}
