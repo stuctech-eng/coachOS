@@ -6,6 +6,8 @@ import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
 import type { TrainingModule } from '@/types/training-engine'
+import { getAvailableModules } from '@/utils/equipment'
+import type { EquipmentProfile } from '@/app/api/equipment/route'
 
 interface RecoveryModule {
   type: 'breathing' | 'mobility' | 'walk' | 'relaxation'
@@ -92,6 +94,15 @@ function getModuleLabel(type: string | null | undefined): string {
   return labels[type || ''] || 'Training'
 }
 
+const TRAININGSBIBLIOTHEEK: Array<{ module: TrainingModule; label: string; sub: string }> = [
+  { module: 'kettlebell', label: 'Kettlebell', sub: 'Trainer AI kiest oefeningen & intensiteit' },
+  { module: 'rowing', label: 'Rowing', sub: 'Concept2 — Trainer AI kiest sessietype' },
+  { module: 'running', label: 'Hardlopen', sub: 'Trainer AI kiest sessietype' },
+  { module: 'cycling', label: 'Fietsen', sub: 'Trainer AI kiest sessietype' },
+  { module: 'strength', label: 'Kracht', sub: 'Dumbbells / barbell — Trainer AI kiest oefeningen' },
+  { module: 'bodyweight', label: 'Bodyweight & Core', sub: 'Trainer AI kiest oefeningen' },
+]
+
 const BIBLIOTHEEK = [
   { type: 'breathing' as const, subtype: 'box_breathing', label: 'Box Breathing', sub: '4-4-4-4 ritme', duration: 6 },
   { type: 'breathing' as const, subtype: 'breathing_478', label: '4-7-8 Ademhaling', sub: 'ontspanning', duration: 8 },
@@ -109,7 +120,17 @@ export default function TrainingPage() {
   const [laden, setLaden] = useState(true)
   const [genereren, setGenereren] = useState(false)
   const [showBibliotheek, setShowBibliotheek] = useState(false)
+  const [showTrainingsBibliotheek, setShowTrainingsBibliotheek] = useState(false)
+  const [equipment, setEquipment] = useState<Partial<EquipmentProfile> | null>(null)
   const vandaag = new Date().toISOString().split('T')[0]
+
+  // Equipment profiel ophalen voor Trainingsbibliotheek gating
+  useEffect(() => {
+    fetch('/api/equipment')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.error) setEquipment(data) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -293,6 +314,52 @@ export default function TrainingPage() {
             </button>
           </Card>
         )}
+
+        {/* Trainingsbibliotheek */}
+        <div>
+          <button onClick={() => setShowTrainingsBibliotheek(!showTrainingsBibliotheek)}
+            className="flex items-center gap-2 text-slate-400 text-sm mb-3">
+            <BookOpen size={16} />
+            <span>Trainingsbibliotheek</span>
+            <ChevronRight size={14} className={cn('transition-transform', showTrainingsBibliotheek && 'rotate-90')} />
+          </button>
+
+          {showTrainingsBibliotheek && (
+            <div className="flex flex-col gap-2">
+              {TRAININGSBIBLIOTHEEK.map((item, i) => {
+                const Icon = getTrainingIcon(item.module)
+                const beschikbaar = getAvailableModules(equipment).includes(item.module)
+                return (
+                  <button
+                    key={i}
+                    onClick={() => beschikbaar && router.push(`${getTrainingRoute(item.module)}?source=library`)}
+                    disabled={!beschikbaar}
+                    className={cn('w-full text-left', beschikbaar ? 'active:opacity-70' : 'opacity-40')}
+                  >
+                    <div className="p-3 flex items-center gap-3 w-full bg-coach-card rounded-2xl border border-coach-border">
+                      <div className="w-9 h-9 rounded-xl bg-primary-500/10 flex items-center justify-center flex-shrink-0">
+                        <Icon size={18} className="text-primary-400" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-white text-sm font-medium">{item.label}</p>
+                        <p className="text-slate-500 text-xs">
+                          {beschikbaar ? item.sub : 'Niet beschikbaar — stel in via Equipment'}
+                        </p>
+                      </div>
+                      {beschikbaar
+                        ? <ChevronRight size={14} className="text-slate-600" />
+                        : <button onClick={(e) => { e.stopPropagation(); router.push('/settings/equipment') }}
+                            className="text-xs text-primary-400 px-2 py-1 rounded-lg bg-primary-500/10 flex-shrink-0">
+                            Instellen
+                          </button>
+                      }
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Herstelbibliotheek */}
         <div>

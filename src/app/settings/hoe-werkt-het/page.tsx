@@ -105,6 +105,8 @@ const SECTIES: Sectie[] = [
       'Rowing (Concept2): alleen beschikbaar als je Concept2 hebt aangevinkt in je Equipment profiel. Trainer AI kiest een sessietype passend bij je herstel — Recovery Row (rustig, 15-30 min), Endurance Row (steady state, 30-90 min), Tempo Row (drempeltraining), Interval Row (bijv. 10x500m), Sprint Row (korte explosieve intervallen) of een Test sessie (bijv. 2000m test).',
       'Bij rowing toont de engine per interval de afstand, doelsplit (tijd per 500m), streef-SPM (slagfrequentie) en hartslagzone in plaats van herhalingen. Bij steady state sessies vervalt de set-telling en loopt de tijd gewoon door. Na een rowing sessie krijg je drie extra evaluatievragen: techniek, tempo controle en vermoeidheid.',
       'Modules: naast Kettlebell en Rowing volgen Hardlopen, Fietsen, Krachttraining en Bodyweight & Core — elk met hun eigen Trainer AI logica maar dezelfde Training Engine.',
+      'Trainingsbibliotheek: naast Herstelbibliotheek vind je op de Training tab de Trainingsbibliotheek. Hier kies je zelf een module, los van het dagadvies van Coach AI. Trainer AI bepaalt dan nog steeds — net als bij "Vandaag voor jou" — het sessietype op basis van je actuele Body Battery, stress en herstel. Alleen modules waarvoor je equipment hebt aangevinkt zijn beschikbaar; de rest toont een knop om je Equipment in te stellen.',
+      'Elke training, of die nu via het dagadvies of de bibliotheek is gestart, telt volledig mee voor Performance AI en je Progressie. Je lichaam maakt geen onderscheid in waar een training vandaan kwam — alleen wat je daadwerkelijk hebt gedaan telt voor je analyses.',
     ],
   },
   {
@@ -259,7 +261,7 @@ export default function HoeWerktHetPage() {
 
         <div className="rounded-2xl bg-white/5 border border-white/8 px-4 py-4 mt-2">
           <p className="text-xs text-slate-500 text-center">
-            CoachOS v{process.env.NEXT_PUBLIC_APP_VERSION || '5.5.0'} — wordt bijgewerkt bij elke versie
+            CoachOS v{process.env.NEXT_PUBLIC_APP_VERSION || '5.5.1'} — wordt bijgewerkt bij elke versie
           </p>
         </div>
       </div>

@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       session_id,
       training_type,
       module,
+      training_source,
       completed,
       actual_duration,
       rating,
@@ -59,11 +60,13 @@ export async function POST(req: NextRequest) {
         .eq('user_id', user.id)
     }
 
+    const VALID_SOURCES = ['coach_plan', 'library', 'manual', 'imported']
     const insertData: Record<string, unknown> = {
       user_id: user.id,
       session_id: session_id ?? null,
       date: today,
       training_type: training_type || module || null,
+      training_source: VALID_SOURCES.includes(training_source) ? training_source : 'coach_plan',
       completed: completed ?? false,
       actual_duration: actual_duration ?? null,
       rating: rating ?? null,

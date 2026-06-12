@@ -120,6 +120,16 @@ export interface BodyweightSegment {
 
 // ─── Live Session State (localStorage) ───────────────────────────────────────
 
+// ─── Trainingsbron (v5.5.1) ────────────────────────────────────────────────────
+// Bepaalt waar een trainingssessie vandaan kwam. Wordt opgeslagen op elke
+// training_results rij zodat Performance AI/Progressie/Coach AI onderscheid
+// kunnen maken zonder de analyses te splitsen — alles telt mee.
+export type TrainingSource =
+  | 'coach_plan'  // "Vandaag voor jou" — Coach AI's dagadvies
+  | 'library'     // Trainingsbibliotheek — gebruiker koos zelf een module
+  | 'manual'      // toekomstig: handmatig ingevoerde training
+  | 'imported'    // toekomstig: Strava/Concept2 import
+
 export interface LiveSessionState {
   session_id: string
   module: TrainingModule
@@ -129,6 +139,7 @@ export interface LiveSessionState {
   current_segment: number
   completed_segments: number[]
   elapsed_seconds: number
+  training_source: TrainingSource
   // Evaluatie
   result?: SessionResult
 }

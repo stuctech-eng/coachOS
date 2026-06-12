@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 5.5.0
+- Versie: 5.5.1
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjst.supabase.co
@@ -261,6 +261,56 @@ calories, interval_data) zonder breaking changes.
 
 ---
 
+# Trainingsbron & Trainingsbibliotheek (v5.5.1)
+
+Naast Coach AI's dagelijkse "Vandaag voor jou" kan de gebruiker via een nieuwe
+**Trainingsbibliotheek** (naast Herstelbibliotheek op de Training tab) zelf een
+module kiezen, los van het dagadvies. Coach AI blijft leidend: Trainer AI
+bepaalt — net als bij het dagadvies — het sessietype binnen die module op
+basis van Body Battery/stress/HRV/blessures (bijv. lage BB → Recovery Row,
+hoge BB → Interval Row).
+
+## training_source (type, niet alleen kolom-default)
+```ts
+type TrainingSource =
+  | 'coach_plan'  // "Vandaag voor jou" — Coach AI's dagadvies
+  | 'library'     // Trainingsbibliotheek — gebruiker koos zelf een module
+  | 'manual'      // toekomstig: handmatig ingevoerde training
+  | 'imported'    // toekomstig: Strava/Concept2 import
+```
+Gedefinieerd in `src/types/training-engine.ts`. Alleen `coach_plan` en
+`library` worden nu geschreven; `manual`/`imported` liggen vast voor
+toekomstige Strava-import en Concept2 sync zonder migratie.
+
+## Flow
+- Training tab → "Vandaag voor jou" → Start → `training_source: 'coach_plan'`
+- Training tab → Trainingsbibliotheek → module tikken → `/training/session/[module]?source=library`
+  → `training_source: 'library'`
+- Beide lopen door dezelfde Universal Training Engine → `/api/training/complete`
+  → `training_results.training_source`
+
+## /api/training/today — library mode
+Body `{ module, source: 'library' }`:
+- valideert `isModuleAvailable(module, equipment)` — 403 als equipment ontbreekt
+- forceert `training_type = module` in de prompt, Trainer AI kiest zelf het
+  sessietype (Coach AI blijft leidend over intensiteit)
+- leest/schrijft NIET de dagcache (`type='training_today'`) — "Vandaag voor jou"
+  blijft ongewijzigd
+
+## Performance AI & Progressie
+Alle `training_results` rijen tellen mee, ongeacht `training_source` — het
+lichaam maakt geen onderscheid. Per-sessie labels (🏋️ Coach Advies /
+📚 Bibliotheek) zijn nog niet getoond in Progressie, omdat er nog geen
+sessiehistorie-lijst is — data staat al klaar voor wanneer die lijst gebouwd wordt.
+
+## Benodigde SQL migratie
+```sql
+alter table training_results
+  add column if not exists training_source text default 'coach_plan';
+```
+
+---
+
 
 
 E�n tabel, meerdere AI-outputs per dag, onderscheiden via `type` kolom om
@@ -325,7 +375,7 @@ Niveau gereed = gem. rating laatste 3 sessies ≥ 8 ÉN Body Battery ≥ 70
 
 src/
   types/
-    training-engine.ts                  klaar (v5.5 — + RowingSegment, equipment_required, rowing evaluatievelden)
+    training-engine.ts                  klaar (v5.5.1 — + RowingSegment, equipment_required, TrainingSource, rowing evaluatievelden)
   utils/
     equipment.ts                        klaar (v5.5 — nieuw, module ↔ equipment mapping)
   app/
@@ -340,9 +390,9 @@ src/
       performance/route.ts                klaar (v5.1, compatibel met rowing v5.5)
       equipment/route.ts                  klaar (v5.4 — GET/POST equipment profiel)
       training/
-        today/route.ts                    klaar (v5.5 — kettlebell + rowing prompt, equipment-gated module keuze)
+        today/route.ts                    klaar (v5.5.1 — + library mode, forced module + equipment check)
         session/route.ts                  klaar (v4.5)
-        complete/route.ts                 klaar (v5.5 — herschreven, geen session_id vereist, training_type + rowing velden)
+        complete/route.ts                 klaar (v5.5.1 — + training_source)
       recovery/
         complete/route.ts                 klaar (v4.2)
       health/
@@ -356,8 +406,8 @@ src/
     settings/hoe-werkt-het/page.tsx       klaar (v5.5 — Rowing sectie)
     settings/garmin-import/page.tsx       klaar (v4.7)
     training/
-      page.tsx                            klaar (v5.5 — generiek module icon/label, rowing-aware)
-      session/[module]/page.tsx           klaar (v5.5 — Universal Training Engine V3 + rowing weergave)
+      page.tsx                            klaar (v5.5.1 — + Trainingsbibliotheek, equipment-gated)
+      session/[module]/page.tsx           klaar (v5.5.1 — + training_source via ?source=library)
       kettlebell/page.tsx                 oud, niet meer in gebruik (vervangen door session/[module])
       recovery/
         breathing/page.tsx                klaar (v4.2)
@@ -375,7 +425,7 @@ activities, activity_sessions, activity_templates, strava_tokens,
 knowledge_observations, ai_conversations, daily_status, injuries, life_events,
 training_sessions, training_results (+ perceived_effort/fatigue_after/soreness v5.4,
 + training_type + rowing_technique_rating/rowing_pacing_rating/rowing_fatigue_rating v5.5,
-session_id nu nullable), recovery_sessions, recovery_results, garmin_imports
++ training_source v5.5.1, session_id nu nullable), recovery_sessions, recovery_results, garmin_imports
 
 ---
 
@@ -395,6 +445,8 @@ Werkend:
   (tempo-systeem, Back/Volgend/Next/Pause, sessie herstel) → voltooid → evaluatie
 - Rowing Module (Concept2) — recovery/endurance/tempo/interval/sprint/test sessies,
   afstand/split/SPM/HR-zone weergave, rowing-evaluatievragen
+- Trainingsbibliotheek — los van Coach AI's dagadvies zelf een module starten
+  (equipment-gated), training_source onderscheidt coach_plan/library
 - Performance AI — progressie analyse zichtbaar in Progressie tab, rowing-compatibel
 - Progressie dashboard + Performance AI sectie
 - Hoe werkt CoachOS — alle secties incl. Universal Training Engine + Rowing
@@ -465,6 +517,13 @@ V6 Concept2 API roadmap: zie sectie "Rowing Module (v5.5.0)" hierboven.
   /api/training/complete herschreven (session_id optioneel, training_type kolom,
   rowing-velden), training/page.tsx generiek gemaakt (icon/label per module),
   README + Hoe werkt CoachOS bijgewerkt, V6 Concept2 API roadmap vastgelegd
+- v5.5.1: Trainingsbron & Trainingsbibliotheek — TrainingSource type
+  (coach_plan/library/manual/imported), Trainingsbibliotheek op Training tab
+  (naast Herstelbibliotheek, equipment-gated, "Instellen" link bij ontbrekend
+  equipment), /api/training/today library mode (forced module + equipment
+  validatie, geen overschrijving van dagcache, Trainer AI bepaalt sessietype
+  binnen geforceerde module), training_source opgeslagen in training_results
+  (telt mee voor Performance AI/Progressie, geen aparte statistieken)
 
 ---
 

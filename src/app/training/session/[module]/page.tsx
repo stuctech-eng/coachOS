@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, SkipForward, Check, ChevronRight, Pause as PauseIcon, Play } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
@@ -636,7 +636,9 @@ function EvaluatieLayer({ actualDuration, isRowing, onSave, onSkip, saving }: {
 export default function SessionPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const module = params.module as TrainingModule
+  const isLibrary = searchParams.get('source') === 'library'
 
   const [session, setSession] = useState<ExtendedSessionState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -660,10 +662,30 @@ export default function SessionPage() {
     clearSession()
     const run = async () => {
       try {
+        // Trainingsbibliotheek: forceer module, geen dagcache lezen/schrijven —
+        // Trainer AI bepaalt zelf het sessietype binnen die module (Coach AI blijft leidend)
+        if (isLibrary) {
+          const res = await fetch('/api/training/today', {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ module, source: 'library' }),
+          })
+          if (res.ok) {
+            const data = await res.json()
+            const instruction = data.instruction || data
+            if (instruction?.training_type || instruction?.segments) {
+              buildAndSetSession(instruction, 'library')
+            } else setError('Geen geldig schema ontvangen.')
+          } else if (res.status === 403) {
+            setError('Deze module is niet beschikbaar — check je Equipment instellingen.')
+          } else setError(`Fout ${res.status}: schema generatie mislukt`)
+          return
+        }
+
         const cached = localStorage.getItem('training_instructie_data')
         if (cached) {
           const instruction = JSON.parse(cached)
-          if (instruction?.segments?.length > 0) { buildAndSetSession(instruction); return }
+          if (instruction?.segments?.length > 0) { buildAndSetSession(instruction, 'coach_plan'); return }
         }
         const res = await fetch('/api/training/today', { method: 'POST', credentials: 'include' })
         if (res.ok) {
@@ -671,16 +693,16 @@ export default function SessionPage() {
           const instruction = data.instruction || data
           if (instruction?.training_type || instruction?.segments) {
             localStorage.setItem('training_instructie_data', JSON.stringify(instruction))
-            buildAndSetSession(instruction)
+            buildAndSetSession(instruction, 'coach_plan')
           } else setError('Geen geldig schema ontvangen.')
         } else setError(`Fout ${res.status}: schema generatie mislukt`)
       } catch (e) { setError(String(e)) }
       finally { setLoading(false) }
     }
     run()
-  }, [module])
+  }, [module, isLibrary])
 
-  function buildAndSetSession(instruction: Record<string, unknown>) {
+  function buildAndSetSession(instruction: Record<string, unknown>, source: 'coach_plan' | 'library') {
     const schema: TrainingSchema = {
       module,
       title: (instruction.title as string) || `${module.charAt(0).toUpperCase() + module.slice(1)} sessie`,
@@ -696,6 +718,7 @@ export default function SessionPage() {
       elapsed_seconds: 0, current_set: 1, workout_phase: 'active', rest_seconds: 0,
       active_seconds_left: firstSeg ? getActiveDuration(firstSeg) : 30,
       auto_running: false, skipped_segments: [], completed_sets: 0, uitleg_index: 0,
+      training_source: source,
     }
     saveSession(newSession)
     setSession(newSession)
@@ -873,7 +896,7 @@ export default function SessionPage() {
       await fetch('/api/training/complete', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ module, ...result, training_type: module }),
+        body: JSON.stringify({ module, ...result, training_type: module, training_source: session?.training_source || 'coach_plan' }),
       })
       clearSession()
       setSession(prev => prev ? { ...prev, status: 'completed' } : prev)

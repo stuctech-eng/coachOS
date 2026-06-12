@@ -1,11 +1,12 @@
 export const dynamic = 'force-dynamic'
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
-import { getAvailableModules } from '@/utils/equipment'
+import { getAvailableModules, isModuleAvailable } from '@/utils/equipment'
 import type { EquipmentProfile } from '@/app/api/equipment/route'
+import type { TrainingModule } from '@/types/training-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -58,7 +59,11 @@ export async function GET() {
 }
 
 // POST — genereer nieuw trainingsschema (lichtgewicht)
-export async function POST() {
+// Body (optioneel): { module: TrainingModule, source: 'library' }
+// Trainingsbibliotheek: forceert module, slaat de dagcache (type='training_today') over —
+// Coach AI's "Vandaag voor jou" blijft ongewijzigd. Trainer AI bepaalt zelf het
+// sessietype binnen die module (Coach AI blijft leidend over intensiteit/keuze).
+export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
@@ -66,17 +71,24 @@ export async function POST() {
     const supabase = createAdminClient()
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
-    // Check cache
-    const { data: cached } = await supabase
-      .from('coach_recommendations')
-      .select('training_instruction')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .eq('type', 'training_today')
-      .single()
+    let body: { module?: TrainingModule; source?: string } = {}
+    try { body = await req.json() } catch { /* geen body — normale flow */ }
+    const forcedModule = body.module
+    const isLibrary = body.source === 'library' && !!forcedModule
 
-    if (cached?.training_instruction) {
-      return NextResponse.json({ instruction: cached.training_instruction })
+    // Check cache — alleen voor de normale (Coach AI) flow, niet bij bibliotheek
+    if (!isLibrary) {
+      const { data: cached } = await supabase
+        .from('coach_recommendations')
+        .select('training_instruction')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .eq('type', 'training_today')
+        .single()
+
+      if (cached?.training_instruction) {
+        return NextResponse.json({ instruction: cached.training_instruction })
+      }
     }
 
     // Minimale data ophalen — alleen wat nodig is voor schema generatie
@@ -108,6 +120,16 @@ export async function POST() {
     const rowingAvailable = availableModules.includes('rowing')
     const kettlebellAvailable = availableModules.includes('kettlebell')
 
+    // Bibliotheek: forceer module, mits equipment dit toelaat
+    if (isLibrary && forcedModule) {
+      if (!isModuleAvailable(forcedModule, equipment)) {
+        return NextResponse.json({ error: `Module '${forcedModule}' niet beschikbaar — equipment ontbreekt` }, { status: 403 })
+      }
+      if (forcedModule !== 'kettlebell' && forcedModule !== 'rowing') {
+        return NextResponse.json({ error: `Module '${forcedModule}' wordt nog niet ondersteund` }, { status: 400 })
+      }
+    }
+
     const context = [
       `Naam: ${profile?.first_name || 'gebruiker'}, niveau: ${profile?.experience_level || 'beginner'}`,
       checkin ? `Check-in: gevoel ${checkin.feeling_score}/10, energie ${checkin.energy_score}/10, stress ${checkin.stress_score || '?'}/10, spierpijn ${checkin.soreness_score || '?'}/10` : 'Geen check-in vandaag',
@@ -116,11 +138,13 @@ export async function POST() {
       goals.length > 0 ? `Doelen: ${goals.map((g: {title: string}) => g.title).join(', ')}` : '',
     ].filter(Boolean).join('\n')
 
-    const moduleKeuze = kettlebellAvailable && rowingAvailable
-      ? 'Kies zelf het beste training_type voor vandaag: "kettlebell" of "rowing", op basis van de data (bijv. afwisseling met vorige sessies, herstelstatus, doelen).'
-      : rowingAvailable
-        ? 'Het enige beschikbare equipment voor deze training is een Concept2 roeier. training_type MOET "rowing" zijn.'
-        : 'training_type MOET "kettlebell" zijn.'
+    const moduleKeuze = isLibrary && forcedModule
+      ? `De gebruiker heeft zelf gekozen voor de "${forcedModule}" module via de Trainingsbibliotheek. training_type MOET "${forcedModule}" zijn. Bepaal zelf, op basis van de data, het beste sessietype binnen deze module (bijv. bij rowing: recovery/endurance/tempo/interval/sprint/test — kies recovery bij lage Body Battery, interval/tempo bij hoge Body Battery).`
+      : kettlebellAvailable && rowingAvailable
+        ? 'Kies zelf het beste training_type voor vandaag: "kettlebell" of "rowing", op basis van de data (bijv. afwisseling met vorige sessies, herstelstatus, doelen).'
+        : rowingAvailable
+          ? 'Het enige beschikbare equipment voor deze training is een Concept2 roeier. training_type MOET "rowing" zijn.'
+          : 'training_type MOET "kettlebell" zijn.'
 
     const kettlebellFormat = `KETTLEBELL FORMAT — gebruik dit format als training_type "kettlebell" is:
 - Genereer 4-6 oefeningen in segments array
@@ -266,7 +290,11 @@ Reageer ALLEEN in dit JSON formaat:
       coach_message: 'Mooie rowing sessie vandaag — focus op techniek!',
     }
 
-    const fallbackInstruction: TrainingInstruction = kettlebellAvailable ? kettlebellFallback : rowingFallback
+    const fallbackInstruction: TrainingInstruction = isLibrary && forcedModule === 'rowing'
+      ? rowingFallback
+      : isLibrary && forcedModule === 'kettlebell'
+        ? kettlebellFallback
+        : kettlebellAvailable ? kettlebellFallback : rowingFallback
 
     let instruction: TrainingInstruction = fallbackInstruction
 
@@ -290,7 +318,9 @@ Reageer ALLEEN in dit JSON formaat:
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
           const parsedType = parsed.training_type
-          const typeAllowed = (parsedType === 'rowing' && rowingAvailable) || (parsedType === 'kettlebell' && kettlebellAvailable)
+          const typeAllowed = isLibrary && forcedModule
+            ? parsedType === forcedModule
+            : (parsedType === 'rowing' && rowingAvailable) || (parsedType === 'kettlebell' && kettlebellAvailable)
           if (parsed.segments && parsed.segments.length > 0 && typeAllowed) {
             instruction = parsed
           }
@@ -303,12 +333,14 @@ Reageer ALLEEN in dit JSON formaat:
 
     if (!instruction) return NextResponse.json({ error: 'Geen instructie gegenereerd' }, { status: 500 })
 
-    await supabase.from('coach_recommendations').upsert({
-      user_id: user.id,
-      date: today,
-      type: 'training_today',
-      training_instruction: instruction,
-    }, { onConflict: 'user_id,date,type' })
+    if (!isLibrary) {
+      await supabase.from('coach_recommendations').upsert({
+        user_id: user.id,
+        date: today,
+        type: 'training_today',
+        training_instruction: instruction,
+      }, { onConflict: 'user_id,date,type' })
+    }
 
     return NextResponse.json({ instruction })
 
