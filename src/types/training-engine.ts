@@ -51,16 +51,29 @@ export interface KettlebellSegment {
   instruction: string    // techniek uitleg
   cue: string           // korte cue tijdens uitvoering
   common_errors: string[]
+  // Equipment (V5.5 voorbereiding voor alle modules)
+  equipment_required?: string[]
 }
 
 export interface RowingSegment {
   type: 'rowing'
-  segment_type: 'warmup' | 'steady' | 'interval' | 'sprint' | 'cooldown'
-  duration_min: number
-  target_intensity: 'recovery' | 'aerobic' | 'threshold' | 'max'
-  stroke_rate?: number   // SPM
+  exercise: string        // bijv. "500m Interval" / "Steady State" — toon-naam in engine
+  session_type: 'recovery' | 'endurance' | 'tempo' | 'interval' | 'sprint' | 'test'
+  sets: number             // aantal herhalingen (intervallen). 1 voor steady/test
+  reps: number | null      // ongebruikt voor rowing — altijd null
+  duration_sec: number | null // afgeleide actieve tijd (uit duration of distance+split)
+  rest_sec: number
+  // Rowing-specifieke targets (optioneel, voor weergave)
+  distance_m?: number       // bijv. 500
+  target_split?: string     // bijv. "2:05" per 500m
+  target_spm?: number       // strokes per minute
+  target_hr_zone?: string   // bijv. "Zone 2"
+  // Learning Layer
   instruction: string
   cue: string
+  common_errors: string[]
+  // Equipment (V5.5 voorbereiding voor alle modules)
+  equipment_required?: string[]
 }
 
 export interface RunningSegment {
@@ -130,6 +143,10 @@ export interface SessionResult {
   notes: string | null
   actual_duration: number | null
   completed: boolean
+  // Rowing-specifieke evaluatie (V5.5, optioneel)
+  rowing_technique_rating?: number | null
+  rowing_pacing_rating?: number | null
+  rowing_fatigue_rating?: number | null
 }
 
 // ─── localStorage key ─────────────────────────────────────────────────────────

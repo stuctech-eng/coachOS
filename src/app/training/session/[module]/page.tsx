@@ -7,7 +7,7 @@ import { Card } from '@/components/ui'
 import { cn } from '@/utils'
 import type {
   LiveSessionState, SessionStatus, TrainingSchema,
-  TrainingSegment, KettlebellSegment, SessionResult, TrainingModule
+  TrainingSegment, KettlebellSegment, RowingSegment, SessionResult, TrainingModule
 } from '@/types/training-engine'
 import { SESSION_STORAGE_KEY } from '@/types/training-engine'
 
@@ -55,6 +55,28 @@ function clearSession() {
 
 function getSeg(schema: TrainingSchema, index: number): KettlebellSegment {
   return schema.segments[index] as KettlebellSegment
+}
+
+// Gedeelde weergave-vorm voor segmenten (kettlebell + rowing hebben dezelfde basisvelden)
+interface DisplaySegment {
+  type: string
+  exercise: string
+  sets: number
+  reps: number | null
+  duration_sec: number | null
+  rest_sec: number
+  cue: string
+  instruction: string
+  common_errors: string[]
+  // rowing-specifiek
+  distance_m?: number
+  target_split?: string
+  target_spm?: number
+  target_hr_zone?: string
+}
+
+function asDisplay(seg: TrainingSegment): DisplaySegment {
+  return seg as unknown as DisplaySegment
 }
 
 // ─── Tempo per oefening (reps → tijd) ────────────────────────────────────────
@@ -113,14 +135,20 @@ function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () 
       </Card>
       <div className="flex flex-col gap-2">
         {schema.segments.map((seg, i) => {
-          const kb = seg as KettlebellSegment
+          const kb = asDisplay(seg)
+          const isRowing = kb.type === 'rowing'
           return (
             <Card key={i} className="px-4 py-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-white">{kb.exercise || kb.type}</p>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    {kb.reps ? `${kb.sets} sets × ${kb.reps} herh.` : kb.duration_sec ? `${kb.sets} sets × ${kb.duration_sec}s` : '—'}
+                    {isRowing
+                      ? (kb.distance_m
+                          ? `${kb.sets} × ${kb.distance_m}m${kb.target_split ? ` @ ${kb.target_split}/500m` : ''}`
+                          : `${kb.sets > 1 ? `${kb.sets} × ` : ''}${formatTime(kb.duration_sec || 0)}`)
+                      : (kb.reps ? `${kb.sets} sets × ${kb.reps} herh.` : kb.duration_sec ? `${kb.sets} sets × ${kb.duration_sec}s` : '—')
+                    }
                     {kb.rest_sec ? ` · ${kb.rest_sec}s rust` : ''}
                   </p>
                 </div>
@@ -154,10 +182,12 @@ function UitlegScherm({
   onBack?: () => void
   showBack: boolean
 }) {
-  const kb = segment as KettlebellSegment
+  const kb = asDisplay(segment)
   const isFirst = segmentIndex === 0
   const showTimer = restSeconds !== undefined
   const isPulsing = restSeconds !== undefined && restSeconds <= 3 && restSeconds > 0
+  const isRowing = kb.type === 'rowing'
+  const hasRowingTargets = isRowing && (kb.distance_m || kb.target_split || kb.target_spm || kb.target_hr_zone)
 
   return (
     <div className="flex flex-col gap-4 pb-4">
@@ -169,7 +199,12 @@ function UitlegScherm({
           </p>
           <h2 className="text-2xl font-bold text-white">{kb.exercise || kb.type}</h2>
           <p className="text-sm text-primary-400 mt-1">
-            {kb.reps ? `${kb.sets} × ${kb.reps} herh.` : `${kb.sets} × ${kb.duration_sec}s`}
+            {isRowing
+              ? (kb.distance_m
+                  ? `${kb.sets} × ${kb.distance_m}m${kb.target_split ? ` @ ${kb.target_split}/500m` : ''}`
+                  : `${kb.sets > 1 ? `${kb.sets} × ` : ''}${formatTime(kb.duration_sec || 0)}`)
+              : (kb.reps ? `${kb.sets} × ${kb.reps} herh.` : `${kb.sets} × ${kb.duration_sec}s`)
+            }
             {kb.rest_sec ? ` · ${kb.rest_sec}s rust` : ''}
           </p>
         </div>
@@ -182,6 +217,39 @@ function UitlegScherm({
           </div>
         )}
       </div>
+
+      {/* Rowing targets */}
+      {hasRowingTargets && (
+        <Card className="p-4">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Doelwaarden</p>
+          <div className="grid grid-cols-2 gap-3">
+            {kb.distance_m && (
+              <div>
+                <p className="text-xs text-slate-500">Afstand</p>
+                <p className="text-lg font-bold text-white">{kb.distance_m}m</p>
+              </div>
+            )}
+            {kb.target_split && (
+              <div>
+                <p className="text-xs text-slate-500">Doelsplit</p>
+                <p className="text-lg font-bold text-white">{kb.target_split}</p>
+              </div>
+            )}
+            {kb.target_spm && (
+              <div>
+                <p className="text-xs text-slate-500">SPM doel</p>
+                <p className="text-lg font-bold text-white">{kb.target_spm}</p>
+              </div>
+            )}
+            {kb.target_hr_zone && (
+              <div>
+                <p className="text-xs text-slate-500">Hartslagzone</p>
+                <p className="text-lg font-bold text-white">{kb.target_hr_zone}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {kb.instruction && (
         <Card className="p-5">
@@ -247,7 +315,8 @@ function WorkoutEngine({
   onPause: () => void
   onTempoChange: (exercise: string, tempo: Tempo) => void
 }) {
-  const seg = getSeg(session.schema, session.current_segment)
+  const seg = asDisplay(getSeg(session.schema, session.current_segment) as unknown as TrainingSegment)
+  const isRowing = seg.type === 'rowing'
   const totalSets = seg.sets || 1
   const isLastSegment = session.current_segment === session.schema.segments.length - 1
   const tickRef = useRef<NodeJS.Timeout | null>(null)
@@ -316,23 +385,40 @@ function WorkoutEngine({
       {/* ACTIVE fase */}
       {session.workout_phase === 'active' && (
         <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Set {session.current_set} van {totalSets}</p>
-            <div className="flex gap-1">
-              {Array.from({ length: totalSets }, (_, i) => (
-                <div key={i} className={cn('w-5 h-1.5 rounded-full',
-                  i < session.current_set - 1 ? 'bg-green-500' :
-                  i === session.current_set - 1 ? 'bg-primary-500' : 'bg-slate-700'
-                )} />
-              ))}
+          {totalSets > 1 && (
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wider">
+                {isRowing ? `Interval ${session.current_set} van ${totalSets}` : `Set ${session.current_set} van ${totalSets}`}
+              </p>
+              <div className="flex gap-1">
+                {Array.from({ length: totalSets }, (_, i) => (
+                  <div key={i} className={cn('w-5 h-1.5 rounded-full',
+                    i < session.current_set - 1 ? 'bg-green-500' :
+                    i === session.current_set - 1 ? 'bg-primary-500' : 'bg-slate-700'
+                  )} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <div className="flex items-end justify-between mb-1">
             <div>
-              <p className="text-5xl font-bold text-primary-400">
-                {seg.reps ? `${seg.reps}` : `${seg.duration_sec}s`}
-              </p>
-              <p className="text-slate-400 text-sm">{seg.reps ? 'herhalingen' : 'seconden'}</p>
+              {isRowing ? (
+                <>
+                  <p className="text-5xl font-bold text-primary-400">
+                    {seg.distance_m ? `${seg.distance_m}m` : formatTime(seg.duration_sec || 0)}
+                  </p>
+                  <p className="text-slate-400 text-sm">
+                    {[seg.target_split && `${seg.target_split}/500m`, seg.target_spm && `${seg.target_spm} spm`, seg.target_hr_zone].filter(Boolean).join(' · ') || 'roeien'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-5xl font-bold text-primary-400">
+                    {seg.reps ? `${seg.reps}` : `${seg.duration_sec}s`}
+                  </p>
+                  <p className="text-slate-400 text-sm">{seg.reps ? 'herhalingen' : 'seconden'}</p>
+                </>
+              )}
             </div>
             <p className={cn('text-3xl font-mono font-bold',
               session.active_seconds_left <= 3 ? 'text-red-400' : 'text-white'
@@ -340,8 +426,8 @@ function WorkoutEngine({
           </div>
           {seg.cue && <p className="text-sm text-slate-300 pt-3 mt-2 border-t border-coach-border">💡 {seg.cue}</p>}
 
-          {/* Tempo selector — alleen bij rep-based oefeningen */}
-          {seg.reps && !seg.duration_sec && (
+          {/* Tempo selector — alleen bij rep-based kettlebell oefeningen */}
+          {!isRowing && seg.reps && !seg.duration_sec && (
             <div className="flex gap-2 mt-3 pt-3 border-t border-coach-border">
               {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
                 <button key={t} onClick={() => onTempoChange(seg.exercise, t)}
@@ -460,8 +546,9 @@ function VoltooïdScherm({ session, onEvaluatie }: { session: ExtendedSessionSta
 
 // ─── Evaluatie Layer ──────────────────────────────────────────────────────────
 
-function EvaluatieLayer({ actualDuration, onSave, onSkip, saving }: {
+function EvaluatieLayer({ actualDuration, isRowing, onSave, onSkip, saving }: {
   actualDuration: number
+  isRowing: boolean
   onSave: (result: SessionResult) => void
   onSkip: () => void
   saving: boolean
@@ -470,6 +557,10 @@ function EvaluatieLayer({ actualDuration, onSave, onSkip, saving }: {
   const [effort, setEffort] = useState<number | null>(null)
   const [techniek, setTechniek] = useState<number | null>(null)
   const [notes, setNotes] = useState('')
+  // Rowing-specifiek
+  const [rowingTechniek, setRowingTechniek] = useState<number | null>(null)
+  const [rowingPacing, setRowingPacing] = useState<number | null>(null)
+  const [rowingVermoeidheid, setRowingVermoeidheid] = useState<number | null>(null)
 
   function ScoreRij({ label, value, onChange, kleur }: {
     label: string; value: number | null; onChange: (v: number) => void; kleur: string
@@ -506,13 +597,31 @@ function EvaluatieLayer({ actualDuration, onSave, onSkip, saving }: {
           />
         </div>
       </Card>
+
+      {isRowing && (
+        <Card className="p-5 flex flex-col gap-5">
+          <p className="text-xs text-slate-500 uppercase tracking-wider -mb-1">Rowing</p>
+          <ScoreRij label="Techniek (haal, timing)" value={rowingTechniek} onChange={setRowingTechniek} kleur="text-blue-400" />
+          <ScoreRij label="Tempo controle (split gehouden)" value={rowingPacing} onChange={setRowingPacing} kleur="text-blue-400" />
+          <ScoreRij label="Vermoeidheid na sessie" value={rowingVermoeidheid} onChange={setRowingVermoeidheid} kleur="text-blue-400" />
+        </Card>
+      )}
+
       <div className="flex gap-3">
         <button onClick={onSkip}
           className="flex-1 py-3.5 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
           Overslaan
         </button>
         <button
-          onClick={() => onSave({ rating, perceived_effort: effort, fatigue_after: null, soreness: null, notes: notes.trim() || null, actual_duration: actualDuration, completed: true })}
+          onClick={() => onSave({
+            rating, perceived_effort: effort, fatigue_after: null, soreness: null,
+            notes: notes.trim() || null, actual_duration: actualDuration, completed: true,
+            ...(isRowing ? {
+              rowing_technique_rating: rowingTechniek,
+              rowing_pacing_rating: rowingPacing,
+              rowing_fatigue_rating: rowingVermoeidheid,
+            } : {}),
+          })}
           disabled={saving || !rating}
           className="flex-1 py-3.5 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600 disabled:opacity-40">
           {saving ? 'Opslaan...' : 'Opslaan'}
@@ -905,6 +1014,7 @@ export default function SessionPage() {
             {session.status === 'evaluation' && (
               <EvaluatieLayer
                 actualDuration={Math.round(session.elapsed_seconds / 60)}
+                isRowing={module === 'rowing'}
                 onSave={handleSave}
                 onSkip={() => { clearSession(); router.push('/training') }}
                 saving={saving}

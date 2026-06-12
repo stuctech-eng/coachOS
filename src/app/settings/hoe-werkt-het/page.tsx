@@ -102,7 +102,9 @@ const SECTIES: Sectie[] = [
       'Pause stopt de training direct met een overzicht van waar je was. Hervatten gaat verder vanaf exact dat punt, of stop de training helemaal met een bevestiging.',
       'Na de laatste oefening zie je je statistieken: voltooide oefeningen, overgeslagen oefeningen en totaal aantal sets. Daarna volgt de evaluatie: hoe zwaar was de training, je energieniveau en techniekgevoel, plus opmerkingen.',
       'Sessie herstel: sluit je de app halverwege een training? Bij terugkomst vraagt de app of je wilt hervatten vanaf je laatste positie of opnieuw beginnen.',
-      'Modules: naast Kettlebell volgen Roeien, Hardlopen, Fietsen, Krachttraining en Bodyweight & Core — elk met hun eigen Trainer AI logica maar dezelfde Training Engine.',
+      'Rowing (Concept2): alleen beschikbaar als je Concept2 hebt aangevinkt in je Equipment profiel. Trainer AI kiest een sessietype passend bij je herstel — Recovery Row (rustig, 15-30 min), Endurance Row (steady state, 30-90 min), Tempo Row (drempeltraining), Interval Row (bijv. 10x500m), Sprint Row (korte explosieve intervallen) of een Test sessie (bijv. 2000m test).',
+      'Bij rowing toont de engine per interval de afstand, doelsplit (tijd per 500m), streef-SPM (slagfrequentie) en hartslagzone in plaats van herhalingen. Bij steady state sessies vervalt de set-telling en loopt de tijd gewoon door. Na een rowing sessie krijg je drie extra evaluatievragen: techniek, tempo controle en vermoeidheid.',
+      'Modules: naast Kettlebell en Rowing volgen Hardlopen, Fietsen, Krachttraining en Bodyweight & Core — elk met hun eigen Trainer AI logica maar dezelfde Training Engine.',
     ],
   },
   {
@@ -257,7 +259,7 @@ export default function HoeWerktHetPage() {
 
         <div className="rounded-2xl bg-white/5 border border-white/8 px-4 py-4 mt-2">
           <p className="text-xs text-slate-500 text-center">
-            CoachOS v{process.env.NEXT_PUBLIC_APP_VERSION || '5.4.0'} — wordt bijgewerkt bij elke versie
+            CoachOS v{process.env.NEXT_PUBLIC_APP_VERSION || '5.5.0'} — wordt bijgewerkt bij elke versie
           </p>
         </div>
       </div>

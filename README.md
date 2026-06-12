@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 5.4.0
+- Versie: 5.5.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjst.supabase.co
@@ -34,12 +34,15 @@ Observe → Learn → Predict → Coach → Execute → Learn Again
 - genereert dagplannen BUITEN werktijden
 - plant activiteiten op basis van werktijden uit levensgebeurtenissen
 
-### Trainer AI (✅ Universal — v5.4)
+### Trainer AI (✅ Universal — v5.5)
 - genereert sessies per module (kettlebell, rowing, running, cycling, strength, bodyweight)
 - houdt rekening met equipment profiel — alleen oefeningen met beschikbaar materiaal
+- module-keuze is hard equipment-gated: rowing alleen als concept2_available=true,
+  kettlebell alleen als kettlebell_available=true (zie src/utils/equipment.ts)
 - adaptief op basis van experience, Body Battery, check-in (energie/stress/spierpijn), ratings, blessures
 - output altijd: segments[] (oefeningen met sets/reps/duration/rest/instructie/cue/common_errors)
-- fallback schema als AI parsing faalt — sessie kan altijd starten
+- fallback schema als AI parsing faalt — sessie kan altijd starten (kettlebell of rowing fallback,
+  afhankelijk van beschikbaar equipment)
 
 ### Recovery AI (✅)
 - Ademhaling: Box Breathing, 4-7-8, Coherent, Stress Reset
@@ -161,7 +164,104 @@ soreness_notes — ingevuld via Evaluatie Layer.
 
 ---
 
-# coach_recommendations — type kolom (v5.4.0)
+# Rowing Module (v5.5.0)
+
+Eerste niet-kettlebell module op de Universal Training Engine. Geen aparte
+architectuur — zelfde `/training/session/[module]/page.tsx`, `RowingSegment`
+type sluit aan op dezelfde basisvelden als `KettlebellSegment`
+(exercise/sets/reps/duration_sec/rest_sec/instruction/cue/common_errors).
+
+## Equipment-gating (hard, per module)
+
+| Module | Vereist (src/utils/equipment.ts) |
+|---|---|
+| kettlebell | kettlebell_available |
+| rowing | concept2_available |
+| cycling | cycling_available |
+| running | running_available |
+| strength | dumbbell_available OR barbell_available |
+| bodyweight | altijd |
+
+Trainer AI mag `training_type: "rowing"` alleen retourneren als
+`concept2_available = true` — anders forceert de prompt `"kettlebell"`.
+De route valideert dit ook na ontvangst van het AI-antwoord
+(`typeAllowed` check in `training/today/route.ts`) en valt anders terug
+op het fallback-schema passend bij het beschikbare equipment.
+
+## Sessietypes
+Trainer AI kiest op basis van Body Battery/stress/HRV/blessures/historie:
+- **recovery** — zone 1-2, 15-30 min
+- **endurance** — 30-90 min steady state
+- **tempo** — drempeltraining (bijv. 3x10min/2min rust)
+- **interval** — bijv. 10x500m
+- **sprint** — korte explosieve intervallen (bijv. 8x250m)
+- **test** — bijv. 500m/1000m/2000m/5000m test
+
+## RowingSegment velden (training-engine.ts)
+```ts
+exercise, session_type, sets, reps (altijd null), duration_sec, rest_sec,
+distance_m?, target_split?, target_spm?, target_hr_zone?,
+instruction, cue, common_errors, equipment_required?
+```
+`duration_sec` is de actieve tijd per set/interval — door Trainer AI berekend
+uit distance_m + target_split (bijv. 500m @ 2:05/500m = 125 sec) of direct
+de tijd bij steady/recovery/tempo sessies. Dit laat de bestaande Workout
+Engine (countdown, auto-advance naar rust) ongewijzigd werken.
+
+## Weergave
+- Schema en Uitleg tonen "10 × 500m @ 2:05/500m" i.p.v. "10 × 12 herh."
+- Tijdens workout: bij sets > 1 toont de header "Interval X van Y"
+  (i.p.v. "Set X van Y"); bij sets = 1 (steady) wordt de set-indicator verborgen
+- Doelwaarden-kaart toont afstand, doelsplit, SPM-doel en hartslagzone indien aanwezig
+- Tempo-selector (Slow/Normaal/Fast) wordt verborgen voor rowing — duration_sec
+  staat al vast
+
+## Evaluatie-uitbreiding
+Bij rowing toont de Evaluatie Layer 3 extra vragen (1-10), opgeslagen in
+`training_results`:
+- `rowing_technique_rating` — techniek (haal, timing)
+- `rowing_pacing_rating` — tempo controle / split gehouden
+- `rowing_fatigue_rating` — vermoeidheid na sessie
+
+## /api/training/complete (herschreven v5.5)
+De Universal Engine stuurt geen `session_id` — de route accepteert dit nu als
+optioneel en schrijft direct naar `training_results` met `training_type`,
+de standaard evaluatievelden (rating/perceived_effort/fatigue_after/soreness/notes)
+en de rowing-velden indien aanwezig.
+
+## Benodigde SQL migratie
+```sql
+alter table training_results
+  add column if not exists training_type text,
+  add column if not exists rowing_technique_rating int,
+  add column if not exists rowing_pacing_rating int,
+  add column if not exists rowing_fatigue_rating int;
+
+alter table training_results
+  alter column session_id drop not null;
+```
+
+## Performance AI compatibiliteit
+Geen wijziging nodig — `training_results` rijen van rowing (met
+`training_type: 'rowing'`, `rating`, `actual_duration`, `completed_at`)
+stromen automatisch mee in de bestaande consistentie/trend-berekeningen.
+Split-, SPM- en vermogensanalyse volgen in V6 via de Concept2 API.
+
+## V6 Roadmap (Concept2 API — nog niet gebouwd)
+- V6.0 Concept2 OAuth Login
+- V6.1 Concept2 Logbook Sync
+- V6.2 Automatische workout import
+- V6.3 PR Tracking (500m/1000m/2000m/5000m)
+- V6.4 Rowing Coach AI (pacing/split/SPM/vermogen analyse)
+- V6.5 Volledig Concept2 analyse dashboard
+
+`RowingSegment` en `SessionResult` zijn al uitbreidbaar voor toekomstige
+velden (avg_split, best_split, avg_spm, max_spm, avg_power, drag_factor,
+calories, interval_data) zonder breaking changes.
+
+---
+
+
 
 E�n tabel, meerdere AI-outputs per dag, onderscheiden via `type` kolom om
 overschrijven tussen routes te voorkomen:
@@ -225,7 +325,9 @@ Niveau gereed = gem. rating laatste 3 sessies ≥ 8 ÉN Body Battery ≥ 70
 
 src/
   types/
-    training-engine.ts                  klaar (v5.4 — Universal Training Engine types)
+    training-engine.ts                  klaar (v5.5 — + RowingSegment, equipment_required, rowing evaluatievelden)
+  utils/
+    equipment.ts                        klaar (v5.5 — nieuw, module ↔ equipment mapping)
   app/
     api/
       action-plan/route.ts                klaar (v5.0)
@@ -235,12 +337,12 @@ src/
       memory/route.ts                     klaar (v5.0)
       status/route.ts                     klaar (v4.3)
       weekly/route.ts                     klaar (v5.1 — vorige week op maandag)
-      performance/route.ts                klaar (v5.1)
+      performance/route.ts                klaar (v5.1, compatibel met rowing v5.5)
       equipment/route.ts                  klaar (v5.4 — GET/POST equipment profiel)
       training/
-        today/route.ts                    klaar (v5.4 — lichtgewicht, 5 queries + fallback, type='training_today')
+        today/route.ts                    klaar (v5.5 — kettlebell + rowing prompt, equipment-gated module keuze)
         session/route.ts                  klaar (v4.5)
-        complete/route.ts                 klaar (v5.4 — perceived_effort/fatigue/soreness)
+        complete/route.ts                 klaar (v5.5 — herschreven, geen session_id vereist, training_type + rowing velden)
       recovery/
         complete/route.ts                 klaar (v4.2)
       health/
@@ -251,11 +353,11 @@ src/
     progressie/page.tsx                   klaar (v5.1)
     settings/page.tsx                     klaar (v5.4 — Equipment link)
     settings/equipment/page.tsx           klaar (v5.4 — nieuw)
-    settings/hoe-werkt-het/page.tsx       klaar (v5.4 — Training Engine sectie)
+    settings/hoe-werkt-het/page.tsx       klaar (v5.5 — Rowing sectie)
     settings/garmin-import/page.tsx       klaar (v4.7)
     training/
-      page.tsx                            klaar (v5.4 — start → session/[module])
-      session/[module]/page.tsx           klaar (v5.4 — Universal Training Engine V3)
+      page.tsx                            klaar (v5.5 — generiek module icon/label, rowing-aware)
+      session/[module]/page.tsx           klaar (v5.5 — Universal Training Engine V3 + rowing weergave)
       kettlebell/page.tsx                 oud, niet meer in gebruik (vervangen door session/[module])
       recovery/
         breathing/page.tsx                klaar (v4.2)
@@ -271,12 +373,13 @@ profiles (+ equipment booleans v5.4), user_goals, daily_checkins,
 health_metrics(inactief), coach_memory, coach_recommendations (+ type kolom v5.4),
 activities, activity_sessions, activity_templates, strava_tokens,
 knowledge_observations, ai_conversations, daily_status, injuries, life_events,
-training_sessions, training_results (+ perceived_effort/fatigue_after/soreness v5.4),
-recovery_sessions, recovery_results, garmin_imports
+training_sessions, training_results (+ perceived_effort/fatigue_after/soreness v5.4,
++ training_type + rowing_technique_rating/rowing_pacing_rating/rowing_fatigue_rating v5.5,
+session_id nu nullable), recovery_sessions, recovery_results, garmin_imports
 
 ---
 
-# Huidige Staat (v5.4.0) — Volledig
+# Huidige Staat (v5.5.0) — Volledig
 
 Werkend:
 - Login, onboarding, profiel, doelen, blessures, levensgebeurtenissen
@@ -287,12 +390,14 @@ Werkend:
 - Garmin Vision Import — automatische compressie, stress + ademhaling
 - Recovery AI — ademhaling, mobiliteit, wandeling
 - Equipment profiel — Instellingen → Equipment
-- Trainer AI — sessie generatie per module, equipment-aware, fallback schema
+- Trainer AI — sessie generatie per module, equipment-aware (hard gated), fallback schema
 - Universal Training Engine V3 — schema → uitleg → automatische workout
   (tempo-systeem, Back/Volgend/Next/Pause, sessie herstel) → voltooid → evaluatie
-- Performance AI — progressie analyse zichtbaar in Progressie tab
+- Rowing Module (Concept2) — recovery/endurance/tempo/interval/sprint/test sessies,
+  afstand/split/SPM/HR-zone weergave, rowing-evaluatievragen
+- Performance AI — progressie analyse zichtbaar in Progressie tab, rowing-compatibel
 - Progressie dashboard + Performance AI sectie
-- Hoe werkt CoachOS — alle secties incl. Universal Training Engine
+- Hoe werkt CoachOS — alle secties incl. Universal Training Engine + Rowing
 - Wachtwoord vergeten flow
 - Navigatie: Home | Training | Progressie | Coach | Instellingen
 
@@ -307,7 +412,7 @@ Werkend:
 - E5 Daily Action Plan: ✅
 - E6 Goal-specific Coaching: ✅
 - E7 Second Brain: ⏳ groeit
-- E8 Training Execution (Universal Training Engine): ✅ kettlebell, overige modules ⏳
+- E8 Training Execution (Universal Training Engine): ✅ kettlebell + rowing, overige modules ⏳
 - E9 Recovery Execution (Recovery AI): ✅
 - E10 Garmin Vision Import: ✅
 - E11 Progressie Dashboard: ✅
@@ -315,12 +420,12 @@ Werkend:
 - E13 Performance AI: ✅
 - E14 Equipment Profiel: ✅
 - E15 Universal Training Engine V3: ✅ (kettlebell)
+- E16 Rowing Module: ✅ (kettlebell + rowing op Universal Engine, equipment-gated)
 
 ---
 
-# V5.5 - V5.10 Roadmap (modules op Universal Training Engine)
+# V5.6 - V5.10 Roadmap (modules op Universal Training Engine)
 
-- V5.5.0 — Rowing Module (Concept2)
 - V5.6.0 — Running Module
 - V5.7.0 — Cycling Module
 - V5.8.0 — Kettlebell uitbreiding (meer oefeningen/varianten)
@@ -328,8 +433,11 @@ Werkend:
 - V5.10.0 — Bodyweight & Core Module
 
 Elke module: eigen Trainer AI prompt + segment-type in
-`src/types/training-engine.ts`, draait op dezelfde
+`src/types/training-engine.ts`, gebruikt `equipment_required` voor gating
+via `src/utils/equipment.ts`, draait op dezelfde
 `/training/session/[module]/page.tsx` engine.
+
+V6 Concept2 API roadmap: zie sectie "Rowing Module (v5.5.0)" hierboven.
 
 ---
 
@@ -346,6 +454,17 @@ Elke module: eigen Trainer AI prompt + segment-type in
   automatische flow, tempo-systeem reps→tijd, Back/Volgend/Next/Pause,
   sessie herstel) + training_results evaluatie-uitbreiding +
   Hoe werkt CoachOS Training Engine sectie
+- v5.5.0: Rowing Module (Concept2) op Universal Training Engine — RowingSegment
+  type (distance_m/target_split/target_spm/target_hr_zone/session_type/
+  equipment_required), src/utils/equipment.ts (hard equipment-gating per module:
+  rowing alleen bij concept2_available), Trainer AI rowing-prompt (recovery/
+  endurance/tempo/interval/sprint/test), rowing-aware Schema/Uitleg/Workout
+  weergave (afstand/split/SPM/HR-zone, interval-telling, geen tempo-selector),
+  rowing evaluatievragen (techniek/pacing/vermoeidheid →
+  rowing_technique_rating/rowing_pacing_rating/rowing_fatigue_rating),
+  /api/training/complete herschreven (session_id optioneel, training_type kolom,
+  rowing-velden), training/page.tsx generiek gemaakt (icon/label per module),
+  README + Hoe werkt CoachOS bijgewerkt, V6 Concept2 API roadmap vastgelegd
 
 ---
 
@@ -375,6 +494,9 @@ en help me verder met CoachOS
 6. .data?.parsed_data fout → query mist .single()
 7. API route mag NOOIT andere interne API route fetchen, behalve /api/ai
 8. coach_recommendations upserts ALTIJD met type kolom + onConflict 'user_id,date,type'
+9. Nieuwe trainingsmodule? Check src/utils/equipment.ts of de module al een
+   equipment-mapping heeft — anders is_module_available retourneert false en
+   genereert Trainer AI hem nooit
 
 ## Technische standaarden
 - API route: export const dynamic = 'force-dynamic'

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Dumbbell, Wind, Footprints, Zap, Play, RefreshCw, Clock, ChevronRight, BookOpen } from 'lucide-react'
+import { Dumbbell, Wind, Footprints, Zap, Play, RefreshCw, Clock, ChevronRight, BookOpen, Waves } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
@@ -77,6 +77,11 @@ function getTrainingRoute(type: string | null): string {
     bodyweight: '/training/session/bodyweight',
   }
   return routes[type || ''] || '/training/session/kettlebell'
+}
+
+function getTrainingIcon(type: string | null | undefined) {
+  if (type === 'rowing') return Waves
+  return Dumbbell
 }
 
 function getModuleLabel(type: string | null | undefined): string {
@@ -156,14 +161,12 @@ export default function TrainingPage() {
     } finally { setGenereren(false) }
   }
 
-  function startKettlebell() {
+  function startTraining() {
     if (!instruction) return
-    const intensity = instruction.intensity || 'medium'
-    const duration = instruction.duration || 30
     router.push(getTrainingRoute(instruction?.training_type || 'kettlebell'))
   }
 
-  const isKettlebell = instruction?.training_allowed && instruction?.training_type === 'kettlebell'
+  const isTrainingType = !!(instruction?.training_allowed && instruction?.training_type)
 
   const totaalDuur = instruction ? (
     (instruction.training_allowed && instruction.duration ? instruction.duration : 0) +
@@ -207,27 +210,30 @@ export default function TrainingPage() {
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Vandaag voor jou</p>
 
-              {/* Kettlebell training */}
-              {instruction.training_allowed && instruction.training_type && (
-                <div className="flex items-center gap-3 mb-3 pb-3 border-b border-coach-border">
-                  <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
-                    <Dumbbell size={20} className="text-primary-400" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-semibold capitalize">{instruction.training_type} training</p>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-slate-400 flex items-center gap-1">
-                        <Clock size={11} /> {instruction.duration} min
-                      </span>
-                      {instruction.intensity && (
-                        <span className={cn('text-xs flex items-center gap-1', getIntensityKleur(instruction.intensity))}>
-                          <Zap size={11} /> {getIntensityLabel(instruction.intensity)}
+              {/* Trainingsmodule (kettlebell, rowing, ...) */}
+              {instruction.training_allowed && instruction.training_type && (() => {
+                const TrainingIcon = getTrainingIcon(instruction.training_type)
+                return (
+                  <div className="flex items-center gap-3 mb-3 pb-3 border-b border-coach-border">
+                    <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+                      <TrainingIcon size={20} className="text-primary-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-semibold">{getModuleLabel(instruction.training_type)} training</p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          <Clock size={11} /> {instruction.duration} min
                         </span>
-                      )}
+                        {instruction.intensity && (
+                          <span className={cn('text-xs flex items-center gap-1', getIntensityKleur(instruction.intensity))}>
+                            <Zap size={11} /> {getIntensityLabel(instruction.intensity)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* Recovery modules */}
               {instruction.recovery_modules.map((module, i) => {
@@ -249,10 +255,10 @@ export default function TrainingPage() {
               })}
             </Card>
 
-            {/* START knop — kettlebell of recovery */}
-            {isKettlebell ? (
+            {/* START knop — training module of recovery */}
+            {isTrainingType ? (
               <button
-                onClick={startKettlebell}
+                onClick={startTraining}
                 className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700"
               >
                 <Play size={22} fill="white" />

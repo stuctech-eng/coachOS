@@ -21,38 +21,67 @@ async function getUser() {
   return user
 }
 
+// POST — sla evaluatie van een Universal Training Engine sessie op
+// Body komt van session/[module]/page.tsx: { module, training_type, ...SessionResult }
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 
     const supabase = createAdminClient()
-    const { session_id, completed, duration_minutes, rating, notes } = await req.json()
+    const body = await req.json()
 
-    if (!session_id) return NextResponse.json({ error: 'session_id verplicht' }, { status: 400 })
+    const {
+      session_id,
+      training_type,
+      module,
+      completed,
+      actual_duration,
+      rating,
+      perceived_effort,
+      fatigue_after,
+      soreness,
+      notes,
+      // Rowing-specifiek (optioneel, alleen bij module === 'rowing')
+      rowing_technique_rating,
+      rowing_pacing_rating,
+      rowing_fatigue_rating,
+    } = body
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
-    // Update sessie status
-    await supabase
-      .from('training_sessions')
-      .update({ status: completed ? 'completed' : 'skipped' })
-      .eq('id', session_id)
-      .eq('user_id', user.id)
+    // Update sessie status indien session_id meegegeven (oude flow)
+    if (session_id) {
+      await supabase
+        .from('training_sessions')
+        .update({ status: completed ? 'completed' : 'skipped' })
+        .eq('id', session_id)
+        .eq('user_id', user.id)
+    }
 
-    // Sla resultaat op
+    const insertData: Record<string, unknown> = {
+      user_id: user.id,
+      session_id: session_id ?? null,
+      date: today,
+      training_type: training_type || module || null,
+      completed: completed ?? false,
+      actual_duration: actual_duration ?? null,
+      rating: rating ?? null,
+      notes: notes ?? null,
+      perceived_effort: perceived_effort ?? null,
+      fatigue_after: fatigue_after ?? null,
+      soreness: soreness ?? null,
+      completed_at: new Date().toISOString(),
+    }
+
+    // Rowing-specifieke velden alleen toevoegen indien aanwezig
+    if (rowing_technique_rating !== undefined) insertData.rowing_technique_rating = rowing_technique_rating
+    if (rowing_pacing_rating !== undefined) insertData.rowing_pacing_rating = rowing_pacing_rating
+    if (rowing_fatigue_rating !== undefined) insertData.rowing_fatigue_rating = rowing_fatigue_rating
+
     const { data: result, error } = await supabase
       .from('training_results')
-      .insert({
-        user_id: user.id,
-        session_id,
-        date: today,
-        completed: completed ?? false,
-        actual_duration: duration_minutes ?? null,
-        rating: rating ?? null,
-        notes: notes ?? null,
-        completed_at: new Date().toISOString(),
-      })
+      .insert(insertData)
       .select()
       .single()
 
