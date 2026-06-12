@@ -1,6 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Brain, Dumbbell, Wind, TrendingUp, Battery, Moon, Heart, Zap, Clock, Camera, BarChart2, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Brain, Dumbbell, Wind, TrendingUp, Battery, Heart, Zap, Clock, Camera, BarChart2, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
@@ -89,14 +89,20 @@ const SECTIES: Sectie[] = [
     id: 'trainer-ai',
     icoon: Dumbbell,
     kleur: 'text-orange-400',
-    titel: 'Trainer AI',
-    intro: 'Trainer AI genereert kettlebell trainingen op maat. Hij ontvangt instructies van Coach AI en bouwt daar een concrete sessie van.',
+    titel: 'Trainer AI & Training Engine',
+    intro: 'Trainer AI genereert trainingen op maat voor jouw beschikbare equipment. De Universal Training Engine begeleidt je vervolgens stap voor stap door de sessie.',
     inhoud: [
-      'Trainer AI werkt met 25 oefeningen verdeeld over zes categorieën: Hinge, Squat, Push, Pull, Carry en Core. Elke oefening heeft een niveau (1=beginner, 2=gemiddeld, 3=gevorderd).',
-      'Een sessie heeft altijd dezelfde opbouw: Warming-up (Hinge + Squat), Trainingsblokken (Hinge → Squat → Push of Pull → Carry of Core → Finisher), Cool-down. Dit zorgt voor een gebalanceerde full-body training elke keer.',
-      'Trainer AI houdt rekening met vier factoren: je ervaringsniveau (uit profiel), Body Battery (uit Garmin), je ratings van de laatste drie trainingen, en actieve blessures. Blessures wegen het zwaarst — een geblesseerde schouder betekent geen press of overhead oefeningen, ongeacht de rest.',
-      'Progressie werkt automatisch. Als je drie trainingen achter elkaar een rating van 8 of hoger geeft én je Body Battery is boven de 70 → verhoogt Trainer AI het moeilijkheidsniveau. Rating van 4 of lager → stap terug. Dit gebeurt zonder dat je er iets voor hoeft te doen.',
-      'Na elke training vul je een rating (1-10) in en optioneel opmerkingen. "Schouders voelden zwaar" of "veel energie vandaag" — die tekst gebruikt Coach AI later voor analyse. Hoe meer je invult, hoe slimmer het systeem wordt.',
+      'Equipment profiel: in Instellingen geef je aan welke materialen je hebt (kettlebell, dumbbells, barbell, concept2, hometrainer, hardlopen, ab wheel, bodyweight). Trainer AI genereert alleen sessies met materiaal dat je daadwerkelijk hebt.',
+      'Trainer AI houdt rekening met je ervaringsniveau, Body Battery, je laatste check-in (energie, stress, spierpijn), actieve blessures en je doelen. Bij lage energie of spierpijn kiest hij lichtere oefeningen of minder sets. Blessures sluiten automatisch bepaalde oefeningen uit.',
+      'Trainingsschema: op de Training tab zie je het overzicht van alle oefeningen met sets, herhalingen en rust. Druk op "Training Starten" om te beginnen.',
+      'Eerste oefening: voor je start zie je de volledige uitleg — uitvoering, coaching tip en veelgemaakte fouten. Druk op "Ready" om te beginnen. Vanaf hier loopt alles automatisch.',
+      'Automatische flow: elke set start automatisch. Bij herhalingen rekent de engine dit om naar tijd op basis van jouw tempo-instelling (Slow, Normaal of Fast — per oefening apart onthouden). Na de set volgt automatisch rust, dan de volgende set.',
+      'Laatste rust: tijdens de laatste rust van een oefening verschijnt automatisch de uitleg van de volgende oefening, met de resterende rusttijd rechtsboven. Zodra de rust afloopt start de volgende oefening — geen extra actie nodig.',
+      'Navigatie tijdens de training: Back gaat naar de uitleg van de vorige oefening, Volgend naar de volgende — beide stoppen de automatische flow en resetten de timer. Next slaat alleen de huidige stap over zonder de flow te onderbreken. Druk op Ready om de automatische flow weer te starten.',
+      'Pause stopt de training direct met een overzicht van waar je was. Hervatten gaat verder vanaf exact dat punt, of stop de training helemaal met een bevestiging.',
+      'Na de laatste oefening zie je je statistieken: voltooide oefeningen, overgeslagen oefeningen en totaal aantal sets. Daarna volgt de evaluatie: hoe zwaar was de training, je energieniveau en techniekgevoel, plus opmerkingen.',
+      'Sessie herstel: sluit je de app halverwege een training? Bij terugkomst vraagt de app of je wilt hervatten vanaf je laatste positie of opnieuw beginnen.',
+      'Modules: naast Kettlebell volgen Roeien, Hardlopen, Fietsen, Krachttraining en Bodyweight & Core — elk met hun eigen Trainer AI logica maar dezelfde Training Engine.',
     ],
   },
   {
@@ -251,7 +257,7 @@ export default function HoeWerktHetPage() {
 
         <div className="rounded-2xl bg-white/5 border border-white/8 px-4 py-4 mt-2">
           <p className="text-xs text-slate-500 text-center">
-            CoachOS v{process.env.NEXT_PUBLIC_APP_VERSION || '4.9.0'} — wordt bijgewerkt bij elke versie
+            CoachOS v{process.env.NEXT_PUBLIC_APP_VERSION || '5.4.0'} — wordt bijgewerkt bij elke versie
           </p>
         </div>
       </div>
