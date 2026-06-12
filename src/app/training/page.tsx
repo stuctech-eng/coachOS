@@ -235,11 +235,12 @@ export default function TrainingPage() {
               {instruction.training_allowed && instruction.training_type && (() => {
                 const TrainingIcon = getTrainingIcon(instruction.training_type)
                 return (
-                  <div className="flex items-center gap-3 mb-3 pb-3 border-b border-coach-border">
+                  <button onClick={startTraining}
+                    className="flex items-center gap-3 w-full mb-3 pb-3 border-b border-coach-border active:opacity-70">
                     <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
                       <TrainingIcon size={20} className="text-primary-400" />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 text-left">
                       <p className="text-white font-semibold">{getModuleLabel(instruction.training_type)} training</p>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -252,7 +253,8 @@ export default function TrainingPage() {
                         )}
                       </div>
                     </div>
-                  </div>
+                    <ChevronRight size={16} className="text-slate-600" />
+                  </button>
                 )
               })()}
 
