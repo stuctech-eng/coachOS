@@ -143,7 +143,11 @@ function BreathingSession() {
   // Cirkel animatie
   const cirkelSchaal = huidigeFase?.schaal || 1
   const cirkelKleur = huidigeFase?.kleur || '#60a5fa'
-  const faseVoortgang = faseTeller / (huidigeFase?.duur || 1)
+  // +1: faseTeller wordt aan het einde van een fase synchroon teruggezet naar 0
+  // (zelfde tick als faseIndex wisselt), dus zonder +1 bereikt de ring nooit
+  // de volledige cirkel (max 3/4 bij een 4-sec fase). Met +1 is de ring vol
+  // tijdens de laatste seconde van de fase.
+  const faseVoortgang = Math.min((faseTeller + 1) / (huidigeFase?.duur || 1), 1)
 
   if (klaar) {
     return (
