@@ -847,7 +847,27 @@ export default function SessionPage() {
   // Back linksboven — stopt auto, uitleg huidige oefening OF pagina terug
   function handleHeaderBack() {
     if (!session) { router.push('/training'); return }
-    if (session.status === 'workout') {
+    if (session.status === 'workout' && session.workout_phase === 'uitleg') {
+      // We zijn al op de uitleg-via-header-back (anders zou hierna niets gebeuren
+      // bij een tweede druk — exact dezelfde state werd opnieuw gezet).
+      if (session.uitleg_index === 0) {
+        // Eerste oefening → terug naar schema-overzicht
+        setSession(prev => prev ? {
+          ...prev, status: 'schema', workout_phase: 'active',
+          current_set: 1, rest_seconds: 0, elapsed_seconds: 0,
+        } : prev)
+      } else {
+        // Naar uitleg van vorige oefening (zelfde als bottom "← Terug")
+        setSession(prev => {
+          if (!prev) return prev
+          const vorigeIndex = prev.uitleg_index - 1
+          return {
+            ...prev, uitleg_index: vorigeIndex, current_segment: vorigeIndex,
+            current_set: 1, rest_seconds: 0, elapsed_seconds: 0,
+          }
+        })
+      }
+    } else if (session.status === 'workout') {
       setSession(prev => {
         if (!prev) return prev
         return {
