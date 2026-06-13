@@ -60,9 +60,11 @@ export async function GET() {
 
 // POST — genereer nieuw trainingsschema (lichtgewicht)
 // Body (optioneel): { module: TrainingModule, source: 'library' }
-// Trainingsbibliotheek: forceert module, slaat de dagcache (type='training_today') over —
-// Coach AI's "Vandaag voor jou" blijft ongewijzigd. Trainer AI bepaalt zelf het
-// sessietype binnen die module (Coach AI blijft leidend over intensiteit/keuze).
+// Trainingsbibliotheek: forceert module, gebruikt EIGEN dagcache (type='library_<module>') —
+// Coach AI's "Vandaag voor jou" (type='training_today') blijft ongewijzigd. Eenmaal
+// gegenereerd blijft een bibliotheek-sessie per module de hele dag staan (geen
+// herhaalde AI-calls bij rondkijken). Trainer AI bepaalt zelf het sessietype
+// binnen die module (Coach AI blijft leidend over intensiteit/keuze).
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
@@ -76,14 +78,18 @@ export async function POST(req: NextRequest) {
     const forcedModule = body.module
     const isLibrary = body.source === 'library' && !!forcedModule
 
-    // Check cache — alleen voor de normale (Coach AI) flow, niet bij bibliotheek
-    if (!isLibrary) {
+    // Check cache — normale (Coach AI) flow: type='training_today'
+    // Bibliotheek flow: per-module dagcache type='library_<module>' — eenmaal
+    // gegenereerd blijft een module-sessie de hele dag staan (geen herhaalde
+    // AI-calls bij rondkijken in de Trainingsbibliotheek)
+    const cacheType = isLibrary ? `library_${forcedModule}` : 'training_today'
+    {
       const { data: cached } = await supabase
         .from('coach_recommendations')
         .select('training_instruction')
         .eq('user_id', user.id)
         .eq('date', today)
-        .eq('type', 'training_today')
+        .eq('type', cacheType)
         .single()
 
       if (cached?.training_instruction) {
@@ -430,14 +436,14 @@ Reageer ALLEEN in dit JSON formaat:
 
     if (!instruction) return NextResponse.json({ error: 'Geen instructie gegenereerd' }, { status: 500 })
 
-    if (!isLibrary) {
-      await supabase.from('coach_recommendations').upsert({
-        user_id: user.id,
-        date: today,
-        type: 'training_today',
-        training_instruction: instruction,
-      }, { onConflict: 'user_id,date,type' })
-    }
+    // Cache schrijven — type='training_today' (Coach AI dagplan) of
+    // type='library_<module>' (bibliotheek, 1x per module per dag)
+    await supabase.from('coach_recommendations').upsert({
+      user_id: user.id,
+      date: today,
+      type: cacheType,
+      training_instruction: instruction,
+    }, { onConflict: 'user_id,date,type' })
 
     return NextResponse.json({ instruction })
 

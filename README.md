@@ -384,8 +384,13 @@ Body `{ module, source: 'library' }`:
 - valideert `isModuleAvailable(module, equipment)` — 403 als equipment ontbreekt
 - forceert `training_type = module` in de prompt, Trainer AI kiest zelf het
   sessietype (Coach AI blijft leidend over intensiteit)
-- leest/schrijft NIET de dagcache (`type='training_today'`) — "Vandaag voor jou"
-  blijft ongewijzigd
+- gebruikt een EIGEN dagcache per module: `type='library_<module>'` (bijv.
+  `library_rowing`), volledig los van `type='training_today'` — "Vandaag voor
+  jou" blijft ongewijzigd
+- eenmaal gegenereerd blijft een bibliotheek-sessie per module de hele dag
+  staan (zelfde `instruction`, geen nieuwe AI-call) — ook als je meerdere
+  keren rondkijkt in de Trainingsbibliotheek. Geen "vernieuwen"-knop; de
+  cache vervalt automatisch bij datumwissel
 
 ## Performance AI & Progressie
 Alle `training_results` rijen tellen mee, ongeacht `training_source` — het
