@@ -29,6 +29,7 @@ export async function GET() {
       .select('*')
       .eq('user_id', user.id)
       .eq('date', today)
+      .eq('type', 'coach')
       .single()
     return NextResponse.json(data || null)
   } catch {
@@ -49,6 +50,7 @@ export async function POST() {
       .select('*')
       .eq('user_id', user.id)
       .eq('date', today)
+      .eq('type', 'coach')
       .single()
     if (cached?.recommendation && cached?.advice_bullets) return NextResponse.json(cached)
 
