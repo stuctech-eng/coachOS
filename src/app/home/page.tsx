@@ -1,8 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Camera, BookOpen } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -79,33 +79,6 @@ export default function HomePage() {
         const isVandaag = vandaagData?.date === vandaagAms
         setGarminImported(isVandaag)
         setGarminDatum(vandaagData?.date ?? null)
-
-        // Als Garmin van vandaag is, check of Coach Score ook van vandaag is
-        // Zo niet — herbereken stilletjes op de achtergrond
-        if (isVandaag) {
-          const scoreDatum = window.localStorage.getItem('coach_status_datum')
-          if (scoreDatum !== vandaagAms) {
-            fetch('/api/status', { method: 'POST', credentials: 'include' })
-              .then(r => r.json())
-              .then(data => {
-                if (data?.coach_score !== undefined) {
-                  const statusData = {
-                    coach_score: data.coach_score ?? null,
-                    recovery_score: data.recovery_score ?? null,
-                    training_score: data.training_score ?? null,
-                    lifestyle_score: data.lifestyle_score ?? null,
-                    risk_flags: data.risk_flags || [],
-                    status_color: data.status_color || 'orange',
-                    date: vandaagAms,
-                  }
-                  window.localStorage.setItem('coach_status_datum', vandaagAms)
-                  window.localStorage.setItem('coach_status_data', JSON.stringify(statusData))
-                  setCoachStatus(statusData)
-                }
-              })
-              .catch(() => {})
-          }
-        }
       } catch {
         setGarminImported(true)
         setGarminDatum(null)
@@ -113,6 +86,40 @@ export default function HomePage() {
     }
     checkGarmin()
   }, [])
+
+  // Coach Score automatisch herberekenen — alleen wanneer ZOWEL Garmin (vandaag)
+  // ALS check-in (vandaag) aanwezig zijn. Triggert vanaf welke kant ook compleet
+  // wordt (eerst Garmin dan check-in, of omgekeerd). Geen AI-call — /api/status
+  // is pure berekening.
+  const herberekenIndienCompleet = useCallback(() => {
+    const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+    if (garminDatum !== vandaagAms || !hasCheckin) return
+    if (typeof window === 'undefined') return
+    const scoreDatum = window.localStorage.getItem('coach_status_datum')
+    if (scoreDatum === vandaagAms) return // al up-to-date voor vandaag
+
+    fetch('/api/status', { method: 'POST', credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (data?.coach_score !== undefined) {
+          const statusData = {
+            coach_score: data.coach_score ?? null,
+            recovery_score: data.recovery_score ?? null,
+            training_score: data.training_score ?? null,
+            lifestyle_score: data.lifestyle_score ?? null,
+            risk_flags: data.risk_flags || [],
+            status_color: data.status_color || 'orange',
+            date: vandaagAms,
+          }
+          window.localStorage.setItem('coach_status_datum', vandaagAms)
+          window.localStorage.setItem('coach_status_data', JSON.stringify(statusData))
+          setCoachStatus(statusData)
+        }
+      })
+      .catch(() => {})
+  }, [garminDatum, hasCheckin, setCoachStatus])
+
+  useEffect(() => { herberekenIndienCompleet() }, [herberekenIndienCompleet])
 
   // Laad coach status
   useEffect(() => {
@@ -211,6 +218,28 @@ export default function HomePage() {
           </button>
         </div>
 
+        {/* Check-in */}
+        {!hasCheckin ? (
+          <Link href="/checkin">
+            <Card className="px-5 py-4 border border-primary-500/30 bg-primary-500/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-semibold text-sm">Ochtend check-in</p>
+                  <p className="text-slate-400 text-xs mt-0.5">Hoe voel je je vandaag?</p>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center text-primary-400">
+                  <ChevronDown size={16} className="-rotate-90" />
+                </div>
+              </div>
+            </Card>
+          </Link>
+        ) : checkin && (
+          <p className="text-xs text-slate-500 px-1">
+            ✓ Check-in voltooid — gevoel {checkin.feeling_score}, energie {checkin.energy_score}
+            {(checkin as {stress_score?: number}).stress_score ? `, stress ${(checkin as {stress_score?: number}).stress_score}` : ''}
+          </p>
+        )}
+
         {/* Garmin reminder banner */}
         {!garminImported && (
           <button
@@ -235,19 +264,19 @@ export default function HomePage() {
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-xs text-slate-400 uppercase tracking-wider">Coach Score</p>
                 {(() => {
-                  // Garmin import indicator
-                  const gisterenAms = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-                  // garminImported = vandaag bevestigd
-                  // We need to also check if it was yesterday
+                  // Data-volledigheid indicator: Coach Score is alleen volledig
+                  // accuraat als Garmin (vandaag) ÉN check-in (vandaag) aanwezig zijn
                   const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
                   const gisterenStr = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-                  if (garminDatum === vandaagStr) {
-                    return <div className="w-2 h-2 rounded-full bg-green-400" title="Garmin import vandaag ✓" />
+                  const garminVandaag = garminDatum === vandaagStr
+                  const garminGisteren = garminDatum === gisterenStr
+                  if (garminVandaag && hasCheckin) {
+                    return <div className="w-2 h-2 rounded-full bg-green-400" title="Garmin + check-in vandaag ✓" />
                   }
-                  if (garminDatum === gisterenStr) {
-                    return <div className="w-2 h-2 rounded-full bg-amber-400" title="Garmin import van gisteren" />
+                  if (garminVandaag || garminGisteren || hasCheckin) {
+                    return <div className="w-2 h-2 rounded-full bg-amber-400" title="Score gedeeltelijk gebaseerd op actuele data" />
                   }
-                  return <div className="w-2 h-2 rounded-full bg-slate-500" title="Geen recente Garmin data" />
+                  return <div className="w-2 h-2 rounded-full bg-slate-500" title="Geen recente Garmin of check-in data" />
                 })()}
               </div>
               <div className="flex items-end gap-2">
@@ -301,67 +330,6 @@ export default function HomePage() {
             </div>
           </div>
         )}
-
-        {/* Check-in */}
-        {!hasCheckin ? (
-          <Link href="/checkin">
-            <Card className="px-5 py-4 border border-primary-500/30 bg-primary-500/5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white font-semibold text-sm">Ochtend check-in</p>
-                  <p className="text-slate-400 text-xs mt-0.5">Hoe voel je je vandaag?</p>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center text-primary-400">
-                  <ChevronDown size={16} className="-rotate-90" />
-                </div>
-              </div>
-            </Card>
-          </Link>
-        ) : checkin && (
-          <Card className="px-4 py-3">
-            <p className="text-xs text-slate-500 mb-3">Check-in vandaag</p>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-white">{checkin.feeling_score}</p>
-                <p className="text-xs text-slate-400 mt-0.5">Gevoel</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-white">{checkin.energy_score}</p>
-                <p className="text-xs text-slate-400 mt-0.5">Energie</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-white">{checkin.has_pain ? 'ja' : 'nee'}</p>
-                <p className="text-xs text-slate-400 mt-0.5">Pijn</p>
-              </div>
-            </div>
-            {((checkin as {stress_score?: number}).stress_score || (checkin as {motivation_score?: number}).motivation_score || (checkin as {soreness_score?: number}).soreness_score) && (
-              <>
-                <div className="h-px bg-coach-border my-2" />
-                <div className="grid grid-cols-3 gap-2">
-                  {(checkin as {stress_score?: number}).stress_score && (
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-orange-400">{(checkin as {stress_score?: number}).stress_score}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Stress</p>
-                    </div>
-                  )}
-                  {(checkin as {motivation_score?: number}).motivation_score && (
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-green-400">{(checkin as {motivation_score?: number}).motivation_score}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Motivatie</p>
-                    </div>
-                  )}
-                  {(checkin as {soreness_score?: number}).soreness_score && (
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-red-400">{(checkin as {soreness_score?: number}).soreness_score}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Spierpijn</p>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </Card>
-        )}
-
 
 
         {/* Dagboek knop */}
