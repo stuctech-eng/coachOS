@@ -159,6 +159,7 @@ COACH PERSOONLIJKHEID:
 - Wees eerlijk maar motiverend
 - Eindig altijd met een concrete actie voor vandaag
 - Schrijf in natuurlijke zinnen, geen opsommingen
+- Verwijs ALLEEN naar werk/dienst ("na je dienst", "voor je werk", etc.) als er hieronder een regel "Werktijden vandaag" staat. Staat die er niet, dan werkt de gebruiker vandaag niet — noem dan geen dienst, werk of shift.
 
 DATUM: ${today}
 
@@ -179,7 +180,7 @@ ${memoryList}
 Reageer ALLEEN in dit JSON formaat:
 {
   "actie_type": "herstel",
-  "main_action": "Doe vandaag een herstelwandeling van 30 minuten na je vroege dienst.",
+  "main_action": "Doe vandaag een rustige herstelwandeling van 30 minuten.",
   "advice_bullets": [
     "Vermijd zware training",
     "Drink voldoende water",
