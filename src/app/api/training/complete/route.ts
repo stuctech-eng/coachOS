@@ -47,6 +47,11 @@ export async function POST(req: NextRequest) {
       rowing_technique_rating,
       rowing_pacing_rating,
       rowing_fatigue_rating,
+      // Running-specifiek (optioneel, alleen bij module === 'running')
+      running_technique_rating,
+      running_pacing_rating,
+      running_fatigue_rating,
+      running_rpe_rating,
     } = body
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
@@ -81,6 +86,10 @@ export async function POST(req: NextRequest) {
     if (rowing_technique_rating !== undefined) insertData.rowing_technique_rating = rowing_technique_rating
     if (rowing_pacing_rating !== undefined) insertData.rowing_pacing_rating = rowing_pacing_rating
     if (rowing_fatigue_rating !== undefined) insertData.rowing_fatigue_rating = rowing_fatigue_rating
+    if (running_technique_rating !== undefined) insertData.running_technique_rating = running_technique_rating
+    if (running_pacing_rating !== undefined) insertData.running_pacing_rating = running_pacing_rating
+    if (running_fatigue_rating !== undefined) insertData.running_fatigue_rating = running_fatigue_rating
+    if (running_rpe_rating !== undefined) insertData.running_rpe_rating = running_rpe_rating
 
     const { data: result, error } = await supabase
       .from('training_results')

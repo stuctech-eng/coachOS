@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 5.5.1
+- Versie: 5.6.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjst.supabase.co
@@ -98,7 +98,7 @@ Inzichten en Equipment bereikbaar via Instellingen.
 
 # Universal Training Engine (V3) — v5.4.0
 
-E�n dynamische route `/training/session/[module]/page.tsx` voor alle sportmodules
+Eén dynamische route `/training/session/[module]/page.tsx` voor alle sportmodules
 (kettlebell, rowing, running, cycling, strength, bodyweight). State leeft in
 localStorage (`SESSION_STORAGE_KEY`), Supabase write alleen bij voltooien.
 
@@ -261,6 +261,96 @@ calories, interval_data) zonder breaking changes.
 
 ---
 
+# Running Module (v5.6.0)
+
+Derde trainingsmodule op de Universal Training Engine — architectuur identiek
+aan Rowing (v5.5.0). Geen aparte engine, geen decision layer, geen scoring-
+systeem. `RunningSegment` deelt dezelfde basisvelden als `RowingSegment`
+(exercise/sets/reps/duration_sec/rest_sec/instruction/cue/common_errors).
+
+## Equipment-gating
+`running_available` (al aanwezig in `src/utils/equipment.ts`). Trainer AI mag
+`training_type: "running"` alleen retourneren als dit `true` is.
+
+## Module-keuze (3-weg, dynamisch)
+`/api/training/today` bouwt nu een dynamische `keuzeModules`-lijst
+(kettlebell/rowing/running, gefilterd op equipment) en geeft Trainer AI de
+vrije keuze daaruit — exact zoals de 2-weg kettlebell/rowing-keuze in v5.5,
+nu uitgebreid naar 3 modules. **Geen** decision engine, **geen**
+recovery/training-load scoring, **geen** harde prioriteitsregels — Strava-
+historie is uitsluitend context (zie hieronder).
+
+## Sessietypes
+- **recovery** — rustige herstelrun, zone 1-2, 20-30 min
+- **endurance** — 5-10km of 30-60min steady
+- **tempo** — drempeltraining (bijv. 3x10min/2min rust)
+- **interval** — bijv. 6x400m, 8x500m, 5x800m
+- **sprint** — bijv. 10x100m, 8x200m
+- **test** — bijv. 1km/5km/10km test
+
+## RunningSegment velden (training-engine.ts)
+```ts
+exercise, session_type, sets, reps (altijd null), duration_sec, rest_sec,
+distance_m?, target_pace? (bijv. "5:30/km"), target_speed_kmh?, target_hr_zone?,
+instruction, cue, common_errors, equipment_required?
+```
+`duration_sec` is de actieve tijd per set/interval — door Trainer AI berekend
+uit distance_m + target_pace (bijv. 400m @ 5:30/km = 132 sec) of direct de
+tijd bij steady/recovery/tempo sessies.
+
+## Strava-context (6e query, lichtgewicht)
+`/api/training/today` haalt de laatste 5 runs (max 14 dagen) op uit
+`activity_sessions` (join met `activities` waar `name = 'Hardlopen'`,
+`source = 'strava'`). Per run: afstand (km), duur, gemiddelde pace (berekend
+uit `avg_speed`), gemiddelde hartslag, hoogteverschil. Dit wordt als platte
+tekst-context aan de prompt toegevoegd:
+
+> Gebruik deze gegevens uitsluitend als context om een passende running
+> training te genereren. Coach AI blijft leidend. Trainer AI bepaalt de
+> sessie. Gebruik geen vaste berekeningen of scoringsmodellen.
+
+Geen cadence, splits, PR's of suffer score in v5.6 — bewaard voor V6/V7.
+
+## Personal Progression Principle
+De prompt instrueert Trainer AI om Strava-historie te gebruiken voor kleine,
+persoonlijke opbouw (afstand/tempo) en consistentie te belonen (bijv. een
+herstelrun na een drukke week), met voorbeeldformuleringen in
+`coach_message` ("vorige week 5 km, vandaag 6 km"). Vergelijking is
+uitsluitend met de eigen historie — nooit met andere lopers, geen rankings.
+
+## Weergave
+- Schema en Uitleg tonen "6 × 400m @ 5:30/km" of "5000m @ 6:00/km" i.p.v.
+  reps
+- Doelwaarden-kaart toont afstand, doeltempo (min/km), snelheid (km/u) en
+  hartslagzone indien aanwezig
+- Bij sets > 1: "Interval X van Y" (zelfde als rowing)
+- Tempo-selector (Slow/Normaal/Fast) verborgen — duration_sec staat al vast
+
+## Evaluatie-uitbreiding (4 vragen, 1 meer dan rowing)
+- `running_technique_rating` — looptechniek
+- `running_pacing_rating` — tempo controle (pace gehouden)
+- `running_fatigue_rating` — vermoeidheid nu (herstelkosten)
+- `running_rpe_rating` — hoe zwaar voelde de training (intensiteit tijdens
+  de sessie, Borg-achtige schaal) — los van fatigue: RPE meet de inspanning
+  *tijdens*, fatigue de herstelbehoefte *na* de sessie
+
+## Benodigde SQL migratie
+```sql
+alter table training_results
+  add column if not exists running_technique_rating int,
+  add column if not exists running_pacing_rating int,
+  add column if not exists running_fatigue_rating int,
+  add column if not exists running_rpe_rating int;
+```
+
+## Trainingsbibliotheek + Performance AI
+Running was al opgenomen in `TRAININGSBIBLIOTHEEK` (v5.5.1, toonde "Instellen"
+zolang Trainer AI het niet ondersteunde) — nu volledig werkend, equipment-
+gated via `running_available`. Performance AI: geen wijziging nodig, running-
+resultaten tellen automatisch mee (zelfde principe als rowing v5.5.0).
+
+---
+
 # Trainingsbron & Trainingsbibliotheek (v5.5.1)
 
 Naast Coach AI's dagelijkse "Vandaag voor jou" kan de gebruiker via een nieuwe
@@ -313,7 +403,7 @@ alter table training_results
 
 
 
-E�n tabel, meerdere AI-outputs per dag, onderscheiden via `type` kolom om
+Eén tabel, meerdere AI-outputs per dag, onderscheiden via `type` kolom om
 overschrijven tussen routes te voorkomen:
 
 ```sql
@@ -375,7 +465,7 @@ Niveau gereed = gem. rating laatste 3 sessies ≥ 8 ÉN Body Battery ≥ 70
 
 src/
   types/
-    training-engine.ts                  klaar (v5.5.1 — + RowingSegment, equipment_required, TrainingSource, rowing evaluatievelden)
+    training-engine.ts                  klaar (v5.6.0 — + RowingSegment/RunningSegment, equipment_required, TrainingSource, rowing/running evaluatievelden)
   utils/
     equipment.ts                        klaar (v5.5 — nieuw, module ↔ equipment mapping)
   app/
@@ -390,9 +480,9 @@ src/
       performance/route.ts                klaar (v5.1, compatibel met rowing v5.5)
       equipment/route.ts                  klaar (v5.4 — GET/POST equipment profiel)
       training/
-        today/route.ts                    klaar (v5.5.1 — + library mode, forced module + equipment check)
+        today/route.ts                    klaar (v5.6.0 — + running module, 3-weg keuze, Strava-runninghistorie context)
         session/route.ts                  klaar (v4.5)
-        complete/route.ts                 klaar (v5.5.1 — + training_source)
+        complete/route.ts                 klaar (v5.6.0 — + running evaluatievelden)
       recovery/
         complete/route.ts                 klaar (v4.2)
       health/
@@ -403,7 +493,7 @@ src/
     progressie/page.tsx                   klaar (v5.1)
     settings/page.tsx                     klaar (v5.4 — Equipment link)
     settings/equipment/page.tsx           klaar (v5.4 — nieuw)
-    settings/hoe-werkt-het/page.tsx       klaar (v5.5 — Rowing sectie)
+    settings/hoe-werkt-het/page.tsx       klaar (v5.6.0 — + Running sectie)
     settings/garmin-import/page.tsx       klaar (v4.7)
     training/
       page.tsx                            klaar (v5.5.1 — + Trainingsbibliotheek, equipment-gated)
@@ -473,12 +563,12 @@ Werkend:
 - E14 Equipment Profiel: ✅
 - E15 Universal Training Engine V3: ✅ (kettlebell)
 - E16 Rowing Module: ✅ (kettlebell + rowing op Universal Engine, equipment-gated)
+- E17 Running Module: ✅ (kettlebell + rowing + running, 3-weg keuze, Strava-context)
 
 ---
 
-# V5.6 - V5.10 Roadmap (modules op Universal Training Engine)
+# V5.7 - V5.10 Roadmap (modules op Universal Training Engine)
 
-- V5.6.0 — Running Module
 - V5.7.0 — Cycling Module
 - V5.8.0 — Kettlebell uitbreiding (meer oefeningen/varianten)
 - V5.9.0 — Strength Module (dumbbells + barbell)
@@ -524,6 +614,17 @@ V6 Concept2 API roadmap: zie sectie "Rowing Module (v5.5.0)" hierboven.
   validatie, geen overschrijving van dagcache, Trainer AI bepaalt sessietype
   binnen geforceerde module), training_source opgeslagen in training_results
   (telt mee voor Performance AI/Progressie, geen aparte statistieken)
+- v5.6.0: Running Module — RunningSegment type (distance_m/target_pace/
+  target_speed_kmh/target_hr_zone/session_type, identiek qua opzet aan
+  RowingSegment), 3-weg module-keuze in /api/training/today (kettlebell/
+  rowing/running, dynamisch gefilterd op equipment, geen decision engine/
+  scoring), 6e query voor Strava-runninghistorie (laatste 5 runs/14 dagen,
+  uitsluitend als context — distance/avg_speed→pace/avg_hr/duration/elevation),
+  runningFormat prompt-sectie + runningFallback (5km steady run), running-aware
+  Schema/Uitleg/Workout weergave (afstand/pace/snelheid/HR-zone, "Interval X
+  van Y", geen tempo-selector), 4 evaluatievragen (techniek/pacing/
+  vermoeidheid/RPE — RPE en fatigue bewust gescheiden), Footprints-icon,
+  README + Hoe werkt CoachOS bijgewerkt
 
 ---
 

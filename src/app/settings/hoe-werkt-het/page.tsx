@@ -104,7 +104,10 @@ const SECTIES: Sectie[] = [
       'Sessie herstel: sluit je de app halverwege een training? Bij terugkomst vraagt de app of je wilt hervatten vanaf je laatste positie of opnieuw beginnen.',
       'Rowing (Concept2): alleen beschikbaar als je Concept2 hebt aangevinkt in je Equipment profiel. Trainer AI kiest een sessietype passend bij je herstel — Recovery Row (rustig, 15-30 min), Endurance Row (steady state, 30-90 min), Tempo Row (drempeltraining), Interval Row (bijv. 10x500m), Sprint Row (korte explosieve intervallen) of een Test sessie (bijv. 2000m test).',
       'Bij rowing toont de engine per interval de afstand, doelsplit (tijd per 500m), streef-SPM (slagfrequentie) en hartslagzone in plaats van herhalingen. Bij steady state sessies vervalt de set-telling en loopt de tijd gewoon door. Na een rowing sessie krijg je drie extra evaluatievragen: techniek, tempo controle en vermoeidheid.',
-      'Modules: naast Kettlebell en Rowing volgen Hardlopen, Fietsen, Krachttraining en Bodyweight & Core — elk met hun eigen Trainer AI logica maar dezelfde Training Engine.',
+      'Hardlopen: alleen beschikbaar als je in je Equipment profiel hebt aangegeven dat je hardloopt. Trainer AI kiest een sessietype op basis van je herstel — Recovery Run (rustig, 20-30 min), Endurance Run (5-10km steady), Tempo Run (drempeltraining), Interval Run (bijv. 6x400m), Sprint (bijv. 10x100m) of een Test (bijv. 5km tijdrit). Als je recent in Strava hebt hardgelopen, gebruikt Trainer AI die historie als context om een realistisch niveau in te schatten — dit bepaalt nooit op zichzelf of je gaat hardlopen, dat blijft afhangen van je herstel.',
+      'Bij hardlopen toont de engine per interval de afstand, het doeltempo (min/km), snelheid (km/u) en hartslagzone in plaats van herhalingen. Bij intervallen zie je "Interval X van Y", net als bij rowing. Na een hardloop-sessie krijg je vier extra evaluatievragen: looptechniek, tempo controle, vermoeidheid en RPE (hoe zwaar voelde de inspanning tijdens de training) — RPE en vermoeidheid zijn bewust apart, omdat de ene de intensiteit tijdens de training meet en de andere je herstelbehoefte daarna.',
+      'Persoonlijke progressie: Trainer AI bouwt waar mogelijk voort op je eigen Strava-historie — bijvoorbeeld "vorige week liep je 5 km, vandaag bouwen we uit naar 6 km" of een bewuste herstelrun als je recent veel hebt gelopen. Je wordt nooit vergeleken met andere lopers — geen rankings, alleen je eigen vooruitgang.',
+      'Modules: naast Kettlebell, Rowing en Hardlopen volgen Fietsen, Krachttraining en Bodyweight & Core — elk met hun eigen Trainer AI logica maar dezelfde Training Engine.',
       'Trainingsbibliotheek: naast Herstelbibliotheek vind je op de Training tab de Trainingsbibliotheek. Hier kies je zelf een module, los van het dagadvies van Coach AI. Trainer AI bepaalt dan nog steeds — net als bij "Vandaag voor jou" — het sessietype op basis van je actuele Body Battery, stress en herstel. Alleen modules waarvoor je equipment hebt aangevinkt zijn beschikbaar; de rest toont een knop om je Equipment in te stellen.',
       'Elke training, of die nu via het dagadvies of de bibliotheek is gestart, telt volledig mee voor Performance AI en je Progressie. Je lichaam maakt geen onderscheid in waar een training vandaan kwam — alleen wat je daadwerkelijk hebt gedaan telt voor je analyses.',
     ],
@@ -261,7 +264,7 @@ export default function HoeWerktHetPage() {
 
         <div className="rounded-2xl bg-white/5 border border-white/8 px-4 py-4 mt-2">
           <p className="text-xs text-slate-500 text-center">
-            CoachOS v{process.env.NEXT_PUBLIC_APP_VERSION || '5.5.1'} — wordt bijgewerkt bij elke versie
+            CoachOS v{process.env.NEXT_PUBLIC_APP_VERSION || '5.6.0'} — wordt bijgewerkt bij elke versie
           </p>
         </div>
       </div>

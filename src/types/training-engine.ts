@@ -78,12 +78,23 @@ export interface RowingSegment {
 
 export interface RunningSegment {
   type: 'running'
-  segment_type: 'warmup' | 'easy' | 'tempo' | 'interval' | 'hill' | 'cooldown'
-  duration_min: number
-  distance_km?: number
-  target_zone: 1 | 2 | 3 | 4 | 5  // hartslag zones
+  exercise: string        // bijv. "5km Steady Run" / "6x400m Interval"
+  session_type: 'recovery' | 'endurance' | 'tempo' | 'interval' | 'sprint' | 'test'
+  sets: number             // aantal herhalingen (intervallen). 1 voor steady/test
+  reps: number | null      // ongebruikt voor running — altijd null
+  duration_sec: number | null // actieve tijd per set/interval
+  rest_sec: number
+  // Running-specifieke targets (optioneel, voor weergave)
+  distance_m?: number       // bijv. 400 of 5000
+  target_pace?: string      // bijv. "5:30/km"
+  target_speed_kmh?: number // bijv. 10.5
+  target_hr_zone?: string   // bijv. "Zone 2"
+  // Learning Layer
   instruction: string
   cue: string
+  common_errors: string[]
+  // Equipment (V5.5+ voorbereiding voor alle modules)
+  equipment_required?: string[]
 }
 
 export interface CyclingSegment {
@@ -158,6 +169,11 @@ export interface SessionResult {
   rowing_technique_rating?: number | null
   rowing_pacing_rating?: number | null
   rowing_fatigue_rating?: number | null
+  // Running-specifieke evaluatie (V5.6, optioneel)
+  running_technique_rating?: number | null
+  running_pacing_rating?: number | null
+  running_fatigue_rating?: number | null
+  running_rpe_rating?: number | null
 }
 
 // ─── localStorage key ─────────────────────────────────────────────────────────

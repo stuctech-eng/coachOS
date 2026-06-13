@@ -83,6 +83,7 @@ function getTrainingRoute(type: string | null): string {
 
 function getTrainingIcon(type: string | null | undefined) {
   if (type === 'rowing') return Waves
+  if (type === 'running') return Footprints
   return Dumbbell
 }
 
