@@ -116,6 +116,7 @@ export async function GET() {
 
     return NextResponse.json({
       connected: !!data,
+      athlete_name: data?.athlete_name || null,
       athlete: data || null,
     })
   } catch {
