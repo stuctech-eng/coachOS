@@ -719,9 +719,21 @@ export default function SessionPage() {
     clearSession()
     const run = async () => {
       try {
-        // Trainingsbibliotheek: forceer module, geen dagcache lezen/schrijven --
-        // Trainer AI bepaalt zelf het sessietype binnen die module (Coach AI blijft leidend)
+        // Trainingsbibliotheek: per-module localStorage cache (naast API-cache)
+        // zodat rondkijken geen herhaalde API-calls veroorzaakt
         if (isLibrary) {
+          const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+          const libKey = `training_lib_${module}_data`
+          const libDatumKey = `training_lib_${module}_datum`
+          const cachedDatum = localStorage.getItem(libDatumKey)
+          const cachedLib = localStorage.getItem(libKey)
+          if (cachedDatum === vandaag && cachedLib) {
+            const instruction = JSON.parse(cachedLib)
+            if (instruction?.segments?.length > 0) {
+              buildAndSetSession(instruction, 'library')
+              return
+            }
+          }
           const res = await fetch('/api/training/today', {
             method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -731,6 +743,8 @@ export default function SessionPage() {
             const data = await res.json()
             const instruction = data.instruction || data
             if (instruction?.training_type || instruction?.segments) {
+              localStorage.setItem(libKey, JSON.stringify(instruction))
+              localStorage.setItem(libDatumKey, vandaag)
               buildAndSetSession(instruction, 'library')
             } else setError('Geen geldig schema ontvangen.')
           } else if (res.status === 403) {
