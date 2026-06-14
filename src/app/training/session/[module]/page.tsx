@@ -155,7 +155,7 @@ function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () 
                         ? (kb.distance_m
                             ? `${kb.sets > 1 ? `${kb.sets} × ` : ''}${kb.distance_m}m${kb.target_pace ? ` @ ${kb.target_pace}` : ''}`
                             : `${kb.sets > 1 ? `${kb.sets} × ` : ''}${formatTime(kb.duration_sec || 0)}`)
-                        : (kb.reps ? `${kb.sets} sets × ${kb.reps} herh.` : kb.duration_sec ? `${kb.sets} sets × ${kb.duration_sec}s` : '--')
+                        : (kb.reps ? `${kb.sets} sets × ${kb.reps} herh.` : kb.duration_sec ? `${kb.sets} sets × ${kb.duration_sec}s` : '—')
                     }
                     {kb.rest_sec ? ` · ${kb.rest_sec}s rust` : ''}
                   </p>
@@ -315,7 +315,7 @@ function UitlegScherm({
           className={cn('flex-1 py-3.5 rounded-xl font-semibold text-sm text-white',
             isPulsing ? 'bg-green-500 animate-pulse' : 'bg-green-500 active:bg-green-600'
           )}>
-          {showTimer ? (isPulsing ? `Start in ${restSeconds}s` : 'Ready →') : (isFirst ? 'Ready →' : 'Ready -- Start →')}
+          {showTimer ? (isPulsing ? `Start in ${restSeconds}s` : 'Ready →') : (isFirst ? 'Ready →' : 'Ready — Start →')}
         </button>
       </div>
     </div>
@@ -461,7 +461,7 @@ function WorkoutEngine({
           </div>
           {seg.cue && <p className="text-sm text-slate-300 pt-3 mt-2 border-t border-coach-border">💡 {seg.cue}</p>}
 
-          {/* Tempo selector -- alleen bij rep-based kettlebell oefeningen */}
+          {/* Tempo selector — alleen bij rep-based kettlebell oefeningen */}
           {!isRowing && !isRunning && seg.reps && !seg.duration_sec && (
             <div className="flex gap-2 mt-3 pt-3 border-t border-coach-border">
               {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
@@ -489,7 +489,7 @@ function WorkoutEngine({
         </Card>
       )}
 
-      {/* LAST_REST fase -- uitleg volgende oefening */}
+      {/* LAST_REST fase — uitleg volgende oefening */}
       {session.workout_phase === 'last_rest' && (() => {
         const nextSeg = session.schema.segments[session.current_segment + 1] as KettlebellSegment | undefined
         return nextSeg ? (
@@ -510,7 +510,7 @@ function WorkoutEngine({
         )
       })()}
 
-      {/* 3 knoppen -- alleen tijdens active en rest (niet tijdens last_rest uitleg) */}
+      {/* 3 knoppen — alleen tijdens active en rest (niet tijdens last_rest uitleg) */}
       {session.workout_phase !== 'last_rest' && (
         <div className="flex gap-2">
           <button onClick={onBackOefening}
@@ -719,7 +719,7 @@ export default function SessionPage() {
     clearSession()
     const run = async () => {
       try {
-        // Trainingsbibliotheek: forceer module, geen dagcache lezen/schrijven --
+        // Trainingsbibliotheek: forceer module, geen dagcache lezen/schrijven —
         // Trainer AI bepaalt zelf het sessietype binnen die module (Coach AI blijft leidend)
         if (isLibrary) {
           const res = await fetch('/api/training/today', {
@@ -734,7 +734,7 @@ export default function SessionPage() {
               buildAndSetSession(instruction, 'library')
             } else setError('Geen geldig schema ontvangen.')
           } else if (res.status === 403) {
-            setError('Deze module is niet beschikbaar -- check je Equipment instellingen.')
+            setError('Deze module is niet beschikbaar — check je Equipment instellingen.')
           } else setError(`Fout ${res.status}: schema generatie mislukt`)
           return
         }
@@ -840,7 +840,7 @@ export default function SessionPage() {
     setSession(prev => prev ? { ...prev, status: 'voltooid' as SessionStatus, auto_running: false } : prev)
   }
 
-  // ─── Next -- slaat huidige stap over, auto blijft aan ────────────────────────
+  // ─── Next — slaat huidige stap over, auto blijft aan ────────────────────────
 
   function handleNext() {
     setSession(prev => {
@@ -863,7 +863,7 @@ export default function SessionPage() {
     })
   }
 
-  // ─── Back/Volgend -- stopt auto, reset, naar uitleg ──────────────────────────
+  // ─── Back/Volgend — stopt auto, reset, naar uitleg ──────────────────────────
 
   function handleBackOefening() {
     setSession(prev => {
@@ -901,12 +901,12 @@ export default function SessionPage() {
     })
   }
 
-  // Back linksboven -- stopt auto, uitleg huidige oefening OF pagina terug
+  // Back linksboven — stopt auto, uitleg huidige oefening OF pagina terug
   function handleHeaderBack() {
     if (!session) { router.push('/training'); return }
     if (session.status === 'workout' && session.workout_phase === 'uitleg') {
       // We zijn al op de uitleg-via-header-back (anders zou hierna niets gebeuren
-      // bij een tweede druk -- exact dezelfde state werd opnieuw gezet).
+      // bij een tweede druk — exact dezelfde state werd opnieuw gezet).
       if (session.uitleg_index === 0) {
         // Eerste oefening → terug naar schema-overzicht
         setSession(prev => prev ? {
@@ -945,7 +945,7 @@ export default function SessionPage() {
     }
   }
 
-  // Ready vanuit uitleg -- start auto run
+  // Ready vanuit uitleg — start auto run
   function handleReadyFromUitleg() {
     setSession(prev => {
       if (!prev) return prev
