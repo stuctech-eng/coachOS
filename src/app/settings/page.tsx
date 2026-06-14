@@ -19,7 +19,7 @@ function StravaSection() {
   const [syncMessage, setSyncMessage] = useState('')
 
   useEffect(() => {
-    fetch('/api/strava/sync').then(r => r.json()).then(setStravaStatus).catch(() => {})
+    fetch('/api/strava/sync', { credentials: 'include' }).then(r => r.json()).then(setStravaStatus).catch(() => {})
     const stravaParam = searchParams.get('strava')
     if (stravaParam === 'connected') setSyncMessage('Strava gekoppeld!')
     if (stravaParam === 'error') setSyncMessage('Koppeling mislukt. Probeer opnieuw.')
@@ -29,10 +29,10 @@ function StravaSection() {
     setSyncing(true)
     setSyncMessage('')
     try {
-      const res = await fetch('/api/strava/sync', { method: 'POST' })
+      const res = await fetch('/api/strava/sync', { method: 'POST', credentials: 'include' })
       const data = await res.json()
       setSyncMessage(data.message || 'Sync klaar')
-      fetch('/api/strava/sync').then(r => r.json()).then(setStravaStatus).catch(() => {})
+      fetch('/api/strava/sync', { credentials: 'include' }).then(r => r.json()).then(setStravaStatus).catch(() => {})
     } catch {
       setSyncMessage('Sync mislukt')
     } finally {
