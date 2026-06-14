@@ -110,12 +110,26 @@ export async function GET() {
     const supabase = createAdminClient()
     const { data } = await supabase
       .from('strava_tokens')
-      .select('athlete_id, athlete_name, athlete_city')
+      .select('*')
       .eq('user_id', user.id)
       .single()
 
+    if (!data) return NextResponse.json({ connected: false })
+
+    // Verifieer dat de token nog geldig is (of refreshable)
+    // Als de token verlopen is, probeer te verversen
+    const now = Math.floor(Date.now() / 1000)
+    if (data.expires_at <= now) {
+      try {
+        await refreshTokenIfNeeded(data)
+      } catch {
+        // Refresh mislukt — token ongeldig, als niet-gekoppeld beschouwen
+        return NextResponse.json({ connected: false })
+      }
+    }
+
     return NextResponse.json({
-      connected: !!data,
+      connected: true,
       athlete_name: data?.athlete_name || null,
       athlete: data || null,
     })
