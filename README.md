@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 5.7.1
+- Versie: 5.7.2
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjst.supabase.co
@@ -497,6 +497,22 @@ Elke upsert gebruikt `onConflict: 'user_id,date,type'`.
 
 # Data Strategie
 
+## Strava Data Architectuur (v5.7.1)
+
+Duidelijke scheiding van verantwoordelijkheden:
+
+| Data | Naar | Wat |
+|---|---|---|
+| Strava details (watt/cadans/pace/split) | **Trainer AI** | Realistische sessiegeneratie |
+| Trainingsbelasting-samenvatting | **Coach AI** | Frequentie/belasting/hersteladvies |
+| Strava details + trends | **Performance AI** | Prestatie-analyse (V6) |
+
+Coach AI ontvangt **nooit** sport-specifieke details. Alleen:
+- Aantal sessies (7 dagen)
+- Totale duur
+- Licht/matig/zwaar verdeling (op basis van rating)
+- Weekbelasting-score: `som(actual_duration × rating)` → laag (<500) / gemiddeld (501-1500) / hoog (1501+)
+
 ## Garmin Import Schema (v4.7)
 ```json
 {
@@ -697,6 +713,10 @@ V6 Concept2 API roadmap: zie sectie "Rowing Module (v5.5.0)" hierboven.
   4-weg keuze, Strava-fietshistorie, cyclingFormat prompt (incl. FTP-test), cyclingFallback,
   4 evaluatievragen (techniek/pacing/vermoeidheid/RPE), Bike-icon
 - v5.7.1: Strava metrics uitbreiding — avg_watts/weighted_avg_watts/avg_cadence opgeslagen
+  bij alle activiteiten; cycling/running-context in Trainer AI toont watts + cadans
+- v5.7.2: Coach AI trainingsbelasting-samenvatting — sessiebelasting = actual_duration × rating,
+  weekbelasting laag/gemiddeld/hoog (0-500/501-1500/1501+); geen sport-details naar Coach AI
+  (architectuurprincipe: Strava details→Trainer AI, samenvatting→Coach AI, trends→Performance AI) — avg_watts/weighted_avg_watts/avg_cadence opgeslagen
   bij alle activiteiten; cycling/running-context in Trainer AI toont watts + cadans — RunningSegment type (distance_m/target_pace/
   target_speed_kmh/target_hr_zone/session_type, identiek qua opzet aan
   RowingSegment), 3-weg module-keuze in /api/training/today (kettlebell/

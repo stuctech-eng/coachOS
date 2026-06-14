@@ -90,13 +90,13 @@ export async function POST() {
         .eq('status', 'confirmed')
         .gte('date', zevenDagenGeleden)
         .order('date', { ascending: true }),
-      // Training resultaten
+      // Training resultaten laatste 7 dagen — voor trainingsbelasting-samenvatting
       supabase.from('training_results')
-        .select('rating, actual_duration, completed_at')
+        .select('rating, actual_duration, completed_at, training_type')
         .eq('user_id', user.id)
         .eq('completed', true)
-        .order('completed_at', { ascending: false })
-        .limit(5),
+        .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .order('completed_at', { ascending: false }),
       supabase.from('life_events')
         .select('type, start_hour, end_hour, notes, recurrence, recurrence_days')
         .eq('user_id', user.id)
@@ -150,16 +150,27 @@ export async function POST() {
       : ''
     const trainingsResultaten = trainingsRes.data || []
 
-    // Trainingshistorie voor coach
+    // Trainingsbelasting-samenvatting voor Coach AI (laatste 7 dagen)
+    // sessiebelasting = actual_duration × rating — Coach AI krijgt geen sport-details
     const trainingsCoachContext = trainingsResultaten.length > 0 ? (() => {
-      const metRating = trainingsResultaten.filter(t => t.rating)
-      const gemRating = metRating.length > 0
-        ? Math.round(metRating.reduce((a, t) => a + (t.rating || 0), 0) / metRating.length * 10) / 10
-        : null
-      return `\nTrainingshistorie (laatste ${trainingsResultaten.length} sessies):` +
-        (gemRating ? `\nGemiddelde rating: ${gemRating}/10` : '') +
-        `\nGemiddelde duur: ${Math.round(trainingsResultaten.reduce((a, t) => a + (t.actual_duration || 0), 0) / trainingsResultaten.length)} min`
-    })() : ''
+      const sessies = trainingsResultaten.filter(t => t.actual_duration && t.rating)
+      const totaalDuur = trainingsResultaten.reduce((a, t) => a + (t.actual_duration || 0), 0)
+      const uren = Math.floor(totaalDuur / 60)
+      const minuten = totaalDuur % 60
+      const licht = sessies.filter(t => (t.rating || 0) <= 4).length
+      const matig = sessies.filter(t => (t.rating || 0) >= 5 && (t.rating || 0) <= 7).length
+      const zwaar = sessies.filter(t => (t.rating || 0) >= 8).length
+      const weekBelasting = sessies.reduce((a, t) => a + (t.actual_duration || 0) * (t.rating || 0), 0)
+      const belastingLabel = weekBelasting <= 500 ? 'laag' : weekBelasting <= 1500 ? 'gemiddeld' : 'hoog'
+      return `\nTrainingsbelasting laatste 7 dagen:` +
+        `\n- ${trainingsResultaten.length} training${trainingsResultaten.length !== 1 ? 'en' : ''}` +
+        `\n- Totale duur: ${uren > 0 ? `${uren}u ` : ''}${minuten}min` +
+        (licht > 0 ? `\n- Licht: ${licht}` : '') +
+        (matig > 0 ? `\n- Matig: ${matig}` : '') +
+        (zwaar > 0 ? `\n- Zwaar: ${zwaar}` : '') +
+        `\n- Trainingsbelasting: ${belastingLabel} (score ${weekBelasting})` +
+        `\nGebruik deze samenvatting voor trainingsfrequentie en belasting. Ga niet in op sport-specifieke details (watt, tempo, split) — dat is voor Trainer AI.`
+    })() : '\nGeen trainingen afgelopen 7 dagen.'
 
     // Garmin data als fallback voor health_metrics
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
