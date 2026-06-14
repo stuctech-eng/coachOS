@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen, Phone } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -51,6 +51,7 @@ export default function HomePage() {
   const [generatingPlan, setGeneratingPlan] = useState(false)
   const [garminImported, setGarminImported] = useState(true) // default true = geen banner
   const [garminDatum, setGarminDatum] = useState<string | null>(null)
+  const [coachCall, setCoachCall] = useState<{ id: string; pending_count: number; coach_call_items: { id: string }[] } | null>(null)
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
   const score = coachStatus?.coach_score ?? null
@@ -120,6 +121,15 @@ export default function HomePage() {
   }, [garminDatum, hasCheckin, setCoachStatus])
 
   useEffect(() => { herberekenIndienCompleet() }, [herberekenIndienCompleet])
+
+  // Coach Call: detecteer qualifying Strava-activiteiten + haal pending call op
+  useEffect(() => {
+    fetch('/api/coach-calls', { method: 'POST', credentials: 'include' })
+      .then(() => fetch('/api/coach-calls', { credentials: 'include' }))
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setCoachCall(data) })
+      .catch(() => {})
+  }, [])
 
   // Laad coach status
   useEffect(() => {
@@ -217,6 +227,29 @@ export default function HomePage() {
             <Bell size={20} />
           </button>
         </div>
+
+        {/* Coach Call — Strava activiteiten wachten op evaluatie */}
+        {coachCall && coachCall.pending_count > 0 && (
+          <button onClick={() => router.push('/coach-call')}
+            className="w-full text-left active:opacity-70">
+            <Card className="px-5 py-4 border border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                  <Phone size={18} className="text-amber-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-semibold text-sm">Coach Call</p>
+                  <p className="text-slate-400 text-xs mt-0.5">
+                    {coachCall.pending_count} activiteit{coachCall.pending_count !== 1 ? 'en' : ''} wacht{coachCall.pending_count === 1 ? '' : 'en'} op evaluatie
+                  </p>
+                </div>
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                  {coachCall.pending_count}
+                </span>
+              </div>
+            </Card>
+          </button>
+        )}
 
         {/* Check-in */}
         {!hasCheckin ? (
