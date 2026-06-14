@@ -146,7 +146,10 @@ export async function POST(req: NextRequest) {
             const sec = Math.round((paceMinPerKm - min) * 60)
             pace = `${min}:${sec.toString().padStart(2, '0')}/km`
           }
-          return `Run ${i + 1} (${run.date}): ${km} km, ${run.duration} min, gem. pace ${pace}` + (m.avg_hr ? `, gem. HS ${m.avg_hr}` : '') + (m.elevation ? `, ${m.elevation}m hoogteverschil` : '')
+          return `Run ${i + 1} (${run.date}): ${km} km, ${run.duration} min, gem. pace ${pace}` +
+            (m.avg_hr ? `, gem. HS ${m.avg_hr}` : '') +
+            (m.avg_cadence ? `, cadans ${m.avg_cadence} spm` : '') +
+            (m.elevation ? `, ${m.elevation}m hoogteverschil` : '')
         }).join('\n')
       : 'Geen recente Strava hardloop-historie (laatste 14 dagen).'
 
@@ -157,8 +160,13 @@ export async function POST(req: NextRequest) {
         stravaRitten.map((rit, i) => {
           const m = rit.metrics || {}
           const km = m.distance ? (m.distance / 1000).toFixed(1) : '?'
-          const speed = m.avg_speed ? `${m.avg_speed.toFixed(1)} km/u` : '?'
-          return `Rit ${i + 1} (${rit.date}): ${km} km, ${rit.duration} min, gem. snelheid ${speed}` + (m.avg_hr ? `, gem. HS ${m.avg_hr}` : '') + (m.elevation ? `, ${m.elevation}m hoogteverschil` : '')
+          const speed = m.avg_speed ? `${m.avg_speed} km/u` : '?'
+          return `Rit ${i + 1} (${rit.date}): ${km} km, ${rit.duration} min, gem. snelheid ${speed}` +
+            (m.avg_hr ? `, gem. HS ${m.avg_hr}` : '') +
+            (m.avg_watts ? `, gem. ${m.avg_watts}W` : '') +
+            (m.weighted_avg_watts ? ` (NP ${m.weighted_avg_watts}W)` : '') +
+            (m.avg_cadence ? `, cadans ${m.avg_cadence} rpm` : '') +
+            (m.elevation ? `, ${m.elevation}m hoogteverschil` : '')
         }).join('\n')
       : 'Geen recente Strava fiets-historie (laatste 14 dagen).'
 

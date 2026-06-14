@@ -154,6 +154,10 @@ export async function POST() {
       if (activity.total_elevation_gain) metrics.elevation = Math.round(activity.total_elevation_gain)
       if (activity.average_speed) metrics.avg_speed = Math.round(activity.average_speed * 3.6 * 10) / 10
       if (activity.kilojoules) metrics.calories = Math.round(activity.kilojoules * 0.239)
+      // V5.7.1 — vermogen + cadans voor cycling, running en rowing
+      if (activity.average_watts) metrics.avg_watts = Math.round(activity.average_watts)
+      if (activity.weighted_average_watts) metrics.weighted_avg_watts = Math.round(activity.weighted_average_watts)
+      if (activity.average_cadence) metrics.avg_cadence = Math.round(activity.average_cadence)
 
       await supabase.from('activity_sessions').insert({
         user_id: user.id,
