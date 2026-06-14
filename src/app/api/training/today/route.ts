@@ -99,13 +99,14 @@ export async function POST(req: NextRequest) {
 
     // Minimale data ophalen — alleen wat nodig is voor schema generatie
     const veertienDagenGeleden = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA')
-    const [profileRes, checkinRes, garminRes, blessuresRes, goalsRes, stravaRunsRes] = await Promise.all([
+    const [profileRes, checkinRes, garminRes, blessuresRes, goalsRes, stravaRunsRes, stravaRittenRes] = await Promise.all([
       supabase.from('profiles').select('first_name, experience_level, available_time, kettlebell_available, concept2_available, cycling_available, running_available, dumbbell_available, barbell_available, ab_wheel_available, bodyweight_available').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('feeling_score, energy_score, stress_score, motivation_score, soreness_score').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('garmin_imports').select('parsed_data').eq('user_id', user.id).eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
       supabase.from('injuries').select('body_part, pain_score').eq('user_id', user.id).eq('active', true),
       supabase.from('user_goals').select('title').eq('user_id', user.id).eq('status', 'active').limit(2),
       supabase.from('activity_sessions').select('date, duration, metrics, activities!inner(name)').eq('user_id', user.id).eq('source', 'strava').eq('activities.name', 'Hardlopen').gte('date', veertienDagenGeleden).order('date', { ascending: false }).limit(5),
+      supabase.from('activity_sessions').select('date, duration, metrics, activities!inner(name)').eq('user_id', user.id).eq('source', 'strava').eq('activities.name', 'Fietsen').gte('date', veertienDagenGeleden).order('date', { ascending: false }).limit(5),
     ])
 
     const profile = profileRes.data
@@ -128,9 +129,9 @@ export async function POST(req: NextRequest) {
     const rowingAvailable = availableModules.includes('rowing')
     const kettlebellAvailable = availableModules.includes('kettlebell')
     const runningAvailable = availableModules.includes('running')
+    const cyclingAvailable = availableModules.includes('cycling')
 
-    // Strava-runninghistorie (laatste 5 runs, max 14 dagen) — alleen context,
-    // geen scoring/decision logica. Pace berekend uit avg_speed (km/u).
+    // Strava-runninghistorie (laatste 5 runs, max 14 dagen) — alleen context
     const stravaRuns = (stravaRunsRes.data || []) as Array<{ date: string; duration: number; metrics: Record<string, number> }>
     const stravaRunningContext = stravaRuns.length > 0
       ? 'Recente Strava hardloop-historie (laatste ' + stravaRuns.length + ', max 14 dagen):\n' +
@@ -149,12 +150,24 @@ export async function POST(req: NextRequest) {
         }).join('\n')
       : 'Geen recente Strava hardloop-historie (laatste 14 dagen).'
 
+    // Strava-cyclinghistorie (laatste 5 ritten, max 14 dagen) — alleen context
+    const stravaRitten = (stravaRittenRes.data || []) as Array<{ date: string; duration: number; metrics: Record<string, number> }>
+    const stravaCyclingContext = stravaRitten.length > 0
+      ? 'Recente Strava fiets-historie (laatste ' + stravaRitten.length + ', max 14 dagen):\n' +
+        stravaRitten.map((rit, i) => {
+          const m = rit.metrics || {}
+          const km = m.distance ? (m.distance / 1000).toFixed(1) : '?'
+          const speed = m.avg_speed ? `${m.avg_speed.toFixed(1)} km/u` : '?'
+          return `Rit ${i + 1} (${rit.date}): ${km} km, ${rit.duration} min, gem. snelheid ${speed}` + (m.avg_hr ? `, gem. HS ${m.avg_hr}` : '') + (m.elevation ? `, ${m.elevation}m hoogteverschil` : '')
+        }).join('\n')
+      : 'Geen recente Strava fiets-historie (laatste 14 dagen).'
+
     // Bibliotheek: forceer module, mits equipment dit toelaat
     if (isLibrary && forcedModule) {
       if (!isModuleAvailable(forcedModule, equipment)) {
         return NextResponse.json({ error: `Module '${forcedModule}' niet beschikbaar — equipment ontbreekt` }, { status: 403 })
       }
-      if (forcedModule !== 'kettlebell' && forcedModule !== 'rowing' && forcedModule !== 'running') {
+      if (forcedModule !== 'kettlebell' && forcedModule !== 'rowing' && forcedModule !== 'running' && forcedModule !== 'cycling') {
         return NextResponse.json({ error: `Module '${forcedModule}' wordt nog niet ondersteund` }, { status: 400 })
       }
     }
@@ -166,16 +179,17 @@ export async function POST(req: NextRequest) {
       blessures.length > 0 ? `Blessures: ${blessures.map((b: {body_part: string; pain_score: number}) => b.body_part + ' pijn ' + b.pain_score + '/10').join(', ')}` : '',
       goals.length > 0 ? `Doelen: ${goals.map((g: {title: string}) => g.title).join(', ')}` : '',
       runningAvailable ? stravaRunningContext : '',
+      cyclingAvailable ? stravaCyclingContext : '',
     ].filter(Boolean).join('\n')
 
     // Module-keuze: dynamisch op basis van beschikbaar equipment, 2- of 3-weg.
     // Strava-historie is uitsluitend CONTEXT voor Trainer AI (zie stravaRunningContext
     // hierboven) — geen scoring/decision-engine, geen forcing function.
-    const keuzeModules = (['kettlebell', 'rowing', 'running'] as const).filter(m =>
-      m === 'kettlebell' ? kettlebellAvailable : m === 'rowing' ? rowingAvailable : runningAvailable
+    const keuzeModules = (['kettlebell', 'rowing', 'running', 'cycling'] as const).filter(m =>
+      m === 'kettlebell' ? kettlebellAvailable : m === 'rowing' ? rowingAvailable : m === 'running' ? runningAvailable : cyclingAvailable
     )
     const moduleKeuze = isLibrary && forcedModule
-      ? `De gebruiker heeft zelf gekozen voor de "${forcedModule}" module via de Trainingsbibliotheek. training_type MOET "${forcedModule}" zijn. Bepaal zelf, op basis van de data, het beste sessietype binnen deze module (bijv. bij rowing: recovery/endurance/tempo/interval/sprint/test — kies recovery bij lage Body Battery, interval/tempo bij hoge Body Battery; bij running idem, gebruik de Strava-historie als context voor een realistisch niveau).`
+      ? `De gebruiker heeft zelf gekozen voor de "${forcedModule}" module via de Trainingsbibliotheek. training_type MOET "${forcedModule}" zijn. Bepaal zelf, op basis van de data, het beste sessietype binnen deze module (bijv. bij rowing: recovery/endurance/tempo/interval/sprint/test — kies recovery bij lage Body Battery; bij running en cycling idem, gebruik de Strava-historie als context voor een realistisch niveau).`
       : keuzeModules.length > 1
         ? `Kies zelf het beste training_type voor vandaag uit: ${keuzeModules.map(m => `"${m}"`).join(', ')}, op basis van de data (bijv. afwisseling met vorige sessies, herstelstatus, doelen). Gebruik bij "running" de Strava-historie uitsluitend als context om een realistisch niveau in te schatten — niet als reden om running te kiezen of te vermijden.`
         : keuzeModules.length === 1
@@ -291,6 +305,48 @@ Voorbeeld steady segment:
   "equipment_required": ["running"]
 }`
 
+    const cyclingFormat = `CYCLING FORMAT — gebruik dit format als training_type "cycling" is:
+- Kies een session_type: "recovery" (rustige herstelrit zone 1-2, 20-30 min), "endurance" (duurrit 45-90 min steady), "tempo" (drempeltraining bijv. 3×10min/2min rust), "interval" (bijv. 6×5min of 8×3min), "sprint" (bijv. 10×30sec explosief), of "test" (bijv. 20 min FTP-test, 10km tijdrit, 20km tijdrit)
+- Genereer 1-4 segments. Voor steady/endurance/test: 1 segment met sets:1. Voor intervallen: 1 segment met sets = aantal herhalingen.
+- Elk segment: type:"cycling", exercise (korte naam zoals "6×5min Interval" of "45 min Steady"), session_type, sets, reps:null, duration_sec (actieve tijd PER set/interval in seconden), rest_sec, instruction (1 zin), cue (1 zin), common_errors (2-3 items)
+- Optioneel: distance_m, target_power_w (watt — primaire cycling metriek), target_cadence_rpm, target_speed_kmh, target_hr_zone
+- PERSOONLIJKE PROGRESSIE: gebruik Strava-fietshistorie (indien aanwezig in DATA) om realistische waarden te kiezen passend bij het niveau. Bouw voort op recente ritten. Verwerk dit eventueel in coach_message. Geen vergelijking met anderen.
+- equipment_required: ["cycling"]
+
+Voorbeeld interval segment:
+{
+  "type": "cycling",
+  "exercise": "6×5min Interval",
+  "session_type": "interval",
+  "sets": 6,
+  "reps": null,
+  "duration_sec": 300,
+  "rest_sec": 150,
+  "target_power_w": 220,
+  "target_cadence_rpm": 90,
+  "target_hr_zone": "Zone 4",
+  "instruction": "Trap met constante cadans, houd vermogen stabiel over het hele interval.",
+  "cue": "Soepele trap, stabiel bovenlichaam",
+  "common_errors": ["Cadans te laag (kruipen)", "Vermogen daalt in laatste minuut", "Te veel wippen op zadel"],
+  "equipment_required": ["cycling"]
+}
+
+Voorbeeld test segment:
+{
+  "type": "cycling",
+  "exercise": "20 min FTP-test",
+  "session_type": "test",
+  "sets": 1,
+  "reps": null,
+  "duration_sec": 1200,
+  "rest_sec": 0,
+  "target_hr_zone": "Zone 4-5",
+  "instruction": "Rij 20 minuten zo hard als je kunt handhaven.",
+  "cue": "Gelijkmatig effort, niet te hard starten",
+  "common_errors": ["Te snel starten en leegrijden", "Ongelijkmatig tempo", "Te lage cadans"],
+  "equipment_required": ["cycling"]
+}`
+
     const systemPrompt = `Je bent Trainer AI van CoachOS. Genereer een trainingsschema op basis van de gebruikersdata.
 
 DATA:
@@ -301,7 +357,7 @@ ${moduleKeuze}
 
 ALGEMENE REGELS:
 - Pas intensiteit aan op basis van energie en spierpijn
-- Bij lage energie: lichtere oefeningen, minder sets, of kies recovery/endurance bij rowing/running
+- Bij lage energie: lichtere oefeningen, minder sets, of kies recovery/endurance bij rowing/running/cycling
 - Bij hoge spierpijn: vermijd belaste spiergroepen, of kies rowing als alternatief (lage impact)
 - duration is de totale geschatte sessieduur in minuten
 
@@ -310,6 +366,8 @@ ${kettlebellFormat}
 ${rowingFormat}
 
 ${runningFormat}
+
+${cyclingFormat}
 
 Reageer ALLEEN in dit JSON formaat:
 {
@@ -391,13 +449,32 @@ Reageer ALLEEN in dit JSON formaat:
       coach_message: 'Lekker rustig erin lopen vandaag!',
     }
 
+    const cyclingFallback: TrainingInstruction = {
+      training_allowed: true,
+      training_type: 'cycling',
+      title: 'Cycling sessie',
+      intensity: 'medium',
+      duration: 45,
+      segments: [
+        { type: 'cycling', exercise: '45 min Steady Ride', session_type: 'endurance', sets: 1, reps: null,
+          duration_sec: 2700, rest_sec: 0, target_cadence_rpm: 85, target_hr_zone: 'Zone 2',
+          instruction: 'Rij op een constant, comfortabel tempo. Houd cadans hoog en soepel.', cue: 'Soepele trap, ontspannen bovenlichaam',
+          common_errors: ['Cadans te laag', 'Te hard starten'], equipment_required: ['cycling'] },
+      ] as unknown[],
+      recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
+      reason: 'Standaard cycling sessie',
+      coach_message: 'Rustig en gecontroleerd fietsen vandaag!',
+    }
+
     const fallbackInstruction: TrainingInstruction = isLibrary && forcedModule === 'rowing'
       ? rowingFallback
       : isLibrary && forcedModule === 'running'
         ? runningFallback
-        : isLibrary && forcedModule === 'kettlebell'
-          ? kettlebellFallback
-          : kettlebellAvailable ? kettlebellFallback : rowingAvailable ? rowingFallback : runningAvailable ? runningFallback : kettlebellFallback
+        : isLibrary && forcedModule === 'cycling'
+          ? cyclingFallback
+          : isLibrary && forcedModule === 'kettlebell'
+            ? kettlebellFallback
+            : kettlebellAvailable ? kettlebellFallback : rowingAvailable ? rowingFallback : runningAvailable ? runningFallback : cyclingAvailable ? cyclingFallback : kettlebellFallback
 
     let instruction: TrainingInstruction = fallbackInstruction
 
@@ -423,7 +500,7 @@ Reageer ALLEEN in dit JSON formaat:
           const parsedType = parsed.training_type
           const typeAllowed = isLibrary && forcedModule
             ? parsedType === forcedModule
-            : (parsedType === 'rowing' && rowingAvailable) || (parsedType === 'kettlebell' && kettlebellAvailable) || (parsedType === 'running' && runningAvailable)
+            : (parsedType === 'rowing' && rowingAvailable) || (parsedType === 'kettlebell' && kettlebellAvailable) || (parsedType === 'running' && runningAvailable) || (parsedType === 'cycling' && cyclingAvailable)
           if (parsed.segments && parsed.segments.length > 0 && typeAllowed) {
             instruction = parsed
           }

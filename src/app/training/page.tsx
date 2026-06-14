@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Dumbbell, Wind, Footprints, Zap, Play, RefreshCw, Clock, ChevronRight, BookOpen, Waves } from 'lucide-react'
+import { Dumbbell, Wind, Footprints, Zap, Play, RefreshCw, Clock, ChevronRight, BookOpen, Waves, Bike } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
@@ -84,6 +84,7 @@ function getTrainingRoute(type: string | null): string {
 function getTrainingIcon(type: string | null | undefined) {
   if (type === 'rowing') return Waves
   if (type === 'running') return Footprints
+  if (type === 'cycling') return Bike
   return Dumbbell
 }
 

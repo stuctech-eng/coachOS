@@ -99,11 +99,23 @@ export interface RunningSegment {
 
 export interface CyclingSegment {
   type: 'cycling'
-  segment_type: 'warmup' | 'easy' | 'tempo' | 'interval' | 'hill' | 'cooldown'
-  duration_min: number
-  target_zone: 1 | 2 | 3 | 4 | 5
+  exercise: string        // bijv. "20 min FTP-test" / "6×5 min Interval"
+  session_type: 'recovery' | 'endurance' | 'tempo' | 'interval' | 'sprint' | 'test'
+  sets: number             // 1 voor steady/test, meer voor intervallen
+  reps: number | null      // altijd null
+  duration_sec: number | null
+  rest_sec: number
+  // Cycling-specifieke targets (optioneel)
+  distance_m?: number
+  target_power_w?: number   // watt — primaire cycling metriek
+  target_cadence_rpm?: number
+  target_speed_kmh?: number
+  target_hr_zone?: string   // bijv. "Zone 2"
+  // Learning Layer
   instruction: string
   cue: string
+  common_errors: string[]
+  equipment_required?: string[]
 }
 
 export interface StrengthSegment {
@@ -174,6 +186,11 @@ export interface SessionResult {
   running_pacing_rating?: number | null
   running_fatigue_rating?: number | null
   running_rpe_rating?: number | null
+  // Cycling-specifieke evaluatie (V5.7, optioneel)
+  cycling_technique_rating?: number | null
+  cycling_pacing_rating?: number | null
+  cycling_fatigue_rating?: number | null
+  cycling_rpe_rating?: number | null
 }
 
 // ─── localStorage key ─────────────────────────────────────────────────────────
