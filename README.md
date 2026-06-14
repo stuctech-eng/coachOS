@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 5.6.0
+- Versie: 5.7.1
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjst.supabase.co
@@ -34,11 +34,11 @@ Observe → Learn → Predict → Coach → Execute → Learn Again
 - genereert dagplannen BUITEN werktijden
 - plant activiteiten op basis van werktijden uit levensgebeurtenissen
 
-### Trainer AI (✅ Universal — v5.5)
+### Trainer AI (✅ Universal — v5.7.1)
 - genereert sessies per module (kettlebell, rowing, running, cycling, strength, bodyweight)
 - houdt rekening met equipment profiel — alleen oefeningen met beschikbaar materiaal
-- module-keuze is hard equipment-gated: rowing alleen als concept2_available=true,
-  kettlebell alleen als kettlebell_available=true (zie src/utils/equipment.ts)
+- module-keuze is hard equipment-gated: rowing→concept2_available, kettlebell→kettlebell_available,
+  running→running_available, cycling→cycling_available (zie src/utils/equipment.ts)
 - adaptief op basis van experience, Body Battery, check-in (energie/stress/spierpijn), ratings, blessures
 - output altijd: segments[] (oefeningen met sets/reps/duration/rest/instructie/cue/common_errors)
 - fallback schema als AI parsing faalt — sessie kan altijd starten (kettlebell of rowing fallback,
@@ -351,6 +351,72 @@ resultaten tellen automatisch mee (zelfde principe als rowing v5.5.0).
 
 ---
 
+# Cycling Module (v5.7.0)
+
+Vierde trainingsmodule op de Universal Training Engine — architectuur identiek
+aan Running (v5.6.0) en Rowing (v5.5.0).
+
+## Equipment-gating
+`cycling_available` (aanwezig in `src/utils/equipment.ts`).
+
+## Sessietypes
+- **recovery** — rustige herstelrit, zone 1-2, 20-30 min
+- **endurance** — duurrit, 45-90 min steady
+- **tempo** — drempeltraining (bijv. 3×10min/2min rust)
+- **interval** — bijv. 6×5min of 8×3min
+- **sprint** — korte explosieve blokken (bijv. 10×30sec)
+- **test** — bijv. 20 min FTP-test, 10km tijdrit, 20km tijdrit
+
+## CyclingSegment velden (training-engine.ts)
+```ts
+exercise, session_type, sets, reps (null), duration_sec, rest_sec,
+distance_m?, target_power_w? (watt — primaire metriek), target_cadence_rpm?,
+target_speed_kmh?, target_hr_zone?, instruction, cue, common_errors,
+equipment_required?
+```
+
+## Strava-context (7e query)
+Laatste 5 fietsritten (max 14 dagen) uit `activity_sessions` (`name='Fietsen'`).
+Per rit: afstand, duur, snelheid, gem. hartslag, vermogen (avg_watts/NP),
+cadans, hoogteverschil. Uitsluitend als context — geen scoring.
+
+## Evaluatie (4 vragen)
+- `cycling_technique_rating` — fietstechniek (traptechniek, positie)
+- `cycling_pacing_rating` — tempo/vermogen controle
+- `cycling_fatigue_rating` — vermoeidheid na sessie
+- `cycling_rpe_rating` — algehele sessiezwaarte
+
+## SQL migratie
+```sql
+alter table training_results
+  add column if not exists cycling_technique_rating int,
+  add column if not exists cycling_pacing_rating int,
+  add column if not exists cycling_fatigue_rating int,
+  add column if not exists cycling_rpe_rating int;
+```
+
+---
+
+# Strava Metrics Uitbreiding (v5.7.1)
+
+`strava/sync/route.ts` slaat nu extra velden op in `activity_sessions.metrics`
+voor alle activiteiten (cycling, running, rowing):
+
+| Veld in metrics | Strava API veld | Relevant voor |
+|---|---|---|
+| `avg_watts` | `average_watts` | Cycling (vermogen) |
+| `weighted_avg_watts` | `weighted_average_watts` | Cycling (NP) |
+| `avg_cadence` | `average_cadence` | Cycling (rpm), Running (spm), Rowing (SPM) |
+
+Trainer AI cycling-context toont nu automatisch watts en cadans als die
+beschikbaar zijn. Running-context toont cadans. Bestaande activiteiten
+krijgen deze velden pas bij een nieuwe Strava-sync.
+
+V6 Rowing: Concept2 API levert split/stroke rate/drag factor/interval data —
+niet via Strava. Structuur in RowingSegment + SessionResult is al klaar.
+
+---
+
 # Trainingsbron & Trainingsbibliotheek (v5.5.1)
 
 Naast Coach AI's dagelijkse "Vandaag voor jou" kan de gebruiker via een nieuwe
@@ -470,7 +536,7 @@ Niveau gereed = gem. rating laatste 3 sessies ≥ 8 ÉN Body Battery ≥ 70
 
 src/
   types/
-    training-engine.ts                  klaar (v5.6.0 — + RowingSegment/RunningSegment, equipment_required, TrainingSource, rowing/running evaluatievelden)
+    training-engine.ts                  klaar (v5.7.0 — + CyclingSegment, cycling evaluatievelden)
   utils/
     equipment.ts                        klaar (v5.5 — nieuw, module ↔ equipment mapping)
   app/
@@ -485,13 +551,14 @@ src/
       performance/route.ts                klaar (v5.1, compatibel met rowing v5.5)
       equipment/route.ts                  klaar (v5.4 — GET/POST equipment profiel)
       training/
-        today/route.ts                    klaar (v5.6.0 — + running module, 3-weg keuze, Strava-runninghistorie context)
+        today/route.ts                    klaar (v5.7.1 — + cycling module, 4-weg keuze, Strava cycling+running context met watts/cadans)
         session/route.ts                  klaar (v4.5)
-        complete/route.ts                 klaar (v5.6.0 — + running evaluatievelden)
+        complete/route.ts                 klaar (v5.7.0 — + cycling evaluatievelden)
       recovery/
         complete/route.ts                 klaar (v4.2)
       health/
         garmin-vision/route.ts            klaar (v4.8)
+      strava/sync/route.ts               klaar (v5.7.1 — + avg_watts/weighted_avg_watts/avg_cadence)
       strava/                             klaar
     home/page.tsx                         klaar (v4.7)
     insights/page.tsx                     klaar (v4.7)
@@ -519,8 +586,9 @@ health_metrics(inactief), coach_memory, coach_recommendations (+ type kolom v5.4
 activities, activity_sessions, activity_templates, strava_tokens,
 knowledge_observations, ai_conversations, daily_status, injuries, life_events,
 training_sessions, training_results (+ perceived_effort/fatigue_after/soreness v5.4,
-+ training_type + rowing_technique_rating/rowing_pacing_rating/rowing_fatigue_rating v5.5,
-+ training_source v5.5.1, session_id nu nullable), recovery_sessions, recovery_results, garmin_imports
++ training_type + rowing evaluatievelden v5.5, + training_source v5.5.1,
++ running evaluatievelden v5.6, + cycling evaluatievelden v5.7,
+session_id nu nullable), recovery_sessions, recovery_results, garmin_imports
 
 ---
 
@@ -540,6 +608,8 @@ Werkend:
   (tempo-systeem, Back/Volgend/Next/Pause, sessie herstel) → voltooid → evaluatie
 - Rowing Module (Concept2) — recovery/endurance/tempo/interval/sprint/test sessies,
   afstand/split/SPM/HR-zone weergave, rowing-evaluatievragen
+- Cycling Module — recovery/endurance/tempo/interval/sprint/FTP-test,
+  vermogen/cadans/snelheid/HR-zone weergave, cycling-evaluatievragen
 - Trainingsbibliotheek — los van Coach AI's dagadvies zelf een module starten
   (equipment-gated), training_source onderscheidt coach_plan/library
 - Performance AI — progressie analyse zichtbaar in Progressie tab, rowing-compatibel
@@ -569,13 +639,15 @@ Werkend:
 - E15 Universal Training Engine V3: ✅ (kettlebell)
 - E16 Rowing Module: ✅ (kettlebell + rowing op Universal Engine, equipment-gated)
 - E17 Running Module: ✅ (kettlebell + rowing + running, 3-weg keuze, Strava-context)
+- E18 Cycling Module: ✅ (4-weg keuze, Strava watts/cadans context, FTP-test)
+- E19 Strava metrics uitbreiding: ✅ (avg_watts, weighted_avg_watts, avg_cadence)
 
 ---
 
-# V5.7 - V5.10 Roadmap (modules op Universal Training Engine)
+# V5.8 - V5.10 Roadmap (modules op Universal Training Engine)
 
-- V5.7.0 — Cycling Module
-- V5.8.0 — Kettlebell uitbreiding (meer oefeningen/varianten)
+- V5.7.0 — Cycling Module ✅
+- V5.8.0 — Kettlebell uitbreiding (meer oefeningen/varianten) (meer oefeningen/varianten)
 - V5.9.0 — Strength Module (dumbbells + barbell)
 - V5.10.0 — Bodyweight & Core Module
 
@@ -619,7 +691,13 @@ V6 Concept2 API roadmap: zie sectie "Rowing Module (v5.5.0)" hierboven.
   validatie, geen overschrijving van dagcache, Trainer AI bepaalt sessietype
   binnen geforceerde module), training_source opgeslagen in training_results
   (telt mee voor Performance AI/Progressie, geen aparte statistieken)
-- v5.6.0: Running Module — RunningSegment type (distance_m/target_pace/
+- v5.6.0: Running Module — RunningSegment type, 3-weg module-keuze, Strava-runninghistorie (5 runs/14d),
+  runningFormat prompt, 4 evaluatievragen (techniek/pacing/vermoeidheid/RPE)
+- v5.7.0: Cycling Module — CyclingSegment (target_power_w/target_cadence_rpm/target_speed_kmh),
+  4-weg keuze, Strava-fietshistorie, cyclingFormat prompt (incl. FTP-test), cyclingFallback,
+  4 evaluatievragen (techniek/pacing/vermoeidheid/RPE), Bike-icon
+- v5.7.1: Strava metrics uitbreiding — avg_watts/weighted_avg_watts/avg_cadence opgeslagen
+  bij alle activiteiten; cycling/running-context in Trainer AI toont watts + cadans — RunningSegment type (distance_m/target_pace/
   target_speed_kmh/target_hr_zone/session_type, identiek qua opzet aan
   RowingSegment), 3-weg module-keuze in /api/training/today (kettlebell/
   rowing/running, dynamisch gefilterd op equipment, geen decision engine/
