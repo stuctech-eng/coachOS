@@ -39,28 +39,8 @@ export interface RecoveryModule {
 }
 
 // Detecteer blessure-gerelateerde herstelmodules op basis van actieve blessures
-function getBlessureModules(blessures: Array<{ body_part: string; pain_score: number }>): RecoveryModule[] {
-  const modules: RecoveryModule[] = []
-  const heup = blessures.find(b =>
-    b.body_part.toLowerCase().includes('heup') ||
-    b.body_part.toLowerCase().includes('hip') ||
-    b.body_part.toLowerCase().includes('lies')
-  )
-  if (heup) {
-    modules.push({ type: 'mobility', subtype: 'hips', duration: 10, label: 'Heup mobiliteit' })
-  }
-  const nek = blessures.find(b =>
-    b.body_part.toLowerCase().includes('nek') ||
-    b.body_part.toLowerCase().includes('schouder') ||
-    b.body_part.toLowerCase().includes('shoulder')
-  )
-  if (nek) {
-    modules.push({ type: 'mobility', subtype: 'neck_shoulders', duration: 8, label: 'Nek & Schouders' })
-  }
-  return modules
-}
-
-// Detecteer trainings- en herstelactiviteiten uit het dagplan
+// Detecteer herstelactiviteiten uit het dagplan van de Coach
+// Coach bepaalt — Trainer pakt het over. Geen eigen blessure logica.
 function parseDagplanModules(dagplan: Array<{ tijd: string; actie: string }>): RecoveryModule[] {
   const modules: RecoveryModule[] = []
   for (const item of dagplan) {
@@ -160,24 +140,14 @@ export async function POST(req: NextRequest) {
     const coachRec = coachRecRes.data
     const dagplan: Array<{ tijd: string; actie: string }> = dagplanRes.data?.action_plan || []
 
-    // Coach is leidend
+    // Coach bepaalt — Trainer pakt het over
+    // Geen eigen blessure logica in Trainer
     const coachActieType = coachRec?.actie_type || null
     const coachAdvies = coachRec?.recommendation || null
     const coachReasoning = coachRec?.reasoning || null
 
-    // Blessure-specifieke herstelmodules
-    const blessureModules = getBlessureModules(blessures)
-
-    // Modules uit het dagplan van de coach
-    const dagplanModules = parseDagplanModules(dagplan)
-
-    // Combineer: dagplan modules + blessure modules (deduplicate)
-    const extraModules: RecoveryModule[] = []
-    for (const m of [...dagplanModules, ...blessureModules]) {
-      if (!extraModules.find(e => e.subtype === m.subtype)) {
-        extraModules.push(m)
-      }
-    }
+    // Modules komen alleen uit het dagplan van de Coach
+    const extraModules: RecoveryModule[] = parseDagplanModules(dagplan)
 
     // Altijd box breathing als er geen ademhaling in zit
     if (!extraModules.find(m => m.type === 'breathing')) {
@@ -293,12 +263,15 @@ ${moduleKeuze}
 REGELS:
 - Coach beslissing is ALTIJD leidend
 - Stem het trainingsschema af op het dagplan van de Coach
-- Bij heupblessure: GEEN oefeningen die de heup belasten (geen swings, squats, lunges)
 - Bij lage energie of herstel: lichte intensiteit, kortere duur
 - duration = totale sessieduur in minuten
+- Heup mobiliteit oefeningen zijn herstel — die staan al in recovery_modules, NIET in segments
+
+BLESSURE INFO (alleen als context):
+${blessures.length > 0 ? blessures.map((b: {body_part: string; pain_score: number}) => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ') : 'Geen actieve blessures.'}
+De Coach heeft al rekening gehouden met blessures in het advies en dagplan. Volg dat op.
 
 KETTLEBELL: genereer 4-6 oefeningen. Elk segment: type:"kettlebell", exercise, sets, reps of duration_sec, rest_sec, level, instruction, cue, common_errors.
-Bij heupblessure gebruik ALLEEN: Press, Push Press, Farmer Carry, Rack Carry, Turkish Get-Up (bovenste deel), Windmill.
 
 ROWING (Concept2): session_type kiezen (recovery/endurance/tempo/interval/sprint/test). Elk segment: type:"rowing", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required:["concept2"].
 
