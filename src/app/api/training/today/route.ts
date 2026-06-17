@@ -39,35 +39,7 @@ export interface RecoveryModule {
 }
 
 // Detecteer blessure-gerelateerde herstelmodules op basis van actieve blessures
-// Detecteer herstelactiviteiten uit het dagplan van de Coach
-// Coach bepaalt — Trainer pakt het over. Geen eigen blessure logica.
-function parseDagplanModules(dagplan: Array<{ tijd: string; actie: string }>): RecoveryModule[] {
-  const modules: RecoveryModule[] = []
-  for (const item of dagplan) {
-    const actie = item.actie.toLowerCase()
-    if (actie.includes('heup') || actie.includes('hip') || actie.includes('mobiliteit') || actie.includes('stretch')) {
-      if (!modules.find(m => m.subtype === 'hips')) {
-        modules.push({ type: 'mobility', subtype: 'hips', duration: 10, label: 'Heup mobiliteit' })
-      }
-    }
-    if (actie.includes('wandel') || actie.includes('lopen')) {
-      if (!modules.find(m => m.subtype === 'recovery_walk')) {
-        modules.push({ type: 'walk', subtype: 'recovery_walk', duration: 20, label: 'Herstelwandeling' })
-      }
-    }
-    if (actie.includes('adem') || actie.includes('breathing') || actie.includes('ontspan')) {
-      if (!modules.find(m => m.subtype === 'box_breathing')) {
-        modules.push({ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' })
-      }
-    }
-    if (actie.includes('nek') || actie.includes('schouder')) {
-      if (!modules.find(m => m.subtype === 'neck_shoulders')) {
-        modules.push({ type: 'mobility', subtype: 'neck_shoulders', duration: 8, label: 'Nek & Schouders' })
-      }
-    }
-  }
-  return modules
-}
+// Coach bepaalt recovery_modules via AI — Trainer voegt niets toe
 
 export async function GET() {
   try {
@@ -127,7 +99,7 @@ export async function POST(req: NextRequest) {
       supabase.from('activity_sessions').select('date, duration, metrics, activities!inner(name)').eq('user_id', user.id).eq('source', 'strava').eq('activities.name', 'Hardlopen').gte('date', veertienDagenGeleden).order('date', { ascending: false }).limit(5),
       supabase.from('activity_sessions').select('date, duration, metrics, activities!inner(name)').eq('user_id', user.id).eq('source', 'strava').eq('activities.name', 'Fietsen').gte('date', veertienDagenGeleden).order('date', { ascending: false }).limit(5),
       // Coach advies — leidend over training
-      supabase.from('coach_recommendations').select('recommendation, actie_type, reasoning').eq('user_id', user.id).eq('date', today).eq('type', 'coach').single(),
+      supabase.from('coach_recommendations').select('recommendation, actie_type, reasoning, trainer_instructies').eq('user_id', user.id).eq('date', today).eq('type', 'coach').single(),
       // Dagplan van vandaag — coach heeft dit al gepland
       supabase.from('coach_recommendations').select('action_plan').eq('user_id', user.id).eq('date', today).neq('action_plan', null).order('created_at', { ascending: false }).limit(1).single(),
     ])
@@ -145,14 +117,10 @@ export async function POST(req: NextRequest) {
     const coachActieType = coachRec?.actie_type || null
     const coachAdvies = coachRec?.recommendation || null
     const coachReasoning = coachRec?.reasoning || null
+    const trainerInstructies = coachRec?.trainer_instructies || null
 
-    // Modules komen alleen uit het dagplan van de Coach
-    const extraModules: RecoveryModule[] = parseDagplanModules(dagplan)
-
-    // Altijd box breathing als er geen ademhaling in zit
-    if (!extraModules.find(m => m.type === 'breathing')) {
-      extraModules.push({ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' })
-    }
+    // Coach bepaalt recovery_modules — Trainer voegt NIETS toe
+    // AI leest het dagplan als context en bepaalt zelf de juiste modules
 
     let coachSturingContext = ''
     if (coachActieType === 'rust') {
@@ -164,6 +132,7 @@ export async function POST(req: NextRequest) {
     }
     if (coachAdvies) coachSturingContext += `\nCoach advies: "${coachAdvies}"`
     if (coachReasoning) coachSturingContext += `\nCoach redenering: "${coachReasoning}"`
+    if (trainerInstructies) coachSturingContext += `\n\n⚠️ DIRECTE INSTRUCTIE VAN COACH AAN TRAINER: ${trainerInstructies}`
 
     // Dagplan context voor Trainer AI
     const dagplanContext = dagplan.length > 0
@@ -298,7 +267,7 @@ Reageer ALLEEN in dit JSON formaat:
       training_type: null,
       intensity: null,
       duration: null,
-      recovery_modules: extraModules,
+      recovery_modules: [],
       reason: 'Coach adviseert herstel vandaag',
       coach_message: 'Vandaag is herstel de training. Rust is productief.',
     }
@@ -317,7 +286,7 @@ Reageer ALLEEN in dit JSON formaat:
         { type: 'kettlebell', exercise: 'Farmer Carry', sets: 3, reps: null, duration_sec: 40, rest_sec: 60, level: 1,
           instruction: 'Loop rechtop met de kettlebell naast je lichaam.', cue: 'Schouders omlaag', common_errors: ['Romp kantelt'] },
       ] as unknown[],
-      recovery_modules: extraModules,
+      recovery_modules: [],
       reason: 'Standaard kettlebell sessie',
       coach_message: 'Goed bezig! Luister naar je lichaam.',
     }
@@ -332,11 +301,11 @@ Reageer ALLEEN in dit JSON formaat:
     }
 
     const fallbackInstruction: TrainingInstruction = coachActieType === 'herstel'
-      ? { ...kettlebellFallback, intensity: 'light', recovery_modules: extraModules }
+      ? { ...kettlebellFallback, intensity: 'light', recovery_modules: [] }
       : kettlebellAvailable ? kettlebellFallback
       : { ...herselFallback, training_allowed: false }
 
-    let instruction: TrainingInstruction = { ...fallbackInstruction, recovery_modules: extraModules }
+    let instruction: TrainingInstruction = { ...fallbackInstruction, recovery_modules: [] }
 
     try {
       // Haiku voor snelheid — training schema is minder complex dan coach advies
@@ -367,20 +336,13 @@ Reageer ALLEEN in dit JSON formaat:
             : !parsedType || (parsedType === 'rowing' && rowingAvailable) || (parsedType === 'kettlebell' && kettlebellAvailable) || (parsedType === 'running' && runningAvailable) || (parsedType === 'cycling' && cyclingAvailable)
 
           if ((parsed.segments && parsed.segments.length > 0 && typeAllowed) || parsed.training_allowed === false) {
-            // Altijd extraModules mergen met wat AI teruggeeft
-            const aiModules: RecoveryModule[] = parsed.recovery_modules || []
-            const mergedModules: RecoveryModule[] = [...aiModules]
-            for (const m of extraModules) {
-              if (!mergedModules.find(e => e.subtype === m.subtype)) {
-                mergedModules.push(m)
-              }
-            }
-            instruction = { ...parsed, recovery_modules: mergedModules }
+            // Coach bepaalt — gebruik AI output direct, geen toevoegingen
+            instruction = parsed
           }
         }
       }
     } catch {
-      instruction = { ...fallbackInstruction, recovery_modules: extraModules }
+      instruction = { ...fallbackInstruction, recovery_modules: [] }
     }
 
     await supabase.from('coach_recommendations').upsert({

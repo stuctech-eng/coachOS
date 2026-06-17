@@ -230,6 +230,15 @@ export async function POST() {
       return [naam, duur, afstand].filter(Boolean).join(' — ')
     })
 
+    const trainerInstructiePrompt = `
+
+INSTRUCTIES VOOR TRAINER AI:
+Jij (Coach) geeft hieronder ook expliciete instructies mee aan Trainer AI via het veld "trainer_instructies".
+Trainer AI voert jouw trainingsplan uit en kiest de oefeningen.
+${blessures.length > 0 ? `De gebruiker heeft actieve blessures: ${blessures.map((b: {body_part: string; pain_score: number}) => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ')}. Geef Trainer AI duidelijke instructies welke oefeningen vermeden moeten worden en welke juist goed zijn.` : ''}
+
+Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe instructie voor Trainer AI over wat hij wel/niet moet doen vandaag. Bijvoorbeeld: "Vermijd heup-belastende oefeningen (swings, squats, lunges). Gebruik alleen upper body en carry oefeningen." of "Volle training toegestaan, focus op techniek." of "Alleen herstel vandaag, geen krachttraining."`
+
     const systemPrompt = buildDailyCoachPrompt(
       profile,
       goalsRes.data || [],
@@ -239,7 +248,7 @@ export async function POST() {
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (werkContext ? '\n' + werkContext : '') + (blessureContext ? '\n' + blessureContext : '')
+    ) + garminContext + trainingsCoachContext + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (werkContext ? '\n' + werkContext : '') + (blessureContext ? '\n' + blessureContext : '') + trainerInstructiePrompt
 
     // Directe Anthropic API call — geen /api/ai proxy
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -265,6 +274,7 @@ export async function POST() {
     let actie_type: 'trainen' | 'herstel' | 'rust' = 'herstel'
     let main_action = ''
     let advice_bullets: string[] = []
+    let trainer_instructies = '' // Expliciete instructies van Coach aan Trainer
 
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/)
@@ -284,6 +294,9 @@ export async function POST() {
         if (Array.isArray(parsed.advice_bullets)) {
           advice_bullets = parsed.advice_bullets.slice(0, 4)
         }
+        if (parsed.trainer_instructies) {
+          trainer_instructies = parsed.trainer_instructies
+        }
       } else if (rawText.length > 10) {
         reasoning = rawText
       }
@@ -297,6 +310,7 @@ export async function POST() {
         user_id: user.id, date: today,
         type: 'coach',
         recommendation, reasoning, actie_type, advice_bullets: JSON.stringify(advice_bullets),
+        trainer_instructies,
         recovery_status: recovery.status,
         energy_level: checkinRes.data?.energy_score || 5,
       }, { onConflict: 'user_id,date,type' })
