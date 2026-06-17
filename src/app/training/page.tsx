@@ -116,6 +116,56 @@ const BIBLIOTHEEK = [
   { type: 'walk' as const, subtype: 'recovery_walk', label: 'Herstelwandeling', sub: 'lage intensiteit', duration: 20 },
 ]
 
+// Skeleton loading component
+function TrainingSkeleton() {
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Coach bericht skeleton */}
+      <div className="rounded-2xl bg-primary-500/5 border border-primary-500/20 p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-4 h-4 rounded-full bg-primary-500/20 animate-pulse" />
+          <div className="h-3 w-32 bg-slate-700 rounded animate-pulse" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 w-full bg-slate-700 rounded animate-pulse" />
+          <div className="h-3 w-5/6 bg-slate-700 rounded animate-pulse" />
+          <div className="h-3 w-4/6 bg-slate-700 rounded animate-pulse" />
+          <div className="h-3 w-3/4 bg-slate-700 rounded animate-pulse" />
+        </div>
+        <div className="flex items-center gap-1.5 mt-4">
+          <div className="w-3 h-3 rounded-full bg-slate-700 animate-pulse" />
+          <div className="h-3 w-24 bg-slate-700 rounded animate-pulse" />
+        </div>
+      </div>
+
+      {/* Vandaag plan skeleton */}
+      <div className="rounded-2xl bg-coach-card p-5">
+        <div className="h-3 w-28 bg-slate-700 rounded animate-pulse mb-4" />
+        <div className="flex items-center gap-3 pb-3 border-b border-coach-border mb-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-700 animate-pulse flex-shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-36 bg-slate-700 rounded animate-pulse" />
+            <div className="h-3 w-24 bg-slate-700 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-700 animate-pulse flex-shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-28 bg-slate-700 rounded animate-pulse" />
+            <div className="h-3 w-16 bg-slate-700 rounded animate-pulse" />
+          </div>
+        </div>
+      </div>
+
+      {/* Knop skeleton */}
+      <div className="h-14 rounded-2xl bg-slate-700 animate-pulse" />
+
+      {/* Label */}
+      <p className="text-center text-xs text-slate-500 animate-pulse">Coach AI stelt je plan samen...</p>
+    </div>
+  )
+}
+
 export default function TrainingPage() {
   const router = useRouter()
   const [instruction, setInstruction] = useState<TrainingInstruction | null>(null)
@@ -126,7 +176,6 @@ export default function TrainingPage() {
   const [equipment, setEquipment] = useState<Partial<EquipmentProfile> | null>(null)
   const vandaag = new Date().toISOString().split('T')[0]
 
-  // Equipment profiel ophalen voor Trainingsbibliotheek gating
   useEffect(() => {
     fetch('/api/equipment')
       .then(r => r.ok ? r.json() : null)
@@ -163,12 +212,14 @@ export default function TrainingPage() {
 
   async function genereerPlan() {
     setGenereren(true)
+    // Clear cache zodat refresh echt ververst
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('training_instructie_data')
+      window.localStorage.removeItem('training_instructie_datum')
+    }
     try {
       const res = await fetch('/api/training/today', { method: 'POST' })
-      if (!res.ok) {
-        console.error('Training today failed:', res.status)
-        return
-      }
+      if (!res.ok) return
       const data = await res.json()
       if (data.instruction) {
         setInstruction(data.instruction)
@@ -176,8 +227,6 @@ export default function TrainingPage() {
           window.localStorage.setItem('training_instructie_data', JSON.stringify(data.instruction))
           window.localStorage.setItem('training_instructie_datum', vandaag)
         }
-      } else if (data.error) {
-        console.error('Training error:', data.error)
       }
     } catch (e) {
       console.error('genereerPlan error:', e)
@@ -212,10 +261,9 @@ export default function TrainingPage() {
           </button>
         </div>
 
-        {laden || genereren ? (
-          <div className="flex flex-col gap-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-2xl bg-coach-card animate-pulse" />)}
-          </div>
+        {/* Skeleton tijdens laden */}
+        {(laden || genereren) ? (
+          <TrainingSkeleton />
         ) : instruction ? (
           <>
             {/* Coach bericht */}
@@ -233,7 +281,6 @@ export default function TrainingPage() {
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Vandaag voor jou</p>
 
-              {/* Trainingsmodule (kettlebell, rowing, ...) */}
               {instruction.training_allowed && instruction.training_type && (() => {
                 const TrainingIcon = getTrainingIcon(instruction.training_type)
                 return (
@@ -260,7 +307,6 @@ export default function TrainingPage() {
                 )
               })()}
 
-              {/* Recovery modules */}
               {instruction.recovery_modules.map((module, i) => {
                 const Icon = getModuleIcon(module.type, module.subtype)
                 const route = getModuleRoute(module)
@@ -280,22 +326,18 @@ export default function TrainingPage() {
               })}
             </Card>
 
-            {/* START knop — training module of recovery */}
+            {/* START knop */}
             {isTrainingType ? (
-              <button
-                onClick={startTraining}
-                className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700"
-              >
+              <button onClick={startTraining}
+                className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700">
                 <Play size={22} fill="white" />
                 Start {getModuleLabel(instruction?.training_type)}
               </button>
             ) : instruction.recovery_modules.length > 0 ? (
-              <button
-                onClick={() => router.push(getModuleRoute(instruction.recovery_modules[0]))}
-                className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700"
-              >
+              <button onClick={() => router.push(getModuleRoute(instruction.recovery_modules[0]))}
+                className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700">
                 <Play size={22} fill="white" />
-                Start
+                Start {instruction.recovery_modules[0]?.label || 'Herstel'}
               </button>
             ) : null}
 
@@ -334,12 +376,10 @@ export default function TrainingPage() {
                 const Icon = getTrainingIcon(item.module)
                 const beschikbaar = getAvailableModules(equipment).includes(item.module)
                 return (
-                  <button
-                    key={i}
+                  <button key={i}
                     onClick={() => beschikbaar && router.push(`${getTrainingRoute(item.module)}?source=library`)}
                     disabled={!beschikbaar}
-                    className={cn('w-full text-left', beschikbaar ? 'active:opacity-70' : 'opacity-40')}
-                  >
+                    className={cn('w-full text-left', beschikbaar ? 'active:opacity-70' : 'opacity-40')}>
                     <div className="p-3 flex items-center gap-3 w-full bg-coach-card rounded-2xl border border-coach-border">
                       <div className="w-9 h-9 rounded-xl bg-primary-500/10 flex items-center justify-center flex-shrink-0">
                         <Icon size={18} className="text-primary-400" />
@@ -380,8 +420,7 @@ export default function TrainingPage() {
                 const Icon = getModuleIcon(item.type)
                 const route = getModuleRoute(item)
                 return (
-                  <button key={i} onClick={() => router.push(route)}
-                    className="w-full active:opacity-70 text-left">
+                  <button key={i} onClick={() => router.push(route)} className="w-full active:opacity-70 text-left">
                     <div className="p-3 flex items-center gap-3 w-full bg-coach-card rounded-2xl border border-coach-border">
                       <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0', getModuleBg(item.type))}>
                         <Icon size={18} className={getModuleKleur(item.type)} />
@@ -398,7 +437,6 @@ export default function TrainingPage() {
             </div>
           )}
         </div>
-
 
       </div>
     </AppShell>

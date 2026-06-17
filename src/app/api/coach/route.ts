@@ -75,7 +75,6 @@ export async function POST() {
         .gte('date', zevenDagenGeleden)
         .order('date', { ascending: false })
         .limit(5),
-      // Garmin vandaag of gisteren
       supabase.from('garmin_imports')
         .select('parsed_data, date')
         .eq('user_id', user.id)
@@ -83,14 +82,12 @@ export async function POST() {
         .order('date', { ascending: false })
         .limit(1)
         .single(),
-      // Garmin 7 dagen voor trends
       supabase.from('garmin_imports')
         .select('parsed_data, date')
         .eq('user_id', user.id)
         .eq('status', 'confirmed')
         .gte('date', zevenDagenGeleden)
         .order('date', { ascending: true }),
-      // Training resultaten laatste 7 dagen — voor trainingsbelasting-samenvatting
       supabase.from('training_results')
         .select('rating, actual_duration, completed_at, training_type')
         .eq('user_id', user.id)
@@ -150,8 +147,6 @@ export async function POST() {
       : ''
     const trainingsResultaten = trainingsRes.data || []
 
-    // Trainingsbelasting-samenvatting voor Coach AI (laatste 7 dagen)
-    // sessiebelasting = actual_duration × rating — Coach AI krijgt geen sport-details
     const trainingsCoachContext = trainingsResultaten.length > 0 ? (() => {
       const sessies = trainingsResultaten.filter(t => t.actual_duration && t.rating)
       const totaalDuur = trainingsResultaten.reduce((a, t) => a + (t.actual_duration || 0), 0)
@@ -172,8 +167,6 @@ export async function POST() {
         `\nGebruik deze samenvatting voor trainingsfrequentie en belasting. Ga niet in op sport-specifieke details (watt, tempo, split) — dat is voor Trainer AI.`
     })() : '\nGeen trainingen afgelopen 7 dagen.'
 
-    // Garmin data als fallback voor health_metrics
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const metricsVandaag = metricsRes.data || (garmin ? {
       hrv: garmin.hrv?.avg_7d_ms || null,
       resting_hr: garmin.resting_hr || null,
@@ -192,7 +185,6 @@ export async function POST() {
       status_color: recovery.color,
     })
 
-    // Week metrics — gebruik Garmin data als health_metrics leeg is
     let weekMetrics: WeekMetrics | null = null
     const weekData = weekMetricsRes.data || []
 
@@ -205,7 +197,6 @@ export async function POST() {
         dates: weekData.map(d => d.date),
       }
     } else if (garminWeek.length > 0) {
-      // Garmin week data als fallback
       weekMetrics = {
         hrv: garminWeek.filter(g => g.parsed_data?.hrv?.avg_7d_ms).map(g => g.parsed_data.hrv.avg_7d_ms as number),
         resting_hr: garminWeek.filter(g => g.parsed_data?.resting_hr).map(g => g.parsed_data.resting_hr as number),
@@ -215,7 +206,6 @@ export async function POST() {
       }
     }
 
-    // Garmin context voor coach prompt
     let garminContext = ''
     if (garmin) {
       const label = garminIsVandaag ? 'vandaag' : 'gisteren'
@@ -251,11 +241,14 @@ export async function POST() {
       recenteActiviteiten
     ) + garminContext + trainingsCoachContext + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (werkContext ? '\n' + werkContext : '') + (blessureContext ? '\n' + blessureContext : '')
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
-
-    const aiResponse = await fetch(appUrl + '/api/ai', {
+    // Directe Anthropic API call — geen /api/ai proxy
+    const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 600,
@@ -315,11 +308,8 @@ export async function POST() {
       user_id: user.id, role: 'assistant', message: recommendation,
     })
 
-    const appUrlForMemory = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
-    fetch(appUrlForMemory + '/api/memory', {
-      method: 'POST',
-      headers: { 'Cookie': '' },
-    }).catch(() => {})
+    // Memory update — fire and forget
+    fetch('https://coach-os-tau.vercel.app/api/memory', { method: 'POST' }).catch(() => {})
 
     return NextResponse.json(saved)
   } catch (error) {
