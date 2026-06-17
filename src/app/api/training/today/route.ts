@@ -60,11 +60,6 @@ export async function GET() {
 
 // POST — genereer nieuw trainingsschema (lichtgewicht)
 // Body (optioneel): { module: TrainingModule, source: 'library' }
-// Trainingsbibliotheek: forceert module, gebruikt EIGEN dagcache (type='library_<module>') —
-// Coach AI's "Vandaag voor jou" (type='training_today') blijft ongewijzigd. Eenmaal
-// gegenereerd blijft een bibliotheek-sessie per module de hele dag staan (geen
-// herhaalde AI-calls bij rondkijken). Trainer AI bepaalt zelf het sessietype
-// binnen die module (Coach AI blijft leidend over intensiteit/keuze).
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
@@ -78,10 +73,6 @@ export async function POST(req: NextRequest) {
     const forcedModule = body.module
     const isLibrary = body.source === 'library' && !!forcedModule
 
-    // Check cache — normale (Coach AI) flow: type='training_today'
-    // Bibliotheek flow: per-module dagcache type='library_<module>' — eenmaal
-    // gegenereerd blijft een module-sessie de hele dag staan (geen herhaalde
-    // AI-calls bij rondkijken in de Trainingsbibliotheek)
     const cacheType = isLibrary ? `library_${forcedModule}` : 'training_today'
     {
       const { data: cached } = await supabase
@@ -97,9 +88,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Minimale data ophalen — alleen wat nodig is voor schema generatie
     const veertienDagenGeleden = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA')
-    const [profileRes, checkinRes, garminRes, blessuresRes, goalsRes, stravaRunsRes, stravaRittenRes] = await Promise.all([
+    const [profileRes, checkinRes, garminRes, blessuresRes, goalsRes, stravaRunsRes, stravaRittenRes, coachRecRes] = await Promise.all([
       supabase.from('profiles').select('first_name, experience_level, available_time, kettlebell_available, concept2_available, cycling_available, running_available, dumbbell_available, barbell_available, ab_wheel_available, bodyweight_available').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('feeling_score, energy_score, stress_score, motivation_score, soreness_score').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('garmin_imports').select('parsed_data').eq('user_id', user.id).eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
@@ -107,6 +97,8 @@ export async function POST(req: NextRequest) {
       supabase.from('user_goals').select('title').eq('user_id', user.id).eq('status', 'active').limit(2),
       supabase.from('activity_sessions').select('date, duration, metrics, activities!inner(name)').eq('user_id', user.id).eq('source', 'strava').eq('activities.name', 'Hardlopen').gte('date', veertienDagenGeleden).order('date', { ascending: false }).limit(5),
       supabase.from('activity_sessions').select('date, duration, metrics, activities!inner(name)').eq('user_id', user.id).eq('source', 'strava').eq('activities.name', 'Fietsen').gte('date', veertienDagenGeleden).order('date', { ascending: false }).limit(5),
+      // Haal het dagelijkse coach advies op — Coach is leidend over training
+      supabase.from('coach_recommendations').select('recommendation, actie_type, reasoning').eq('user_id', user.id).eq('date', today).eq('type', 'daily').single(),
     ])
 
     const profile = profileRes.data
@@ -114,6 +106,28 @@ export async function POST(req: NextRequest) {
     const garmin = garminRes.data?.parsed_data || null
     const blessures = blessuresRes.data || []
     const goals = goalsRes.data || []
+    const coachRec = coachRecRes.data
+
+    // Coach advies bepaalt de richting — Trainer AI volgt dit altijd
+    const coachActieType = coachRec?.actie_type || null
+    const coachAdvies = coachRec?.recommendation || null
+    const coachReasoning = coachRec?.reasoning || null
+
+    let coachSturingContext = ''
+    if (coachActieType === 'rust') {
+      coachSturingContext = `COACH BESLISSING (LEIDEND): RUST vandaag. training_allowed MOET false zijn. Geen training. Alleen lichte herstelmodules (ademhaling, mobiliteit).`
+    } else if (coachActieType === 'herstel') {
+      coachSturingContext = `COACH BESLISSING (LEIDEND): HERSTEL vandaag. Als training_allowed true is, dan ALLEEN lichte intensiteit (intensity: "light"). Geen zware of matige training. Focus op herstelmodules.`
+    } else if (coachActieType === 'trainen') {
+      coachSturingContext = `COACH BESLISSING (LEIDEND): TRAINEN vandaag. Training is goedgekeurd. Kies een passende module en intensiteit op basis van de data.`
+    }
+
+    if (coachAdvies) {
+      coachSturingContext += `\nCoach advies: "${coachAdvies}"`
+    }
+    if (coachReasoning) {
+      coachSturingContext += `\nCoach redenering: "${coachReasoning}"`
+    }
 
     const equipment: Partial<EquipmentProfile> = {
       kettlebell_available: profile?.kettlebell_available ?? true,
@@ -131,7 +145,6 @@ export async function POST(req: NextRequest) {
     const runningAvailable = availableModules.includes('running')
     const cyclingAvailable = availableModules.includes('cycling')
 
-    // Strava-runninghistorie (laatste 5 runs, max 14 dagen) — alleen context
     const stravaRuns = (stravaRunsRes.data || []) as Array<{ date: string; duration: number; metrics: Record<string, number> }>
     const stravaRunningContext = stravaRuns.length > 0
       ? 'Recente Strava hardloop-historie (laatste ' + stravaRuns.length + ', max 14 dagen):\n' +
@@ -153,7 +166,6 @@ export async function POST(req: NextRequest) {
         }).join('\n')
       : 'Geen recente Strava hardloop-historie (laatste 14 dagen).'
 
-    // Strava-cyclinghistorie (laatste 5 ritten, max 14 dagen) — alleen context
     const stravaRitten = (stravaRittenRes.data || []) as Array<{ date: string; duration: number; metrics: Record<string, number> }>
     const stravaCyclingContext = stravaRitten.length > 0
       ? 'Recente Strava fiets-historie (laatste ' + stravaRitten.length + ', max 14 dagen):\n' +
@@ -170,7 +182,6 @@ export async function POST(req: NextRequest) {
         }).join('\n')
       : 'Geen recente Strava fiets-historie (laatste 14 dagen).'
 
-    // Bibliotheek: forceer module, mits equipment dit toelaat
     if (isLibrary && forcedModule) {
       if (!isModuleAvailable(forcedModule, equipment)) {
         return NextResponse.json({ error: `Module '${forcedModule}' niet beschikbaar — equipment ontbreekt` }, { status: 403 })
@@ -190,16 +201,13 @@ export async function POST(req: NextRequest) {
       cyclingAvailable ? stravaCyclingContext : '',
     ].filter(Boolean).join('\n')
 
-    // Module-keuze: dynamisch op basis van beschikbaar equipment, 2- of 3-weg.
-    // Strava-historie is uitsluitend CONTEXT voor Trainer AI (zie stravaRunningContext
-    // hierboven) — geen scoring/decision-engine, geen forcing function.
     const keuzeModules = (['kettlebell', 'rowing', 'running', 'cycling'] as const).filter(m =>
       m === 'kettlebell' ? kettlebellAvailable : m === 'rowing' ? rowingAvailable : m === 'running' ? runningAvailable : cyclingAvailable
     )
     const moduleKeuze = isLibrary && forcedModule
-      ? `De gebruiker heeft zelf gekozen voor de "${forcedModule}" module via de Trainingsbibliotheek. training_type MOET "${forcedModule}" zijn. Bepaal zelf, op basis van de data, het beste sessietype binnen deze module (bijv. bij rowing: recovery/endurance/tempo/interval/sprint/test — kies recovery bij lage Body Battery; bij running en cycling idem, gebruik de Strava-historie als context voor een realistisch niveau).`
+      ? `De gebruiker heeft zelf gekozen voor de "${forcedModule}" module via de Trainingsbibliotheek. training_type MOET "${forcedModule}" zijn. Bepaal zelf, op basis van de data, het beste sessietype binnen deze module.`
       : keuzeModules.length > 1
-        ? `Kies zelf het beste training_type voor vandaag uit: ${keuzeModules.map(m => `"${m}"`).join(', ')}, op basis van de data (bijv. afwisseling met vorige sessies, herstelstatus, doelen). Gebruik bij "running" de Strava-historie uitsluitend als context om een realistisch niveau in te schatten — niet als reden om running te kiezen of te vermijden.`
+        ? `Kies zelf het beste training_type voor vandaag uit: ${keuzeModules.map(m => `"${m}"`).join(', ')}, op basis van de data.`
         : keuzeModules.length === 1
           ? `Het enige beschikbare equipment is voor ${keuzeModules[0]}. training_type MOET "${keuzeModules[0]}" zijn.`
           : 'training_type MOET "kettlebell" zijn.'
@@ -207,155 +215,24 @@ export async function POST(req: NextRequest) {
     const kettlebellFormat = `KETTLEBELL FORMAT — gebruik dit format als training_type "kettlebell" is:
 - Genereer 4-6 oefeningen in segments array
 - Elk segment: type:"kettlebell", exercise, sets, reps of duration_sec, rest_sec, level, instruction (1 zin), cue (1 zin), common_errors (2-3 items)
-- BESCHIKBARE OEFENINGEN: Two Hand Swing, One Hand Swing, Goblet Squat, Clean, Press, Push Press, Clean & Press, Snatch, Turkish Get-Up, Farmer Carry, Rack Carry, Windmill, Deadlift, Front Squat, Lunge
-
-Voorbeeld segment:
-{
-  "type": "kettlebell",
-  "exercise": "Two Hand Swing",
-  "sets": 4,
-  "reps": 15,
-  "duration_sec": null,
-  "rest_sec": 60,
-  "level": 1,
-  "instruction": "Hinge vanuit de heupen, drijf krachtig vooruit.",
-  "cue": "Heupen drijven, niet tillen",
-  "common_errors": ["Rug rolt", "Armen trekken de bell", "Knieën buigen te ver"]
-}`
+- BESCHIKBARE OEFENINGEN: Two Hand Swing, One Hand Swing, Goblet Squat, Clean, Press, Push Press, Clean & Press, Snatch, Turkish Get-Up, Farmer Carry, Rack Carry, Windmill, Deadlift, Front Squat, Lunge`
 
     const rowingFormat = `ROWING FORMAT — gebruik dit format als training_type "rowing" is (Concept2):
-- Kies een session_type: "recovery" (herstel, zone 1-2, 15-30 min), "endurance" (30-90 min steady), "tempo" (drempel, bijv. 3x10min/2min rust), "interval" (bijv. 10x500m), "sprint" (bijv. 8x250m), of "test" (bijv. 2000m test)
-- Genereer 1-4 segments. Voor steady/endurance/test: 1 segment met sets:1. Voor intervallen: 1 segment met sets = aantal herhalingen.
-- Elk segment: type:"rowing", exercise (korte naam zoals "500m Interval" of "30 min Steady State"), session_type, sets, reps:null, duration_sec (actieve tijd PER set/interval in seconden — bereken dit zelf), rest_sec (tussen sets, 0 als steady), instruction (1 zin techniek), cue (1 zin), common_errors (2-3 items)
-- Optioneel indien relevant: distance_m (afstand per interval), target_split (streefsplit per 500m, bijv. "2:05"), target_spm (strokes per minute), target_hr_zone (bijv. "Zone 2")
-- duration_sec berekening: als je distance_m + target_split gebruikt, reken split om naar seconden voor de gekozen afstand (bijv. 500m @ 2:05/500m = 125 sec). Voor tijd-gebaseerde sessies (steady/recovery/tempo) is duration_sec direct de tijd in seconden.
-- equipment_required: ["concept2"]
-
-Voorbeeld interval segment:
-{
-  "type": "rowing",
-  "exercise": "500m Interval",
-  "session_type": "interval",
-  "sets": 10,
-  "reps": null,
-  "duration_sec": 125,
-  "rest_sec": 60,
-  "distance_m": 500,
-  "target_split": "2:05",
-  "target_spm": 24,
-  "target_hr_zone": "Zone 3-4",
-  "instruction": "Houd de catch scherp, drive met de benen, eindig met een rustige recovery.",
-  "cue": "Benen - rug - armen, in die volgorde",
-  "common_errors": ["Te vroeg armen trekken", "Te hoge slagfrequentie aan het begin", "Inzakken in de recovery"],
-  "equipment_required": ["concept2"]
-}
-
-Voorbeeld steady segment:
-{
-  "type": "rowing",
-  "exercise": "30 min Steady State",
-  "session_type": "endurance",
-  "sets": 1,
-  "reps": null,
-  "duration_sec": 1800,
-  "rest_sec": 0,
-  "target_spm": 20,
-  "target_hr_zone": "Zone 2",
-  "instruction": "Roei op een constant, comfortabel tempo. Praten moet nog mogelijk zijn.",
-  "cue": "Lange, ontspannen halen",
-  "common_errors": ["Tempo te hoog starten", "Slagfrequentie te hoog voor steady"],
-  "equipment_required": ["concept2"]
-}`
+- Kies een session_type: "recovery", "endurance", "tempo", "interval", "sprint", of "test"
+- Elk segment: type:"rowing", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required: ["concept2"]`
 
     const runningFormat = `RUNNING FORMAT — gebruik dit format als training_type "running" is:
-- Kies een session_type: "recovery" (rustige herstelrun, zone 1-2, 20-30 min), "endurance" (5-10km of 30-60min steady), "tempo" (drempel, bijv. 3x10min/2min rust), "interval" (bijv. 6x400m, 8x500m, 5x800m), "sprint" (bijv. 10x100m, 8x200m), of "test" (bijv. 1km/5km/10km test)
-- Genereer 1-4 segments. Voor steady/endurance/test: 1 segment met sets:1. Voor intervallen: 1 segment met sets = aantal herhalingen.
-- Elk segment: type:"running", exercise (korte naam zoals "6x400m Interval" of "5km Steady Run"), session_type, sets, reps:null, duration_sec (actieve tijd PER set/interval in seconden — bereken dit zelf), rest_sec (tussen sets, 0 als steady), instruction (1 zin techniek), cue (1 zin), common_errors (2-3 items)
-- Optioneel indien relevant: distance_m (afstand per interval/totale afstand bij steady), target_pace (streeftempo, bijv. "5:30/km"), target_speed_kmh (bijv. 10.5), target_hr_zone (bijv. "Zone 2")
-- duration_sec berekening: als je distance_m + target_pace gebruikt, reken pace om naar seconden voor de gekozen afstand (bijv. 400m @ 5:30/km = 132 sec). Voor tijd-gebaseerde sessies (steady/recovery/tempo) is duration_sec direct de tijd in seconden.
-- Gebruik de Strava-hardloophistorie (indien aanwezig in DATA) uitsluitend om een realistisch niveau in te schatten (afstanden/tempo's die passen bij de gebruiker) — niet als reden om wel/niet running te kiezen.
-- PERSOONLIJKE PROGRESSIE (alleen t.o.v. de gebruiker zelf, nooit t.o.v. anderen): bouw waar passend voort op de Strava-historie — kleine afstand- of tempo-opbouw, consistentie belonen, of bewust een herstelrun als er recent veel gelopen is. Verwerk dit eventueel in coach_message, bijv. "Vorige week liep je 5 km, vandaag bouwen we uit naar 6 km" of "Je tempo lag rond 6:00/km, vandaag een gecontroleerde tempo-run." Nooit vergelijken met andere lopers, geen rankings.
-- equipment_required: ["running"]
-
-Voorbeeld interval segment:
-{
-  "type": "running",
-  "exercise": "6x400m Interval",
-  "session_type": "interval",
-  "sets": 6,
-  "reps": null,
-  "duration_sec": 132,
-  "rest_sec": 90,
-  "distance_m": 400,
-  "target_pace": "5:30/km",
-  "target_hr_zone": "Zone 4",
-  "instruction": "Loop met een hoge cadans, ontspannen armen, lichte voorwaartse leun.",
-  "cue": "Lichte voeten, snelle pas",
-  "common_errors": ["Te snel starten", "Schouders optrekken", "Te grote pasgrootte"],
-  "equipment_required": ["running"]
-}
-
-Voorbeeld steady segment:
-{
-  "type": "running",
-  "exercise": "5km Steady Run",
-  "session_type": "endurance",
-  "sets": 1,
-  "reps": null,
-  "duration_sec": 1800,
-  "rest_sec": 0,
-  "distance_m": 5000,
-  "target_pace": "6:00/km",
-  "target_hr_zone": "Zone 2",
-  "instruction": "Loop op een constant, comfortabel tempo. Praten moet nog mogelijk zijn.",
-  "cue": "Rustige, gelijkmatige adem",
-  "common_errors": ["Tempo te hoog starten", "Te grote pasgrootte bij vermoeidheid"],
-  "equipment_required": ["running"]
-}`
+- Kies een session_type: "recovery", "endurance", "tempo", "interval", "sprint", of "test"
+- Elk segment: type:"running", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required: ["running"]`
 
     const cyclingFormat = `CYCLING FORMAT — gebruik dit format als training_type "cycling" is:
-- Kies een session_type: "recovery" (rustige herstelrit zone 1-2, 20-30 min), "endurance" (duurrit 45-90 min steady), "tempo" (drempeltraining bijv. 3×10min/2min rust), "interval" (bijv. 6×5min of 8×3min), "sprint" (bijv. 10×30sec explosief), of "test" (bijv. 20 min FTP-test, 10km tijdrit, 20km tijdrit)
-- Genereer 1-4 segments. Voor steady/endurance/test: 1 segment met sets:1. Voor intervallen: 1 segment met sets = aantal herhalingen.
-- Elk segment: type:"cycling", exercise (korte naam zoals "6×5min Interval" of "45 min Steady"), session_type, sets, reps:null, duration_sec (actieve tijd PER set/interval in seconden), rest_sec, instruction (1 zin), cue (1 zin), common_errors (2-3 items)
-- Optioneel: distance_m, target_power_w (watt — primaire cycling metriek), target_cadence_rpm, target_speed_kmh, target_hr_zone
-- PERSOONLIJKE PROGRESSIE: gebruik Strava-fietshistorie (indien aanwezig in DATA) om realistische waarden te kiezen passend bij het niveau. Bouw voort op recente ritten. Verwerk dit eventueel in coach_message. Geen vergelijking met anderen.
-- equipment_required: ["cycling"]
-
-Voorbeeld interval segment:
-{
-  "type": "cycling",
-  "exercise": "6×5min Interval",
-  "session_type": "interval",
-  "sets": 6,
-  "reps": null,
-  "duration_sec": 300,
-  "rest_sec": 150,
-  "target_power_w": 220,
-  "target_cadence_rpm": 90,
-  "target_hr_zone": "Zone 4",
-  "instruction": "Trap met constante cadans, houd vermogen stabiel over het hele interval.",
-  "cue": "Soepele trap, stabiel bovenlichaam",
-  "common_errors": ["Cadans te laag (kruipen)", "Vermogen daalt in laatste minuut", "Te veel wippen op zadel"],
-  "equipment_required": ["cycling"]
-}
-
-Voorbeeld test segment:
-{
-  "type": "cycling",
-  "exercise": "20 min FTP-test",
-  "session_type": "test",
-  "sets": 1,
-  "reps": null,
-  "duration_sec": 1200,
-  "rest_sec": 0,
-  "target_hr_zone": "Zone 4-5",
-  "instruction": "Rij 20 minuten zo hard als je kunt handhaven.",
-  "cue": "Gelijkmatig effort, niet te hard starten",
-  "common_errors": ["Te snel starten en leegrijden", "Ongelijkmatig tempo", "Te lage cadans"],
-  "equipment_required": ["cycling"]
-}`
+- Kies een session_type: "recovery", "endurance", "tempo", "interval", "sprint", of "test"
+- Elk segment: type:"cycling", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required: ["cycling"]`
 
     const systemPrompt = `Je bent Trainer AI van CoachOS. Genereer een trainingsschema op basis van de gebruikersdata.
+
+⚠️ COACH STURING (ALTIJD LEIDEND — volg dit op):
+${coachSturingContext || 'Geen specifiek coach advies vandaag — gebruik je eigen inschatting op basis van de data.'}
 
 DATA:
 ${context}
@@ -364,9 +241,10 @@ MODULE KEUZE:
 ${moduleKeuze}
 
 ALGEMENE REGELS:
+- De Coach beslissing hierboven is ALTIJD leidend — overschrijf dit nooit
 - Pas intensiteit aan op basis van energie en spierpijn
-- Bij lage energie: lichtere oefeningen, minder sets, of kies recovery/endurance bij rowing/running/cycling
-- Bij hoge spierpijn: vermijd belaste spiergroepen, of kies rowing als alternatief (lage impact)
+- Bij lage energie: lichtere oefeningen, minder sets
+- Bij hoge spierpijn: vermijd belaste spiergroepen
 - duration is de totale geschatte sessieduur in minuten
 
 ${kettlebellFormat}
@@ -392,7 +270,7 @@ Reageer ALLEEN in dit JSON formaat:
   "coach_message": "Persoonlijk motiverend bericht"
 }`
 
-    // Fallback schema - altijd beschikbaar, gebaseerd op beschikbaar equipment
+    // Fallback schema's
     const kettlebellFallback: TrainingInstruction = {
       training_allowed: true,
       training_type: 'kettlebell',
@@ -414,6 +292,19 @@ Reageer ALLEEN in dit JSON formaat:
       coach_message: 'Goed bezig! Luister naar je lichaam.',
     }
 
+    const herselFallback: TrainingInstruction = {
+      training_allowed: false,
+      training_type: null,
+      intensity: null,
+      duration: null,
+      recovery_modules: [
+        { type: 'mobility', subtype: 'hips', duration: 10, label: 'Heup mobiliteit' },
+        { type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' },
+      ],
+      reason: 'Coach adviseert herstel vandaag',
+      coach_message: 'Vandaag is herstel de training. Rust is productief.',
+    }
+
     const rowingFallback: TrainingInstruction = {
       training_allowed: true,
       training_type: 'rowing',
@@ -421,19 +312,10 @@ Reageer ALLEEN in dit JSON formaat:
       intensity: 'medium',
       duration: 30,
       segments: [
-        { type: 'rowing', exercise: '5 min Inroeien', session_type: 'recovery', sets: 1, reps: null,
-          duration_sec: 300, rest_sec: 0, target_spm: 20, target_hr_zone: 'Zone 1-2',
-          instruction: 'Roei rustig in, focus op een lange, ontspannen haal.', cue: 'Adem rustig mee met de haal',
-          common_errors: ['Te snel starten'], equipment_required: ['concept2'] },
         { type: 'rowing', exercise: '500m Interval', session_type: 'interval', sets: 6, reps: null,
-          duration_sec: 125, rest_sec: 60, distance_m: 500, target_split: '2:05', target_spm: 26, target_hr_zone: 'Zone 3-4',
-          instruction: 'Houd de catch scherp, drive met de benen, eindig met een rustige recovery.', cue: 'Benen - rug - armen',
-          common_errors: ['Te vroeg armen trekken', 'Slagfrequentie te hoog aan het begin', 'Inzakken in de recovery'],
-          equipment_required: ['concept2'] },
-        { type: 'rowing', exercise: '5 min Uitroeien', session_type: 'recovery', sets: 1, reps: null,
-          duration_sec: 300, rest_sec: 0, target_spm: 18, target_hr_zone: 'Zone 1',
-          instruction: 'Roei rustig uit op laag tempo om af te koelen.', cue: 'Lange, rustige halen',
-          common_errors: ['Te abrupt stoppen'], equipment_required: ['concept2'] },
+          duration_sec: 125, rest_sec: 60, distance_m: 500, target_split: '2:05', target_spm: 26,
+          instruction: 'Houd de catch scherp, drive met de benen.', cue: 'Benen - rug - armen',
+          common_errors: ['Te vroeg armen trekken'], equipment_required: ['concept2'] },
       ] as unknown[],
       recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
       reason: 'Standaard rowing sessie',
@@ -449,8 +331,8 @@ Reageer ALLEEN in dit JSON formaat:
       segments: [
         { type: 'running', exercise: '5km Steady Run', session_type: 'endurance', sets: 1, reps: null,
           duration_sec: 1800, rest_sec: 0, distance_m: 5000, target_pace: '6:00/km', target_hr_zone: 'Zone 2',
-          instruction: 'Loop op een constant, comfortabel tempo. Praten moet nog mogelijk zijn.', cue: 'Rustige, gelijkmatige adem',
-          common_errors: ['Tempo te hoog starten', 'Te grote pasgrootte bij vermoeidheid'], equipment_required: ['running'] },
+          instruction: 'Loop op een constant, comfortabel tempo.', cue: 'Rustige, gelijkmatige adem',
+          common_errors: ['Tempo te hoog starten'], equipment_required: ['running'] },
       ] as unknown[],
       recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
       reason: 'Standaard running sessie',
@@ -466,12 +348,23 @@ Reageer ALLEEN in dit JSON formaat:
       segments: [
         { type: 'cycling', exercise: '45 min Steady Ride', session_type: 'endurance', sets: 1, reps: null,
           duration_sec: 2700, rest_sec: 0, target_cadence_rpm: 85, target_hr_zone: 'Zone 2',
-          instruction: 'Rij op een constant, comfortabel tempo. Houd cadans hoog en soepel.', cue: 'Soepele trap, ontspannen bovenlichaam',
-          common_errors: ['Cadans te laag', 'Te hard starten'], equipment_required: ['cycling'] },
+          instruction: 'Rij op een constant, comfortabel tempo.', cue: 'Soepele trap, ontspannen bovenlichaam',
+          common_errors: ['Cadans te laag'], equipment_required: ['cycling'] },
       ] as unknown[],
       recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
       reason: 'Standaard cycling sessie',
       coach_message: 'Rustig en gecontroleerd fietsen vandaag!',
+    }
+
+    // Als coach rust zegt en dit geen library call is — direct herstel teruggeven zonder AI call
+    if (coachActieType === 'rust' && !isLibrary) {
+      await supabase.from('coach_recommendations').upsert({
+        user_id: user.id,
+        date: today,
+        type: cacheType,
+        training_instruction: herselFallback,
+      }, { onConflict: 'user_id,date,type' })
+      return NextResponse.json({ instruction: herselFallback })
     }
 
     const fallbackInstruction: TrainingInstruction = isLibrary && forcedModule === 'rowing'
@@ -482,15 +375,20 @@ Reageer ALLEEN in dit JSON formaat:
           ? cyclingFallback
           : isLibrary && forcedModule === 'kettlebell'
             ? kettlebellFallback
-            : kettlebellAvailable ? kettlebellFallback : rowingAvailable ? rowingFallback : runningAvailable ? runningFallback : cyclingAvailable ? cyclingFallback : kettlebellFallback
+            : coachActieType === 'herstel'
+              ? { ...kettlebellFallback, intensity: 'light' }
+              : kettlebellAvailable ? kettlebellFallback : rowingAvailable ? rowingFallback : runningAvailable ? runningFallback : cyclingAvailable ? cyclingFallback : kettlebellFallback
 
     let instruction: TrainingInstruction = fallbackInstruction
 
     try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
-      const aiRes = await fetch(appUrl + '/api/ai', {
+      const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY!,
+          'anthropic-version': '2023-06-01',
+        },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 2000,
@@ -508,21 +406,18 @@ Reageer ALLEEN in dit JSON formaat:
           const parsedType = parsed.training_type
           const typeAllowed = isLibrary && forcedModule
             ? parsedType === forcedModule
-            : (parsedType === 'rowing' && rowingAvailable) || (parsedType === 'kettlebell' && kettlebellAvailable) || (parsedType === 'running' && runningAvailable) || (parsedType === 'cycling' && cyclingAvailable)
-          if (parsed.segments && parsed.segments.length > 0 && typeAllowed) {
+            : !parsedType || (parsedType === 'rowing' && rowingAvailable) || (parsedType === 'kettlebell' && kettlebellAvailable) || (parsedType === 'running' && runningAvailable) || (parsedType === 'cycling' && cyclingAvailable)
+          if ((parsed.segments && parsed.segments.length > 0 && typeAllowed) || parsed.training_allowed === false) {
             instruction = parsed
           }
         }
       }
     } catch {
-      // Gebruik fallback schema (al equipment-aware bepaald)
       instruction = fallbackInstruction
     }
 
     if (!instruction) return NextResponse.json({ error: 'Geen instructie gegenereerd' }, { status: 500 })
 
-    // Cache schrijven — type='training_today' (Coach AI dagplan) of
-    // type='library_<module>' (bibliotheek, 1x per module per dag)
     await supabase.from('coach_recommendations').upsert({
       user_id: user.id,
       date: today,
