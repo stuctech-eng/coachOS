@@ -307,7 +307,7 @@ export default function TrainingPage() {
                 )
               })()}
 
-              {instruction.recovery_modules.map((module, i) => {
+              {instruction.recovery_modules.filter(m => m.label && m.duration > 0).map((module, i) => {
                 const Icon = getModuleIcon(module.type, module.subtype)
                 const route = getModuleRoute(module)
                 return (

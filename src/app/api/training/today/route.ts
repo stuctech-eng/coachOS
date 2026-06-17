@@ -256,10 +256,20 @@ Reageer ALLEEN in dit JSON formaat:
   "intensity": "light",
   "duration": 30,
   "segments": [],
-  "recovery_modules": [],
+  "recovery_modules": [
+    { "type": "mobility", "subtype": "hips", "duration": 10, "label": "Heup mobiliteit" },
+    { "type": "breathing", "subtype": "box_breathing", "duration": 6, "label": "Box Breathing" }
+  ],
   "reason": "Korte reden",
   "coach_message": "Persoonlijk motiverend bericht dat aansluit op het dagplan"
-}`
+}
+
+VERPLICHTE REGELS voor recovery_modules:
+- Elk item MOET een "label" hebben (string, niet leeg)
+- Elk item MOET een "duration" hebben (getal in MINUTEN, niet seconden, minimaal 1)
+- Elk item MOET een "type" hebben: "breathing", "mobility", "walk", of "relaxation"
+- Elk item MOET een "subtype" hebben
+- Geen lege labels, geen 0 minuten, geen null waarden`
 
     // Fallbacks
     const herselFallback: TrainingInstruction = {
