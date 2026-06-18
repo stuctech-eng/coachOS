@@ -1,7 +1,7 @@
 'use client'
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Zap, Calendar, Camera, BarChart2, HelpCircle, Wrench } from 'lucide-react'
+import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Zap, Calendar, Camera, BarChart2, HelpCircle, Wrench, Bug } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -93,7 +93,6 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-
         <Card className="p-4">
           <button
             onClick={() => router.push('/settings/garmin-import')}
@@ -148,8 +147,6 @@ export default function SettingsPage() {
           <Suspense fallback={<Card className="p-4 h-24 animate-pulse" />}>
             <StravaSection />
           </Suspense>
-
-
         </div>
 
         <div>
@@ -157,9 +154,14 @@ export default function SettingsPage() {
           <Card>
             <Row icon={HelpCircle} label="Hoe werkt CoachOS" onClick={() => router.push('/settings/hoe-werkt-het')} />
             <div className="h-px bg-coach-border mx-4" />
-            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v5.4.0</span>} />
+            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v1.4.6</span>} />
           </Card>
         </div>
+
+        {/* Debug */}
+        <Card>
+          <Row icon={Bug} label="Debug diagnostiek" onClick={() => router.push('/debug')} />
+        </Card>
 
         <button onClick={signOut} className="flex items-center gap-3 px-4 py-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
           <LogOut size={18} />
