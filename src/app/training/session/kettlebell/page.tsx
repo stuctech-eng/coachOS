@@ -143,7 +143,6 @@ function KettlebellInner() {
   const [startTijd, setStartTijd] = useState<Date | null>(null)
   const [aangepast, setAangepast] = useState(false)
 
-  // Rating voor afsluiting
   const [rating, setRating] = useState<number | null>(null)
   const [perceivedEffort, setPerceivedEffort] = useState<number | null>(null)
   const [fatigueAfter, setFatigueAfter] = useState<number | null>(null)
@@ -151,7 +150,6 @@ function KettlebellInner() {
   const [notes, setNotes] = useState<string>('')
   const [opgeslagen, setOpgeslagen] = useState(false)
 
-  // Laad bestaande sessie of genereer nieuwe
   useEffect(() => {
     if (scherm === 'laden' && sessionIdParam) {
       fetch('/api/training/session', { credentials: 'include' })
@@ -317,7 +315,6 @@ function KettlebellInner() {
             ))}
           </div>
 
-          {/* Warming-up */}
           <SectieBlok titel="Warming-up" oefeningen={session.warmup} fase="warmup" />
           <SectieBlok titel="Training" oefeningen={session.blocks} fase="blocks" />
           <SectieBlok titel="Cool-down" oefeningen={session.cooldown} fase="cooldown" />
@@ -339,7 +336,6 @@ function KettlebellInner() {
     const isDuration = !!huidige.oefening.duration
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
-        {/* Progress bar */}
         <div className="h-1 bg-white/10">
           <div className="h-full bg-primary-500 transition-all duration-500" style={{ width: `${voortgang}%` }} />
         </div>
@@ -352,7 +348,6 @@ function KettlebellInner() {
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
-          {/* Oefening naam */}
           <div className="text-center">
             <h2 className="text-4xl font-bold text-white tracking-tight">{huidige.oefening.exercise}</h2>
             {huidige.totaalSets > 1 && (
@@ -362,7 +357,6 @@ function KettlebellInner() {
             )}
           </div>
 
-          {/* Reps of timer */}
           {isDuration ? (
             <Timer seconden={huidige.oefening.duration!} onKlaar={volgende} />
           ) : (
@@ -372,13 +366,11 @@ function KettlebellInner() {
             </div>
           )}
 
-          {/* Coaching cue */}
           <div className="bg-white/5 rounded-xl px-5 py-3 text-center max-w-xs">
             <p className="text-sm text-slate-300 leading-relaxed">{huidige.oefening.coaching_cue}</p>
           </div>
         </div>
 
-        {/* Volgende knop */}
         <div className="px-4 pb-10 pt-4">
           <button
             onClick={volgende}
@@ -449,7 +441,6 @@ function KettlebellInner() {
           </div>
         </div>
 
-        {/* Rating */}
         <div className="w-full max-w-xs">
           <p className="text-sm text-slate-400 text-center mb-3">Hoe voelde de training?</p>
           <div className="flex justify-center gap-2">
@@ -475,7 +466,6 @@ function KettlebellInner() {
           )}
         </div>
 
-        {/* Opmerkingen */}
         <div className="w-full max-w-xs">
           <p className="text-sm text-slate-400 mb-2">Opmerkingen (optioneel)</p>
           <textarea
