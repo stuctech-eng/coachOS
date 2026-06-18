@@ -11,6 +11,7 @@ interface LogItem {
 export default function DebugPage() {
   const [logs, setLogs] = useState<LogItem[]>([])
   const [bezig, setBezig] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const log = (tekst: string, status: LogItem['status'] = 'info') => {
     setLogs(prev => [...prev, { tekst: `${new Date().toLocaleTimeString('nl-NL')} ${tekst}`, status }])
@@ -220,10 +221,26 @@ export default function DebugPage() {
         </div>
 
         {logs.length > 0 && (
-          <div className="flex gap-3 text-xs text-slate-500">
-            <span>✅ {logs.filter(l => l.status === 'ok').length} ok</span>
-            <span>❌ {logs.filter(l => l.status === 'fout').length} fouten</span>
-            <span>⚠️ {logs.filter(l => l.status === 'warn').length} waarschuwingen</span>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-3 text-xs text-slate-500">
+              <span>✅ {logs.filter(l => l.status === 'ok').length} ok</span>
+              <span>❌ {logs.filter(l => l.status === 'fout').length} fouten</span>
+              <span>⚠️ {logs.filter(l => l.status === 'warn').length} waarschuwingen</span>
+            </div>
+            <button
+              onClick={() => {
+                const tekst = logs.map(l => {
+                  const icon = l.status === 'ok' ? '✅' : l.status === 'fout' ? '❌' : l.status === 'warn' ? '⚠️' : '  '
+                  return `${icon} ${l.tekst}`
+                }).join('\n')
+                navigator.clipboard.writeText(tekst).catch(() => {})
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 active:bg-slate-700"
+            >
+              {copied ? '✓ Gekopieerd' : 'Kopieer log'}
+            </button>
           </div>
         )}
 
