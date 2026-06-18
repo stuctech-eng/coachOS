@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.4.8
+- Versie: 1.5.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -27,38 +27,76 @@
 - Trainer voegt NIETS toe op eigen initiatief
 - Coach kan alle trainingen geven: kettlebell, rowing, running, cycling, strength, bodyweight
 
+## Guardian Mode — Altijd actief
+Analyse gaat altijd vóór implementatie.
+
+NOOIT:
+- gokken of aannames doen
+- direct code schrijven zonder analyse
+- symptomen fixen zonder root cause
+- bestaande functionaliteit breken
+
+ALTIJD:
+- eerst begrijpen
+- root cause + dependency + impact analyse
+- kleinste veilige wijziging
+- geen duplicatie
+
+Bij ontbrekende context: STOP + 1 gerichte vraag.
+
+## Command System
+Commands zijn leidend boven alles.
+
+- README → volledige README.md maken
+- FIX → oorzaak + oplossing, wachten op akkoord
+- NEXT → volgende stap + plan
+- STATUS → wat werkt / ontbreekt / risico / volgende stap
+- DEBUG → debug pagina aanmaken
+- VERSION → versie + changelog
+
 ## Coach → Trainer communicatie
 Coach schrijft `trainer_instructies` in zijn JSON response.
 Trainer leest dit als ⚠️ DIRECTE INSTRUCTIE bovenaan zijn prompt.
-Kolom `trainer_instructies` (text) toegevoegd aan coach_recommendations tabel:
+
+Supabase migratie (eenmalig uitgevoerd):
 ```sql
 ALTER TABLE coach_recommendations
 ADD COLUMN IF NOT EXISTS trainer_instructies text;
 ```
 
+## Architectuur
+Browser (client-side):
+- Auth via browserClient (publishable key)
+- UI state via Zustand
+- Data via fetch('/api/...')
+- Geen directe Supabase data calls
+
+API Routes (server-side):
+- Auth check via createServerClient + cookies
+- Data via createAdminClient (secret key)
+- AI calls rechtstreeks naar api.anthropic.com/v1/messages
+- NOOIT via /api/ai proxy (geeft 500 errors)
+- Coach = Sonnet 4.6
+- Training/action-plan = Haiku 4.5
+
 ## Debug pagina
 Bereikbaar via: Instellingen → Debug diagnostiek → /debug
 
 Checks:
-1. Environment variables (Supabase URL, Key, App URL)
-2. Supabase auth sessie actief?
-3. Database tabellen bereikbaar? (profiles, checkins, garmin, coach)
-4. API routes werken? (/api/checkin, /api/status)
-5. Anthropic API bereikbaar? (Haiku mini call)
-6. PWA standalone modus?
-7. Vandaag data (check-in, Garmin, coach advies, trainer_instructies)
+1. Environment variables
+2. Supabase auth sessie
+3. Database tabellen
+4. API routes
+5. Anthropic API
+6. PWA standalone modus
+7. Vandaag data (check-in, Garmin, coach advies)
 
-Kopieerknop: kopieert volledige log naar clipboard — plak direct in chat voor hulp.
-
-Veelvoorkomende fouten:
-- App URL ONTBREEKT → zet NEXT_PUBLIC_APP_URL in Vercel
-- Anthropic API FOUT → nieuwe key aanmaken op console.anthropic.com
-- trainer_instructies kolom ontbreekt → SQL: ALTER TABLE coach_recommendations ADD COLUMN IF NOT EXISTS trainer_instructies text;
+Kopieerknop: kopieert volledige log → plak in chat voor hulp.
 
 ## Workflow: Claude → iPhone → Working Copy → GitHub → Vercel
 
 ### Hoe Claude bestanden aanlevert:
-1. Claude bewerkt bestanden in /home/claude/update/ met exacte projectstructuur
+1. Bestanden in /home/claude/update/ met exacte projectstructuur
 2. Zip zonder tussenmap (direct src/... en README.md)
 3. Zip in /mnt/user-data/outputs/coachOS-vX.X.X.zip
 4. present_files om zip zichtbaar te maken
@@ -76,6 +114,7 @@ Veelvoorkomende fouten:
 - Altijd README updaten met versienummer
 - Directe Anthropic API calls — NOOIT via /api/ai proxy
 - Coach bepaalt alles — Trainer voegt niets toe
+- Guardian Mode altijd actief
 
 ## Bestandsstructuur
 src/
@@ -85,23 +124,53 @@ src/
       action-plan/route.ts           klaar - Haiku
       checkin/route.ts               klaar
       coach/route.ts                 klaar - Sonnet + trainer_instructies
+      coach-calls/route.ts           klaar
+      coach-calls/rate/route.ts      klaar
       memory/route.ts                klaar
       profile/route.ts               klaar
+      profile/update/route.ts        klaar
+      status/route.ts                klaar
       training/
-        today/route.ts               klaar - Haiku, strikt recovery_modules formaat
+        today/route.ts               klaar - Haiku + coach sync
+        session/route.ts             klaar
+        complete/route.ts            klaar
       strava/
         auth/route.ts                klaar
         callback/route.ts            klaar
         sync/route.ts                klaar
+        webhook/route.ts             klaar
+      health/
+        import/route.ts              klaar
+        garmin-vision/route.ts       klaar
+        shortcut/route.ts            klaar
+      injuries/route.ts              klaar
+      goals/route.ts                 klaar
+      journal/route.ts               klaar
+      life-events/route.ts           klaar
+      weekly/route.ts                klaar
     debug/page.tsx                   klaar - diagnostiek + kopieerknop
     login/page.tsx                   klaar
     register/page.tsx                klaar
     onboarding/page.tsx              klaar
     home/page.tsx                    klaar
     checkin/page.tsx                 klaar
+    chat/page.tsx                    klaar
+    coach-call/page.tsx              klaar
+    dagboek/page.tsx                 klaar
+    goals/page.tsx                   klaar
+    injuries/page.tsx                klaar
     insights/page.tsx                klaar
-    training/page.tsx                klaar - skeleton loading + filter modules
-    settings/page.tsx                klaar - debug link onderaan
+    life-events/page.tsx             klaar
+    progressie/page.tsx              klaar
+    training/page.tsx                klaar
+    training/kettlebell/page.tsx     klaar
+    training/session/[module]/       klaar
+    training/recovery/               klaar
+    weekly/page.tsx                  klaar
+    settings/page.tsx                klaar
+    settings/equipment/page.tsx      klaar
+    settings/garmin-import/page.tsx  klaar
+    settings/hoe-werkt-het/page.tsx  klaar
     layout.tsx                       klaar
     page.tsx                         klaar
 
@@ -126,19 +195,27 @@ src/
 - journal_entries
 - training_results
 
-## Huidige staat
-- Login/register werkt
-- Onboarding werkt
-- Check-in werkt
-- Home scherm werkt + refresh
-- Coach advies werkt (Sonnet)
-- Dagplan werkt (Haiku)
-- Training schema werkt (Haiku)
-- Coach memory werkt
-- Inzichten pagina werkt
-- Strava OAuth + sync werkt
-- Coach en Training gesynchroniseerd via trainer_instructies
-- Skeleton loading tijdens genereren
+## Huidige staat — ALLES WERKT
+- Login/register
+- Onboarding
+- Check-in
+- Home scherm + refresh
+- Coach advies (Sonnet)
+- Dagplan (Haiku)
+- Training schema (Haiku) + coach sync
+- Coach memory
+- Coach chat
+- Coach calls (Strava activiteiten evaluatie)
+- Inzichten pagina
+- Progressie pagina
+- Weekoverzicht + coach weekanalyse
+- Dagboek
+- Doelen
+- Blessures
+- Levensgebeurtenissen
+- Strava OAuth + activiteiten sync
+- Garmin import via screenshot
+- PWA icons
 - Debug pagina met kopieerknop
 
 ## Strava Setup
@@ -152,7 +229,7 @@ src/
 - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 - SUPABASE_SECRET_KEY
 - ANTHROPIC_API_KEY
-- NEXT_PUBLIC_APP_URL=https://coach-os-tau.vercel.app
+- NEXT_PUBLIC_APP_URL=https://coach-os-tau.vercel.app (optioneel)
 - STRAVA_CLIENT_ID=254388
 - STRAVA_CLIENT_SECRET=9b4822ef38ccd541a9bbc86730f965a8f5149208
 
@@ -160,19 +237,6 @@ src/
 - Site URL: https://coach-os-tau.vercel.app
 - Redirect URLs: https://coach-os-tau.vercel.app/**
 - Email bevestiging: AAN
-
-## Bekende issues
-- Activiteiten pagina nog niet gebouwd
-- PWA icons ontbreken
-- Apple Health nog niet geintegreerd
-- NEXT_PUBLIC_APP_URL niet gezet (waarschuwing in debug)
-
-## Volgende stappen
-1. Apple Health export verwerken
-2. Activiteiten pagina bouwen
-3. Garmin API aanvraag indienen
-4. Weekly review
-5. NEXT_PUBLIC_APP_URL toevoegen in Vercel
 
 ## Versiehistorie
 - v1.0.0: Fase 1 eerste versie
@@ -188,8 +252,10 @@ src/
 - v1.4.4: Coach geeft trainer_instructies aan Trainer
 - v1.4.5: Strikt recovery_modules formaat + filter ongeldige modules
 - v1.4.6: Debug diagnostiek pagina
-- v1.4.7: Debug link in Instellingen + settings page update
-- v1.4.8: Debug kopieerknop + volledige README update
+- v1.4.7: Debug link in Instellingen
+- v1.4.8: Debug kopieerknop
+- v1.4.9: README bijgewerkt
+- v1.5.0: Alles werkt — Guardian Mode + Command System in README
 
 ## Nieuwe chat starten
 Lees mijn README op
