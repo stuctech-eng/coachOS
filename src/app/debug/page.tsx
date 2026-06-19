@@ -12,6 +12,7 @@ export default function DebugPage() {
   const [logs, setLogs] = useState<LogItem[]>([])
   const [bezig, setBezig] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [wiped, setWiped] = useState(false)
 
   const log = (tekst: string, status: LogItem['status'] = 'info') => {
     setLogs(prev => [...prev, { tekst: `${new Date().toLocaleTimeString('nl-NL')} ${tekst}`, status }])
@@ -168,6 +169,37 @@ export default function DebugPage() {
         log(`Trainer instructies: ${coachVandaag.trainer_instructies.slice(0, 60)}...`, 'info')
       }
 
+      // Training sessie localStorage check — bron van client-side crashes
+      log('── TRAINING SESSIE (localStorage) ──', 'info')
+      try {
+        const keys = [
+          'coachos_session', 'coachos_training_session',
+          'training_instructie_data', 'training_instructie_datum',
+          'dagplan_data', 'dagplan_datum',
+        ]
+        let gevondenIets = false
+        for (const key of keys) {
+          const raw = window.localStorage.getItem(key)
+          if (raw) {
+            gevondenIets = true
+            try {
+              const parsed = JSON.parse(raw)
+              const keys2 = typeof parsed === 'object' && parsed !== null ? Object.keys(parsed).join(', ') : typeof parsed
+              log(`${key}: aanwezig (${raw.length} chars) — velden: ${keys2}`, 'info')
+            } catch {
+              log(`${key}: aanwezig maar GEEN geldige JSON (${raw.slice(0, 40)}...)`, 'fout')
+            }
+          }
+        }
+        if (!gevondenIets) {
+          log('Geen training sessie data in localStorage — schoon', 'ok')
+        } else {
+          log('Tip: bij rare crashes in training → wis bovenstaande keys hieronder', 'warn')
+        }
+      } catch (e) {
+        log(`localStorage check FOUT: ${(e as Error).message}`, 'fout')
+      }
+
       log('── KLAAR ──', 'info')
 
     } catch (e) {
@@ -243,6 +275,25 @@ export default function DebugPage() {
             </button>
           </div>
         )}
+
+        {/* Wis training sessie — fix voor client-side crashes in training */}
+        <button
+          onClick={() => {
+            try {
+              const keys = [
+                'coachos_session', 'coachos_training_session',
+                'training_instructie_data', 'training_instructie_datum',
+                'dagplan_data', 'dagplan_datum',
+              ]
+              keys.forEach(k => window.localStorage.removeItem(k))
+              setWiped(true)
+              setTimeout(() => setWiped(false), 2500)
+            } catch { /* */ }
+          }}
+          className="w-full py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-semibold active:bg-red-500/20"
+        >
+          {wiped ? '✓ Training sessie gewist' : 'Wis training sessie (fix crash)'}
+        </button>
 
       </div>
     </AppShell>
