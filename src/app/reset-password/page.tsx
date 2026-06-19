@@ -4,6 +4,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { browserClient } from '@/lib/supabase'
 import { Button, Input } from '@/components/ui'
 
+function isStandalonePwa(): boolean {
+  if (typeof window === 'undefined') return false
+  const iosStandalone = (window.navigator as { standalone?: boolean }).standalone === true
+  const displayModeStandalone = window.matchMedia?.('(display-mode: standalone)').matches
+  return iosStandalone || !!displayModeStandalone
+}
+
 function ResetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -15,61 +22,51 @@ function ResetPasswordContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [bericht, setBericht] = useState('')
-  const [debugInfo, setDebugInfo] = useState<string[]>([])
-
-  const addDebug = (msg: string) => setDebugInfo(prev => [...prev, msg])
+  const [toonPwaUitleg, setToonPwaUitleg] = useState(false)
 
   useEffect(() => {
     const checkRecovery = async () => {
       const hash = window.location.hash
       const code = searchParams.get('code')
 
-      addDebug(`URL: ${window.location.href.slice(0, 80)}...`)
-      addDebug(`Hash aanwezig: ${!!hash}, bevat type=recovery: ${hash.includes('type=recovery')}`)
-      addDebug(`Code param: ${code ? code.slice(0, 8) + '...' : 'GEEN'}`)
-
-      // 1. Hash-based flow (oudere Supabase versies)
       if (hash && hash.includes('type=recovery')) {
-        addDebug('→ Probeer hash-based recovery flow')
         const { data: { subscription } } = browserClient.auth.onAuthStateChange((event, session) => {
-          addDebug(`Auth event: ${event}, sessie: ${!!session}`)
           if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
             setFase('instellen')
             subscription.unsubscribe()
           }
         })
-        // Timeout: als er na 3s nog niks gebeurd is, val terug op aanvragen
         setTimeout(() => {
           setFase(f => f === 'checking' ? 'aanvragen' : f)
         }, 3000)
         return () => subscription.unsubscribe()
       }
 
-      // 2. PKCE code flow (huidige Supabase default)
       if (code) {
-        addDebug('→ Probeer PKCE code exchange')
         const { data, error } = await browserClient.auth.exchangeCodeForSession(code)
         if (error) {
-          addDebug(`❌ exchangeCodeForSession FOUT: ${error.message}`)
-          setError(`Reset-link kon niet worden verwerkt: ${error.message}. Vraag een nieuwe link aan.`)
+          // PKCE verifier ontbreekt typisch wanneer de link buiten Safari is geopend
+          // (bv. in de Mail-app's eigen browser, of vanuit de PWA-context)
+          const isPkceIssue = error.message.toLowerCase().includes('code verifier')
+          if (isPkceIssue) {
+            setToonPwaUitleg(true)
+            setError('Deze link kan niet in deze omgeving worden geopend.')
+          } else {
+            setError(`Reset-link kon niet worden verwerkt: ${error.message}. Vraag een nieuwe link aan.`)
+          }
           setFase('aanvragen')
           return
         }
-        addDebug(`✓ Code exchange gelukt, sessie: ${!!data.session}`)
         if (data.session) {
           setFase('instellen')
         } else {
-          addDebug('❌ Geen sessie na succesvolle exchange')
           setError('Geen sessie ontvangen. Vraag een nieuwe reset-link aan.')
           setFase('aanvragen')
         }
         return
       }
 
-      // 3. Check bestaande sessie (al ingelogd via andere weg)
-      addDebug('→ Geen hash/code, check bestaande sessie')
       const { data: { session } } = await browserClient.auth.getSession()
-      addDebug(`Bestaande sessie: ${!!session}`)
       if (session) {
         setFase('instellen')
       } else {
@@ -84,12 +81,13 @@ function ResetPasswordContent() {
     if (!email) return
     setLoading(true)
     setError('')
+    setToonPwaUitleg(false)
     try {
       const { error } = await browserClient.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       })
       if (error) throw error
-      setBericht('Reset link verstuurd. Controleer je mail en open de link in dezelfde app/browser.')
+      setBericht('Reset link verstuurd. Controleer je mail.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Versturen mislukt')
     } finally {
@@ -157,6 +155,24 @@ function ResetPasswordContent() {
             />
             {error && <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-4 py-3">{error}</p>}
             {bericht && <p className="text-sm text-green-400 bg-green-500/10 rounded-xl px-4 py-3">{bericht}</p>}
+
+            {/* PWA-uitleg — toont alleen als de PKCE-fout is opgetreden, of altijd in standalone modus als preventieve tip */}
+            {(toonPwaUitleg || isStandalonePwa()) && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+                <p className="text-sm font-semibold text-amber-400 mb-2">⚠️ Belangrijk voor de app</p>
+                <p className="text-xs text-amber-200/90 leading-relaxed mb-2">
+                  De reset-link werkt niet als je hem direct opent vanuit de Mail-app. Volg deze stappen:
+                </p>
+                <ol className="text-xs text-amber-200/90 leading-relaxed list-decimal list-inside space-y-1">
+                  <li>Open de e-mail in Mail</li>
+                  <li>Houd de link lang ingedrukt</li>
+                  <li>Kies <strong>&quot;Kopieer link&quot;</strong></li>
+                  <li>Open <strong>Safari</strong> (niet de CoachOS app)</li>
+                  <li>Plak de link in de adresbalk en open hem</li>
+                </ol>
+              </div>
+            )}
+
             <Button onClick={aanvragen} loading={loading} fullWidth size="lg" className="mt-2">
               Reset link versturen
             </Button>
@@ -166,16 +182,6 @@ function ResetPasswordContent() {
             >
               Terug naar inloggen
             </button>
-
-            {/* Debug info — alleen zichtbaar als er een code/hash poging was */}
-            {debugInfo.length > 0 && (
-              <div className="mt-4 bg-slate-900 rounded-xl p-3">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Diagnostiek</p>
-                {debugInfo.map((d, i) => (
-                  <p key={i} className="text-[10px] text-slate-500 font-mono mb-1 break-all">{d}</p>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
