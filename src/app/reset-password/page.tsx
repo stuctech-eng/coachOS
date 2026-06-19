@@ -8,41 +8,76 @@ function ResetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [fase, setFase] = useState<'aanvragen' | 'instellen' | 'klaar'>('aanvragen')
+  const [fase, setFase] = useState<'aanvragen' | 'instellen' | 'klaar' | 'checking'>('checking')
   const [email, setEmail] = useState('')
   const [wachtwoord, setWachtwoord] = useState('')
   const [bevestig, setBevestig] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [bericht, setBericht] = useState('')
+  const [debugInfo, setDebugInfo] = useState<string[]>([])
+
+  const addDebug = (msg: string) => setDebugInfo(prev => [...prev, msg])
 
   useEffect(() => {
-    // Supabase stuurt token via hash fragment: #access_token=...&type=recovery
-    const hash = window.location.hash
-    if (hash && hash.includes('type=recovery')) {
-      // Supabase verwerkt de hash automatisch via onAuthStateChange
-      const { data: { subscription } } = browserClient.auth.onAuthStateChange((event, session) => {
-        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-          setFase('instellen')
-          subscription.unsubscribe()
+    const checkRecovery = async () => {
+      const hash = window.location.hash
+      const code = searchParams.get('code')
+
+      addDebug(`URL: ${window.location.href.slice(0, 80)}...`)
+      addDebug(`Hash aanwezig: ${!!hash}, bevat type=recovery: ${hash.includes('type=recovery')}`)
+      addDebug(`Code param: ${code ? code.slice(0, 8) + '...' : 'GEEN'}`)
+
+      // 1. Hash-based flow (oudere Supabase versies)
+      if (hash && hash.includes('type=recovery')) {
+        addDebug('→ Probeer hash-based recovery flow')
+        const { data: { subscription } } = browserClient.auth.onAuthStateChange((event, session) => {
+          addDebug(`Auth event: ${event}, sessie: ${!!session}`)
+          if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+            setFase('instellen')
+            subscription.unsubscribe()
+          }
+        })
+        // Timeout: als er na 3s nog niks gebeurd is, val terug op aanvragen
+        setTimeout(() => {
+          setFase(f => f === 'checking' ? 'aanvragen' : f)
+        }, 3000)
+        return () => subscription.unsubscribe()
+      }
+
+      // 2. PKCE code flow (huidige Supabase default)
+      if (code) {
+        addDebug('→ Probeer PKCE code exchange')
+        const { data, error } = await browserClient.auth.exchangeCodeForSession(code)
+        if (error) {
+          addDebug(`❌ exchangeCodeForSession FOUT: ${error.message}`)
+          setError(`Reset-link kon niet worden verwerkt: ${error.message}. Vraag een nieuwe link aan.`)
+          setFase('aanvragen')
+          return
         }
-      })
-      return () => subscription.unsubscribe()
+        addDebug(`✓ Code exchange gelukt, sessie: ${!!data.session}`)
+        if (data.session) {
+          setFase('instellen')
+        } else {
+          addDebug('❌ Geen sessie na succesvolle exchange')
+          setError('Geen sessie ontvangen. Vraag een nieuwe reset-link aan.')
+          setFase('aanvragen')
+        }
+        return
+      }
+
+      // 3. Check bestaande sessie (al ingelogd via andere weg)
+      addDebug('→ Geen hash/code, check bestaande sessie')
+      const { data: { session } } = await browserClient.auth.getSession()
+      addDebug(`Bestaande sessie: ${!!session}`)
+      if (session) {
+        setFase('instellen')
+      } else {
+        setFase('aanvragen')
+      }
     }
 
-    // Code via query param (PKCE flow)
-    const code = searchParams.get('code')
-    if (code) {
-      browserClient.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (!error) setFase('instellen')
-      })
-      return
-    }
-
-    // Check bestaande sessie
-    browserClient.auth.getSession().then(({ data: { session } }) => {
-      if (session) setFase('instellen')
-    })
+    checkRecovery()
   }, [searchParams])
 
   async function aanvragen() {
@@ -54,7 +89,7 @@ function ResetPasswordContent() {
         redirectTo: `${window.location.origin}/reset-password`,
       })
       if (error) throw error
-      setBericht('Reset link verstuurd. Controleer je mail.')
+      setBericht('Reset link verstuurd. Controleer je mail en open de link in dezelfde app/browser.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Versturen mislukt')
     } finally {
@@ -86,17 +121,24 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-coach-dark safe-top">
+    <div className="h-screen flex flex-col bg-coach-dark safe-top overflow-y-auto">
       <div className="flex-1 flex flex-col justify-center px-6 py-12">
 
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-white tracking-tight">CoachOS</h1>
           <p className="text-slate-400 mt-1 text-sm">
+            {fase === 'checking' && 'Bezig met controleren...'}
             {fase === 'aanvragen' && 'Wachtwoord vergeten'}
             {fase === 'instellen' && 'Nieuw wachtwoord instellen'}
             {fase === 'klaar' && 'Wachtwoord gewijzigd'}
           </p>
         </div>
+
+        {fase === 'checking' && (
+          <div className="flex justify-center py-8">
+            <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
 
         {/* Aanvragen */}
         {fase === 'aanvragen' && (
@@ -124,6 +166,16 @@ function ResetPasswordContent() {
             >
               Terug naar inloggen
             </button>
+
+            {/* Debug info — alleen zichtbaar als er een code/hash poging was */}
+            {debugInfo.length > 0 && (
+              <div className="mt-4 bg-slate-900 rounded-xl p-3">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Diagnostiek</p>
+                {debugInfo.map((d, i) => (
+                  <p key={i} className="text-[10px] text-slate-500 font-mono mb-1 break-all">{d}</p>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
