@@ -9,7 +9,6 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
-    // Log naar console voor het geval er ooit wel inspector beschikbaar is
     console.error('Training session error:', error)
   }, [error])
 

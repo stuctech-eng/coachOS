@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.6.0
+- Versie: 1.7.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -19,49 +19,62 @@
 ## ⚠️ KERNPRINCIPE — NOOIT VERGETEN
 **Coach bepaalt alles. Trainer pakt het over.**
 
-- Coach (Sonnet 4.6): trainen / herstel / rust + trainer_instructies
-- Trainer (Haiku 4.5): voert exact uit wat Coach zegt
-- Trainer voegt NIETS toe op eigen initiatief
+## ⚠️ KRITIEKE LES — AI-OUTPUT NOOIT VERTROUWEN ZONDER GUARD
+Op 19 juni 2026 crashte de hele training-flow omdat de Trainer AI
+`common_errors` als string teruggaf in plaats van een array, en de
+code deed direct `.map()` zonder te checken.
 
-## Oefening Bibliotheek
-Statische oefenkaarten met Gemini afbeeldingen.
+**Regel voortaan:** ELKE keer dat AI-gegenereerde data (segments,
+common_errors, recovery_modules, etc.) in de UI wordt gebruikt:
+- Nooit direct `.map()`, `.length`, of property-toegang zonder check
+- Gebruik `asDisplay()` normalisatie in training/session/[module]/page.tsx
+  als voorbeeldpatroon — elk veld wordt expliciet getypecheckt met
+  een veilige fallback
+- `getSegments()` en `getSeg()` retourneren altijd een veilige waarde,
+  nooit een crash
+- Een `error.tsx` boundary staat in elke route die AI-data rendert,
+  zodat een onverwachte crash een leesbare foutmelding toont in plaats
+  van een witte "Application error" pagina
 
-Afbeeldingen in: public/exercises/
-- kettlebell-swing.png
-- goblet-squat.png
-- kettlebell-clean.png
-- kettlebell-press.png
-- farmer-carry.png
+## Trainingsysteem (BELANGRIJK)
+**Actieve route:** `src/app/training/session/[module]/page.tsx`
+Dit is de ENIGE actieve trainingsroute — behandelt kettlebell, rowing,
+running, cycling allemaal via de dynamische `[module]` parameter.
 
-Oefening data: src/lib/exercises.ts
-Uitleg pagina: src/app/oefening/[id]/page.tsx
+**Niet meer gebruiken:** `src/app/training/session/kettlebell/page.tsx`
+bestond als losse, simpelere route en veroorzaakte een routing-conflict
+(Next.js geeft specifieke routes voorrang boven dynamische routes).
+Deze map is verwijderd — NOOIT opnieuw aanmaken naast `[module]`.
 
-Flow:
-1. Kettlebell sessie overzicht → tik oefening → uitlegpagina
-2. Training start → uitleg vóór elke oefening → Ready → training
-3. Na rust → uitleg volgende oefening → Ready → training
-
-## Guardian Mode
-Analyse vóór implementatie. Bij onzekerheid STOP + 1 vraag.
-
-## Command System
-- README → volledige README
-- FIX → oorzaak + oplossing, wachten op akkoord
-- NEXT → volgende stap + plan
-- STATUS → wat werkt / ontbreekt / risico
-- DEBUG → debug pagina aanmaken
+**Features in [module]/page.tsx:**
+- Schema overzicht → uitleg eerste oefening → automatische workout flow
+- workout_phase: active → rest → last_rest (toont uitleg volgende oefening
+  met aftellende rust timer) → volgende oefening start automatisch
+- Tempo systeem (reps → seconden, slow/normal/fast, opslag in localStorage)
+- Pause overlay (stopt timer + oefening)
+- Back/Next/Volgend knoppen — elk met eigen reset-gedrag:
+  - Back: vorige oefening, timer reset, naar uitleg
+  - Next: skip huidige stap (rust/set/oefening), timer reset, auto blijft aan
+  - Volgend: naar volgende oefening, timer reset, naar uitleg
+- Evaluatie layer met module-specifieke scores (rowing/running/cycling)
+- Sessie hervatten via localStorage (SESSION_STORAGE_KEY)
 
 ## Coach → Trainer communicatie
-trainer_instructies kolom in coach_recommendations:
-```sql
-ALTER TABLE coach_recommendations
-ADD COLUMN IF NOT EXISTS trainer_instructies text;
-```
+Coach schrijft `trainer_instructies` in zijn JSON response.
+Trainer leest dit als ⚠️ DIRECTE INSTRUCTIE bovenaan zijn prompt.
 
 ## Architectuur
 - AI calls naar api.anthropic.com/v1/messages (NOOIT via /api/ai proxy)
 - Coach = Sonnet 4.6
 - Training/action-plan = Haiku 4.5
+
+## Debug pagina
+Bereikbaar via: Instellingen → Debug diagnostiek → /debug
+Bevat training-sessie localStorage check + wis-knop voor crash-herstel.
+
+## Guardian Mode
+Analyse vóór implementatie. Bij onzekerheid STOP + 1 vraag.
+Root cause vinden vóór fixen — nooit symptomen patchen.
 
 ## Workflow: Claude → iPhone → Working Copy → GitHub → Vercel
 1. Bestanden in /home/claude/update/ met exacte projectstructuur
@@ -75,6 +88,7 @@ Regels:
 - Altijd README updaten
 - NOOIT via /api/ai proxy
 - Coach bepaalt alles
+- AI-output altijd normaliseren vóór gebruik in UI (zie kritieke les hierboven)
 
 ## Bestandsstructuur
 src/
@@ -100,7 +114,7 @@ src/
       life-events/route.ts           klaar
       weekly/route.ts                klaar
     oefening/[id]/page.tsx           klaar - uitlegpagina met Gemini afbeelding
-    debug/page.tsx                   klaar - diagnostiek + kopieerknop
+    debug/page.tsx                   klaar - diagnostiek + training-sessie check
     home/page.tsx                    klaar
     checkin/page.tsx                 klaar
     chat/page.tsx                    klaar
@@ -112,8 +126,9 @@ src/
     life-events/page.tsx             klaar
     progressie/page.tsx              klaar
     training/page.tsx                klaar
-    training/session/kettlebell/page.tsx  klaar - uitleg voor/tijdens training
-    training/session/[module]/       klaar
+    training/session/[module]/
+      page.tsx                       klaar - VOLLEDIGE workout engine, alle guards
+      error.tsx                      klaar - crash boundary met leesbare foutmelding
     training/recovery/               klaar
     weekly/page.tsx                  klaar
     settings/page.tsx                klaar
@@ -134,14 +149,20 @@ public/
 ## Huidige staat — ALLES WERKT
 - Login/register, onboarding, check-in
 - Home + refresh, coach advies, dagplan
-- Training schema + coach sync
+- Training schema + coach sync — VOLLEDIG GEFIXT met defensieve guards
 - Coach memory, coach chat, coach calls
 - Inzichten, progressie, weekoverzicht
 - Dagboek, doelen, blessures, levensgebeurtenissen
 - Strava OAuth + sync, Garmin import
 - PWA icons, debug pagina
-- Oefening uitlegpagina met Gemini afbeeldingen (v1.6.0)
-- Uitleg vóór en tijdens kettlebell training (v1.6.0)
+- Oefening uitlegpagina met Gemini afbeeldingen
+
+## Bekende issue — wachtwoord reset / magic link
+Reset-password flow opent soms verkeerd scherm in Mail-app context
+(vraagt opnieuw om e-mail i.p.v. wachtwoord-formulier te tonen).
+Tijdelijke workaround: nieuw wachtwoord direct instellen via
+Supabase Dashboard → Authentication → Users → gebruiker → Reset password.
+Nog niet root-cause opgelost — volgende sessie oppakken.
 
 ## Strava Setup
 - Client ID: 254388
@@ -158,6 +179,10 @@ public/
 ## Versiehistorie
 - v1.0.0 t/m v1.5.0: Basis app volledig gebouwd
 - v1.6.0: Oefening bibliotheek + uitlegpagina + Gemini afbeeldingen
+- v1.6.x: Training routing conflict (kettlebell vs [module]) — opgelost
+  door kettlebell/page.tsx te verwijderen
+- v1.7.0: Root cause crash gevonden (common_errors.map op non-array) +
+  volledige defensieve guards in [module]/page.tsx + error.tsx boundary
 
 ## Nieuwe chat starten
 Lees mijn README op
