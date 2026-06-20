@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.8.1
+- Versie: 1.8.2
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -30,8 +30,12 @@
   altijd normaliseren/type-checken vóór gebruik in UI — nooit direct
   .map() of property-toegang zonder guard (zie asDisplay() patroon in
   training/session/[module]/page.tsx als voorbeeld)
-- Database writes op coach_recommendations altijd via upsert(), nooit
-  update() — er bestaat niet altijd al een rij voor vandaag
+- Database writes op coach_recommendations: gebruik update() eerst
+  (raakt alleen genoemde velden op een bestaande rij), met een insert-
+  fallback als er nog geen rij bestaat voor user_id+date+type. NOOIT
+  upsert() met een gedeeltelijke payload — dat overschrijft de hele
+  rij en zet niet-meegegeven NOT NULL velden (zoals recommendation)
+  op null, wat een database-constraint schending geeft
 - AI calls die JSON moeten teruggeven: max_tokens ruim instellen
   (niet te krap, anders wordt de JSON afgekapt en faalt het parsen)
 - Elke route die AI-data rendert heeft een error.tsx boundary

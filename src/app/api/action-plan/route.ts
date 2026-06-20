@@ -214,9 +214,6 @@ Reageer ALLEEN in dit JSON formaat:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          // Verhoogd van 400 naar 1500 — bij 400 werd de JSON output
-          // soms afgekapt midden in een zin, wat JSON.parse liet falen
-          // (zie versiehistorie/README "KRITIEKE LES" 20 juni 2026)
           max_tokens: 1500,
           system: systemPrompt,
           messages: [{ role: 'user', content: 'Maak mijn dagplan.' }],
@@ -254,24 +251,47 @@ Reageer ALLEEN in dit JSON formaat:
       return NextResponse.json({ error: 'Geen acties gegenereerd' }, { status: 500 })
     }
 
-    // UPSERT i.p.v. UPDATE — werkt ook als er nog geen coach_recommendations
-    // rij bestaat voor vandaag (bijv. bij een gloednieuw account waar de
-    // coach-route nog niet eerder is aangeroepen)
-    const { error: upsertError } = await supabase
+    // UPDATE eerst — dit raakt alleen het action_plan veld van een
+    // BESTAANDE rij (meestal al aangemaakt door /api/coach) zonder
+    // andere verplichte velden (recommendation, reasoning, actie_type)
+    // te overschrijven met null. select() erbij om te zien of er
+    // daadwerkelijk een rij geraakt is.
+    const { data: updated, error: updateError } = await supabase
       .from('coach_recommendations')
-      .upsert(
-        {
+      .update({ action_plan: acties })
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .eq('type', 'coach')
+      .select('id')
+
+    if (updateError) {
+      console.error('Action plan: Supabase update fout:', updateError)
+      return NextResponse.json({ error: 'Opslaan mislukt' }, { status: 500 })
+    }
+
+    // Geen rij geraakt = er bestond nog geen coach_recommendations rij
+    // voor vandaag (bijv. coach-route nog niet eerder gedraaid). Maak
+    // er dan zelf een aan met sensible defaults voor de verplichte
+    // velden, zodat de NOT NULL constraint op "recommendation" niet
+    // wordt geschonden.
+    if (!updated || updated.length === 0) {
+      const { error: insertError } = await supabase
+        .from('coach_recommendations')
+        .insert({
           user_id: user.id,
           date: today,
           type: 'coach',
+          recommendation: 'Bekijk je dagplan hieronder',
+          reasoning: 'Gegenereerd via dagplan — nog geen apart coach advies voor vandaag.',
+          actie_type: 'herstel',
+          advice_bullets: JSON.stringify([]),
           action_plan: acties,
-        },
-        { onConflict: 'user_id,date,type' }
-      )
+        })
 
-    if (upsertError) {
-      console.error('Action plan: Supabase upsert fout:', upsertError)
-      return NextResponse.json({ error: 'Opslaan mislukt' }, { status: 500 })
+      if (insertError) {
+        console.error('Action plan: Supabase insert fallback fout:', insertError)
+        return NextResponse.json({ error: 'Opslaan mislukt' }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ plan: acties })
