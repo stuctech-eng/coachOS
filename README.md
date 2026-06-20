@@ -2,147 +2,205 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.7.1
+- Versie: 1.8.1
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
 
 ## Stack
 - Frontend: Next.js 14.2.29 + TypeScript + PWA
-- Auth: Supabase Auth
+- Auth: Supabase Auth (e-mail/wachtwoord + Google OAuth)
 - Database: Supabase PostgreSQL
-- AI: Claude API (directe Anthropic calls)
+- AI: Claude API (directe Anthropic calls, niet via interne proxy)
 - State: Zustand
 - Styling: Tailwind CSS
 - Hosting: Vercel
 
-## ⚠️ KERNPRINCIPE — NOOIT VERGETEN
+## Kernprincipe
 **Coach bepaalt alles. Trainer pakt het over.**
+- Coach (Sonnet 4.6) bepaalt: trainen / herstel / rust, dagplan, intensiteit
+- Coach geeft expliciete instructies aan Trainer via `trainer_instructies`
+  veld in coach_recommendations
+- Trainer (Haiku 4.5) voert dit uit, voegt niets toe op eigen initiatief
 
-## ⚠️ KRITIEKE LES — AI-OUTPUT NOOIT VERTROUWEN ZONDER GUARD
-Op 19 juni 2026 crashte de hele training-flow omdat de Trainer AI
-`common_errors` als string teruggaf in plaats van een array.
-Regel: AI-data altijd normaliseren vóór gebruik in UI (zie asDisplay()
-patroon in training/session/[module]/page.tsx). Elke route die
-AI-data rendert heeft een error.tsx boundary.
+## Architectuurregels
+- AI calls altijd rechtstreeks naar api.anthropic.com/v1/messages
+  (NOOIT via de interne /api/ai proxy route — die geeft 500 errors)
+- AI-gegenereerde data (segments, common_errors, recovery_modules)
+  altijd normaliseren/type-checken vóór gebruik in UI — nooit direct
+  .map() of property-toegang zonder guard (zie asDisplay() patroon in
+  training/session/[module]/page.tsx als voorbeeld)
+- Database writes op coach_recommendations altijd via upsert(), nooit
+  update() — er bestaat niet altijd al een rij voor vandaag
+- AI calls die JSON moeten teruggeven: max_tokens ruim instellen
+  (niet te krap, anders wordt de JSON afgekapt en faalt het parsen)
+- Elke route die AI-data rendert heeft een error.tsx boundary
 
-## ⚠️ BEKENDE BEPERKING — WACHTWOORD RESET IN PWA
-Reset-links werken NIET als ze direct vanuit de Mail-app worden geopend
-op iOS — de PKCE code verifier (opgeslagen in browser storage tijdens
-het aanvragen) is niet beschikbaar in de Mail-app's eigen browser-context.
+## Werkwijze (Guardian Mode)
+Analyse gaat altijd vóór implementatie. Nooit gokken, nooit aannames,
+nooit symptomen fixen zonder root cause.
 
-**Root cause:** Standalone PWA's en de Mail-app's interne browser delen
-geen storage/cookie-context met gewone Safari. Dit is een bekend,
-gedocumenteerd iOS-patroon (zelfde categorie als Google OAuth redirect
-falen in standalone PWA's).
+Bij ontbrekende informatie: STOP, stel exact één gerichte vraag. Geen
+analyse, geen implementatie, geen alternatieven totdat het antwoord er is.
 
-**Workaround (geïmplementeerd in UI):**
-1. Open de e-mail in Mail
-2. Houd de link lang ingedrukt → "Kopieer link"
-3. Open Safari (niet de PWA)
-4. Plak de link in de adresbalk en open hem daar
-5. Stel wachtwoord in, ga terug naar de PWA om in te loggen
+Voor elke wijziging, kort en impliciet (niet elke keer expliciet
+uitschrijven, maar wel toepassen):
+- Root cause: waarom bestaat het probleem, waar ontstaat het
+- Impact: wat verandert, wat kan breken, welk risico (LOW/MEDIUM/HIGH)
+- Kleinste veilige wijziging — geen refactors zonder reden, geen
+  breaking changes zonder waarschuwing, geen duplicatie
 
-Deze instructie wordt automatisch getoond op /reset-password wanneer:
-- De PKCE-fout optreedt ("code verifier not found"), OF
-- De gebruiker de pagina opent vanuit standalone PWA-modus (preventief)
+Anti-sprawl: geen losse features zonder context, geen dubbele services
+of routes. Alles moet bestaande systemen uitbreiden of een nieuw
+coherent systeem introduceren — geen ad-hoc toevoegingen.
 
-**Structurele fix (magic-link login i.p.v. wachtwoord-reset, of eigen
-server-side token-exchange route) is bewust niet gebouwd — te grote
-wijziging voor een zelden voorkomend scenario.**
-
-## Trainingsysteem
-**Actieve route:** `src/app/training/session/[module]/page.tsx`
-ENIGE actieve trainingsroute — kettlebell, rowing, running, cycling
-via dynamische `[module]` parameter.
-**Niet meer gebruiken:** `kettlebell/page.tsx` bestaat niet meer —
-veroorzaakte routing-conflict, NOOIT opnieuw aanmaken naast `[module]`.
-
-Features: schema overzicht → uitleg → automatische workout flow
-(active → rest → last_rest met uitleg volgende oefening) → tempo
-systeem → pause overlay → back/next/volgend met reset-gedrag →
-evaluatie layer per module type.
-
-## Coach → Trainer communicatie
-Coach schrijft `trainer_instructies` in JSON response.
-Trainer leest dit als ⚠️ DIRECTE INSTRUCTIE bovenaan zijn prompt.
-
-## Architectuur
-- AI calls naar api.anthropic.com/v1/messages (NOOIT via /api/ai proxy)
-- Coach = Sonnet 4.6, Training/action-plan = Haiku 4.5
-
-## Debug pagina
-/debug — diagnostiek + training-sessie localStorage check + wis-knop.
-
-## Guardian Mode
-Analyse vóór implementatie. Bij onzekerheid STOP + 1 vraag.
-Root cause vinden vóór fixen — nooit symptomen patchen.
+## Command System
+Als de gebruiker een command geeft, is dat leidend boven alles —
+direct uitvoeren zonder extra interpretatie:
+- STATUS → wat werkt / ontbreekt / risico / volgende stap
+- NEXT → volgende stap + concreet plan
+- FIX → oorzaak + oplossing voorstellen, wachten op akkoord vóór bouwen
+- README → volledige README.md herschrijven
+- REVIEW → volledige technische doorlichting
 
 ## Workflow: Claude → iPhone → Working Copy → GitHub → Vercel
 1. Bestanden in /home/claude/update/ met exacte projectstructuur
-2. Zip zonder tussenmap
+2. Zip zonder tussenmap (direct src/... en README.md, dus NIET
+   zip/update/src/... maar zip/src/...)
 3. Zip in /mnt/user-data/outputs/coachOS-vX.X.X.zip
 4. present_files
+
+Regels:
+- Alleen gewijzigde bestanden in de zip, nooit het hele project
+- Mappenstructuur in de zip moet exact overeenkomen met de
+  projectstructuur (submappen zijn submappen, geen punten in
+  bestandsnamen — dus training/session/[module]/page.tsx, niet
+  training.session.page.tsx)
+- Geen tussenmap
+- Altijd README updaten met versienummer
+- Bestandsnaam eindigt op .zip zodat iPhone hem als zip herkent
+  (soms hernoemt iPhone dit zelf weg — gebruiker hernoemt dan
+  handmatig in Bestanden-app)
+
+Gebruiker download de zip op iPhone, pakt uit in Bestanden-app, zet
+bestanden op de juiste plek in Working Copy, pusht naar GitHub,
+Vercel deployt automatisch.
+
+## Inlogmethoden
+- Google Sign-In (primair, aanbevolen — knop bovenaan login pagina)
+- E-mail/wachtwoord (fallback)
+- Wachtwoord-reset toont automatisch een instructie in de UI wanneer
+  nodig: open de reset-link niet direct vanuit Mail, maar kopieer de
+  link en open hem in Safari (PWA/Mail-app beperking op iOS)
+- Let op: Google-login met een ander e-mailadres dan een bestaand
+  account maakt een nieuw, los account aan (geen automatische koppeling)
+
+## Trainingsysteem
+**Actieve route:** `src/app/training/session/[module]/page.tsx`
+Dit is de ENIGE trainingsroute — kettlebell, rowing, running, cycling
+lopen allemaal via de dynamische `[module]` parameter. Er bestaat geen
+aparte `kettlebell/page.tsx` meer — niet opnieuw aanmaken, dat geeft
+een routing-conflict.
+
+Flow: schema-overzicht → uitleg eerste oefening → automatische workout
+(actief → rust → laatste rust toont uitleg volgende oefening) → tempo-
+systeem (reps→seconden, slow/normal/fast) → pause overlay → back/next/
+volgend knoppen (elk met eigen reset-gedrag) → evaluatie per module.
+
+## Oefening bibliotheek
+`src/lib/exercises.ts` — 5 kettlebell oefeningen met Gemini-gegenereerde
+afbeeldingen in `public/exercises/`. Uitlegpagina op `/oefening/[id]`.
+Afbeeldingen worden gegenereerd met een vaste prompt-template (consistent
+karakter, donkere achtergrond, groene spiermarkering) — zie eerdere
+gesprekken voor de exacte prompts indien nieuwe oefeningen nodig zijn.
+
+## Debug pagina
+`/debug` — diagnostiek voor environment vars, Supabase auth, database
+tabellen, API routes, Anthropic bereikbaarheid, PWA modus, vandaag-data
+(check-in/Garmin/coach advies), en training-sessie localStorage check
+met een wis-knop voor crash-herstel. Bereikbaar ook via Instellingen.
+
+## Bekende technische grens
+Browsers staan nooit toe dat een website automatisch een foto uit de
+bibliotheek selecteert zonder gebruikersactie — Garmin screenshot
+upload vereist dus altijd een handmatige tik in de file picker.
 
 ## Bestandsstructuur
 src/
   app/
     api/
-      ai/route.ts                    klaar (proxy — NIET intern gebruiken)
-      action-plan/route.ts           klaar - Haiku
-      coach/route.ts                 klaar - Sonnet + trainer_instructies
-      training/today/route.ts        klaar - Haiku + coach sync
-      training/session/route.ts      klaar
-      training/complete/route.ts     klaar
-      strava/, health/                klaar
-      checkin/, injuries/, goals/, journal/, life-events/, weekly/  klaar
-    oefening/[id]/page.tsx           klaar - uitlegpagina + Gemini afbeelding
-    debug/page.tsx                   klaar
-    reset-password/page.tsx          klaar - PWA-instructie + PKCE diagnose
+      ai/route.ts                    proxy — niet intern gebruiken
+      action-plan/route.ts           Haiku, dagplan generatie
+      coach/route.ts                 Sonnet, dagadvies + trainer_instructies
+      coach-calls/route.ts           Strava activiteiten evaluatie
+      training/today/route.ts        Haiku, trainingsschema
+      training/session/route.ts
+      training/complete/route.ts
+      strava/                        OAuth + sync
+      health/                        Garmin import + shortcuts
+      checkin/, injuries/, goals/, journal/, life-events/, weekly/
+    auth/callback/route.ts           Google OAuth code exchange
+    oefening/[id]/page.tsx           oefening uitlegpagina
+    debug/page.tsx
+    login/page.tsx                   Google Sign-In + wachtwoord
+    reset-password/page.tsx          PWA-instructie + PKCE diagnose
     home/, checkin/, chat/, coach-call/, dagboek/, goals/, injuries/,
-    insights/, life-events/, progressie/, weekly/, settings/  klaar
-    training/page.tsx                klaar
+    insights/, life-events/, progressie/, weekly/, settings/
+    training/page.tsx                trainingsbibliotheek overzicht
     training/session/[module]/
-      page.tsx                       klaar - VOLLEDIGE workout engine, alle guards
-      error.tsx                      klaar - crash boundary
-    training/recovery/               klaar
+      page.tsx                       volledige workout engine
+      error.tsx                      crash boundary
+    training/recovery/               ademhaling/mobiliteit/wandel modules
   lib/
-    exercises.ts                     klaar - 5 kettlebell oefeningen
-    supabase.ts                      klaar - browserClient (@supabase/ssr) + adminClient
+    exercises.ts                     oefening data
+    supabase.ts                      browserClient + adminClient
 
 public/
-  exercises/                         → Gemini afbeeldingen hier plaatsen
+  exercises/                         Gemini afbeeldingen per oefening
 
 ## Database Tabellen
 profiles, user_goals, activity_templates, activities, activity_sessions,
 daily_checkins, health_metrics, daily_status, coach_memory,
-coach_recommendations (incl. trainer_instructies), coach_insights,
-knowledge_observations, ai_conversations, strava_tokens, garmin_imports,
-injuries, life_events, journal_entries, training_results
+coach_recommendations (incl. trainer_instructies, action_plan),
+coach_insights, knowledge_observations, ai_conversations, strava_tokens,
+garmin_imports, injuries, life_events, journal_entries, training_results
 
-## Huidige staat — ALLES WERKT
-- Login/register, onboarding, check-in, home + refresh
-- Coach advies, dagplan, training schema + coach sync — volledig gefixt
-- Coach memory, chat, coach calls
-- Inzichten, progressie, weekoverzicht, dagboek, doelen, blessures
-- Strava OAuth + sync, Garmin import
-- PWA icons, debug pagina
-- Oefening uitlegpagina met Gemini afbeeldingen
-- Reset-password met zichtbare PWA-instructie (geen silent failures meer)
+## Huidige staat — alles werkt
+Login/register, Google Sign-In, onboarding, check-in, home + refresh,
+coach advies, dagplan, training (alle modules + volledige workout
+engine), coach memory/chat/calls, inzichten, progressie, weekoverzicht,
+dagboek, doelen, blessures, levensgebeurtenissen, Strava OAuth + sync,
+Garmin import, PWA icons, debug pagina, oefening bibliotheek.
 
 ## Strava Setup
-- Client ID: 254388, Callback: coach-os-tau.vercel.app
+- Client ID: 254388
+- Callback domain: coach-os-tau.vercel.app
+- Scope: read, activity:read_all
+
+## Google OAuth Setup
+- Google Cloud project: CoachOS (project ID coachos-500007)
+- Client ID: 118053072224-2l82evoc3n05srj7thc6ieb60jb9s96s.apps.googleusercontent.com
+- Redirect URI: https://fabtmkrzqrrwbvgaugjm.supabase.co/auth/v1/callback
+- Ingeschakeld in Supabase → Authentication → Sign In/Providers → Google
 
 ## Environment Variables (Vercel)
-NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-SUPABASE_SECRET_KEY, ANTHROPIC_API_KEY,
-STRAVA_CLIENT_ID=254388, STRAVA_CLIENT_SECRET=9b4822ef38ccd541a9bbc86730f965a8f5149208
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+- SUPABASE_SECRET_KEY
+- ANTHROPIC_API_KEY
+- STRAVA_CLIENT_ID=254388
+- STRAVA_CLIENT_SECRET=9b4822ef38ccd541a9bbc86730f965a8f5149208
 
-## Versiehistorie
-- v1.0.0 t/m v1.5.0: Basis app volledig gebouwd
-- v1.6.0: Oefening bibliotheek + Gemini afbeeldingen
-- v1.7.0: Training crash root cause gefixt (common_errors.map + alle guards)
-- v1.7.1: Reset-password PWA-beperking gedocumenteerd + zichtbare instructie
+## Supabase Instellingen
+- Site URL: https://coach-os-tau.vercel.app
+- Redirect URLs: https://coach-os-tau.vercel.app/**,
+  https://coach-os-tau.vercel.app/auth/callback
+- Email bevestiging: AAN
+
+## Volgende stappen / openstaande wensen
+- Oefening bibliotheek uitbreiden met meer modules (rowing, running,
+  cycling oefenkaarten — alleen kettlebell heeft nu Gemini afbeeldingen)
+- Eventueel: iOS Shortcut voor snellere Garmin screenshot import
 
 ## Nieuwe chat starten
 Lees mijn README op

@@ -193,6 +193,7 @@ INSTRUCTIES:
 - Coach score onder 50: focus op herstel
 - Maak 3-5 concrete acties verspreid over de dag
 - Plan NOOIT activiteiten tijdens werktijd — als iemand 06:00-15:00 werkt, plan dan alleen voor 06:00 of na 15:00
+- Houd elke actie KORT en bondig (max 1-2 zinnen) — dit is een dagplan, geen essay
 - Gebruik GEEN markdown, geen bold, geen bullets
 
 Reageer ALLEEN in dit JSON formaat:
@@ -213,7 +214,10 @@ Reageer ALLEEN in dit JSON formaat:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 400,
+          // Verhoogd van 400 naar 1500 — bij 400 werd de JSON output
+          // soms afgekapt midden in een zin, wat JSON.parse liet falen
+          // (zie versiehistorie/README "KRITIEKE LES" 20 juni 2026)
+          max_tokens: 1500,
           system: systemPrompt,
           messages: [{ role: 'user', content: 'Maak mijn dagplan.' }],
         }),
@@ -240,12 +244,13 @@ Reageer ALLEEN in dit JSON formaat:
         acties = parsed.acties || []
       }
     } catch (parseError) {
-      console.error('Action plan: JSON parse fout:', parseError, 'Raw text:', rawText.slice(0, 200))
+      console.error('Action plan: JSON parse fout:', parseError, 'Raw text:', rawText.slice(0, 500))
+      console.error('Action plan: stop_reason was:', aiData.stop_reason)
       return NextResponse.json({ error: 'Generatie mislukt' }, { status: 500 })
     }
 
     if (acties.length === 0) {
-      console.error('Action plan: geen acties in response. Raw text:', rawText.slice(0, 200))
+      console.error('Action plan: geen acties in response. Raw text:', rawText.slice(0, 500))
       return NextResponse.json({ error: 'Geen acties gegenereerd' }, { status: 500 })
     }
 
