@@ -1,13 +1,11 @@
-export const dynamic = 'force-dynamic'
-
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export async function GET(req: NextRequest) {
-  const { searchParams, origin } = new URL(req.url)
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/reset-password'
+  const next = searchParams.get('next') ?? '/'
 
   if (code) {
     const cookieStore = await cookies()
@@ -16,21 +14,23 @@ export async function GET(req: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       {
         cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: (cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) => {
-            cookiesToSet.forEach(({ name, value, options }) => {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
-            })
+            )
           },
         },
       }
     )
-
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  return NextResponse.redirect(`${origin}/reset-password`)
+  // Bij fout: terug naar login met duidelijke melding
+  return NextResponse.redirect(`${origin}/login?error=oauth_failed`)
 }
