@@ -202,20 +202,32 @@ Reageer ALLEEN in dit JSON formaat:
   ]
 }`
 
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 400,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: 'Maak mijn dagplan.' }],
-      }),
-    })
+    let aiRes: Response
+    try {
+      aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY!,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 400,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: 'Maak mijn dagplan.' }],
+        }),
+      })
+    } catch (fetchError) {
+      console.error('Action plan: Anthropic fetch netwerkfout:', fetchError)
+      return NextResponse.json({ error: 'Kon geen verbinding maken met AI service' }, { status: 500 })
+    }
+
+    if (!aiRes.ok) {
+      const errBody = await aiRes.text().catch(() => '')
+      console.error(`Action plan: Anthropic API status ${aiRes.status}:`, errBody)
+      return NextResponse.json({ error: `AI service fout (${aiRes.status})` }, { status: 500 })
+    }
 
     const aiData = await aiRes.json()
     const rawText = aiData.content?.[0]?.text || ''
@@ -227,17 +239,35 @@ Reageer ALLEEN in dit JSON formaat:
         const parsed = JSON.parse(jsonMatch[0])
         acties = parsed.acties || []
       }
-    } catch {
+    } catch (parseError) {
+      console.error('Action plan: JSON parse fout:', parseError, 'Raw text:', rawText.slice(0, 200))
       return NextResponse.json({ error: 'Generatie mislukt' }, { status: 500 })
     }
 
-    if (acties.length === 0) return NextResponse.json({ error: 'Geen acties gegenereerd' }, { status: 500 })
+    if (acties.length === 0) {
+      console.error('Action plan: geen acties in response. Raw text:', rawText.slice(0, 200))
+      return NextResponse.json({ error: 'Geen acties gegenereerd' }, { status: 500 })
+    }
 
-    await supabase
+    // UPSERT i.p.v. UPDATE — werkt ook als er nog geen coach_recommendations
+    // rij bestaat voor vandaag (bijv. bij een gloednieuw account waar de
+    // coach-route nog niet eerder is aangeroepen)
+    const { error: upsertError } = await supabase
       .from('coach_recommendations')
-      .update({ action_plan: acties })
-      .eq('user_id', user.id)
-      .eq('date', today)
+      .upsert(
+        {
+          user_id: user.id,
+          date: today,
+          type: 'coach',
+          action_plan: acties,
+        },
+        { onConflict: 'user_id,date,type' }
+      )
+
+    if (upsertError) {
+      console.error('Action plan: Supabase upsert fout:', upsertError)
+      return NextResponse.json({ error: 'Opslaan mislukt' }, { status: 500 })
+    }
 
     return NextResponse.json({ plan: acties })
   } catch (error) {
