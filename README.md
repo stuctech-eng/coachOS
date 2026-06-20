@@ -209,4 +209,4 @@ Garmin import, PWA icons, debug pagina, oefening bibliotheek.
 ## Nieuwe chat starten
 Lees mijn README op
 https://raw.githubusercontent.com/stuctech-eng/coachOS/refs/heads/main/README.md
-en help me verder met CoachOS
+en help me verder met CoachOS 
