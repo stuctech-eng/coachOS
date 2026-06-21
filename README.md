@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.8.3
+- Versie: 1.8.4
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -45,6 +45,14 @@
   `.scroll-area` class levert) kan een pagina nergens scrollen, ook
   niet bij weinig content. Nooit een eigen `min-h-screen` div +
   losse `<BottomNav />` bouwen — altijd `<AppShell>` gebruiken.
+- Coach-persoonlijkheid (toon, karakter) is gecentraliseerd in
+  `src/core/prompts/coach-personality.ts` — drie niveaus (1 Professioneel/
+  blessures-veiligheid-techniek, altijd serieus; 2 Coach/dagadvies, warm
+  en persoonlijk; 3 Vriendschappelijk/evaluaties, plagerig mag). Nieuwe
+  AI-prompts importeren `COACH_CORE_IDENTITY` + `getCoachTone(niveau)`
+  in plaats van een eigen persoonlijkheidsblok te schrijven — voorkomt
+  prompt-sprawl. CORE_SAFETY_RULE (geen humor bij blessures/veiligheid)
+  geldt altijd, ongeacht aangeroepen niveau.
 
 ## Werkwijze (Guardian Mode)
 Analyse gaat altijd vóór implementatie. Nooit gokken, nooit aannames,
@@ -157,6 +165,39 @@ hartslag (gem/max), hoogtewinst, snelheid, calorieën, watts, cadans.
 Geen route-kaart, foto's, kudos of splits — die haalt de sync niet op;
 de Strava-link is de manier om die volledige data te zien.
 
+## Coach Call evaluatie
+Bij kwalificerende Strava-activiteiten (45+ min EN sport-specifieke
+afstand: Hardlopen 5km, Fietsen 20km, Roeien 5km) maakt
+`src/app/api/coach-calls/route.ts` een `coach_calls` record aan met
+`coach_call_items` per activiteit. Detectie kijkt alleen naar vandaag/
+gisteren (Amsterdam-tijd) — activiteiten ouder dan dat triggeren geen
+nieuwe call.
+
+Op Home verschijnt een amber kaart zolang er `pending`/`partial` items
+zijn (max 24u, daarna `expired`). Evaluatiescherm op `/coach-call`.
+
+Per activiteit, los van elkaar:
+- RPE 1-10 (bestaand, trainingsbelasting)
+- Mood 1-5 (nieuw: 😞😐🙂😃🔥, hoe het voelde — apart van RPE, niet
+  vervangend, want RPE en mood meten verschillende dingen en kunnen
+  uiteenlopen, bv. RPE 8 + 🔥 = zware maar motiverende training)
+- Optionele vrije tekst
+
+Bij opslaan van één activiteit (niet pas bij het hele formulier) wordt
+direct een coach-reactie gegenereerd via `coach-calls/rate/route.ts`,
+opgeslagen in `coach_call_items.coach_response` (geen herhaalde AI-call
+bij opnieuw openen). Plagerige/Volendamse humor (Niveau 3, zie
+coach-personality.ts) is alleen toegestaan bij `mayUsePlayfulHumor()`:
+minstens 5 eerder voltooide coach calls, mood 3+, én genegeerd
+rust/herstel-advies — voorkomt dat nieuwe gebruikers meteen geplaagd
+worden.
+
+## Coach-persoonlijkheid
+`src/core/prompts/coach-personality.ts` — gedeeld fundament voor alle
+coach-prompts. `daily-coach.ts` (dagadvies, Niveau 2) en
+`coach-call-reaction.ts` (evaluatie-reactie, Niveau 3) importeren
+hieruit i.p.v. eigen persoonlijkheidstekst te dupliceren.
+
 ## Debug pagina
 `/debug` — diagnostiek voor environment vars, Supabase auth, database
 tabellen, API routes, Anthropic bereikbaarheid, PWA modus, vandaag-data
@@ -200,6 +241,11 @@ src/
     exercises.ts                     oefening data
     supabase.ts                      browserClient + adminClient
     strava-activity-processor.ts     gedeelde Strava verwerking (sync + webhook)
+  core/
+    prompts/
+      daily-coach.ts                 dagadvies prompt (Niveau 2)
+      coach-call-reaction.ts         evaluatie-reactie prompt (Niveau 3)
+      coach-personality.ts           gedeelde coach-toon, alle niveaus
 
 public/
   exercises/                         Gemini afbeeldingen per oefening
@@ -256,6 +302,13 @@ oefening bibliotheek.
 - v1.8.3: Activiteiten-pagina scroll-fix (AppShell wrapper i.p.v.
   losse div + BottomNav) + Strava deeplink per activiteit (tikbare
   kaart linkt naar strava.com/activities/{id} via notes-veld)
+- v1.8.4: Coach Evaluations — mood (1-5) naast RPE in Coach Call
+  evaluatiescherm, directe coach-reactie per activiteit (Niveau 3
+  toon), gecentraliseerde coach-persoonlijkheid in coach-personality.ts
+  (3 niveaus, hergebruikt door daily-coach.ts). DB: coach_call_items
+  kreeg mood, notes, coach_response kolommen (zie
+  supabase/migration_v1.8.4_coach_evaluations.sql — handmatig uitvoeren
+  in Supabase SQL editor, niet automatisch toegepast)
 
 ## Nieuwe chat starten
 Lees mijn README op

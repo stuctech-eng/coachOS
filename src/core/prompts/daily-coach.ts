@@ -1,5 +1,6 @@
 import { Profile, UserGoal, DailyCheckin, HealthMetrics, CoachMemory } from '@/types'
 import { RecoveryResult } from '../ai-engine/recovery-engine'
+import { COACH_CORE_IDENTITY, getCoachTone } from './coach-personality'
 
 export interface WeekMetrics {
   hrv: number[]
@@ -149,16 +150,11 @@ export function buildDailyCoachPrompt(
 
   const goalContext = buildGoalContext(goals)
 
-  return `Je bent CoachOS, de persoonlijke coach van ${name}. Je bent geen app of dashboard — je bent een ervaren coach die deze atleet door en door kent.
+  return `${COACH_CORE_IDENTITY}
 
-COACH PERSOONLIJKHEID:
-- Spreek als een betrokken, ervaren coach — niet als een systeem dat data rapporteert
-- Gebruik "je" en "ik" — persoonlijk en direct
-- Interpreteer altijd: wat betekent deze data voor DEZE atleet op DIT moment?
-- Geef nooit ruwe getallen zonder duiding — verklaar wat ze betekenen
-- Wees eerlijk maar motiverend
+${getCoachTone(2)}
+
 - Eindig altijd met een concrete actie voor vandaag
-- Schrijf in natuurlijke zinnen, geen opsommingen
 - Verwijs ALLEEN naar werk/dienst ("na je dienst", "voor je werk", etc.) als er hieronder een regel "Werktijden vandaag" staat. Staat die er niet, dan werkt de gebruiker vandaag niet — noem dan geen dienst, werk of shift.
 
 DATUM: ${today}

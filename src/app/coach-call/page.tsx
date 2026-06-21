@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
-import { Bike, Footprints, Waves, Dumbbell, ChevronLeft, Zap } from 'lucide-react'
+import { Bike, Footprints, Waves, Dumbbell, ChevronLeft, Sparkles } from 'lucide-react'
 import { cn } from '@/utils'
 
 interface CoachCallItem {
@@ -12,6 +12,9 @@ interface CoachCallItem {
   distance_m: number | null
   duration_min: number
   rating: number | null
+  mood: number | null
+  notes: string | null
+  coach_response: string | null
   status: string
 }
 
@@ -21,6 +24,14 @@ interface CoachCall {
   status: string
   coach_call_items: CoachCallItem[]
 }
+
+const MOOD_OPTIONS: { value: number; emoji: string; label: string }[] = [
+  { value: 1, emoji: '😞', label: 'Slecht' },
+  { value: 2, emoji: '😐', label: 'Matig' },
+  { value: 3, emoji: '🙂', label: 'Prima' },
+  { value: 4, emoji: '😃', label: 'Goed' },
+  { value: 5, emoji: '🔥', label: 'Geweldig' },
+]
 
 function getSportIcon(sport: string) {
   if (sport === 'Fietsen') return Bike
@@ -46,7 +57,10 @@ export default function CoachCallPage() {
   const router = useRouter()
   const [call, setCall] = useState<CoachCall | null>(null)
   const [ratings, setRatings] = useState<Record<string, number>>({})
-  const [saving, setSaving] = useState(false)
+  const [moods, setMoods] = useState<Record<string, number>>({})
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [reactions, setReactions] = useState<Record<string, string>>({})
+  const [savingItem, setSavingItem] = useState<string | null>(null)
   const [laden, setLaden] = useState(true)
 
   useEffect(() => {
@@ -55,45 +69,61 @@ export default function CoachCallPage() {
       .then(data => {
         if (data) {
           setCall(data)
-          // Pre-fill bestaande ratings
-          const existing: Record<string, number> = {}
+          const existingRatings: Record<string, number> = {}
+          const existingMoods: Record<string, number> = {}
+          const existingNotes: Record<string, string> = {}
+          const existingReactions: Record<string, string> = {}
           for (const item of data.coach_call_items || []) {
-            if (item.rating) existing[item.id] = item.rating
+            if (item.rating) existingRatings[item.id] = item.rating
+            if (item.mood) existingMoods[item.id] = item.mood
+            if (item.notes) existingNotes[item.id] = item.notes
+            if (item.coach_response) existingReactions[item.id] = item.coach_response
           }
-          setRatings(existing)
+          setRatings(existingRatings)
+          setMoods(existingMoods)
+          setNotes(existingNotes)
+          setReactions(existingReactions)
         }
         setLaden(false)
       })
       .catch(() => setLaden(false))
   }, [])
 
-  async function handleQuickFill() {
+  async function handleSaveItem(itemId: string) {
     if (!call) return
-    const filled: Record<string, number> = {}
-    for (const item of call.coach_call_items) {
-      filled[item.id] = 7
-    }
-    setRatings(filled)
-  }
+    const rating = ratings[itemId]
+    const mood = moods[itemId]
+    if (!rating || !mood) return
 
-  async function handleSave() {
-    if (!call) return
-    setSaving(true)
+    setSavingItem(itemId)
     try {
-      const ratingsList = Object.entries(ratings).map(([item_id, rating]) => ({ item_id, rating }))
       const res = await fetch('/api/coach-calls/rate', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ratings: ratingsList, coach_call_id: call.id }),
+        body: JSON.stringify({
+          ratings: [{ item_id: itemId, rating, mood, notes: notes[itemId] || undefined }],
+          coach_call_id: call.id,
+        }),
       })
-      if (res.ok) router.push('/home')
+      if (res.ok) {
+        const data = await res.json()
+        const reaction = data.reactions?.[itemId]
+        if (reaction?.coach_reactie) {
+          setReactions(prev => ({ ...prev, [itemId]: reaction.coach_reactie }))
+        }
+        setCall(prev => prev ? {
+          ...prev,
+          coach_call_items: prev.coach_call_items.map(i =>
+            i.id === itemId ? { ...i, status: 'done' } : i
+          ),
+        } : prev)
+      }
     } catch { /* */ }
-    setSaving(false)
+    setSavingItem(null)
   }
 
-  const pendingItems = call?.coach_call_items.filter(i => !ratings[i.id]) || []
-  const allRated = call ? pendingItems.length === 0 : false
+  const allDone = call ? call.coach_call_items.every(i => i.status === 'done') : false
 
   if (laden) return (
     <AppShell>
@@ -127,25 +157,19 @@ export default function CoachCallPage() {
         <div>
           <p className="text-slate-400 text-sm mb-1">Training van {dateLabel}</p>
           <p className="text-white font-semibold">Hoe voelden deze trainingen?</p>
-          <p className="text-slate-500 text-xs mt-1">Geef een RPE-score (1 = zeer licht, 10 = maximale inspanning)</p>
         </div>
-
-        {/* Quick fill */}
-        {!allRated && (
-          <button onClick={handleQuickFill}
-            className="flex items-center gap-2 text-xs text-primary-400 bg-primary-500/10 px-3 py-2 rounded-lg w-fit active:opacity-70">
-            <Zap size={12} />
-            Alles voelt ok (7)
-          </button>
-        )}
 
         {/* Activiteiten */}
         {call.coach_call_items.map(item => {
           const Icon = getSportIcon(item.sport_type)
           const currentRating = ratings[item.id] ?? null
+          const currentMood = moods[item.id] ?? null
+          const reaction = reactions[item.id]
+          const isDone = item.status === 'done'
+          const isSaving = savingItem === item.id
 
           return (
-            <Card key={item.id} className="p-4 flex flex-col gap-3">
+            <Card key={item.id} className="p-4 flex flex-col gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-primary-500/10 flex items-center justify-center flex-shrink-0">
                   <Icon size={18} className="text-primary-400" />
@@ -156,37 +180,81 @@ export default function CoachCallPage() {
                     {[formatDistance(item.distance_m), formatDuration(item.duration_min)].filter(Boolean).join(' · ')}
                   </p>
                 </div>
-                {currentRating && (
-                  <div className="ml-auto">
-                    <span className="text-primary-400 font-bold text-lg">{currentRating}</span>
-                    <span className="text-slate-500 text-xs">/10</span>
-                  </div>
-                )}
               </div>
 
-              {/* 1-10 ratingbalk */}
-              <div className="flex gap-1">
-                {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                  <button key={n} onClick={() => setRatings(prev => ({ ...prev, [item.id]: n }))}
-                    className={cn(
-                      'flex-1 h-9 rounded-lg text-xs font-semibold transition-colors',
-                      currentRating === n ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
-                    )}>
-                    {n}
-                  </button>
-                ))}
+              {/* RPE 1-10 */}
+              <div>
+                <p className="text-xs text-slate-500 mb-2">Hoe zwaar voelde het? (1 licht — 10 maximaal)</p>
+                <div className="flex gap-1">
+                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                    <button key={n} disabled={isDone}
+                      onClick={() => setRatings(prev => ({ ...prev, [item.id]: n }))}
+                      className={cn(
+                        'flex-1 h-9 rounded-lg text-xs font-semibold transition-colors disabled:opacity-60',
+                        currentRating === n ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
+                      )}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Mood */}
+              <div>
+                <p className="text-xs text-slate-500 mb-2">Hoe voelde je je erbij?</p>
+                <div className="flex gap-2">
+                  {MOOD_OPTIONS.map(({ value, emoji, label }) => (
+                    <button key={value} disabled={isDone}
+                      onClick={() => setMoods(prev => ({ ...prev, [item.id]: value }))}
+                      className={cn(
+                        'flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-colors disabled:opacity-60',
+                        currentMood === value ? 'bg-primary-500/20 border border-primary-500/40' : 'bg-slate-800'
+                      )}>
+                      <span className="text-xl">{emoji}</span>
+                      <span className="text-[10px] text-slate-400">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Optionele notitie */}
+              {!isDone && (
+                <textarea
+                  value={notes[item.id] || ''}
+                  onChange={e => setNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
+                  placeholder="Nog iets kwijt over deze training? (optioneel)"
+                  rows={2}
+                  className="w-full bg-slate-800 rounded-xl px-3 py-2 text-sm text-white placeholder:text-slate-500 resize-none"
+                />
+              )}
+
+              {/* Coach reactie */}
+              {reaction && (
+                <div className="flex items-start gap-2 bg-primary-500/5 border border-primary-500/20 rounded-xl px-3 py-3">
+                  <Sparkles size={14} className="text-primary-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-slate-200 leading-relaxed">{reaction}</p>
+                </div>
+              )}
+
+              {/* Opslaan per item */}
+              {!isDone && (
+                <button
+                  onClick={() => handleSaveItem(item.id)}
+                  disabled={isSaving || !currentRating || !currentMood}
+                  className="w-full py-3 bg-primary-500 text-white rounded-xl font-semibold text-sm disabled:opacity-40 active:bg-primary-600">
+                  {isSaving ? 'Coach denkt na...' : 'Evaluatie versturen'}
+                </button>
+              )}
             </Card>
           )
         })}
 
-        {/* Opslaan */}
-        <button
-          onClick={handleSave}
-          disabled={saving || Object.keys(ratings).length === 0}
-          className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold text-base disabled:opacity-40 active:bg-primary-600">
-          {saving ? 'Opslaan...' : allRated ? 'Evaluatie opslaan' : `Opslaan (${Object.keys(ratings).length}/${call.coach_call_items.length})`}
-        </button>
+        {allDone && (
+          <button onClick={() => router.push('/home')}
+            className="w-full py-4 bg-slate-800 text-slate-300 rounded-xl font-semibold text-base active:bg-slate-700">
+            Klaar
+          </button>
+        )}
       </div>
     </AppShell>
   )
