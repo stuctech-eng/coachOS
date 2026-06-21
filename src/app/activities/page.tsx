@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 
 interface ActivityMetrics {
@@ -53,6 +53,12 @@ function formatAfstand(m: number): string {
 function formatDatum(dateStr: string): string {
   const d = new Date(dateStr)
   return d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+function getStravaActivityId(notes: string | null): string | null {
+  if (!notes) return null
+  const match = notes.match(/strava:(\d+)/)
+  return match ? match[1] : null
 }
 
 export default function ActiviteitenPage() {
@@ -224,9 +230,10 @@ export default function ActiviteitenPage() {
               const naam = session.activities?.name || 'Anders'
               const icoon = SPORT_ICONS[naam] || '🏅'
               const { distance, avg_hr, calories, elevation } = session.metrics
+              const stravaId = session.source === 'strava' ? getStravaActivityId(session.notes) : null
 
-              return (
-                <div key={session.id} className="bg-[#1c2128] rounded-2xl p-4">
+              const kaartInhoud = (
+                <>
                   <div className="flex items-center gap-3">
                     {/* Icoon */}
                     <div className="w-10 h-10 rounded-xl bg-[#2d333b] flex items-center justify-center text-xl flex-shrink-0">
@@ -237,7 +244,7 @@ export default function ActiviteitenPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="font-semibold text-white text-sm">{naam}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
                           session.source === 'strava' ? 'bg-orange-900/40 text-orange-400' : 'bg-blue-900/40 text-blue-400'
                         }`}>
                           {session.source === 'strava' ? 'Strava' : 'Garmin'}
@@ -245,6 +252,10 @@ export default function ActiviteitenPage() {
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{formatDatum(session.date)}</p>
                     </div>
+
+                    {stravaId && (
+                      <ChevronRight size={18} className="text-gray-600 flex-shrink-0" />
+                    )}
                   </div>
 
                   {/* Metrics */}
@@ -278,6 +289,26 @@ export default function ActiviteitenPage() {
                       </div>
                     )}
                   </div>
+                </>
+              )
+
+              if (stravaId) {
+                return (
+                  <a
+                    key={session.id}
+                    href={`https://www.strava.com/activities/${stravaId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block bg-[#1c2128] rounded-2xl p-4 active:bg-[#22272e] transition-colors"
+                  >
+                    {kaartInhoud}
+                  </a>
+                )
+              }
+
+              return (
+                <div key={session.id} className="bg-[#1c2128] rounded-2xl p-4">
+                  {kaartInhoud}
                 </div>
               )
             })

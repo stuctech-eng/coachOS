@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.8.2
+- Versie: 1.8.3
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -39,6 +39,12 @@
 - AI calls die JSON moeten teruggeven: max_tokens ruim instellen
   (niet te krap, anders wordt de JSON afgekapt en faalt het parsen)
 - Elke route die AI-data rendert heeft een error.tsx boundary
+- Pagina's die geen eigen layout.tsx hebben, MOETEN gewrapt worden in
+  `<AppShell>` (uit `@/components/layout`) — de root `layout.tsx` zet
+  `html`/`body` op `overflow: hidden`, dus zonder AppShell (die de
+  `.scroll-area` class levert) kan een pagina nergens scrollen, ook
+  niet bij weinig content. Nooit een eigen `min-h-screen` div +
+  losse `<BottomNav />` bouwen — altijd `<AppShell>` gebruiken.
 
 ## Werkwijze (Guardian Mode)
 Analyse gaat altijd vóór implementatie. Nooit gokken, nooit aannames,
@@ -90,6 +96,22 @@ Gebruiker download de zip op iPhone, pakt uit in Bestanden-app, zet
 bestanden op de juiste plek in Working Copy, pusht naar GitHub,
 Vercel deployt automatisch.
 
+## Rollback procedure
+Bij een vastgelopen/kapotte staat: tag van een laatst bekende werkende
+versie terugzetten via Working Copy.
+1. GitHub: tag aanmaken op een werkende commit (bv. V1.8.2) als
+   voorzorg, vóór risicovolle wijzigingen
+2. Working Copy → Repository → history-icoon → commit met het juiste
+   versie-label/hash opzoeken (let op: commit-message kan afwijken
+   van het tag-nummer — de hash is leidend)
+3. Tik op de commit → "Show Commit details"
+4. Alleen kijken: Checkout (veilig, omkeerbaar, niet pushen)
+5. Echt terugzetten: Reset → Hard → bevestigen
+6. Push → force push bevestigen (overschrijft remote geschiedenis
+   na dit punt — onomkeerbaar tenzij hashes van latere commits eerst
+   genoteerd zijn)
+7. README bijwerken naar het teruggezette versienummer
+
 ## Inlogmethoden
 - Google Sign-In (primair, aanbevolen — knop bovenaan login pagina)
 - E-mail/wachtwoord (fallback)
@@ -118,6 +140,23 @@ Afbeeldingen worden gegenereerd met een vaste prompt-template (consistent
 karakter, donkere achtergrond, groene spiermarkering) — zie eerdere
 gesprekken voor de exacte prompts indien nieuwe oefeningen nodig zijn.
 
+## Activiteiten pagina
+`src/app/activities/page.tsx` — overzicht van alle Strava- en Garmin-
+sessies, met weekstats, filter per sporttype en Garmin .gpx/.tcx import.
+
+Strava-koppeling per activiteit: het originele Strava activity-ID wordt
+niet in een eigen kolom opgeslagen, maar zit in het `notes`-veld van
+`activity_sessions` als `strava:{id}` (zie processStravaActivity in
+`src/lib/strava-activity-processor.ts`). Activiteit-kaarten met
+`source === 'strava'` zijn volledig tikbaar en linken naar
+`https://www.strava.com/activities/{id}` (nieuw tabblad/Strava-app).
+Garmin-kaarten hebben geen externe link, want geen Strava-ID beschikbaar.
+
+De pagina toont alleen wat de sync daadwerkelijk opslaat: afstand,
+hartslag (gem/max), hoogtewinst, snelheid, calorieën, watts, cadans.
+Geen route-kaart, foto's, kudos of splits — die haalt de sync niet op;
+de Strava-link is de manier om die volledige data te zien.
+
 ## Debug pagina
 `/debug` — diagnostiek voor environment vars, Supabase auth, database
 tabellen, API routes, Anthropic bereikbaarheid, PWA modus, vandaag-data
@@ -140,6 +179,7 @@ src/
       training/today/route.ts        Haiku, trainingsschema
       training/session/route.ts
       training/complete/route.ts
+      activities/route.ts            GET sessies, POST Garmin import
       strava/                        OAuth + sync
       health/                        Garmin import + shortcuts
       checkin/, injuries/, goals/, journal/, life-events/, weekly/
@@ -150,6 +190,7 @@ src/
     reset-password/page.tsx          PWA-instructie + PKCE diagnose
     home/, checkin/, chat/, coach-call/, dagboek/, goals/, injuries/,
     insights/, life-events/, progressie/, weekly/, settings/
+    activities/page.tsx              Strava/Garmin activiteiten overzicht
     training/page.tsx                trainingsbibliotheek overzicht
     training/session/[module]/
       page.tsx                       volledige workout engine
@@ -158,6 +199,7 @@ src/
   lib/
     exercises.ts                     oefening data
     supabase.ts                      browserClient + adminClient
+    strava-activity-processor.ts     gedeelde Strava verwerking (sync + webhook)
 
 public/
   exercises/                         Gemini afbeeldingen per oefening
@@ -174,7 +216,8 @@ Login/register, Google Sign-In, onboarding, check-in, home + refresh,
 coach advies, dagplan, training (alle modules + volledige workout
 engine), coach memory/chat/calls, inzichten, progressie, weekoverzicht,
 dagboek, doelen, blessures, levensgebeurtenissen, Strava OAuth + sync,
-Garmin import, PWA icons, debug pagina, oefening bibliotheek.
+Strava deeplink per activiteit, Garmin import, PWA icons, debug pagina,
+oefening bibliotheek.
 
 ## Strava Setup
 - Client ID: 254388
@@ -205,8 +248,16 @@ Garmin import, PWA icons, debug pagina, oefening bibliotheek.
 - Oefening bibliotheek uitbreiden met meer modules (rowing, running,
   cycling oefenkaarten — alleen kettlebell heeft nu Gemini afbeeldingen)
 - Eventueel: iOS Shortcut voor snellere Garmin screenshot import
+- Eventueel: meer Strava-data tonen in de app zelf (route-kaart, splits,
+  foto's) — vereist uitbreiding van de sync, momenteel niet opgehaald
+
+## Versiehistorie
+- v1.8.2: laatst bekende stabiele tag vóór scroll-fix
+- v1.8.3: Activiteiten-pagina scroll-fix (AppShell wrapper i.p.v.
+  losse div + BottomNav) + Strava deeplink per activiteit (tikbare
+  kaart linkt naar strava.com/activities/{id} via notes-veld)
 
 ## Nieuwe chat starten
 Lees mijn README op
 https://raw.githubusercontent.com/stuctech-eng/coachOS/refs/heads/main/README.md
-en help me verder met CoachOS 
+en help me verder met CoachOS
