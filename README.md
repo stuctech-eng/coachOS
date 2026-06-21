@@ -226,6 +226,56 @@ Browsers staan nooit toe dat een website automatisch een foto uit de
 bibliotheek selecteert zonder gebruikersactie — Garmin screenshot
 upload vereist dus altijd een handmatige tik in de file picker.
 
+## Hoe alles samenhangt (data-flow)
+1. **Input verzamelen** — gebruiker doet check-in, upload Garmin-screenshot,
+   beheert blessures/doelen/levensgebeurtenissen/dagboek
+2. **Coach beslist** (`coach/route.ts`) — leest alle input, genereert advies,
+   bepaalt trainen/herstel/rust, schrijft `trainer_instructies`
+3. **Sequentieel, niet parallel:**
+   - **Dagplan** (`action-plan/route.ts`) — concreet tijdschema voor de dag,
+     schrijft `action_plan` op dezelfde `coach_recommendations`-rij
+   - **Trainingsschema** (`training/today/route.ts`, Haiku) — leest daarna
+     ZOWEL `trainer_instructies` ALS `action_plan` als input, genereert pas
+     dan het trainingsschema. Trainer leest dus nooit ruwe brondata zelf —
+     alleen de al-verwerkte output van Coach en Dagplan.
+4. **Uitvoering** — `training/session/[module]/page.tsx` leidt de gebruiker
+   door de workout (timers, sets, rust, pauze)
+5. **Terugkoppeling** — voltooide trainingen (`training_results`) en
+   kwalificerende Strava-activiteiten (Coach Call, RPE+mood+reactie) worden
+   opgeslagen en gebruikt als context voor de VOLGENDE dag's coach-advies
+
+## Verificatie-status — wat is echt gezien vs. aangenomen
+Voorkomt dat een volgende sessie aanneemt dat iets gecontroleerd is terwijl
+dat (nog) niet zo is. "Gezien" = bestandsinhoud is in een gesprek gedeeld
+en gelezen, niet alleen de bestandsnaam.
+
+**Volledig gezien en geverifieerd:**
+coach/route.ts, action-plan/route.ts, training/today/route.ts,
+coach-calls/route.ts, coach-calls/rate/route.ts, activities/page.tsx,
+activities/route.ts, home/page.tsx, life-events/page.tsx, coach-call/page.tsx,
+training/page.tsx, daily-coach.ts, strava-activity-processor.ts,
+strava/sync/route.ts (POST/GET), layout.tsx (root), globals.css,
+components/layout (AppShell/BottomNav)
+
+**Nooit gezien — alleen naam/rol bekend uit bestandsstructuur, NIET de
+inhoud:**
+login/register, onboarding, settings/ (incl. equipment, garmin-import),
+goals/page.tsx + api/goals/route.ts, checkin/page.tsx + api/checkin/route.ts,
+dagboek/page.tsx + api/journal/route.ts, injuries/page.tsx + api/injuries/route.ts,
+weekly/page.tsx + api/weekly/route.ts, progressie/page.tsx,
+insights/page.tsx (WEL gezien — zie hierboven, corrigeer als dit afwijkt),
+chat/page.tsx, api/memory/route.ts, api/trends/route.ts,
+api/training/session/route.ts, api/training/complete/route.ts,
+api/health/ (Garmin import), api/strava/webhook, auth/callback/route.ts,
+reset-password/page.tsx, debug/page.tsx
+
+**Tabellen met onbekende rol** (genoemd in schema, nooit een route gezien
+die ze leest/schrijft anders dan coach_memory):
+`coach_insights`, `knowledge_observations` — coach_memory wordt wél
+gebruikt (gezien in coach/route.ts en insights/page.tsx via /api/memory)
+
+Bij twijfel: vraag het bestand op voordat je iets over de inhoud beweert.
+
 ## Bestandsstructuur
 src/
   app/
@@ -352,6 +402,39 @@ bestandsnaam):
 - `training/today/route.ts` (Haiku) — leest UITSLUITEND coach-output
   (`trainer_instructies`, `action_plan`) + Strava-historie + equipment-
   profiel, nooit ruwe brondata (checkins/life-events/etc.) rechtstreeks
+
+## Tips voor de volgende chat — begin zo
+Voordat je ook maar iets bouwt of voorstelt:
+
+1. **Lees eerst deze hele README**, niet alleen de laatste paar secties.
+   De "Verificatie-status" hierboven vertelt je precies wat al gecontroleerd
+   is en wat niet — behandel "nooit gezien" als ECHT nooit gezien, ook al
+   staat de naam en rol van het bestand er duidelijk bij.
+2. **Vraag het bestand op voordat je over de inhoud beweert.** Een naam als
+   "goals/page.tsx" of een rol-omschrijving in de structuur-boom is geen
+   vervanging voor de echte code. Raad nooit wat er waarschijnlijk in staat.
+3. **web_fetch op GitHub werkt onbetrouwbaar voor dit repo** — eerdere
+   pogingen gaven herhaaldelijk verouderde/gecachete content terug, ook na
+   bevestigde pushes. Vertrouw bij twijfel op wat de gebruiker zelf laat
+   zien (Working Copy, GitHub-app), niet op je eigen fetch-resultaat.
+4. **Eén gerichte vraag tegelijk** bij ontbrekende info — niet drie vragen
+   in één bericht, niet doorbouwen op een aanname.
+5. **Root cause vóór fix.** Als iets "niet meer werkt", ga ervan uit dat de
+   oorzaak specifiek en vindbaar is (zoals de 45-min+afstand drempel, de
+   AppShell-wrapper, de WERK_TYPES-filter) — niet een vage "bug". Vraag door
+   tot je het zeker weet, ook al kost dat meerdere rondes.
+6. **Bij twee samenhangende routes (zoals coach/route.ts en
+   action-plan/route.ts): check of ze consistent zijn met elkaar**, niet
+   alleen of elk apart correct werkt. De levensgebeurtenissen-inconsistentie
+   in v1.8.5 ontstond doordat twee routes onafhankelijk van elkaar waren
+   gegroeid — dat patroon kan zich elders ook voordoen.
+7. **SQL/code altijd in een eigen code-blok**, nooit gemengd met uitleg —
+   zie Werkwijze hierboven, dit voorkwam een syntax-error in Supabase.
+8. **Test apostrofs/quotes in string literals** voordat je TypeScript-
+   bestanden oplevert — een ongeëscapete `'` in een string brak v1.8.4's
+   build (zie Versiehistorie). Gebruik bij twijfel dubbele quotes of
+   backticks in plaats van enkele quotes voor strings met mogelijke
+   apostrofs (Nederlandse tekst bevat ze vaak).
 
 ## Nieuwe chat starten
 Lees mijn README op
