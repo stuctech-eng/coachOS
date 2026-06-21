@@ -36,7 +36,7 @@ export function buildCoachCallReactionPrompt(input: CoachCallReactionInput): str
 ${getCoachTone(3)}
 
 ${humorMag
-  ? 'Deze gebruiker traint al een tijdje met je en trainde nu tegen je advies in. Plagerige humor is hier toegestaan, gebruik 'm gerust.'
+  ? 'Deze gebruiker traint al een tijdje met je en trainde nu tegen je advies in. Plagerige humor is hier toegestaan, gebruik gerust.'
   : 'Houd het luchtig en warm, maar zonder plagerijen — daar is het nu niet het moment voor.'}
 
 ACTIVITEIT TER EVALUATIE:
