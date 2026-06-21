@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.8.4
+- Versie: 1.8.5
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -53,6 +53,17 @@
   in plaats van een eigen persoonlijkheidsblok te schrijven — voorkomt
   prompt-sprawl. CORE_SAFETY_RULE (geen humor bij blessures/veiligheid)
   geldt altijd, ongeacht aangeroepen niveau.
+- Levensgebeurtenissen-context is gecentraliseerd in
+  `src/core/utils/life-events-context.ts` (`fetchTodaysLifeEvents` +
+  `formatLifeEventsContext`) — gebruikt door zowel `coach/route.ts` als
+  `action-plan/route.ts`, zodat Coach en Dagplan altijd exact dezelfde
+  levensgebeurtenissen zien (alle categorieën: Werk, Leven, Gezondheid,
+  Omgeving — niet alleen werk-types). Vóór v1.8.5 hadden beide routes
+  losgegroeide, inconsistente filters, wat tot tegenstrijdig advies kon
+  leiden (Coach "geen bijzonderheden" terwijl Dagplan wél een
+  levensgebeurtenis meewoog). `training/today/route.ts` gebruikt deze
+  module NIET — Trainer leest alleen de al-verwerkte coach-output
+  (`trainer_instructies`, `action_plan`), nooit ruwe brondata rechtstreeks.
 
 ## Werkwijze (Guardian Mode)
 Analyse gaat altijd vóór implementatie. Nooit gokken, nooit aannames,
@@ -60,6 +71,12 @@ nooit symptomen fixen zonder root cause.
 
 Bij ontbrekende informatie: STOP, stel exact één gerichte vraag. Geen
 analyse, geen implementatie, geen alternatieven totdat het antwoord er is.
+
+SQL, code, commando's en andere kopieer-content: ALTIJD in een eigen
+code-blok, nooit vermengd met uitleg of bestandsnamen erboven/eronder
+in dezelfde alinea — voorkomt dat de gebruiker per ongeluk uitleg mee
+kopieert en plakt (bv. in de Supabase SQL editor, die dan een syntax
+error geeft op de eerste regel uitleg).
 
 Voor elke wijziging, kort en impliciet (niet elke keer expliciet
 uitschrijven, maar wel toepassen):
@@ -246,6 +263,9 @@ src/
       daily-coach.ts                 dagadvies prompt (Niveau 2)
       coach-call-reaction.ts         evaluatie-reactie prompt (Niveau 3)
       coach-personality.ts           gedeelde coach-toon, alle niveaus
+    utils/
+      life-events-context.ts         gedeelde life-events ophaling,
+                                      gebruikt door coach + action-plan
 
 public/
   exercises/                         Gemini afbeeldingen per oefening
@@ -309,6 +329,29 @@ oefening bibliotheek.
   kreeg mood, notes, coach_response kolommen (zie
   supabase/migration_v1.8.4_coach_evaluations.sql — handmatig uitvoeren
   in Supabase SQL editor, niet automatisch toegepast)
+- v1.8.5: Levensgebeurtenissen-fix — coach/route.ts en
+  action-plan/route.ts gebruiken nu beide dezelfde gedeelde
+  life-events-context.ts module. Voorheen zag coach/route.ts alleen
+  6 werk-types, action-plan/route.ts zag wel alle categorieën voor
+  eenmalige events maar filterde herhalende events alsnog op werk —
+  inconsistentie die tot tegenstrijdig advies tussen Coach en Dagplan
+  kon leiden. Nu zien beide alle categorieën (Werk/Leven/Gezondheid/
+  Omgeving), eenmalig + herhalend, inclusief notities en impact-scores
+  (recovery_impact/stress_load/sleep_disruption). Geen DB- of
+  UI-wijziging, alleen prompt-context. training/today/route.ts
+  ongewijzigd (leest alleen coach-output, geen ruwe brondata).
+
+## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
+Alle drie onderstaande bestanden zijn in de loop van het project
+daadwerkelijk gelezen en geverifieerd (niet aangenomen op basis van
+bestandsnaam):
+- `coach/route.ts` — dagadvies, schrijft `coach_recommendations`
+  (type='coach') incl. `trainer_instructies`
+- `action-plan/route.ts` — dagplan, schrijft `action_plan` op dezelfde
+  rij (update-met-insert-fallback patroon)
+- `training/today/route.ts` (Haiku) — leest UITSLUITEND coach-output
+  (`trainer_instructies`, `action_plan`) + Strava-historie + equipment-
+  profiel, nooit ruwe brondata (checkins/life-events/etc.) rechtstreeks
 
 ## Nieuwe chat starten
 Lees mijn README op

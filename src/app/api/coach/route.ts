@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { calculateRecoveryScore } from '@/core/ai-engine/recovery-engine'
 import { buildDailyCoachPrompt, WeekMetrics } from '@/core/prompts/daily-coach'
+import { fetchTodaysLifeEvents, formatLifeEventsContext } from '@/core/utils/life-events-context'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -58,7 +59,10 @@ export async function POST() {
     zeven.setDate(zeven.getDate() - 7)
     const zevenDagenGeleden = zeven.toISOString().split('T')[0]
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, lifeEventsRes, blessuresRes, journalRes] = await Promise.all([
+    const vandaagNummer = new Date().getDay()
+    const isWeekend = vandaagNummer === 0 || vandaagNummer === 6
+
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -94,10 +98,6 @@ export async function POST() {
         .eq('completed', true)
         .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
         .order('completed_at', { ascending: false }),
-      supabase.from('life_events')
-        .select('type, start_hour, end_hour, notes, recurrence, recurrence_days')
-        .eq('user_id', user.id)
-        .not('recurrence', 'is', null),
       supabase.from('injuries')
         .select('body_part, pain_score')
         .eq('user_id', user.id)
@@ -107,6 +107,7 @@ export async function POST() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(3),
+      fetchTodaysLifeEvents(supabase, user.id, vandaagNummer, isWeekend),
     ])
 
     const profile = profileRes.data
@@ -126,22 +127,12 @@ export async function POST() {
         }).join('\n')
       : ''
     const loadContext = ''
-    const lifeEvents = lifeEventsRes.data || []
     const blessures = blessuresRes.data || []
 
-    const vandaagNummer = new Date().getDay()
-    const isWeekend = vandaagNummer === 0 || vandaagNummer === 6
-    const WERK_TYPES = ['nachtdienst', 'avonddienst', 'vroege_dienst', 'dagdienst', 'thuiswerken', 'lange_dag']
-    const werkEvents = lifeEvents.filter((e: {type: string; recurrence?: string|null; recurrence_days?: number[]|null}) =>
-      WERK_TYPES.includes(e.type) && (
-        e.recurrence === 'daily' ||
-        (e.recurrence === 'weekdays' && !isWeekend) ||
-        (e.recurrence_days && e.recurrence_days.includes(vandaagNummer))
-      )
-    )
-    const werkContext = werkEvents.length > 0
-      ? `Werktijden vandaag: ${werkEvents.map((e: {type: string; start_hour?: number|null; end_hour?: number|null}) => `${e.type} ${e.start_hour !== null && e.start_hour !== undefined ? `${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour).padStart(2,'0')}:00` : ''}`).join(', ')}`
-      : ''
+    // Levensgebeurtenissen — alle categorieën (Werk, Leven, Gezondheid,
+    // Omgeving), zelfde selectie als action-plan/route.ts gebruikt
+    const lifeEventsContext = formatLifeEventsContext(lifeEvents)
+
     const blessureContext = blessures.length > 0
       ? `Actieve blessures: ${blessures.map((b: {body_part: string; pain_score: number}) => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ')}`
       : ''
@@ -248,7 +239,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (werkContext ? '\n' + werkContext : '') + (blessureContext ? '\n' + blessureContext : '') + trainerInstructiePrompt
+    ) + garminContext + trainingsCoachContext + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + trainerInstructiePrompt
 
     // Directe Anthropic API call — geen /api/ai proxy
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {

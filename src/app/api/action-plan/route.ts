@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
+import { fetchTodaysLifeEvents, formatLifeEventsContext } from '@/core/utils/life-events-context'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -26,8 +27,6 @@ function getDagInfo() {
     dagNummer,
   }
 }
-
-const WERK_TYPES = ['nachtdienst', 'avonddienst', 'vroege_dienst', 'dagdienst', 'thuiswerken', 'lange_dag']
 
 export async function GET() {
   try {
@@ -57,20 +56,12 @@ export async function POST() {
     const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
     const { dag, isWeekend, dagNummer } = getDagInfo()
 
-    const [profileRes, checkinRes, statusRes, blessuresRes, lifeEventsRes, goalsRes, herhalendeEventsRes, garminRes, trainingsRes, journalRes] = await Promise.all([
+    const [profileRes, checkinRes, statusRes, blessuresRes, goalsRes, garminRes, trainingsRes, journalRes, alleEvents] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('injuries').select('body_part, pain_score').eq('user_id', user.id).eq('active', true),
-      supabase.from('life_events')
-        .select('type, start_hour, end_hour, notes, recurrence, recurrence_days')
-        .eq('user_id', user.id)
-        .gte('start_time', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()),
       supabase.from('user_goals').select('title').eq('user_id', user.id).eq('status', 'active'),
-      supabase.from('life_events')
-        .select('type, start_hour, end_hour, notes, recurrence, recurrence_days')
-        .eq('user_id', user.id)
-        .not('recurrence', 'is', null),
       supabase.from('garmin_imports')
         .select('parsed_data, date')
         .eq('user_id', user.id)
@@ -89,15 +80,14 @@ export async function POST() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(3),
+      fetchTodaysLifeEvents(supabase, user.id, dagNummer, isWeekend),
     ])
 
     const profile = profileRes.data
     const checkin = checkinRes.data
     const status = statusRes.data
     const blessures = blessuresRes.data || []
-    const lifeEvents = lifeEventsRes.data || []
     const goals = goalsRes.data || []
-    const herhalendeEvents = herhalendeEventsRes.data || []
     const garmin = garminRes.data?.parsed_data || null
     const loadContext = ''
     const trainingen = trainingsRes.data || []
@@ -119,25 +109,8 @@ export async function POST() {
     const garminDatum = garminRes.data?.date || null
     const garminIsVandaag = garminDatum === vandaagAms
 
-    const relevanteHerhalendeEvents = herhalendeEvents.filter(he => {
-      if (isWeekend && WERK_TYPES.includes(he.type)) {
-        const days = he.recurrence_days as number[] | null
-        if (!days) return false
-        return days.includes(dagNummer)
-      }
-      if (he.recurrence === 'workdays' && isWeekend) return false
-      if (he.recurrence === 'weekend' && !isWeekend) return false
-      if (he.recurrence === 'weekly' || he.recurrence === 'biweekly' || he.recurrence === 'custom') {
-        const days = he.recurrence_days as number[] | null
-        return days ? days.includes(dagNummer) : true
-      }
-      return true
-    })
-
-    const alleEvents = [...lifeEvents]
-    relevanteHerhalendeEvents.forEach(he => {
-      if (!alleEvents.find(e => e.type === he.type)) alleEvents.push(he)
-    })
+    // Levensgebeurtenissen — alle categorieën, zelfde selectie als coach/route.ts
+    const lifeEventsContext = formatLifeEventsContext(alleEvents)
 
     const naam = profile?.display_name || profile?.first_name || 'je'
     const score = status?.coach_score || 50
@@ -163,13 +136,7 @@ export async function POST() {
       checkin ? `Gevoel: ${checkin.feeling_score}/10, Energie: ${checkin.energy_score}/10, Stress: ${(checkin as {stress_score?: number}).stress_score || '?'}/10` : 'Geen check-in',
       garminContext,
       blessures.length > 0 ? `Blessures: ${blessures.map(b => b.body_part).join(', ')}` : '',
-      alleEvents.length > 0 ? `Vandaag actieve events: ${alleEvents.map(e => {
-        const tijden = e.start_hour !== null && e.end_hour !== null
-          ? ` ${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour).padStart(2,'0')}:00`
-          : ''
-        const notitie = e.notes ? ` (${e.notes})` : ''
-        return e.type + tijden + notitie
-      }).join(', ')}` : isWeekend ? 'Geen werkverplichtingen vandaag' : '',
+      lifeEventsContext || (isWeekend ? 'Geen werkverplichtingen vandaag' : ''),
       goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',
       journalContext,
       loadContext,
@@ -190,6 +157,7 @@ INSTRUCTIES:
 - Slaapscore onder 70: extra herstelmoment inplannen
 - HRV status "laag" of "ongebalanceerd": geen intensieve training
 - Houd rekening met blessures
+- Houd rekening met levensgebeurtenissen (ziek, slecht geslapen, jetlag, vakantie, emotionele stress, etc.) — niet alleen werk
 - Coach score onder 50: focus op herstel
 - Maak 3-5 concrete acties verspreid over de dag
 - Plan NOOIT activiteiten tijdens werktijd — als iemand 06:00-15:00 werkt, plan dan alleen voor 06:00 of na 15:00
