@@ -389,7 +389,7 @@ Reageer ALLEEN in dit JSON formaat:
       segments: coachActieType === 'herstel' ? [
         { type: 'bodyweight', exercise: 'Cat-Cow', session_type: 'recovery', sets: 1, reps: null, duration_sec: 120,
           rest_sec: 0, instruction: 'Beweeg langzaam tussen Cat en Cow, gesynchroniseerd met je adem.', cue: 'Adem in bij Cow, uit bij Cat', common_errors: ['Te snel bewegen', 'Adem loskoppelen'] },
-        { type: 'bodyweight', exercise: 'Child's Pose', session_type: 'recovery', sets: 1, reps: null, duration_sec: 60,
+        { type: 'bodyweight', exercise: 'Childs Pose', session_type: 'recovery', sets: 1, reps: null, duration_sec: 60,
           rest_sec: 0, instruction: 'Heupen naar hielen, armen gestrekt, laat je rug ontspannen.', cue: 'Zak dieper bij elke uitademing', common_errors: ['Schouders optrekken'] },
         { type: 'bodyweight', exercise: 'Thoracale Rotatie', session_type: 'recovery', sets: 2, reps: null, duration_sec: 45,
           rest_sec: 15, instruction: 'Lig op je zij, roteer je bovenlichaam langzaam.', cue: 'Knieën blijven op de grond', common_errors: ['Knieën optillen', 'Te snel draaien'] },
