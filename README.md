@@ -474,13 +474,22 @@ oefening bibliotheek.
 
 - v1.8.7: Routing-fix bibliotheek (Stap 1 van Coach Call roadmap) —
   bibliotheek-keuze geeft nu altijd het juiste module-type terug.
-  Oorzaak: coach-sturing overschreef de forcedModule-instructie, en bij
-  een mislukte AI-call was de fallback altijd kettlebell ongeacht de keuze.
-  Fix: module-specifieke fallbacks (rowing/running/cycling/kettlebell)
-  hersteld, coach-sturing bij library-keuze verzwakt naar intensiteit-only
-  (module kiest gebruiker zelf), typeAllowed-validatie ongewijzigd.
-  training/today/route.ts gewijzigd, geen DB- of UI-wijziging.
-  Coach Call roadmap Stap 2 en 3 staan nog open — zie sectie hierboven.
+  Root cause (na lange debug-sessie): drie gecombineerde problemen:
+  1. PWA op iOS gooit ?source=library query param weg bij router.push()
+  2. session/page.tsx had een aparte session/page.tsx die alle navigatie
+     naar /training/session/* onderschepte vóór de [module] route
+  3. isLibrary-detectie vond plaats NA de resume-dialog check — een oude
+     kettlebell-sessie in SESSION_STORAGE_KEY activeerde de resume-dialog
+     en blokkeerde de library-flow volledig (race condition)
+  Fix: (1) library_module_pending in localStorage schrijven vóór navigatie
+  in training/page.tsx ipv query param, (2) session/page.tsx verwijderd,
+  (3) isLibrary-detectie verplaatst naar VOOR de resume-dialog check in
+  useEffect — library-flow slaat resume-dialog altijd over.
+  Bij herstel/rust: module-specifieke fallbacks (rowing/cycling/running)
+  gebruiken ipv AI-output — Haiku genereert anders wandel-segmenten.
+  training/page.tsx + training/session/[module]/page.tsx +
+  training/today/route.ts gewijzigd, geen DB-wijziging.
+  Coach Call roadmap Stap 2 en 3 staan nog open.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
@@ -526,6 +535,21 @@ Voordat je ook maar iets bouwt of voorstelt:
    build (zie Versiehistorie). Gebruik bij twijfel dubbele quotes of
    backticks in plaats van enkele quotes voor strings met mogelijke
    apostrofs (Nederlandse tekst bevat ze vaak).
+9. **PWA op iOS gooit query params weg bij router.push()** — gebruik
+   NOOIT ?source=library of andere query params voor state-overdracht
+   tussen pagina's in deze PWA. Gebruik localStorage als tussenopslag:
+   schrijf de waarde vóór router.push(), lees hem op de nieuwe pagina
+   in een useEffect (niet op module-niveau — window is dan nog niet
+   beschikbaar bij SSR).
+10. **isLibrary-detectie moet VOOR de resume-dialog check** in de
+    useEffect van session/[module]/page.tsx — anders blokkeert een oude
+    gecachede sessie de library-flow volledig. Volgorde is kritisch:
+    (1) detecteer isLibrary, (2) check bestaande sessie alleen als
+    !isLibrary, (3) pas dan clearSession() en run().
+11. **Nooit een session/page.tsx maken naast de [module] map** — dat
+    onderschept alle navigatie naar /training/session/* en maakt de
+    dynamische [module] route onbereikbaar. Alleen [module]/page.tsx
+    mag bestaan in de session map.
 
 ## Nieuwe chat starten
 Lees mijn README op
