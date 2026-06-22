@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.8.6
+- Versie: 1.8.7
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -182,7 +182,76 @@ hartslag (gem/max), hoogtewinst, snelheid, calorieën, watts, cadans.
 Geen route-kaart, foto's, kudos of splits — die haalt de sync niet op;
 de Strava-link is de manier om die volledige data te zien.
 
-## Coach Call evaluatie
+## Coach Call — volledige architectuur en roadmap
+
+### Hoe het hoort te werken (volledig systeem)
+De Coach Call is de terugkoppelingslaag tussen wat de coach adviseert en wat
+de gebruiker daadwerkelijk doet. De volledige flow:
+
+1. Coach geeft dagadvies (trainen / herstel / rust)
+2. Gebruiker doet al dan niet wat de coach zegt — bewust of niet
+3. Na een serieuze activiteit (Strava OF interne bibliotheek-training tegen
+   advies in) verschijnt een Coach Call op Home
+4. Gebruiker vult RPE + mood + optionele notitie in per activiteit
+5. Coach reageert direct (Niveau 3 toon — plagerig mag bij genegeerd advies)
+6. Die evaluatiedata (wat gedaan, hoe zwaar, hoe gevoeld, advies genegeerd?)
+   wordt opgeslagen EN teruggelezen door de coach bij het volgende dagadvies
+7. Coach past zijn advies bij op basis van wat hij nu weet — "gisteren ben je
+   toch gaan roeien, vandaag echt herstel"
+
+### Wat nu al werkt (v1.8.6)
+- ✅ Coach Call triggert op Strava-activiteiten (45+ min + sport-specifieke
+  afstand: Hardlopen 5km, Fietsen 20km, Roeien 5km)
+- ✅ RPE (1-10) + Mood (1-5: 😞😐🙂😃🔥) per activiteit, los van elkaar
+- ✅ Optionele vrije tekst per activiteit
+- ✅ Directe coach-reactie per activiteit na opslaan (Niveau 3 toon)
+- ✅ Humor-gate: plagerig alleen na 5+ voltooide calls + mood 3+ + genegeerd
+  advies — voorkomt dat nieuwe gebruikers meteen geplaagd worden
+- ✅ Coach_call_items.coach_response opgeslagen (geen herhaalde AI-call)
+- ✅ Bibliotheek-trainingen: gebruiker kan altijd zelf een module kiezen,
+  ongeacht coach-advies
+
+### Wat nog gebouwd moet worden (stap voor stap)
+
+**Stap 1 — Routing-fix bibliotheek (v1.8.7, nu te bouwen)**
+Probleem: bibliotheek-keuze "Roeien" genereert een Kettlebell sessie.
+Root cause: de huidige `training/today/route.ts` mist module-specifieke
+fallbacks (rowing/running/cycling) — bij een mislukte AI-call valt hij
+altijd terug op kettlebell, ongeacht wat de gebruiker koos. Ook heeft de
+coach-sturing in de prompt te veel gewicht bij library-keuze, waardoor
+Trainer AI de forcedModule-instructie negeert.
+Fix: module-specifieke fallbacks terugzetten + coach-sturing verzwakken
+bij library-keuze zodat forcedModule altijd wint.
+
+**Stap 2 — Coach Call voor interne bibliotheek-trainingen (v1.8.x)**
+Probleem: Coach Call triggert alleen op Strava-activiteiten. Een
+bibliotheek-training (bijv. roeien terwijl coach herstel adviseerde) levert
+geen Coach Call op — de coach komt het nooit te weten via dit kanaal.
+Fix: bij voltooien van een bibliotheek-training (`training/complete/route.ts`)
+checken of coach vandaag "rust" of "herstel" adviseerde. Zo ja → Coach Call
+item aanmaken zodat de kaart op Home verschijnt. coach-calls/route.ts en
+coach-call/page.tsx uitbreiden zodat ook interne trainingen (zonder Strava
+activity_session_id) zichtbaar zijn in de evaluatie.
+
+**Stap 3 — Coach leest evaluatiedata terug (v1.8.x)**
+Probleem: Coach Call evaluatiedata (RPE, mood, genegeerd advies) wordt
+opgeslagen in coach_call_items maar wordt NIET teruggelezen door
+`coach/route.ts` bij het volgende dagadvies. De coach weet dus niet dat
+je gisteren zijn advies hebt genegeerd, noch hoe je je daarna voelde.
+Fix: `coach/route.ts` uitbreiden om recente coach_calls (laatste 2-3 dagen,
+status completed) op te halen en samen te vatten als extra context in de
+prompt. Zodat de coach expliciet kan zeggen: "Gisteren ben je toch gaan
+roeien (RPE 7, voelde goed 🙂) — vandaag echt herstel."
+
+### Afhankelijkheden tussen stappen
+Stap 1 staat los — kan nu gebouwd worden.
+Stap 2 heeft Stap 1 niet nodig maar bouwt voort op de bestaande
+coach-call architectuur (v1.8.4).
+Stap 3 heeft Stap 2 nodig — anders heeft de coach geen interne
+trainingsdata om terug te lezen naast de Strava-data.
+Volgorde: 1 → 2 → 3.
+
+
 Bij kwalificerende Strava-activiteiten (45+ min EN sport-specifieke
 afstand: Hardlopen 5km, Fietsen 20km, Roeien 5km) maakt
 `src/app/api/coach-calls/route.ts` een `coach_calls` record aan met
@@ -402,6 +471,16 @@ oefening bibliotheek.
   Strava-deeplink gedocumenteerd, versienummer hardcoded v1.8.6.
   settings/page.tsx + life-events/page.tsx + hoe-werkt-het/page.tsx
   gewijzigd, geen DB- of API-wijziging.
+
+- v1.8.7: Routing-fix bibliotheek (Stap 1 van Coach Call roadmap) —
+  bibliotheek-keuze geeft nu altijd het juiste module-type terug.
+  Oorzaak: coach-sturing overschreef de forcedModule-instructie, en bij
+  een mislukte AI-call was de fallback altijd kettlebell ongeacht de keuze.
+  Fix: module-specifieke fallbacks (rowing/running/cycling/kettlebell)
+  hersteld, coach-sturing bij library-keuze verzwakt naar intensiteit-only
+  (module kiest gebruiker zelf), typeAllowed-validatie ongewijzigd.
+  training/today/route.ts gewijzigd, geen DB- of UI-wijziging.
+  Coach Call roadmap Stap 2 en 3 staan nog open — zie sectie hierboven.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

@@ -38,9 +38,6 @@ export interface RecoveryModule {
   label: string
 }
 
-// Detecteer blessure-gerelateerde herstelmodules op basis van actieve blessures
-// Coach bepaalt recovery_modules via AI — Trainer voegt niets toe
-
 export async function GET() {
   try {
     const user = await getUser()
@@ -98,9 +95,7 @@ export async function POST(req: NextRequest) {
       supabase.from('user_goals').select('title').eq('user_id', user.id).eq('status', 'active').limit(2),
       supabase.from('activity_sessions').select('date, duration, metrics, activities!inner(name)').eq('user_id', user.id).eq('source', 'strava').eq('activities.name', 'Hardlopen').gte('date', veertienDagenGeleden).order('date', { ascending: false }).limit(5),
       supabase.from('activity_sessions').select('date, duration, metrics, activities!inner(name)').eq('user_id', user.id).eq('source', 'strava').eq('activities.name', 'Fietsen').gte('date', veertienDagenGeleden).order('date', { ascending: false }).limit(5),
-      // Coach advies — leidend over training
       supabase.from('coach_recommendations').select('recommendation, actie_type, reasoning, trainer_instructies').eq('user_id', user.id).eq('date', today).eq('type', 'coach').single(),
-      // Dagplan van vandaag — coach heeft dit al gepland
       supabase.from('coach_recommendations').select('action_plan').eq('user_id', user.id).eq('date', today).neq('action_plan', null).order('created_at', { ascending: false }).limit(1).single(),
     ])
 
@@ -111,38 +106,6 @@ export async function POST(req: NextRequest) {
     const goals = goalsRes.data || []
     const coachRec = coachRecRes.data
     const dagplan: Array<{ tijd: string; actie: string }> = dagplanRes.data?.action_plan || []
-
-    // Coach bepaalt — Trainer pakt het over
-    // Geen eigen blessure logica in Trainer
-    const coachActieType = coachRec?.actie_type || null
-    const coachAdvies = coachRec?.recommendation || null
-    const coachReasoning = coachRec?.reasoning || null
-    const trainerInstructies = coachRec?.trainer_instructies || null
-
-    // Coach bepaalt recovery_modules — Trainer voegt NIETS toe
-    // AI leest het dagplan als context en bepaalt zelf de juiste modules
-
-    let coachSturingContext = ''
-    if (coachActieType === 'rust') {
-      coachSturingContext = `COACH BESLISSING (LEIDEND): RUST vandaag. training_allowed MOET false zijn. Geen training. Alleen herstelmodules.`
-    } else if (coachActieType === 'herstel') {
-      coachSturingContext = `COACH BESLISSING (LEIDEND): HERSTEL vandaag. Als training_allowed true is, ALLEEN intensity "light". Geen zware of matige training.`
-    } else if (coachActieType === 'trainen') {
-      coachSturingContext = `COACH BESLISSING (LEIDEND): TRAINEN vandaag. Training is goedgekeurd. Kies passende module en intensiteit.`
-    }
-    if (coachAdvies) coachSturingContext += `\nCoach advies: "${coachAdvies}"`
-    if (coachReasoning) coachSturingContext += `\nCoach redenering: "${coachReasoning}"`
-    if (trainerInstructies) coachSturingContext += `\n\n⚠️ DIRECTE INSTRUCTIE VAN COACH AAN TRAINER: ${trainerInstructies}`
-
-    // Dagplan context voor Trainer AI
-    const dagplanContext = dagplan.length > 0
-      ? `\nDagplan van Coach (volg dit op):\n${dagplan.map(d => `${d.tijd}: ${d.actie}`).join('\n')}`
-      : ''
-
-    // Blessure context
-    const blessureContext = blessures.length > 0
-      ? `\nActieve blessures: ${blessures.map((b: {body_part: string; pain_score: number}) => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ')}`
-      : ''
 
     const equipment: Partial<EquipmentProfile> = {
       kettlebell_available: profile?.kettlebell_available ?? true,
@@ -159,6 +122,12 @@ export async function POST(req: NextRequest) {
     const kettlebellAvailable = availableModules.includes('kettlebell')
     const runningAvailable = availableModules.includes('running')
     const cyclingAvailable = availableModules.includes('cycling')
+
+    if (isLibrary && forcedModule) {
+      if (!isModuleAvailable(forcedModule, equipment)) {
+        return NextResponse.json({ error: `Module '${forcedModule}' niet beschikbaar` }, { status: 403 })
+      }
+    }
 
     const stravaRuns = (stravaRunsRes.data || []) as Array<{ date: string; duration: number; metrics: Record<string, number> }>
     const stravaRunningContext = stravaRuns.length > 0
@@ -190,11 +159,41 @@ export async function POST(req: NextRequest) {
         }).join('\n')
       : ''
 
-    if (isLibrary && forcedModule) {
-      if (!isModuleAvailable(forcedModule, equipment)) {
-        return NextResponse.json({ error: `Module '${forcedModule}' niet beschikbaar` }, { status: 403 })
+    // Coach sturing -- bij library-keuze bepaalt de gebruiker de module,
+    // coach bepaalt alleen de intensiteit. Bij normale flow bepaalt coach alles.
+    const coachActieType = coachRec?.actie_type || null
+    const trainerInstructies = coachRec?.trainer_instructies || null
+
+    let coachSturingContext = ''
+    if (isLibrary) {
+      // Bibliotheek: gebruiker kiest module -- coach bepaalt alleen intensiteit
+      if (coachActieType === 'rust') {
+        coachSturingContext = `COACH ADVIES (intensiteit): Coach adviseerde rust vandaag. Kies recovery/light sessietype voor de gekozen module. training_allowed MOET true zijn -- de gebruiker heeft bewust gekozen deze module te starten.`
+      } else if (coachActieType === 'herstel') {
+        coachSturingContext = `COACH ADVIES (intensiteit): Coach adviseerde herstel vandaag. Kies recovery of licht sessietype voor de gekozen module. intensity MOET "light" zijn.`
+      } else {
+        coachSturingContext = `COACH ADVIES: Coach heeft trainen goedgekeurd. Kies passend sessietype voor de gekozen module.`
       }
+    } else {
+      // Normale flow: coach is volledig leidend
+      if (coachActieType === 'rust') {
+        coachSturingContext = `COACH BESLISSING (LEIDEND): RUST vandaag. training_allowed MOET false zijn.`
+      } else if (coachActieType === 'herstel') {
+        coachSturingContext = `COACH BESLISSING (LEIDEND): HERSTEL vandaag. Alleen intensity "light" als training_allowed true is.`
+      } else if (coachActieType === 'trainen') {
+        coachSturingContext = `COACH BESLISSING (LEIDEND): TRAINEN vandaag. Training goedgekeurd.`
+      }
+      if (coachRec?.recommendation) coachSturingContext += `\nCoach advies: "${coachRec.recommendation}"`
+      if (trainerInstructies) coachSturingContext += `\n\nDIRECTE INSTRUCTIE VAN COACH AAN TRAINER: ${trainerInstructies}`
     }
+
+    const dagplanContext = dagplan.length > 0
+      ? `\nDagplan van Coach:\n${dagplan.map(d => `${d.tijd}: ${d.actie}`).join('\n')}`
+      : ''
+
+    const blessureContext = blessures.length > 0
+      ? `\nActieve blessures: ${blessures.map((b: {body_part: string; pain_score: number}) => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ')}`
+      : ''
 
     const context = [
       `Naam: ${profile?.first_name || 'gebruiker'}, niveau: ${profile?.experience_level || 'beginner'}`,
@@ -210,18 +209,20 @@ export async function POST(req: NextRequest) {
     const keuzeModules = (['kettlebell', 'rowing', 'running', 'cycling'] as const).filter(m =>
       m === 'kettlebell' ? kettlebellAvailable : m === 'rowing' ? rowingAvailable : m === 'running' ? runningAvailable : cyclingAvailable
     )
+
+    // Bij library-keuze wint forcedModule altijd -- coach bepaalt alleen intensiteit
     const moduleKeuze = isLibrary && forcedModule
-      ? `De gebruiker koos zelf voor "${forcedModule}". training_type MOET "${forcedModule}" zijn.`
+      ? `De gebruiker heeft gekozen voor "${forcedModule}". training_type MOET "${forcedModule}" zijn. Bepaal het sessietype binnen deze module op basis van de coach-intensiteit hierboven.`
       : keuzeModules.length > 1
         ? `Kies het beste training_type uit: ${keuzeModules.map(m => `"${m}"`).join(', ')}, op basis van de data en het dagplan.`
         : keuzeModules.length === 1
           ? `training_type MOET "${keuzeModules[0]}" zijn.`
           : 'training_type MOET "kettlebell" zijn.'
 
-    const systemPrompt = `Je bent Trainer AI van CoachOS. Genereer een trainingsschema dat aansluit op het dagplan van de Coach.
+    const systemPrompt = `Je bent Trainer AI van CoachOS. Genereer een trainingsschema.
 
-⚠️ COACH STURING (ALTIJD LEIDEND):
-${coachSturingContext || 'Geen specifiek coach advies — gebruik eigen inschatting op basis van de data.'}
+COACH STURING:
+${coachSturingContext || 'Geen specifiek coach advies -- gebruik eigen inschatting op basis van de data.'}
 
 DATA:
 ${context}
@@ -230,58 +231,35 @@ MODULE KEUZE:
 ${moduleKeuze}
 
 REGELS:
-- Coach beslissing is ALTIJD leidend
-- Stem het trainingsschema af op het dagplan van de Coach
-- Bij lage energie of herstel: lichte intensiteit, kortere duur
+- Bij library-keuze: training_type MOET exact de gekozen module zijn
+- Coach sturing bepaalt intensiteit, NIET het training_type bij library-keuze
+- Bij lage energie of herstel: lichtere intensiteit, recovery sessietype
 - duration = totale sessieduur in minuten
-- Heup mobiliteit oefeningen zijn herstel — die staan al in recovery_modules, NIET in segments
-
-BLESSURE INFO (alleen als context):
-${blessures.length > 0 ? blessures.map((b: {body_part: string; pain_score: number}) => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ') : 'Geen actieve blessures.'}
-De Coach heeft al rekening gehouden met blessures in het advies en dagplan. Volg dat op.
 
 KETTLEBELL: genereer 4-6 oefeningen. Elk segment: type:"kettlebell", exercise, sets, reps of duration_sec, rest_sec, level, instruction, cue, common_errors.
 
-ROWING (Concept2): session_type kiezen (recovery/endurance/tempo/interval/sprint/test). Elk segment: type:"rowing", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required:["concept2"].
+ROWING (Concept2): session_type kiezen (recovery/endurance/tempo/interval/sprint/test). Elk segment: type:"rowing", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required:["concept2"]. Optioneel: distance_m, target_split, target_spm, target_hr_zone.
 
-RUNNING: session_type kiezen. Elk segment: type:"running", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required:["running"].
+RUNNING: session_type kiezen. Elk segment: type:"running", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required:["running"]. Optioneel: distance_m, target_pace, target_hr_zone.
 
-CYCLING: session_type kiezen. Elk segment: type:"cycling", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required:["cycling"].
+CYCLING: session_type kiezen. Elk segment: type:"cycling", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required:["cycling"]. Optioneel: target_power_w, target_cadence_rpm, target_hr_zone.
 
 Reageer ALLEEN in dit JSON formaat:
 {
   "training_allowed": true,
-  "training_type": "kettlebell",
+  "training_type": "rowing",
   "title": "Korte titel",
   "intensity": "light",
   "duration": 30,
   "segments": [],
   "recovery_modules": [
-    { "type": "mobility", "subtype": "hips", "duration": 10, "label": "Heup mobiliteit" },
     { "type": "breathing", "subtype": "box_breathing", "duration": 6, "label": "Box Breathing" }
   ],
   "reason": "Korte reden",
-  "coach_message": "Persoonlijk motiverend bericht dat aansluit op het dagplan"
-}
+  "coach_message": "Persoonlijk motiverend bericht"
+}`
 
-VERPLICHTE REGELS voor recovery_modules:
-- Elk item MOET een "label" hebben (string, niet leeg)
-- Elk item MOET een "duration" hebben (getal in MINUTEN, niet seconden, minimaal 1)
-- Elk item MOET een "type" hebben: "breathing", "mobility", "walk", of "relaxation"
-- Elk item MOET een "subtype" hebben
-- Geen lege labels, geen 0 minuten, geen null waarden`
-
-    // Fallbacks
-    const herselFallback: TrainingInstruction = {
-      training_allowed: false,
-      training_type: null,
-      intensity: null,
-      duration: null,
-      recovery_modules: [],
-      reason: 'Coach adviseert herstel vandaag',
-      coach_message: 'Vandaag is herstel de training. Rust is productief.',
-    }
-
+    // Module-specifieke fallbacks -- bij mislukte AI-call altijd het juiste type terug
     const kettlebellFallback: TrainingInstruction = {
       training_allowed: true,
       training_type: 'kettlebell',
@@ -296,29 +274,113 @@ VERPLICHTE REGELS voor recovery_modules:
         { type: 'kettlebell', exercise: 'Farmer Carry', sets: 3, reps: null, duration_sec: 40, rest_sec: 60, level: 1,
           instruction: 'Loop rechtop met de kettlebell naast je lichaam.', cue: 'Schouders omlaag', common_errors: ['Romp kantelt'] },
       ] as unknown[],
-      recovery_modules: [],
+      recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
       reason: 'Standaard kettlebell sessie',
       coach_message: 'Goed bezig! Luister naar je lichaam.',
     }
 
-    // Rust → direct terug zonder AI call
-    if (coachActieType === 'rust' && !isLibrary) {
-      await supabase.from('coach_recommendations').upsert({
-        user_id: user.id, date: today, type: cacheType,
-        training_instruction: herselFallback,
-      }, { onConflict: 'user_id,date,type' })
-      return NextResponse.json({ instruction: herselFallback })
+    const rowingFallback: TrainingInstruction = {
+      training_allowed: true,
+      training_type: 'rowing',
+      title: 'Rowing sessie',
+      intensity: coachActieType === 'herstel' ? 'light' : 'medium',
+      duration: coachActieType === 'herstel' ? 20 : 30,
+      segments: coachActieType === 'herstel' ? [
+        { type: 'rowing', exercise: '20 min Recovery Row', session_type: 'recovery', sets: 1, reps: null,
+          duration_sec: 1200, rest_sec: 0, target_spm: 18, target_hr_zone: 'Zone 1-2',
+          instruction: 'Roei rustig en ontspannen, focus op lange halen en lage hartslag.', cue: 'Adem rustig mee met de haal',
+          common_errors: ['Tempo te hoog', 'Slagfrequentie te hoog'], equipment_required: ['concept2'] },
+      ] as unknown[] : [
+        { type: 'rowing', exercise: '5 min Inroeien', session_type: 'recovery', sets: 1, reps: null,
+          duration_sec: 300, rest_sec: 0, target_spm: 20, target_hr_zone: 'Zone 1-2',
+          instruction: 'Roei rustig in, focus op een lange, ontspannen haal.', cue: 'Adem rustig mee',
+          common_errors: ['Te snel starten'], equipment_required: ['concept2'] },
+        { type: 'rowing', exercise: '500m Interval', session_type: 'interval', sets: 6, reps: null,
+          duration_sec: 125, rest_sec: 60, distance_m: 500, target_split: '2:05', target_spm: 26, target_hr_zone: 'Zone 3-4',
+          instruction: 'Houd de catch scherp, drive met de benen.', cue: 'Benen - rug - armen',
+          common_errors: ['Te vroeg armen trekken', 'Slagfrequentie te hoog', 'Inzakken in de recovery'],
+          equipment_required: ['concept2'] },
+        { type: 'rowing', exercise: '5 min Uitroeien', session_type: 'recovery', sets: 1, reps: null,
+          duration_sec: 300, rest_sec: 0, target_spm: 18, target_hr_zone: 'Zone 1',
+          instruction: 'Roei rustig uit om af te koelen.', cue: 'Lange, rustige halen',
+          common_errors: ['Te abrupt stoppen'], equipment_required: ['concept2'] },
+      ] as unknown[],
+      recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
+      reason: 'Standaard rowing sessie',
+      coach_message: 'Mooie rowing sessie -- focus op techniek!',
     }
 
-    const fallbackInstruction: TrainingInstruction = coachActieType === 'herstel'
-      ? { ...kettlebellFallback, intensity: 'light', recovery_modules: [] }
-      : kettlebellAvailable ? kettlebellFallback
-      : { ...herselFallback, training_allowed: false }
+    const runningFallback: TrainingInstruction = {
+      training_allowed: true,
+      training_type: 'running',
+      title: 'Running sessie',
+      intensity: coachActieType === 'herstel' ? 'light' : 'medium',
+      duration: coachActieType === 'herstel' ? 25 : 35,
+      segments: [
+        { type: 'running', exercise: coachActieType === 'herstel' ? '25 min Recovery Run' : '5km Steady Run',
+          session_type: coachActieType === 'herstel' ? 'recovery' : 'endurance',
+          sets: 1, reps: null,
+          duration_sec: coachActieType === 'herstel' ? 1500 : 1800,
+          rest_sec: 0,
+          distance_m: coachActieType === 'herstel' ? undefined : 5000,
+          target_pace: coachActieType === 'herstel' ? '6:30/km' : '6:00/km',
+          target_hr_zone: coachActieType === 'herstel' ? 'Zone 1-2' : 'Zone 2',
+          instruction: 'Loop op een constant, comfortabel tempo. Praten moet nog mogelijk zijn.',
+          cue: 'Rustige, gelijkmatige adem',
+          common_errors: ['Tempo te hoog starten', 'Te grote pasgrootte bij vermoeidheid'],
+          equipment_required: ['running'] },
+      ] as unknown[],
+      recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
+      reason: 'Standaard running sessie',
+      coach_message: 'Lekker rustig erin lopen vandaag!',
+    }
 
-    let instruction: TrainingInstruction = { ...fallbackInstruction, recovery_modules: [] }
+    const cyclingFallback: TrainingInstruction = {
+      training_allowed: true,
+      training_type: 'cycling',
+      title: 'Cycling sessie',
+      intensity: coachActieType === 'herstel' ? 'light' : 'medium',
+      duration: coachActieType === 'herstel' ? 30 : 45,
+      segments: [
+        { type: 'cycling', exercise: coachActieType === 'herstel' ? '30 min Recovery Ride' : '45 min Steady Ride',
+          session_type: coachActieType === 'herstel' ? 'recovery' : 'endurance',
+          sets: 1, reps: null,
+          duration_sec: coachActieType === 'herstel' ? 1800 : 2700,
+          rest_sec: 0,
+          target_cadence_rpm: 85,
+          target_hr_zone: coachActieType === 'herstel' ? 'Zone 1-2' : 'Zone 2',
+          instruction: 'Rij op een constant, comfortabel tempo. Houd cadans hoog en soepel.',
+          cue: 'Soepele trap, ontspannen bovenlichaam',
+          common_errors: ['Cadans te laag', 'Te hard starten'],
+          equipment_required: ['cycling'] },
+      ] as unknown[],
+      recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
+      reason: 'Standaard cycling sessie',
+      coach_message: 'Rustig en gecontroleerd fietsen vandaag!',
+    }
+
+    // Kies de juiste fallback op basis van forcedModule of beschikbaar equipment
+    const fallbackInstruction: TrainingInstruction = isLibrary && forcedModule === 'rowing'
+      ? rowingFallback
+      : isLibrary && forcedModule === 'running'
+        ? runningFallback
+        : isLibrary && forcedModule === 'cycling'
+          ? cyclingFallback
+          : isLibrary && forcedModule === 'kettlebell'
+            ? kettlebellFallback
+            : coachActieType === 'rust'
+              ? { training_allowed: false, training_type: null, intensity: null, duration: null,
+                  recovery_modules: [], reason: 'Coach adviseert rust vandaag', coach_message: 'Vandaag is herstel de training.' }
+              : kettlebellAvailable ? kettlebellFallback
+              : rowingAvailable ? rowingFallback
+              : runningAvailable ? runningFallback
+              : cyclingAvailable ? cyclingFallback
+              : kettlebellFallback
+
+    let instruction: TrainingInstruction = fallbackInstruction
 
     try {
-      // Haiku voor snelheid — training schema is minder complex dan coach advies
+      // Directe Anthropic API call -- geen /api/ai proxy (die geeft 500 errors)
       const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -341,18 +403,24 @@ VERPLICHTE REGELS voor recovery_modules:
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
           const parsedType = parsed.training_type
+
+          // Bij library-keuze: alleen accepteren als het type overeenkomt
+          // Bij normale flow: accepteren als het een beschikbaar type is
           const typeAllowed = isLibrary && forcedModule
             ? parsedType === forcedModule
-            : !parsedType || (parsedType === 'rowing' && rowingAvailable) || (parsedType === 'kettlebell' && kettlebellAvailable) || (parsedType === 'running' && runningAvailable) || (parsedType === 'cycling' && cyclingAvailable)
+            : !parsedType || (parsedType === 'rowing' && rowingAvailable) ||
+              (parsedType === 'kettlebell' && kettlebellAvailable) ||
+              (parsedType === 'running' && runningAvailable) ||
+              (parsedType === 'cycling' && cyclingAvailable)
 
           if ((parsed.segments && parsed.segments.length > 0 && typeAllowed) || parsed.training_allowed === false) {
-            // Coach bepaalt — gebruik AI output direct, geen toevoegingen
             instruction = parsed
           }
+          // Als typeAllowed false: AI gaf verkeerd type terug → gebruik module-specifieke fallback
         }
       }
     } catch {
-      instruction = { ...fallbackInstruction, recovery_modules: [] }
+      instruction = fallbackInstruction
     }
 
     await supabase.from('coach_recommendations').upsert({
