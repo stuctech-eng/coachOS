@@ -43,16 +43,13 @@ export async function POST(req: NextRequest) {
       fatigue_after,
       soreness,
       notes,
-      // Rowing-specifiek (optioneel, alleen bij module === 'rowing')
       rowing_technique_rating,
       rowing_pacing_rating,
       rowing_fatigue_rating,
-      // Running-specifiek (optioneel, alleen bij module === 'running')
       running_technique_rating,
       running_pacing_rating,
       running_fatigue_rating,
       running_rpe_rating,
-      // Cycling-specifiek (optioneel, alleen bij module === 'cycling')
       cycling_technique_rating,
       cycling_pacing_rating,
       cycling_fatigue_rating,
@@ -61,7 +58,6 @@ export async function POST(req: NextRequest) {
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
-    // Update sessie status indien session_id meegegeven (oude flow)
     if (session_id) {
       await supabase
         .from('training_sessions')
@@ -87,7 +83,6 @@ export async function POST(req: NextRequest) {
       completed_at: new Date().toISOString(),
     }
 
-    // Rowing-specifieke velden alleen toevoegen indien aanwezig
     if (rowing_technique_rating !== undefined) insertData.rowing_technique_rating = rowing_technique_rating
     if (rowing_pacing_rating !== undefined) insertData.rowing_pacing_rating = rowing_pacing_rating
     if (rowing_fatigue_rating !== undefined) insertData.rowing_fatigue_rating = rowing_fatigue_rating
@@ -107,6 +102,71 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) throw error
+
+    // ── Stap 2: Coach Call aanmaken bij bibliotheek-training tegen advies in ──
+    // Alleen als: training komt uit bibliotheek (library) EN coach adviseerde
+    // herstel of rust vandaag — dan weet de coach het niet tenzij we het melden
+    if (training_source === 'library' && result?.id) {
+      try {
+        const { data: coachRec } = await supabase
+          .from('coach_recommendations')
+          .select('actie_type')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .eq('type', 'coach')
+          .single()
+
+        const coachActieType = coachRec?.actie_type || null
+
+        if (coachActieType === 'herstel' || coachActieType === 'rust') {
+          // Zoek of er al een coach_call is voor vandaag
+          const { data: existing } = await supabase
+            .from('coach_calls')
+            .select('id, coach_call_items(training_result_id)')
+            .eq('user_id', user.id)
+            .eq('date', today)
+            .single()
+
+          // Check of dit training_result_id al bestaat
+          const alreadyAdded = (existing?.coach_call_items as { training_result_id: string }[] || [])
+            .some(i => i.training_result_id === result.id)
+
+          if (!alreadyAdded) {
+            let callId = existing?.id
+
+            if (!callId) {
+              const { data: newCall } = await supabase
+                .from('coach_calls')
+                .insert({ user_id: user.id, date: today, status: 'pending' })
+                .select('id')
+                .single()
+              callId = newCall?.id
+            }
+
+            if (callId) {
+              const sportLabel: Record<string, string> = {
+                kettlebell: 'Kettlebell',
+                rowing: 'Roeien',
+                running: 'Hardlopen',
+                cycling: 'Fietsen',
+                strength: 'Kracht',
+                bodyweight: 'Bodyweight',
+              }
+              await supabase.from('coach_call_items').insert({
+                coach_call_id: callId,
+                training_result_id: result.id,
+                sport_type: sportLabel[training_type || module] || training_type || module || 'Training',
+                duration_min: actual_duration ?? null,
+                status: 'pending',
+              })
+            }
+          }
+        }
+      } catch (coachCallErr) {
+        // Coach Call aanmaken is niet kritisch — log maar gooi geen error
+        console.error('[training/complete] coach_call aanmaken mislukt:', coachCallErr)
+      }
+    }
 
     return NextResponse.json({ success: true, result })
   } catch (err) {

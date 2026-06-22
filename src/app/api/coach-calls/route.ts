@@ -54,7 +54,23 @@ export async function GET() {
 
     const pendingCount = (call.coach_call_items || []).filter((i: { status: string }) => i.status === 'pending').length
 
-    return NextResponse.json({ ...call, pending_count: pendingCount })
+    // Verrijk items met training_result data voor interne trainingen
+    const enrichedItems = await Promise.all(
+      (call.coach_call_items || []).map(async (item: Record<string, unknown>) => {
+        if (item.training_result_id && !item.activity_session_id) {
+          // Interne bibliotheek-training — haal extra context op
+          const { data: tr } = await supabase
+            .from('training_results')
+            .select('training_type, actual_duration, rating')
+            .eq('id', item.training_result_id)
+            .single()
+          return { ...item, training_result: tr, source: 'library' }
+        }
+        return { ...item, source: 'strava' }
+      })
+    )
+
+    return NextResponse.json({ ...call, coach_call_items: enrichedItems, pending_count: pendingCount })
   } catch (err) {
     console.error('[coach-calls GET]', err)
     return NextResponse.json(null)
@@ -100,7 +116,6 @@ export async function POST(_req: NextRequest) {
     let updated = 0
 
     for (const [date, activities] of Object.entries(byDate)) {
-      // Idempotency: select first, insert only if missing
       const { data: existing } = await supabase
         .from('coach_calls')
         .select('id, coach_call_items(activity_session_id)')

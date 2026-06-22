@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.8.7
+- Versie: 1.8.8
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -490,6 +490,15 @@ oefening bibliotheek.
   training/page.tsx + training/session/[module]/page.tsx +
   training/today/route.ts gewijzigd, geen DB-wijziging.
   Coach Call roadmap Stap 2 en 3 staan nog open.
+
+- v1.8.8: Coach Call Stap 2 — bibliotheek-trainingen tegen coach-advies
+  triggeren nu een Coach Call. Na voltooien van een bibliotheek-training
+  (training_source=library) terwijl coach herstel of rust adviseerde,
+  wordt automatisch een coach_call item aangemaakt zodat de coach het
+  te weten komt via de evaluatie. DB-migratie: training_result_id (uuid)
+  toegevoegd aan coach_call_items. training/complete/route.ts en
+  coach-calls/route.ts gewijzigd. Stap 3 (coach leest evaluatiedata
+  terug) staat nog open.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
