@@ -635,14 +635,8 @@ export default function SessionPage() {
   const searchParams = useSearchParams()
   const module = params.module as TrainingModule
 
-  // ── Library detectie via localStorage (PWA-proof) ──────────────────────────
-  // searchParams is onbetrouwbaar in PWA op iOS — query params worden soms
-  // weggegooid bij navigatie. training/page.tsx slaat de module-keuze op in
-  // localStorage vóór navigatie zodat we hier altijd de juiste waarde hebben.
-  const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-  const libPending = typeof window !== 'undefined' ? localStorage.getItem('library_module_pending') : null
-  const libDatum = typeof window !== 'undefined' ? localStorage.getItem('library_module_datum') : null
-  const isLibrary = (libPending === module && libDatum === vandaagStr) || searchParams.get('source') === 'library'
+  // isLibrary wordt bepaald in de useEffect hieronder (client-side only)
+  // zodat localStorage altijd beschikbaar is — niet hier op module-niveau
 
   const [session, setSession] = useState<ExtendedSessionState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -665,8 +659,14 @@ export default function SessionPage() {
     clearSession()
     const run = async () => {
       try {
+        // Library detectie client-side — localStorage altijd beschikbaar in useEffect
+        const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+        const libPending = localStorage.getItem('library_module_pending')
+        const libDatum = localStorage.getItem('library_module_datum')
+        const isLibrary = (libPending === module && libDatum === vandaagStr) || searchParams.get('source') === 'library'
+
         if (isLibrary) {
-          const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+          const vandaag = vandaagStr
           const libKey = `training_lib_${module}_data`
           const libDatumKey = `training_lib_${module}_datum`
           const cachedDatum = localStorage.getItem(libDatumKey)
@@ -721,7 +721,7 @@ export default function SessionPage() {
       finally { setLoading(false) }
     }
     run()
-  }, [module, isLibrary])
+  }, [module])
 
   function buildAndSetSession(instruction: Record<string, unknown>, source: TrainingSource) {
     const rawSegments = (instruction.segments || instruction.exercises || []) as unknown[]
