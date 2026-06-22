@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.9.2
+- Versie: 1.9.4
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -538,6 +538,29 @@ oefening bibliotheek.
   mobiliteit (Pigeon Stretch, Thread the Needle, Hamstring/Quad Stretch),
   conditie (Burpee, Butt Kicks, Skater Jump, Zijwaartse Shuffle), kracht
   (Squat Hold, Good Morning). Alleen bodyweight-exercises.ts gewijzigd.
+
+- v1.9.3: Bodyweight Bibliotheek Fase 3 — 31 extra oefeningen toegevoegd.
+  Totaal nu 96 oefeningen. Uitbreidingen: benen gevorderd (Pistol Squat,
+  Shrimp Squat, Cossack Squat), schouders (Wall Walk, Scapulaire Push-Up,
+  Y/T/W Raise), core gevorderd (Toe Touch, Reverse Crunch, Flutter Kick,
+  Plank Reach), mobiliteit (Dynamic Lunge Stretch, Ruggegraatrotatie,
+  Nekmobiliteit, Enkelmobiliteit, Heupcirkels, Deurkozijn Stretch),
+  recovery (Buikademhaling, Benen Tegen de Muur, Bekkenkatrol), conditie
+  (Bear Crawl, Tuck Jump, Seal Jack, Speed Skater, Plank Jack), bilspieren
+  gevorderd (Copenhagen Hold, Bridge March), kracht (Dip, Hindu Push-Up,
+  Archer Push-Up, Typewriter Push-Up). Alleen bodyweight-exercises.ts.
+
+- v1.9.4: Bodyweight Bibliotheek Fase 4 — bibliotheek volledig afgerond.
+  Totaal 120 oefeningen. Laatste toevoegingen: Sumo Squat, Box Squat,
+  Zijwaarts Lopen, Step-Back Lunge, Hollow Rock, Boat Hold, Seated Knee
+  Tuck, Binnenkant Dij Stretch, Kuitstrekking, Lies Stretch, Staande/
+  Zittende Voorwaartse Buiging, Progressieve Spierontspanning,
+  Herstelwandeling, Prone Snow Angel, Pike Hold, Staggered Push-Up,
+  Isometrische Squat, Brede Sprong, Explosieve Push-Up, L-Sit,
+  Windshield Wiper, Reverse Plank, Staande Heupabductie.
+  Coach heeft nu voor elke situatie een passende training:
+  herstel, mobiliteit, hotel, blessure, core, kracht, conditie, warmup.
+  Alleen bodyweight-exercises.ts gewijzigd.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
