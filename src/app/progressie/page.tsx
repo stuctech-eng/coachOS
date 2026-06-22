@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, Dumbbell, Clock, Star, Battery, Moon, Trophy, Flame, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Dumbbell, Clock, Star, Battery, Moon, Trophy, Flame, ChevronDown, ChevronUp, BarChart2, ShieldCheck, ShieldAlert, HelpCircle } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
@@ -55,6 +55,18 @@ interface Prediction {
 interface Inzicht {
   content: string
   observation?: string
+}
+
+interface ComplianceData {
+  totaal_hersteladviezen: number
+  gevolgd: number
+  afgeweken: number
+  compliance_pct: number
+  afwijkingen_goed: number
+  afwijkingen_zwaar: number
+  afwijkingen_onbekend: number
+  samenvatting: string
+  advies: string
 }
 
 function weekStart(offset = 0): string {
@@ -127,6 +139,16 @@ function gemRating(resultaten: TrainingResult[]): number | null {
   return Math.round(metRating.reduce((a, r) => a + (r.rating || 0), 0) / metRating.length * 10) / 10
 }
 
+function ComplianceRing({ pct }: { pct: number }) {
+  const kleur = pct >= 80 ? 'text-green-400' : pct >= 60 ? 'text-amber-400' : 'text-red-400'
+  return (
+    <div className="flex flex-col items-center justify-center">
+      <p className={cn('text-3xl font-bold', kleur)}>{pct}%</p>
+      <p className="text-xs text-slate-500 mt-0.5">gevolgd</p>
+    </div>
+  )
+}
+
 export default function ProgressiePage() {
   const [loading, setLoading] = useState(true)
   const [historischOpen, setHistorischOpen] = useState(false)
@@ -142,6 +164,7 @@ export default function ProgressiePage() {
   const [loadData, setLoadData] = useState<LoadData | null>(null)
   const [inzichten, setInzichten] = useState<Inzicht[] | null>(null)
   const [predictions, setPredictions] = useState<Prediction[] | null>(null)
+  const [compliance, setCompliance] = useState<ComplianceData | null>(null)
 
   const laadData = useCallback(async () => {
     const supabase = createBrowserClient(
@@ -152,7 +175,7 @@ export default function ProgressiePage() {
     const maandGeleden = new Date()
     maandGeleden.setDate(maandGeleden.getDate() - 30)
 
-    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes, memoryRes, _predictionsRes, loadRes] = await Promise.all([
+    const [garminRes, statusRes, weekRes, maandRes, alleRes, performanceRes, memoryRes, _predictionsRes, loadRes, complianceRes] = await Promise.all([
       supabase.from('garmin_imports').select('parsed_data').eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
       supabase.from('daily_status').select('recovery_score').eq('date', vandaag).single(),
       supabase.from('training_results').select('*').eq('completed', true).gte('completed_at', weekStart(0)).order('completed_at', { ascending: false }),
@@ -160,8 +183,9 @@ export default function ProgressiePage() {
       supabase.from('training_results').select('*').eq('completed', true).order('completed_at', { ascending: false }),
       fetch('/api/performance', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/memory', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
-      Promise.resolve(null), // predictions laden apart
+      Promise.resolve(null),
       fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/compliance', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
 
     setGarmin(garminRes.data?.parsed_data || null)
@@ -173,6 +197,7 @@ export default function ProgressiePage() {
     if (performanceRes && !performanceRes.error) setPerformance(performanceRes)
     if (Array.isArray(memoryRes) && memoryRes.length > 0) setInzichten(memoryRes.slice(0, 5))
     if (loadRes && !loadRes.error) setLoadData(loadRes)
+    if (complianceRes) setCompliance(complianceRes)
 
     const grafiekData = []
     for (let i = 7; i >= 0; i--) {
@@ -191,7 +216,6 @@ export default function ProgressiePage() {
     setWeekGrafiek(grafiekData)
     setLoading(false)
 
-    // Laad voorspellingen — eerst localStorage, dan API
     try {
       const cached = localStorage.getItem('predictions_cache')
       if (cached) {
@@ -303,7 +327,46 @@ export default function ProgressiePage() {
           </Card>
         )}
 
-        {/* 2. Trainingsbelasting */}
+        {/* 2. Coach Compliance */}
+        {compliance && compliance.totaal_hersteladviezen > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach Compliance — 30 dagen</p>
+            <Card className="p-5">
+              <div className="flex items-center gap-4 mb-4">
+                <ComplianceRing pct={compliance.compliance_pct} />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-200 leading-relaxed">{compliance.samenvatting}</p>
+                </div>
+              </div>
+
+              {compliance.afgeweken > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-green-500/10 rounded-xl p-3 text-center">
+                    <ShieldCheck size={16} className="text-green-400 mx-auto mb-1" />
+                    <p className="text-lg font-bold text-green-400">{compliance.afwijkingen_goed}</p>
+                    <p className="text-xs text-slate-500">Goed uitgepakt</p>
+                  </div>
+                  <div className="bg-red-500/10 rounded-xl p-3 text-center">
+                    <ShieldAlert size={16} className="text-red-400 mx-auto mb-1" />
+                    <p className="text-lg font-bold text-red-400">{compliance.afwijkingen_zwaar}</p>
+                    <p className="text-xs text-slate-500">Zwaar uitgevallen</p>
+                  </div>
+                  <div className="bg-slate-800 rounded-xl p-3 text-center">
+                    <HelpCircle size={16} className="text-slate-400 mx-auto mb-1" />
+                    <p className="text-lg font-bold text-slate-400">{compliance.afwijkingen_onbekend}</p>
+                    <p className="text-xs text-slate-500">Geen evaluatie</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-coach-border">
+                <p className="text-xs text-slate-400 leading-relaxed">{compliance.advies}</p>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* 3. Trainingsbelasting */}
         {loadData && (
           <div>
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Trainingsbelasting</p>
@@ -356,7 +419,7 @@ export default function ProgressiePage() {
           </div>
         )}
 
-        {/* 3. Coach Inzichten */}
+        {/* 4. Coach Inzichten */}
         {inzichten && inzichten.length > 0 && (
           <div>
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach Inzichten</p>
@@ -373,7 +436,7 @@ export default function ProgressiePage() {
           </div>
         )}
 
-        {/* 4. Voorspellingen */}
+        {/* 5. Voorspellingen */}
         {predictions && predictions.length > 0 && (
           <div>
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Voorspellingen</p>
@@ -404,7 +467,7 @@ export default function ProgressiePage() {
           </div>
         )}
 
-        {/* 5. Historisch (inklapbaar) */}
+        {/* 6. Historisch (inklapbaar) */}
         <div>
           <button onClick={() => setHistorischOpen(!historischOpen)} className="w-full">
             <Card className="p-4 active:bg-slate-800/80 transition-colors">
@@ -427,8 +490,6 @@ export default function ProgressiePage() {
 
           {historischOpen && (
             <div className="flex flex-col gap-4 mt-3">
-
-              {/* Vandaag */}
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Vandaag</p>
                 <Card className="p-4">
@@ -461,7 +522,6 @@ export default function ProgressiePage() {
                 </Card>
               </div>
 
-              {/* Week & Maand */}
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Deze week</p>
                 <Card className="p-4">
@@ -502,7 +562,6 @@ export default function ProgressiePage() {
                 </Card>
               </div>
 
-              {/* Records */}
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Persoonlijke records</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -541,7 +600,6 @@ export default function ProgressiePage() {
                 </div>
               </div>
 
-              {/* Grafieken */}
               {weekGrafiek.some(w => w.minuten > 0) && (
                 <div>
                   <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Trainingstijd per week</p>
@@ -581,12 +639,10 @@ export default function ProgressiePage() {
                   </Card>
                 </div>
               )}
-
             </div>
           )}
         </div>
 
-        {/* Lege staat */}
         {alleResultaten.length === 0 && !performance && (
           <Card className="p-8 text-center">
             <Dumbbell size={40} className="text-slate-600 mx-auto mb-3" />
@@ -596,7 +652,6 @@ export default function ProgressiePage() {
             </p>
           </Card>
         )}
-
       </div>
     </AppShell>
   )

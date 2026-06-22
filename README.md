@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.8.9
+- Versie: 1.9.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -508,6 +508,14 @@ oefening bibliotheek.
   roeien (RPE 7, voelde goed) — vandaag echt herstel."
   Alleen coach/route.ts gewijzigd, geen DB-wijziging.
   Coach Call roadmap volledig afgerond (Stap 1+2+3).
+
+- v1.9.0: Coach Compliance — sluit de coaching-cirkel volledig af.
+  Nieuwe /api/compliance/route.ts berekent over de laatste 30 dagen:
+  % hersteladviezen gevolgd, aantal afwijkingen en hun uitkomst
+  (goed: RPE ≤ 6 + mood ≥ 3 / zwaar: RPE ≥ 7 of mood ≤ 2 / onbekend).
+  progressie/page.tsx uitgebreid met Coach Compliance sectie direct
+  na Performance AI. Geen DB-wijziging — gebruikt bestaande
+  coach_recommendations, training_results en coach_call_items data.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
