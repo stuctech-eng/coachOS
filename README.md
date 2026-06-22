@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.8.8
+- Versie: 1.8.9
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -499,6 +499,15 @@ oefening bibliotheek.
   toegevoegd aan coach_call_items. training/complete/route.ts en
   coach-calls/route.ts gewijzigd. Stap 3 (coach leest evaluatiedata
   terug) staat nog open.
+
+- v1.8.9: Coach Call Stap 3 — coach leest evaluatiedata terug bij
+  volgend dagadvies. coach/route.ts haalt nu recente coach_calls op
+  (laatste 3 dagen, completed items) en voegt RPE, mood en notities
+  toe als context in de prompt. Coach kan nu reageren op genegeerd
+  advies met kennis van hoe het ging: "Gisteren ben je toch gaan
+  roeien (RPE 7, voelde goed) — vandaag echt herstel."
+  Alleen coach/route.ts gewijzigd, geen DB-wijziging.
+  Coach Call roadmap volledig afgerond (Stap 1+2+3).
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

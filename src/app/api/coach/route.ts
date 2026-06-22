@@ -59,10 +59,14 @@ export async function POST() {
     zeven.setDate(zeven.getDate() - 7)
     const zevenDagenGeleden = zeven.toISOString().split('T')[0]
 
+    const drieDagenGeleden = new Date()
+    drieDagenGeleden.setDate(drieDagenGeleden.getDate() - 3)
+    const drieDagenGeledenStr = drieDagenGeleden.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+
     const vandaagNummer = new Date().getDay()
     const isWeekend = vandaagNummer === 0 || vandaagNummer === 6
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents, coachCallsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -108,6 +112,14 @@ export async function POST() {
         .order('created_at', { ascending: false })
         .limit(3),
       fetchTodaysLifeEvents(supabase, user.id, vandaagNummer, isWeekend),
+      // Stap 3: Coach Call evaluaties laatste 3 dagen
+      supabase.from('coach_calls')
+        .select('date, coach_call_items(sport_type, duration_min, rating, mood, notes, status)')
+        .eq('user_id', user.id)
+        .gte('date', drieDagenGeledenStr)
+        .in('status', ['pending', 'partial', 'completed'])
+        .order('date', { ascending: false })
+        .limit(3),
     ])
 
     const profile = profileRes.data
@@ -129,8 +141,6 @@ export async function POST() {
     const loadContext = ''
     const blessures = blessuresRes.data || []
 
-    // Levensgebeurtenissen — alle categorieën (Werk, Leven, Gezondheid,
-    // Omgeving), zelfde selectie als action-plan/route.ts gebruikt
     const lifeEventsContext = formatLifeEventsContext(lifeEvents)
 
     const blessureContext = blessures.length > 0
@@ -157,6 +167,37 @@ export async function POST() {
         `\n- Trainingsbelasting: ${belastingLabel} (score ${weekBelasting})` +
         `\nGebruik deze samenvatting voor trainingsfrequentie en belasting. Ga niet in op sport-specifieke details (watt, tempo, split) — dat is voor Trainer AI.`
     })() : '\nGeen trainingen afgelopen 7 dagen.'
+
+    // ── Stap 3: Coach Call evaluatiecontext ───────────────────────────────────
+    const coachCalls = coachCallsRes.data || []
+    const MOOD_LABELS: Record<number, string> = { 1: 'slecht 😞', 2: 'matig 😐', 3: 'prima 🙂', 4: 'goed 😃', 5: 'geweldig 🔥' }
+
+    const coachCallContext = coachCalls.length > 0 ? (() => {
+      const regels: string[] = ['\nEvaluaties van recente trainingen (Coach Call data):']
+      for (const call of coachCalls) {
+        const items = (call.coach_call_items || []) as Array<{
+          sport_type: string; duration_min: number; rating: number | null;
+          mood: number | null; notes: string | null; status: string
+        }>
+        const gedaan = items.filter(i => i.status === 'done' && i.rating)
+        if (gedaan.length === 0) continue
+
+        const datumLabel = new Date(call.date + 'T12:00:00').toLocaleDateString('nl-NL', {
+          weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam'
+        })
+        regels.push(`\n${datumLabel}:`)
+
+        for (const item of gedaan) {
+          const moodLabel = item.mood ? MOOD_LABELS[item.mood] || String(item.mood) : 'niet ingevuld'
+          regels.push(`- ${item.sport_type}: RPE ${item.rating}/10, mood ${moodLabel}, duur ${item.duration_min} min${item.notes ? ` — "${item.notes}"` : ''}`)
+        }
+      }
+
+      if (regels.length <= 1) return ''
+
+      regels.push('\nAls de gebruiker een training heeft gedaan terwijl jij rust of herstel had geadviseerd, weet je dat nu. Je mag daar in je advies op reageren — direct maar zonder te overdrijven. Als RPE hoog was en mood laag, is dat een signaal van overbelasting.')
+      return regels.join('\n')
+    })() : ''
 
     const metricsVandaag = metricsRes.data || (garmin ? {
       hrv: garmin.hrv?.avg_7d_ms || null,
@@ -239,9 +280,8 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + trainerInstructiePrompt
+    ) + garminContext + trainingsCoachContext + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + trainerInstructiePrompt
 
-    // Directe Anthropic API call — geen /api/ai proxy
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -265,7 +305,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
     let actie_type: 'trainen' | 'herstel' | 'rust' = 'herstel'
     let main_action = ''
     let advice_bullets: string[] = []
-    let trainer_instructies = '' // Expliciete instructies van Coach aan Trainer
+    let trainer_instructies = ''
 
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/)
@@ -313,7 +353,6 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       user_id: user.id, role: 'assistant', message: recommendation,
     })
 
-    // Memory update — fire and forget
     fetch('https://coach-os-tau.vercel.app/api/memory', { method: 'POST' }).catch(() => {})
 
     return NextResponse.json(saved)
