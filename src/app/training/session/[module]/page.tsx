@@ -11,8 +11,6 @@ import type {
 } from '@/types/training-engine'
 import { SESSION_STORAGE_KEY } from '@/types/training-engine'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type WorkoutPhase = 'active' | 'rest' | 'last_rest' | 'uitleg'
 
 interface ExtendedSessionState extends LiveSessionState {
@@ -25,8 +23,6 @@ interface ExtendedSessionState extends LiveSessionState {
   completed_sets: number
   uitleg_index: number
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generateSessionId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2)
@@ -53,18 +49,15 @@ function clearSession() {
   try { localStorage.removeItem(SESSION_STORAGE_KEY) } catch { /* */ }
 }
 
-// GUARD: segments kan undefined zijn als AI een onverwacht schema teruggeeft
 function getSegments(schema: TrainingSchema | undefined | null): TrainingSegment[] {
   return (schema?.segments && Array.isArray(schema.segments)) ? schema.segments : []
 }
 
-// GUARD: retourneert undefined ipv te crashen — alle aanroepers MOETEN dit checken
 function getSeg(schema: TrainingSchema, index: number): KettlebellSegment | undefined {
   const segments = getSegments(schema)
   return segments[index] as KettlebellSegment | undefined
 }
 
-// GUARD: common_errors kan een string, null, of iets anders zijn ipv array (AI-output)
 function getCommonErrors(val: unknown): string[] {
   if (Array.isArray(val)) return val.filter(v => typeof v === 'string')
   if (typeof val === 'string' && val.trim()) return [val]
@@ -91,7 +84,6 @@ interface DisplaySegment {
   target_cadence_rpm?: number
 }
 
-// GUARD: normaliseert AI-output naar een veilige, voorspelbare vorm
 function asDisplay(seg: TrainingSegment | undefined | null): DisplaySegment {
   const raw = (seg || {}) as Record<string, unknown>
   return {
@@ -115,10 +107,7 @@ function asDisplay(seg: TrainingSegment | undefined | null): DisplaySegment {
   }
 }
 
-// ─── Tempo per oefening (reps → tijd) ────────────────────────────────────────
-
 type Tempo = 'slow' | 'normal' | 'fast'
-
 const TEMPO_SEC_PER_REP: Record<Tempo, number> = { slow: 4, normal: 3, fast: 2 }
 const TEMPO_STORAGE_KEY = 'coachos_exercise_tempo'
 
@@ -149,8 +138,6 @@ function getActiveDuration(seg: KettlebellSegment | undefined): number {
   if (d.reps) return d.reps * TEMPO_SEC_PER_REP[getTempo(d.exercise)]
   return 30
 }
-
-// ─── Schema Layer ─────────────────────────────────────────────────────────────
 
 function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () => void }) {
   const intensiteitLabel = { light: 'Licht', medium: 'Gemiddeld', heavy: 'Zwaar' }
@@ -215,8 +202,6 @@ function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () 
   )
 }
 
-// ─── Uitleg Scherm ────────────────────────────────────────────────────────────
-
 function UitlegScherm({
   segment, segmentIndex, totalSegments, elapsedSeconds,
   restSeconds, onReady, onBack, showBack,
@@ -232,7 +217,6 @@ function UitlegScherm({
 }) {
   const kb = asDisplay(segment)
   const isFirst = segmentIndex === 0
-  const showTimer = restSeconds !== undefined
   const isPulsing = restSeconds !== undefined && restSeconds <= 3 && restSeconds > 0
   const isRowing = kb.type === 'rowing'
   const isRunning = kb.type === 'running'
@@ -242,7 +226,6 @@ function UitlegScherm({
     kb.target_pace || kb.target_speed_kmh || kb.target_power_w || kb.target_cadence_rpm
   )
 
-  // GUARD: als er geen geldig segment is (bv. uitleg_index buiten bereik), nette fallback i.p.v. crash
   if (!segment) {
     return (
       <div className="flex flex-col gap-4 pb-4">
@@ -282,7 +265,7 @@ function UitlegScherm({
             {kb.rest_sec ? ` · ${kb.rest_sec}s rust` : ''}
           </p>
         </div>
-        {showTimer && (
+        {restSeconds !== undefined && (
           <div className="text-right flex-shrink-0">
             <p className={cn('text-3xl font-mono font-bold',
               (restSeconds ?? 0) <= 3 ? 'text-red-400' : 'text-amber-400'
@@ -296,54 +279,14 @@ function UitlegScherm({
         <Card className="p-4">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Doelwaarden</p>
           <div className="grid grid-cols-2 gap-3">
-            {kb.distance_m && (
-              <div>
-                <p className="text-xs text-slate-500">Afstand</p>
-                <p className="text-lg font-bold text-white">{kb.distance_m}m</p>
-              </div>
-            )}
-            {kb.target_split && (
-              <div>
-                <p className="text-xs text-slate-500">Doelsplit</p>
-                <p className="text-lg font-bold text-white">{kb.target_split}</p>
-              </div>
-            )}
-            {kb.target_pace && (
-              <div>
-                <p className="text-xs text-slate-500">Doeltempo</p>
-                <p className="text-lg font-bold text-white">{kb.target_pace}</p>
-              </div>
-            )}
-            {kb.target_speed_kmh && (
-              <div>
-                <p className="text-xs text-slate-500">Snelheid</p>
-                <p className="text-lg font-bold text-white">{kb.target_speed_kmh} km/u</p>
-              </div>
-            )}
-            {kb.target_power_w && (
-              <div>
-                <p className="text-xs text-slate-500">Vermogen</p>
-                <p className="text-lg font-bold text-white">{kb.target_power_w} W</p>
-              </div>
-            )}
-            {kb.target_cadence_rpm && (
-              <div>
-                <p className="text-xs text-slate-500">Cadans</p>
-                <p className="text-lg font-bold text-white">{kb.target_cadence_rpm} rpm</p>
-              </div>
-            )}
-            {kb.target_spm && (
-              <div>
-                <p className="text-xs text-slate-500">SPM doel</p>
-                <p className="text-lg font-bold text-white">{kb.target_spm}</p>
-              </div>
-            )}
-            {kb.target_hr_zone && (
-              <div>
-                <p className="text-xs text-slate-500">Hartslagzone</p>
-                <p className="text-lg font-bold text-white">{kb.target_hr_zone}</p>
-              </div>
-            )}
+            {kb.distance_m && <div><p className="text-xs text-slate-500">Afstand</p><p className="text-lg font-bold text-white">{kb.distance_m}m</p></div>}
+            {kb.target_split && <div><p className="text-xs text-slate-500">Doelsplit</p><p className="text-lg font-bold text-white">{kb.target_split}</p></div>}
+            {kb.target_pace && <div><p className="text-xs text-slate-500">Doeltempo</p><p className="text-lg font-bold text-white">{kb.target_pace}</p></div>}
+            {kb.target_speed_kmh && <div><p className="text-xs text-slate-500">Snelheid</p><p className="text-lg font-bold text-white">{kb.target_speed_kmh} km/u</p></div>}
+            {kb.target_power_w && <div><p className="text-xs text-slate-500">Vermogen</p><p className="text-lg font-bold text-white">{kb.target_power_w} W</p></div>}
+            {kb.target_cadence_rpm && <div><p className="text-xs text-slate-500">Cadans</p><p className="text-lg font-bold text-white">{kb.target_cadence_rpm} rpm</p></div>}
+            {kb.target_spm && <div><p className="text-xs text-slate-500">SPM doel</p><p className="text-lg font-bold text-white">{kb.target_spm}</p></div>}
+            {kb.target_hr_zone && <div><p className="text-xs text-slate-500">Hartslagzone</p><p className="text-lg font-bold text-white">{kb.target_hr_zone}</p></div>}
           </div>
         </Card>
       )}
@@ -362,7 +305,6 @@ function UitlegScherm({
         </Card>
       )}
 
-      {/* GUARD: common_errors is altijd al genormaliseerd naar string[] via asDisplay/getCommonErrors */}
       {kb.common_errors.length > 0 && (
         <Card className="p-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Veelgemaakte fouten</p>
@@ -388,14 +330,12 @@ function UitlegScherm({
           className={cn('flex-1 py-3.5 rounded-xl font-semibold text-sm text-white',
             isPulsing ? 'bg-green-500 animate-pulse' : 'bg-green-500 active:bg-green-600'
           )}>
-          {showTimer ? (isPulsing ? `Start in ${restSeconds}s` : 'Ready →') : (isFirst ? 'Ready →' : 'Ready -- Start →')}
+          {restSeconds !== undefined ? (isPulsing ? `Start in ${restSeconds}s` : 'Ready →') : (isFirst ? 'Ready →' : 'Ready -- Start →')}
         </button>
       </div>
     </div>
   )
 }
-
-// ─── Workout Engine ───────────────────────────────────────────────────────────
 
 function WorkoutEngine({
   session, onTick, onRestTick, onNextSet, onNextSegment,
@@ -429,12 +369,7 @@ function WorkoutEngine({
   useEffect(() => {
     if (session.workout_phase === 'active' && session.auto_running) {
       tickRef.current = setInterval(() => {
-        if (session.active_seconds_left <= 1) {
-          onTick()
-          onNextSet()
-        } else {
-          onTick()
-        }
+        if (session.active_seconds_left <= 1) { onTick(); onNextSet() } else { onTick() }
       }, 1000)
     }
     return () => { if (tickRef.current) clearInterval(tickRef.current) }
@@ -445,15 +380,8 @@ function WorkoutEngine({
       restRef.current = setInterval(() => {
         if (session.rest_seconds <= 1) {
           clearInterval(restRef.current!)
-          if (session.workout_phase === 'last_rest') {
-            if (isLastSegment) onComplete()
-            else onNextSegment()
-          } else {
-            onNextSet()
-          }
-        } else {
-          onRestTick()
-        }
+          if (session.workout_phase === 'last_rest') { if (isLastSegment) onComplete(); else onNextSegment() } else { onNextSet() }
+        } else { onRestTick() }
       }, 1000)
     }
     return () => { if (restRef.current) clearInterval(restRef.current) }
@@ -498,47 +426,22 @@ function WorkoutEngine({
           <div className="flex items-end justify-between mb-1">
             <div>
               {isRowing ? (
-                <>
-                  <p className="text-5xl font-bold text-primary-400">
-                    {seg.distance_m ? `${seg.distance_m}m` : formatTime(seg.duration_sec || 0)}
-                  </p>
-                  <p className="text-slate-400 text-sm">
-                    {[seg.target_split && `${seg.target_split}/500m`, seg.target_spm && `${seg.target_spm} spm`, seg.target_hr_zone].filter(Boolean).join(' · ') || 'roeien'}
-                  </p>
-                </>
+                <><p className="text-5xl font-bold text-primary-400">{seg.distance_m ? `${seg.distance_m}m` : formatTime(seg.duration_sec || 0)}</p>
+                <p className="text-slate-400 text-sm">{[seg.target_split && `${seg.target_split}/500m`, seg.target_spm && `${seg.target_spm} spm`, seg.target_hr_zone].filter(Boolean).join(' · ') || 'roeien'}</p></>
               ) : isRunning ? (
-                <>
-                  <p className="text-5xl font-bold text-primary-400">
-                    {seg.distance_m ? `${seg.distance_m}m` : formatTime(seg.duration_sec || 0)}
-                  </p>
-                  <p className="text-slate-400 text-sm">
-                    {[seg.target_pace, seg.target_speed_kmh && `${seg.target_speed_kmh} km/u`, seg.target_hr_zone].filter(Boolean).join(' · ') || 'lopen'}
-                  </p>
-                </>
+                <><p className="text-5xl font-bold text-primary-400">{seg.distance_m ? `${seg.distance_m}m` : formatTime(seg.duration_sec || 0)}</p>
+                <p className="text-slate-400 text-sm">{[seg.target_pace, seg.target_speed_kmh && `${seg.target_speed_kmh} km/u`, seg.target_hr_zone].filter(Boolean).join(' · ') || 'lopen'}</p></>
               ) : isCycling ? (
-                <>
-                  <p className="text-5xl font-bold text-primary-400">
-                    {seg.distance_m ? `${seg.distance_m}m` : formatTime(seg.duration_sec || 0)}
-                  </p>
-                  <p className="text-slate-400 text-sm">
-                    {[seg.target_power_w && `${seg.target_power_w}W`, seg.target_cadence_rpm && `${seg.target_cadence_rpm} rpm`, seg.target_hr_zone].filter(Boolean).join(' · ') || 'fietsen'}
-                  </p>
-                </>
+                <><p className="text-5xl font-bold text-primary-400">{seg.distance_m ? `${seg.distance_m}m` : formatTime(seg.duration_sec || 0)}</p>
+                <p className="text-slate-400 text-sm">{[seg.target_power_w && `${seg.target_power_w}W`, seg.target_cadence_rpm && `${seg.target_cadence_rpm} rpm`, seg.target_hr_zone].filter(Boolean).join(' · ') || 'fietsen'}</p></>
               ) : (
-                <>
-                  <p className="text-5xl font-bold text-primary-400">
-                    {seg.reps ? `${seg.reps}` : `${seg.duration_sec || 0}s`}
-                  </p>
-                  <p className="text-slate-400 text-sm">{seg.reps ? 'herhalingen' : 'seconden'}</p>
-                </>
+                <><p className="text-5xl font-bold text-primary-400">{seg.reps ? `${seg.reps}` : `${seg.duration_sec || 0}s`}</p>
+                <p className="text-slate-400 text-sm">{seg.reps ? 'herhalingen' : 'seconden'}</p></>
               )}
             </div>
-            <p className={cn('text-3xl font-mono font-bold',
-              session.active_seconds_left <= 3 ? 'text-red-400' : 'text-white'
-            )}>{session.active_seconds_left}s</p>
+            <p className={cn('text-3xl font-mono font-bold', session.active_seconds_left <= 3 ? 'text-red-400' : 'text-white')}>{session.active_seconds_left}s</p>
           </div>
           {seg.cue && <p className="text-sm text-slate-300 pt-3 mt-2 border-t border-coach-border">💡 {seg.cue}</p>}
-
           {!isRowing && !isRunning && !isCycling && seg.reps && !seg.duration_sec && (
             <div className="flex gap-2 mt-3 pt-3 border-t border-coach-border">
               {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
@@ -556,27 +459,16 @@ function WorkoutEngine({
 
       {session.workout_phase === 'rest' && (
         <Card className="p-5 text-center bg-amber-500/10 border-amber-500/20">
-          <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">
-            Rust · Set {session.current_set} volgt
-          </p>
-          <p className={cn('text-6xl font-mono font-bold',
-            session.rest_seconds <= 3 ? 'text-red-400' : 'text-amber-400'
-          )}>{session.rest_seconds}s</p>
+          <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">Rust · Set {session.current_set} volgt</p>
+          <p className={cn('text-6xl font-mono font-bold', session.rest_seconds <= 3 ? 'text-red-400' : 'text-amber-400')}>{session.rest_seconds}s</p>
         </Card>
       )}
 
       {session.workout_phase === 'last_rest' && (() => {
         const nextSeg = segments[session.current_segment + 1]
         return nextSeg ? (
-          <UitlegScherm
-            segment={nextSeg}
-            segmentIndex={session.current_segment + 1}
-            totalSegments={segments.length}
-            elapsedSeconds={session.elapsed_seconds}
-            restSeconds={session.rest_seconds}
-            onReady={onNextSegment}
-            showBack={false}
-          />
+          <UitlegScherm segment={nextSeg} segmentIndex={session.current_segment + 1} totalSegments={segments.length}
+            elapsedSeconds={session.elapsed_seconds} restSeconds={session.rest_seconds} onReady={onNextSegment} showBack={false} />
         ) : (
           <Card className="p-5 text-center bg-amber-500/10 border-amber-500/20">
             <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">Laatste rust</p>
@@ -596,8 +488,7 @@ function WorkoutEngine({
             className="flex-1 py-3.5 bg-slate-700 text-slate-300 rounded-xl font-semibold text-sm active:bg-slate-600 flex items-center justify-center gap-1">
             <SkipForward size={14} /> Next
           </button>
-          <button onClick={onVolgendOefening}
-            disabled={isLastSegment}
+          <button onClick={onVolgendOefening} disabled={isLastSegment}
             className="flex-1 py-3.5 bg-slate-800 text-slate-300 rounded-xl font-semibold text-sm active:bg-slate-700 disabled:opacity-30 flex items-center justify-center gap-1">
             Volgend <ChevronRight size={14} />
           </button>
@@ -612,8 +503,6 @@ function WorkoutEngine({
   )
 }
 
-// ─── Voltooid Scherm ──────────────────────────────────────────────────────────
-
 function VoltooïdScherm({ session, onEvaluatie }: { session: ExtendedSessionState; onEvaluatie: () => void }) {
   const segments = getSegments(session.schema)
   const totalSets = segments.reduce((a, seg) => a + (asDisplay(seg).sets || 0), 0)
@@ -627,42 +516,22 @@ function VoltooïdScherm({ session, onEvaluatie }: { session: ExtendedSessionSta
       <Card className="p-5">
         <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Statistieken</p>
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-2xl font-bold text-green-400">{session.completed_segments.length}</p>
-            <p className="text-xs text-slate-400 mt-0.5">Oefeningen voltooid</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-slate-400">{session.skipped_segments.length}</p>
-            <p className="text-xs text-slate-400 mt-0.5">Overgeslagen</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-primary-400">{session.completed_sets}</p>
-            <p className="text-xs text-slate-400 mt-0.5">Sets voltooid</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-white">{totalSets}</p>
-            <p className="text-xs text-slate-400 mt-0.5">Totaal sets</p>
-          </div>
+          <div><p className="text-2xl font-bold text-green-400">{session.completed_segments.length}</p><p className="text-xs text-slate-400 mt-0.5">Oefeningen voltooid</p></div>
+          <div><p className="text-2xl font-bold text-slate-400">{session.skipped_segments.length}</p><p className="text-xs text-slate-400 mt-0.5">Overgeslagen</p></div>
+          <div><p className="text-2xl font-bold text-primary-400">{session.completed_sets}</p><p className="text-xs text-slate-400 mt-0.5">Sets voltooid</p></div>
+          <div><p className="text-2xl font-bold text-white">{totalSets}</p><p className="text-xs text-slate-400 mt-0.5">Totaal sets</p></div>
         </div>
       </Card>
-      <button onClick={onEvaluatie}
-        className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600">
+      <button onClick={onEvaluatie} className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600">
         Evaluatie Starten →
       </button>
     </div>
   )
 }
 
-// ─── Evaluatie Layer ──────────────────────────────────────────────────────────
-
 function EvaluatieLayer({ actualDuration, isRowing, isRunning, isCycling, onSave, onSkip, saving }: {
-  actualDuration: number
-  isRowing: boolean
-  isRunning: boolean
-  isCycling: boolean
-  onSave: (result: SessionResult) => void
-  onSkip: () => void
-  saving: boolean
+  actualDuration: number; isRowing: boolean; isRunning: boolean; isCycling: boolean
+  onSave: (result: SessionResult) => void; onSkip: () => void; saving: boolean
 }) {
   const [rating, setRating] = useState<number | null>(null)
   const [effort, setEffort] = useState<number | null>(null)
@@ -680,9 +549,7 @@ function EvaluatieLayer({ actualDuration, isRowing, isRunning, isCycling, onSave
   const [cyclingVermoeidheid, setCyclingVermoeidheid] = useState<number | null>(null)
   const [cyclingRpe, setCyclingRpe] = useState<number | null>(null)
 
-  function ScoreRij({ label, value, onChange, kleur }: {
-    label: string; value: number | null; onChange: (v: number) => void; kleur: string
-  }) {
+  function ScoreRij({ label, value, onChange, kleur }: { label: string; value: number | null; onChange: (v: number) => void; kleur: string }) {
     return (
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -709,10 +576,8 @@ function EvaluatieLayer({ actualDuration, isRowing, isRunning, isCycling, onSave
         <ScoreRij label="Techniek gevoel" value={techniek} onChange={setTechniek} kleur="text-green-400" />
         <div>
           <p className="text-sm text-slate-300 mb-2">Opmerkingen</p>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)}
-            placeholder="Hoe ging het?" rows={3}
-            className="w-full bg-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-1 focus:ring-primary-500"
-          />
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Hoe ging het?" rows={3}
+            className="w-full bg-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-1 focus:ring-primary-500" />
         </div>
       </Card>
 
@@ -729,7 +594,7 @@ function EvaluatieLayer({ actualDuration, isRowing, isRunning, isCycling, onSave
         <Card className="p-5 flex flex-col gap-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider -mb-1">Running</p>
           <ScoreRij label="Looptechniek" value={runningTechniek} onChange={setRunningTechniek} kleur="text-blue-400" />
-          <ScoreRij label="Tempo controle (pace gehouden)" value={runningPacing} onChange={setRunningPacing} kleur="text-blue-400" />
+          <ScoreRij label="Tempo controle" value={runningPacing} onChange={setRunningPacing} kleur="text-blue-400" />
           <ScoreRij label="Vermoeidheid nu" value={runningVermoeidheid} onChange={setRunningVermoeidheid} kleur="text-blue-400" />
           <ScoreRij label="Hoe zwaar voelde de training (RPE)" value={runningRpe} onChange={setRunningRpe} kleur="text-blue-400" />
         </Card>
@@ -738,39 +603,22 @@ function EvaluatieLayer({ actualDuration, isRowing, isRunning, isCycling, onSave
       {isCycling && (
         <Card className="p-5 flex flex-col gap-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider -mb-1">Cycling</p>
-          <ScoreRij label="Fietstechniek (traptechniek, positie)" value={cyclingTechniek} onChange={setCyclingTechniek} kleur="text-blue-400" />
-          <ScoreRij label="Tempo controle (vermogen/pace gehouden)" value={cyclingPacing} onChange={setCyclingPacing} kleur="text-blue-400" />
+          <ScoreRij label="Fietstechniek" value={cyclingTechniek} onChange={setCyclingTechniek} kleur="text-blue-400" />
+          <ScoreRij label="Tempo controle" value={cyclingPacing} onChange={setCyclingPacing} kleur="text-blue-400" />
           <ScoreRij label="Vermoeidheid nu" value={cyclingVermoeidheid} onChange={setCyclingVermoeidheid} kleur="text-blue-400" />
           <ScoreRij label="Hoe zwaar voelde de training (RPE)" value={cyclingRpe} onChange={setCyclingRpe} kleur="text-blue-400" />
         </Card>
       )}
 
       <div className="flex gap-3">
-        <button onClick={onSkip}
-          className="flex-1 py-3.5 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">
-          Overslaan
-        </button>
+        <button onClick={onSkip} className="flex-1 py-3.5 bg-slate-800 text-slate-300 rounded-xl font-semibold active:bg-slate-700">Overslaan</button>
         <button
           onClick={() => onSave({
             rating, perceived_effort: effort, fatigue_after: null, soreness: null,
             notes: notes.trim() || null, actual_duration: actualDuration, completed: true,
-            ...(isRowing ? {
-              rowing_technique_rating: rowingTechniek,
-              rowing_pacing_rating: rowingPacing,
-              rowing_fatigue_rating: rowingVermoeidheid,
-            } : {}),
-            ...(isRunning ? {
-              running_technique_rating: runningTechniek,
-              running_pacing_rating: runningPacing,
-              running_fatigue_rating: runningVermoeidheid,
-              running_rpe_rating: runningRpe,
-            } : {}),
-            ...(isCycling ? {
-              cycling_technique_rating: cyclingTechniek,
-              cycling_pacing_rating: cyclingPacing,
-              cycling_fatigue_rating: cyclingVermoeidheid,
-              cycling_rpe_rating: cyclingRpe,
-            } : {}),
+            ...(isRowing ? { rowing_technique_rating: rowingTechniek, rowing_pacing_rating: rowingPacing, rowing_fatigue_rating: rowingVermoeidheid } : {}),
+            ...(isRunning ? { running_technique_rating: runningTechniek, running_pacing_rating: runningPacing, running_fatigue_rating: runningVermoeidheid, running_rpe_rating: runningRpe } : {}),
+            ...(isCycling ? { cycling_technique_rating: cyclingTechniek, cycling_pacing_rating: cyclingPacing, cycling_fatigue_rating: cyclingVermoeidheid, cycling_rpe_rating: cyclingRpe } : {}),
           })}
           disabled={saving || !rating}
           className="flex-1 py-3.5 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600 disabled:opacity-40">
@@ -781,14 +629,20 @@ function EvaluatieLayer({ actualDuration, isRowing, isRunning, isCycling, onSave
   )
 }
 
-// ─── Main Session Page ────────────────────────────────────────────────────────
-
 export default function SessionPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
   const module = params.module as TrainingModule
-  const isLibrary = searchParams.get('source') === 'library'
+
+  // ── Library detectie via localStorage (PWA-proof) ──────────────────────────
+  // searchParams is onbetrouwbaar in PWA op iOS — query params worden soms
+  // weggegooid bij navigatie. training/page.tsx slaat de module-keuze op in
+  // localStorage vóór navigatie zodat we hier altijd de juiste waarde hebben.
+  const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+  const libPending = typeof window !== 'undefined' ? localStorage.getItem('library_module_pending') : null
+  const libDatum = typeof window !== 'undefined' ? localStorage.getItem('library_module_datum') : null
+  const isLibrary = (libPending === module && libDatum === vandaagStr) || searchParams.get('source') === 'library'
 
   const [session, setSession] = useState<ExtendedSessionState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -835,6 +689,9 @@ export default function SessionPage() {
             if (instruction?.training_type || instruction?.segments) {
               localStorage.setItem(libKey, JSON.stringify(instruction))
               localStorage.setItem(libDatumKey, vandaag)
+              // Wis de pending library-keuze na succesvolle sessie-opbouw
+              localStorage.removeItem('library_module_pending')
+              localStorage.removeItem('library_module_datum')
               buildAndSetSession(instruction, 'library')
             } else setError('Geen geldig schema ontvangen.')
           } else if (res.status === 403) {
@@ -846,7 +703,10 @@ export default function SessionPage() {
         const cached = localStorage.getItem('training_instructie_data')
         if (cached) {
           const instruction = JSON.parse(cached)
-          if (getSegments({ segments: instruction?.segments } as TrainingSchema).length > 0) { buildAndSetSession(instruction, 'coach_plan'); return }
+          if (getSegments({ segments: instruction?.segments } as TrainingSchema).length > 0) {
+            buildAndSetSession(instruction, 'coach_plan')
+            return
+          }
         }
         const res = await fetch('/api/training/today', { method: 'POST', credentials: 'include' })
         if (res.ok) {
@@ -868,7 +728,6 @@ export default function SessionPage() {
     const segments: TrainingSegment[] = Array.isArray(rawSegments)
       ? rawSegments.map(s => asDisplay(s as TrainingSegment) as unknown as TrainingSegment)
       : []
-
     const schema: TrainingSchema = {
       module,
       title: (instruction.title as string) || `${module.charAt(0).toUpperCase() + module.slice(1)} sessie`,
@@ -895,8 +754,7 @@ export default function SessionPage() {
 
   const handleTick = useCallback(() => {
     setSession(prev => prev && prev.auto_running ? {
-      ...prev,
-      elapsed_seconds: prev.elapsed_seconds + 1,
+      ...prev, elapsed_seconds: prev.elapsed_seconds + 1,
       active_seconds_left: Math.max(0, prev.active_seconds_left - 1),
     } : prev)
   }, [])
@@ -930,12 +788,8 @@ export default function SessionPage() {
       if (!prev) return prev
       const next = prev.current_segment + 1
       const nextSeg = getSeg(prev.schema, next)
-      return {
-        ...prev, current_segment: next,
-        completed_segments: [...prev.completed_segments, prev.current_segment],
-        current_set: 1, workout_phase: 'active', rest_seconds: 0, auto_running: true,
-        active_seconds_left: getActiveDuration(nextSeg),
-      }
+      return { ...prev, current_segment: next, completed_segments: [...prev.completed_segments, prev.current_segment],
+        current_set: 1, workout_phase: 'active', rest_seconds: 0, auto_running: true, active_seconds_left: getActiveDuration(nextSeg) }
     })
   }
 
@@ -959,7 +813,8 @@ export default function SessionPage() {
       } else if (prev.workout_phase === 'last_rest') {
         if (isLastSegment) return { ...prev, status: 'voltooid' as SessionStatus, auto_running: false }
         const nextSeg3 = getSeg(prev.schema, prev.current_segment + 1)
-        return { ...prev, current_segment: prev.current_segment + 1, completed_segments: [...prev.completed_segments, prev.current_segment], current_set: 1, workout_phase: 'active', rest_seconds: 0, active_seconds_left: getActiveDuration(nextSeg3) }
+        return { ...prev, current_segment: prev.current_segment + 1, completed_segments: [...prev.completed_segments, prev.current_segment],
+          current_set: 1, workout_phase: 'active', rest_seconds: 0, active_seconds_left: getActiveDuration(nextSeg3) }
       }
       return prev
     })
@@ -969,18 +824,9 @@ export default function SessionPage() {
     setSession(prev => {
       if (!prev) return prev
       const targetIndex = prev.workout_phase === 'active' && prev.current_set === 1 && prev.current_segment > 0
-        ? prev.current_segment - 1
-        : prev.current_segment
-      return {
-        ...prev,
-        auto_running: false,
-        workout_phase: 'uitleg',
-        uitleg_index: targetIndex,
-        current_segment: targetIndex,
-        current_set: 1,
-        rest_seconds: 0,
-        elapsed_seconds: 0,
-      }
+        ? prev.current_segment - 1 : prev.current_segment
+      return { ...prev, auto_running: false, workout_phase: 'uitleg', uitleg_index: targetIndex,
+        current_segment: targetIndex, current_set: 1, rest_seconds: 0, elapsed_seconds: 0 }
     })
   }
 
@@ -989,16 +835,8 @@ export default function SessionPage() {
       if (!prev) return prev
       const segments = getSegments(prev.schema)
       const next = Math.min(prev.current_segment + 1, Math.max(0, segments.length - 1))
-      return {
-        ...prev,
-        auto_running: false,
-        workout_phase: 'uitleg',
-        uitleg_index: next,
-        current_segment: next,
-        current_set: 1,
-        rest_seconds: 0,
-        elapsed_seconds: 0,
-      }
+      return { ...prev, auto_running: false, workout_phase: 'uitleg', uitleg_index: next,
+        current_segment: next, current_set: 1, rest_seconds: 0, elapsed_seconds: 0 }
     })
   }
 
@@ -1006,33 +844,17 @@ export default function SessionPage() {
     if (!session) { router.push('/training'); return }
     if (session.status === 'workout' && session.workout_phase === 'uitleg') {
       if (session.uitleg_index === 0) {
-        setSession(prev => prev ? {
-          ...prev, status: 'schema', workout_phase: 'active',
-          current_set: 1, rest_seconds: 0, elapsed_seconds: 0,
-        } : prev)
+        setSession(prev => prev ? { ...prev, status: 'schema', workout_phase: 'active', current_set: 1, rest_seconds: 0, elapsed_seconds: 0 } : prev)
       } else {
         setSession(prev => {
           if (!prev) return prev
           const vorigeIndex = prev.uitleg_index - 1
-          return {
-            ...prev, uitleg_index: vorigeIndex, current_segment: vorigeIndex,
-            current_set: 1, rest_seconds: 0, elapsed_seconds: 0,
-          }
+          return { ...prev, uitleg_index: vorigeIndex, current_segment: vorigeIndex, current_set: 1, rest_seconds: 0, elapsed_seconds: 0 }
         })
       }
     } else if (session.status === 'workout') {
-      setSession(prev => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          auto_running: false,
-          workout_phase: 'uitleg',
-          uitleg_index: prev.current_segment,
-          current_set: 1,
-          rest_seconds: 0,
-          elapsed_seconds: 0,
-        }
-      })
+      setSession(prev => prev ? { ...prev, auto_running: false, workout_phase: 'uitleg', uitleg_index: prev.current_segment,
+        current_set: 1, rest_seconds: 0, elapsed_seconds: 0 } : prev)
     } else if (session.status === 'learning') {
       updateStatus('schema')
     } else {
@@ -1045,15 +867,8 @@ export default function SessionPage() {
     setSession(prev => {
       if (!prev) return prev
       const seg = getSeg(prev.schema, prev.current_segment)
-      return {
-        ...prev,
-        status: 'workout',
-        workout_phase: 'active',
-        auto_running: true,
-        current_set: 1,
-        rest_seconds: 0,
-        active_seconds_left: getActiveDuration(seg),
-      }
+      return { ...prev, status: 'workout', workout_phase: 'active', auto_running: true,
+        current_set: 1, rest_seconds: 0, active_seconds_left: getActiveDuration(seg) }
     })
   }
 
@@ -1113,7 +928,6 @@ export default function SessionPage() {
   return (
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
-
         <div className="flex items-center gap-3">
           <button onClick={handleHeaderBack}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
@@ -1144,33 +958,17 @@ export default function SessionPage() {
 
         {session && !showResumeDialog && (
           <>
-            {session.status === 'schema' && (
-              <SchemaLayer schema={session.schema} onStart={() => updateStatus('learning')} />
-            )}
+            {session.status === 'schema' && <SchemaLayer schema={session.schema} onStart={() => updateStatus('learning')} />}
 
             {session.status === 'learning' && (
-              <UitlegScherm
-                segment={segments[0]}
-                segmentIndex={0}
-                totalSegments={segments.length}
-                elapsedSeconds={0}
-                showBack={true}
-                onReady={handleReadyFromUitleg}
-                onBack={() => updateStatus('schema')}
-              />
+              <UitlegScherm segment={segments[0]} segmentIndex={0} totalSegments={segments.length}
+                elapsedSeconds={0} showBack={true} onReady={handleReadyFromUitleg} onBack={() => updateStatus('schema')} />
             )}
 
             {session.status === 'workout' && session.workout_phase !== 'uitleg' && (
-              <WorkoutEngine
-                session={session}
-                onTick={handleTick}
-                onRestTick={handleRestTick}
-                onNextSet={handleNextSet}
-                onNextSegment={handleNextSegment}
-                onComplete={handleComplete}
-                onBackOefening={handleBackOefening}
-                onVolgendOefening={handleVolgendOefening}
-                onNext={handleNext}
+              <WorkoutEngine session={session} onTick={handleTick} onRestTick={handleRestTick}
+                onNextSet={handleNextSet} onNextSegment={handleNextSegment} onComplete={handleComplete}
+                onBackOefening={handleBackOefening} onVolgendOefening={handleVolgendOefening} onNext={handleNext}
                 onPause={() => { setSession(prev => prev ? { ...prev, auto_running: false } : prev); setShowPause(true) }}
                 onTempoChange={(exercise, tempo) => {
                   setTempo(exercise, tempo)
@@ -1180,20 +978,16 @@ export default function SessionPage() {
                     if (!seg || seg.exercise !== exercise || prev.workout_phase !== 'active') return prev
                     return { ...prev, active_seconds_left: getActiveDuration(seg) }
                   })
-                }}
-              />
+                }} />
             )}
 
             {session.status === 'workout' && session.workout_phase === 'uitleg' && (
-              <UitlegScherm
-                segment={segments[session.uitleg_index]}
-                segmentIndex={session.uitleg_index}
-                totalSegments={segments.length}
-                elapsedSeconds={session.elapsed_seconds}
-                showBack={session.uitleg_index > 0}
-                onReady={handleReadyFromUitleg}
-                onBack={() => setSession(prev => prev ? { ...prev, uitleg_index: Math.max(0, prev.uitleg_index - 1), current_segment: Math.max(0, prev.uitleg_index - 1) } : prev)}
-              />
+              <UitlegScherm segment={segments[session.uitleg_index]} segmentIndex={session.uitleg_index}
+                totalSegments={segments.length} elapsedSeconds={session.elapsed_seconds}
+                showBack={session.uitleg_index > 0} onReady={handleReadyFromUitleg}
+                onBack={() => setSession(prev => prev ? { ...prev,
+                  uitleg_index: Math.max(0, prev.uitleg_index - 1),
+                  current_segment: Math.max(0, prev.uitleg_index - 1) } : prev)} />
             )}
 
             {(session.status as string) === 'voltooid' && (
@@ -1201,15 +995,9 @@ export default function SessionPage() {
             )}
 
             {session.status === 'evaluation' && (
-              <EvaluatieLayer
-                actualDuration={Math.round(session.elapsed_seconds / 60)}
-                isRowing={module === 'rowing'}
-                isRunning={module === 'running'}
-                isCycling={module === 'cycling'}
-                onSave={handleSave}
-                onSkip={() => { clearSession(); router.push('/training') }}
-                saving={saving}
-              />
+              <EvaluatieLayer actualDuration={Math.round(session.elapsed_seconds / 60)}
+                isRowing={module === 'rowing'} isRunning={module === 'running'} isCycling={module === 'cycling'}
+                onSave={handleSave} onSkip={() => { clearSession(); router.push('/training') }} saving={saving} />
             )}
 
             {session.status === 'completed' && (
@@ -1226,9 +1014,7 @@ export default function SessionPage() {
             <Card className="p-6 w-full text-center">
               <p className="text-white text-xl font-bold mb-1">⏸ Training Gepauzeerd</p>
               <p className="text-slate-400 text-sm mb-1">{huidigeSegForPause?.exercise || 'Oefening'}</p>
-              <p className="text-slate-500 text-xs mb-6">
-                Set {session.current_set} · {formatTime(session.elapsed_seconds)}
-              </p>
+              <p className="text-slate-500 text-xs mb-6">Set {session.current_set} · {formatTime(session.elapsed_seconds)}</p>
               <button onClick={() => { setShowPause(false); setSession(prev => prev ? { ...prev, auto_running: true } : prev) }}
                 className="w-full py-3.5 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600 mb-3 flex items-center justify-center gap-2">
                 <Play size={18} /> Hervatten
@@ -1259,7 +1045,6 @@ export default function SessionPage() {
             </Card>
           </div>
         )}
-
       </div>
     </AppShell>
   )
