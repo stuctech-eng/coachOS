@@ -406,20 +406,22 @@ Reageer ALLEEN in dit JSON formaat:
           const parsed = JSON.parse(jsonMatch[0])
 
           if (isLibrary && forcedModule) {
-            // Controleer of de segmenten ook echt van het juiste type zijn
-            const segments = parsed.segments || []
-            const segmentsKloppen = segments.length > 0 &&
-              segments.every((s: { type?: string }) => s.type === forcedModule)
-
-            if (segmentsKloppen) {
-              // AI gaf de juiste segmenten — gebruik ze, forceer type voor de zekerheid
-              parsed.training_type = forcedModule
-              parsed.training_allowed = true
-              instruction = parsed
-            } else {
-              // AI gaf verkeerde segmenten (bv. kettlebell bij rowing-keuze)
-              // Gebruik de module-specifieke fallback met echte segmenten
+            // Bij library + herstel/rust: altijd fallback — Haiku genereert
+            // bij herstel te vaak wandel/jog segmenten, ook bij rowing/cycling keuze
+            if (coachActieType === 'herstel' || coachActieType === 'rust') {
               instruction = fallbackInstruction
+            } else {
+              // Bij trainen: controleer of segmenten kloppen
+              const segments = parsed.segments || []
+              const segmentsKloppen = segments.length > 0 &&
+                segments.every((s: { type?: string }) => s.type === forcedModule)
+              if (segmentsKloppen) {
+                parsed.training_type = forcedModule
+                parsed.training_allowed = true
+                instruction = parsed
+              } else {
+                instruction = fallbackInstruction
+              }
             }
           } else {
             // Normale flow
