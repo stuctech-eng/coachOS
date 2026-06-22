@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.9.0
+- Versie: 1.9.1
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -516,6 +516,17 @@ oefening bibliotheek.
   progressie/page.tsx uitgebreid met Coach Compliance sectie direct
   na Performance AI. Geen DB-wijziging — gebruikt bestaande
   coach_recommendations, training_results en coach_call_items data.
+
+- v1.9.1: Bodyweight Bibliotheek Fase 1 — 30 oefeningen in Nederlands,
+  verdeeld over 5 coachDoelen (herstel/mobiliteit/warmup/kracht/core).
+  Nieuw bestand: src/lib/bodyweight-exercises.ts met types CoachDoel,
+  Lichaamsdeel, Niveau en BodyweightOefening. Architectuur Optie C:
+  Coach bepaalt doel → route filtert oefeningen op coachDoel →
+  Trainer AI krijgt de beschikbare lijst en maakt de sessie.
+  Trainer AI mag GEEN nieuwe oefeningen verzinnen buiten de lijst.
+  training/today/route.ts uitgebreid met BODYWEIGHT FORMAT,
+  bodyweightFallback en filter-logica. Bestaande modules ongewijzigd.
+  Fase 2 (60-80 oefeningen) en uitlegpaginas volgen later.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

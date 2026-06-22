@@ -5,6 +5,8 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { getAvailableModules, isModuleAvailable } from '@/utils/equipment'
+import { filterOpCoachDoel, formateerVoorPrompt } from '@/lib/bodyweight-exercises'
+import type { CoachDoel } from '@/lib/bodyweight-exercises'
 import type { EquipmentProfile } from '@/app/api/equipment/route'
 import type { TrainingModule } from '@/types/training-engine'
 
@@ -122,6 +124,7 @@ export async function POST(req: NextRequest) {
     const kettlebellAvailable = availableModules.includes('kettlebell')
     const runningAvailable = availableModules.includes('running')
     const cyclingAvailable = availableModules.includes('cycling')
+    const bodyweightAvailable = availableModules.includes('bodyweight') || (profile?.bodyweight_available ?? true)
 
     if (isLibrary && forcedModule) {
       if (!isModuleAvailable(forcedModule, equipment)) {
@@ -206,8 +209,8 @@ export async function POST(req: NextRequest) {
       dagplanContext,
     ].filter(Boolean).join('\n')
 
-    const keuzeModules = (['kettlebell', 'rowing', 'running', 'cycling'] as const).filter(m =>
-      m === 'kettlebell' ? kettlebellAvailable : m === 'rowing' ? rowingAvailable : m === 'running' ? runningAvailable : cyclingAvailable
+    const keuzeModules = (['kettlebell', 'rowing', 'running', 'cycling', 'bodyweight'] as const).filter(m =>
+      m === 'kettlebell' ? kettlebellAvailable : m === 'rowing' ? rowingAvailable : m === 'running' ? runningAvailable : m === 'cycling' ? cyclingAvailable : bodyweightAvailable
     )
 
     // Bij library-keuze wint forcedModule altijd — coach bepaalt alleen intensiteit
@@ -218,6 +221,21 @@ export async function POST(req: NextRequest) {
         : keuzeModules.length === 1
           ? `training_type MOET "${keuzeModules[0]}" zijn.`
           : 'training_type MOET "kettlebell" zijn.'
+
+    // Optie C: Coach bepaalt doel → route filtert bodyweight oefeningen →
+    // Trainer AI krijgt de lijst en maakt de sessie
+    let bodyweightContext = ''
+    if (isLibrary && forcedModule === 'bodyweight' || (!isLibrary && bodyweightAvailable)) {
+      const coachDoel: CoachDoel = coachActieType === 'herstel' ? 'herstel'
+        : coachActieType === 'rust' ? 'herstel'
+        : 'kracht'
+      const beschikbaar = filterOpCoachDoel(coachDoel)
+      if (beschikbaar.length > 0) {
+        bodyweightContext = `
+BESCHIKBARE BODYWEIGHT OEFENINGEN (gebruik UITSLUITEND deze lijst bij bodyweight training):
+${formateerVoorPrompt(beschikbaar)}`
+      }
+    }
 
     const systemPrompt = `Je bent Trainer AI van CoachOS. Genereer een trainingsschema.
 
@@ -361,6 +379,41 @@ Reageer ALLEEN in dit JSON formaat:
       coach_message: 'Rustig en gecontroleerd fietsen vandaag!',
     }
 
+    // Bodyweight fallback
+    const bodyweightFallback: TrainingInstruction = {
+      training_allowed: true,
+      training_type: 'bodyweight',
+      title: coachActieType === 'herstel' ? 'Herstel & Mobiliteit' : 'Bodyweight Training',
+      intensity: coachActieType === 'herstel' ? 'light' : 'medium',
+      duration: coachActieType === 'herstel' ? 20 : 30,
+      segments: coachActieType === 'herstel' ? [
+        { type: 'bodyweight', exercise: 'Cat-Cow', session_type: 'recovery', sets: 1, reps: null, duration_sec: 120,
+          rest_sec: 0, instruction: 'Beweeg langzaam tussen Cat en Cow, gesynchroniseerd met je adem.', cue: 'Adem in bij Cow, uit bij Cat', common_errors: ['Te snel bewegen', 'Adem loskoppelen'] },
+        { type: 'bodyweight', exercise: 'Child's Pose', session_type: 'recovery', sets: 1, reps: null, duration_sec: 60,
+          rest_sec: 0, instruction: 'Heupen naar hielen, armen gestrekt, laat je rug ontspannen.', cue: 'Zak dieper bij elke uitademing', common_errors: ['Schouders optrekken'] },
+        { type: 'bodyweight', exercise: 'Thoracale Rotatie', session_type: 'recovery', sets: 2, reps: null, duration_sec: 45,
+          rest_sec: 15, instruction: 'Lig op je zij, roteer je bovenlichaam langzaam.', cue: 'Knieën blijven op de grond', common_errors: ['Knieën optillen', 'Te snel draaien'] },
+        { type: 'bodyweight', exercise: 'Dead Bug', session_type: 'recovery', sets: 2, reps: null, duration_sec: 40,
+          rest_sec: 20, instruction: 'Onderrug plat op de mat, strek arm en been tegelijk.', cue: 'Rug plat houden', common_errors: ['Onderrug van mat', 'Te snel'] },
+        { type: 'bodyweight', exercise: 'Deep Squat Hold', session_type: 'recovery', sets: 1, reps: null, duration_sec: 60,
+          rest_sec: 0, instruction: 'Zak diep en houd de positie ontspannen vast.', cue: 'Knieën naar buiten duwen', common_errors: ['Hielen van grond', 'Spanning vasthouden'] },
+      ] as unknown[] : [
+        { type: 'bodyweight', exercise: 'Air Squat', session_type: 'strength', sets: 3, reps: null, duration_sec: 40,
+          rest_sec: 45, instruction: 'Borst omhoog, knieën volgen de tenen.', cue: 'Drijf via de hielen', common_errors: ['Borst naar voren', 'Knieën naar binnen'] },
+        { type: 'bodyweight', exercise: 'Push-Up', session_type: 'strength', sets: 3, reps: null, duration_sec: 35,
+          rest_sec: 45, instruction: 'Lichaam recht als een plank, borst bijna de grond.', cue: 'Ellebogen op 45 graden', common_errors: ['Heupen zakken', 'Ellebogen te wijd'] },
+        { type: 'bodyweight', exercise: 'Glute Bridge', session_type: 'strength', sets: 3, reps: null, duration_sec: 35,
+          rest_sec: 30, instruction: 'Bilspieren aanspannen en heupen omhoog duwen.', cue: 'Span billen aan bovenin', common_errors: ['Rug hol trekken', 'Knieën naar binnen'] },
+        { type: 'bodyweight', exercise: 'Plank', session_type: 'core', sets: 3, reps: null, duration_sec: 30,
+          rest_sec: 30, instruction: 'Lichaam recht, core actief, adem rustig door.', cue: 'Heupen in lijn', common_errors: ['Heupen omhoog', 'Adem inhouden'] },
+        { type: 'bodyweight', exercise: 'Superman', session_type: 'strength', sets: 3, reps: null, duration_sec: 30,
+          rest_sec: 30, instruction: 'Til armen en benen gelijktijdig op en houd vast.', cue: 'Hoofd in lijn', common_errors: ['Niet gelijktijdig', 'Te snel'] },
+      ] as unknown[],
+      recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
+      reason: coachActieType === 'herstel' ? 'Herstel bodyweight sessie' : 'Standaard bodyweight sessie',
+      coach_message: coachActieType === 'herstel' ? 'Rustig bewegen vandaag — mobiliteit en herstel.' : 'Bodyweight training — geen materiaal nodig!',
+    }
+
     // Kies de juiste fallback op basis van forcedModule of beschikbaar equipment
     const fallbackInstruction: TrainingInstruction = isLibrary && forcedModule === 'rowing'
       ? rowingFallback
@@ -370,7 +423,9 @@ Reageer ALLEEN in dit JSON formaat:
           ? cyclingFallback
           : isLibrary && forcedModule === 'kettlebell'
             ? kettlebellFallback
-            : coachActieType === 'rust'
+            : isLibrary && forcedModule === 'bodyweight'
+              ? bodyweightFallback
+              : coachActieType === 'rust'
               ? { training_allowed: false, training_type: null, intensity: null, duration: null,
                   recovery_modules: [], reason: 'Coach adviseert rust vandaag', coach_message: 'Vandaag is herstel de training.' }
               : kettlebellAvailable ? kettlebellFallback
@@ -430,7 +485,8 @@ Reageer ALLEEN in dit JSON formaat:
               (parsedType === 'rowing' && rowingAvailable) ||
               (parsedType === 'kettlebell' && kettlebellAvailable) ||
               (parsedType === 'running' && runningAvailable) ||
-              (parsedType === 'cycling' && cyclingAvailable)
+              (parsedType === 'cycling' && cyclingAvailable) ||
+              (parsedType === 'bodyweight' && bodyweightAvailable)
 
             if ((parsed.segments && parsed.segments.length > 0 && typeAllowed) || parsed.training_allowed === false) {
               instruction = parsed
