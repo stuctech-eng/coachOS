@@ -405,23 +405,34 @@ Reageer ALLEEN in dit JSON formaat:
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
 
-          // Bij library-keuze: forceer het type altijd, ongeacht wat AI teruggeeft
-          // De AI mag de segmenten/intensiteit/sessietype bepalen, niet het module-type
           if (isLibrary && forcedModule) {
-            parsed.training_type = forcedModule
-            parsed.training_allowed = true
-          }
+            // Controleer of de segmenten ook echt van het juiste type zijn
+            const segments = parsed.segments || []
+            const segmentsKloppen = segments.length > 0 &&
+              segments.every((s: { type?: string }) => s.type === forcedModule)
 
-          const parsedType = parsed.training_type
-          const typeAllowed = isLibrary && forcedModule
-            ? true // altijd toegestaan, type is al geforceerd
-            : !parsedType || (parsedType === 'rowing' && rowingAvailable) ||
+            if (segmentsKloppen) {
+              // AI gaf de juiste segmenten — gebruik ze, forceer type voor de zekerheid
+              parsed.training_type = forcedModule
+              parsed.training_allowed = true
+              instruction = parsed
+            } else {
+              // AI gaf verkeerde segmenten (bv. kettlebell bij rowing-keuze)
+              // Gebruik de module-specifieke fallback met echte segmenten
+              instruction = fallbackInstruction
+            }
+          } else {
+            // Normale flow
+            const parsedType = parsed.training_type
+            const typeAllowed = !parsedType ||
+              (parsedType === 'rowing' && rowingAvailable) ||
               (parsedType === 'kettlebell' && kettlebellAvailable) ||
               (parsedType === 'running' && runningAvailable) ||
               (parsedType === 'cycling' && cyclingAvailable)
 
-          if ((parsed.segments && parsed.segments.length > 0 && typeAllowed) || parsed.training_allowed === false) {
-            instruction = parsed
+            if ((parsed.segments && parsed.segments.length > 0 && typeAllowed) || parsed.training_allowed === false) {
+              instruction = parsed
+            }
           }
         }
       }
