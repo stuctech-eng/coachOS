@@ -648,9 +648,18 @@ export default function SessionPage() {
   const [pendingSession, setPendingSession] = useState<ExtendedSessionState | null>(null)
 
   useEffect(() => {
+    // Library detectie EERST — voorkomt dat resume-dialog de library-flow blokkeert
+    const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+    const libPending = localStorage.getItem('library_module_pending')
+    const libDatum = localStorage.getItem('library_module_datum')
+    const isLibrary = (libPending === module && libDatum === vandaagStr) || searchParams.get('source') === 'library'
+
     const existing = loadSession()
     const hasSegments = existing?.schema && getSegments(existing.schema).length > 0
-    if (existing && existing.module === module && existing.status !== 'completed' && hasSegments) {
+
+    // Alleen hervatten als GEEN library-keuze pending is
+    // Library-flow moet altijd vers genereren, nooit een oude sessie hervatten
+    if (!isLibrary && existing && existing.module === module && existing.status !== 'completed' && hasSegments) {
       setPendingSession(existing)
       setShowResumeDialog(true)
       setLoading(false)
@@ -659,11 +668,7 @@ export default function SessionPage() {
     clearSession()
     const run = async () => {
       try {
-        // Library detectie client-side — localStorage altijd beschikbaar in useEffect
-        const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-        const libPending = localStorage.getItem('library_module_pending')
-        const libDatum = localStorage.getItem('library_module_datum')
-        const isLibrary = (libPending === module && libDatum === vandaagStr) || searchParams.get('source') === 'library'
+        
 
         if (isLibrary) {
           const vandaag = vandaagStr
