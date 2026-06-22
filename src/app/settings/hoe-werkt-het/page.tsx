@@ -1,6 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Brain, Dumbbell, Wind, TrendingUp, Battery, Heart, Zap, Clock, Camera, BarChart2, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Brain, Dumbbell, Wind, TrendingUp, Battery, Heart, Zap, Clock, Camera, BarChart2, ChevronDown, Phone } from 'lucide-react'
 import { useState } from 'react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
@@ -23,7 +23,7 @@ const SECTIES: Sectie[] = [
     intro: 'CoachOS is een AI Coaching Operating System — geen gewone fitnessapp, maar een systeem dat leert hoe jouw lichaam reageert en daar dagelijks op inspeelt.',
     inhoud: [
       'De kern van CoachOS is één vraag: wat heeft jouw lichaam vandaag nodig? Niet wat een gemiddeld persoon nodig heeft, maar jij — op basis van jouw slaap, herstel, stress en trainingshistorie.',
-      'CoachOS werkt met drie AI-lagen die samenwerken. Coach AI is de baas — hij beslist. Trainer AI voert trainingen uit. Recovery AI begeleid herstel. Ze overleggen nooit met jou over wie er leidend is: dat is altijd Coach AI.',
+      'CoachOS werkt met drie AI-lagen die samenwerken. Coach AI is de baas — hij beslist. Trainer AI voert trainingen uit. Recovery AI begeleidt herstel. Ze overleggen nooit met jou over wie er leidend is: dat is altijd Coach AI.',
       'Het systeem groeit mee. Hoe meer data je geeft, hoe slimmer de adviezen worden. Na een week zie je patronen. Na een maand worden de voorspellingen nauwkeuriger. Na drie maanden kent het systeem jouw lichaam beter dan jijzelf.',
     ],
   },
@@ -82,7 +82,36 @@ const SECTIES: Sectie[] = [
       'Coach AI beslist of je traint of herstelt. Als Body Battery laag is én je slaap slecht was én je stress hoog is → herstel, ongeacht wat jij liever wilt. Het systeem is bewust conservatief omdat overtraining meer schade aanricht dan een gemiste training.',
       'De Coach Chat (tab "Coach") is directe toegang tot Coach AI. Je kunt vragen stellen over je data, uitleg vragen over een beslissing, of feedback geven. De chat heeft toegang tot dezelfde context als het dagplan.',
       'Coach AI heeft een geheugen. Patronen die hij ontdekt worden opgeslagen en meegenomen in toekomstige analyses. Na een week begint hij patronen te herkennen. Na een maand maakt hij voorspellingen.',
-      'Voorspellingen staan op Home. Ze zijn gebaseerd op trends in je data. "Kans op goede trainingsdag morgen: 78%" betekent dat Coach AI op basis van je huidige hersteltrend verwacht dat je morgen klaar bent voor een goede sessie.',
+      'Toon: Coach AI past zijn toon aan de situatie aan. Bij dagadvies en planning spreekt hij als een betrokken, persoonlijke coach. Bij evaluaties na een training mag hij directer zijn — inclusief een vriendelijk standje als je rust hebt genegeerd.',
+    ],
+  },
+  {
+    id: 'coach-call',
+    icoon: Phone,
+    kleur: 'text-amber-400',
+    titel: 'Coach Call — evaluatie na training',
+    intro: 'Na een serieuze Strava-activiteit vraagt Coach AI hoe het ging. Dit is geen formulier — dit is een gesprek.',
+    inhoud: [
+      'Een Coach Call wordt automatisch aangemaakt na een Strava-activiteit van 45 minuten of langer met voldoende afstand: 5 km of meer voor hardlopen, 20 km of meer voor fietsen, 5 km of meer voor roeien. Kortere sessies tellen niet mee — die vereisen geen evaluatie.',
+      'Op de Home pagina verschijnt een amber kaart zodra er een Coach Call klaarstaat. De kaart verdwijnt automatisch na 24 uur als je hem niet invult.',
+      'Per activiteit vul je twee dingen in: RPE (hoe zwaar was het, schaal 1-10) en Mood (hoe voelde je je erbij, van 😞 tot 🔥). Dit zijn bewust twee aparte vragen — RPE meet de fysieke belasting, Mood meet de beleving. Ze kunnen ver uit elkaar liggen: een zware sessie kan geweldig aanvoelen, een lichte sessie kan frustrerend zijn.',
+      'Optioneel kun je ook een korte notitie toevoegen per activiteit — wat je opviel, hoe het voelde, iets wat je wilt onthouden.',
+      'Zodra je op "Evaluatie versturen" drukt, reageert Coach AI direct met een persoonlijke reactie op die ene activiteit. Hij kijkt naar de combinatie van RPE en Mood en geeft zijn oordeel — soms complimenteus, soms kritisch, soms met humor. Had Coach AI rust aangeraden en ben je toch gaan fietsen? Dan mag hij daar iets van vinden.',
+      'De evaluatiedata (RPE, mood, coach-reactie) wordt opgeslagen per activiteit. In de toekomst maakt dit analyses mogelijk: welke trainingen geven energie, bij welke sport voel je je het best, wanneer loopt de belasting te hoog op.',
+    ],
+  },
+  {
+    id: 'strava',
+    icoon: TrendingUp,
+    kleur: 'text-orange-400',
+    titel: 'Strava koppeling & activiteiten',
+    intro: 'Strava is de bron voor je activiteitendata. CoachOS synchroniseert automatisch en toont je sessies met alle details.',
+    inhoud: [
+      'Koppelen doe je via Instellingen → Strava → Verbind Strava. Na autorisatie synchroniseert de app automatisch je activiteiten van de afgelopen 30 dagen. Daarna kun je handmatig synchroniseren via de knop "Activiteiten synchroniseren".',
+      'Per activiteit worden opgeslagen: sport, datum, duur, afstand, gemiddelde en maximale hartslag, hoogteverschil, snelheid en calorieën. Watts en cadans worden meegenomen als Strava ze aanlevert.',
+      'De Activiteiten pagina bereik je via Instellingen → Strava → Bekijk activiteiten. Je ziet hier alle gesynchroniseerde sessies, gefilterd per sporttype. Tik op een Strava-activiteit om hem direct in Strava te openen — je ziet dan de volledige route, splits en alle details die Strava heeft.',
+      'Garmin activiteiten kun je ook handmatig importeren via een .gpx of .tcx bestand — dit staat ook op de Activiteiten pagina.',
+      'Coach AI gebruikt je Strava-historie als context voor trainingsadviezen. Trainer AI gebruikt de hardloop- en fietshistorie om een realistisch niveau in te schatten voor de volgende sessie.',
     ],
   },
   {
@@ -102,14 +131,8 @@ const SECTIES: Sectie[] = [
       'Pause stopt de training direct met een overzicht van waar je was. Hervatten gaat verder vanaf exact dat punt, of stop de training helemaal met een bevestiging.',
       'Na de laatste oefening zie je je statistieken: voltooide oefeningen, overgeslagen oefeningen en totaal aantal sets. Daarna volgt de evaluatie: hoe zwaar was de training, je energieniveau en techniekgevoel, plus opmerkingen.',
       'Sessie herstel: sluit je de app halverwege een training? Bij terugkomst vraagt de app of je wilt hervatten vanaf je laatste positie of opnieuw beginnen.',
-      'Rowing (Concept2): alleen beschikbaar als je Concept2 hebt aangevinkt in je Equipment profiel. Trainer AI kiest een sessietype passend bij je herstel — Recovery Row (rustig, 15-30 min), Endurance Row (steady state, 30-90 min), Tempo Row (drempeltraining), Interval Row (bijv. 10x500m), Sprint Row (korte explosieve intervallen) of een Test sessie (bijv. 2000m test).',
-      'Bij rowing toont de engine per interval de afstand, doelsplit (tijd per 500m), streef-SPM (slagfrequentie) en hartslagzone in plaats van herhalingen. Bij steady state sessies vervalt de set-telling en loopt de tijd gewoon door. Na een rowing sessie krijg je drie extra evaluatievragen: techniek, tempo controle en vermoeidheid.',
-      'Hardlopen: alleen beschikbaar als je in je Equipment profiel hebt aangegeven dat je hardloopt. Trainer AI kiest een sessietype op basis van je herstel — Recovery Run (rustig, 20-30 min), Endurance Run (5-10km steady), Tempo Run (drempeltraining), Interval Run (bijv. 6x400m), Sprint (bijv. 10x100m) of een Test (bijv. 5km tijdrit). Als je recent in Strava hebt hardgelopen, gebruikt Trainer AI die historie als context om een realistisch niveau in te schatten — dit bepaalt nooit op zichzelf of je gaat hardlopen, dat blijft afhangen van je herstel.',
-      'Bij hardlopen toont de engine per interval de afstand, het doeltempo (min/km), snelheid (km/u) en hartslagzone in plaats van herhalingen. Bij intervallen zie je "Interval X van Y", net als bij rowing. Na een hardloop-sessie krijg je vier extra evaluatievragen: looptechniek, tempo controle, vermoeidheid en RPE (hoe zwaar voelde de inspanning tijdens de training) — RPE en vermoeidheid zijn bewust apart, omdat de ene de intensiteit tijdens de training meet en de andere je herstelbehoefte daarna.',
-      'Persoonlijke progressie: Trainer AI bouwt waar mogelijk voort op je eigen Strava-historie — bijvoorbeeld "vorige week liep je 5 km, vandaag bouwen we uit naar 6 km" of een bewuste herstelrun als je recent veel hebt gelopen. Je wordt nooit vergeleken met andere lopers — geen rankings, alleen je eigen vooruitgang.',
-      'Modules: naast Kettlebell, Rowing en Hardlopen volgen Fietsen, Krachttraining en Bodyweight & Core — elk met hun eigen Trainer AI logica maar dezelfde Training Engine.',
-      'Trainingsbibliotheek: naast Herstelbibliotheek vind je op de Training tab de Trainingsbibliotheek. Hier kies je zelf een module, los van het dagadvies van Coach AI. Trainer AI bepaalt dan nog steeds — net als bij "Vandaag voor jou" — het sessietype op basis van je actuele Body Battery, stress en herstel. Alleen modules waarvoor je equipment hebt aangevinkt zijn beschikbaar; de rest toont een knop om je Equipment in te stellen.',
-      'Elke training, of die nu via het dagadvies of de bibliotheek is gestart, telt volledig mee voor Performance AI en je Progressie. Je lichaam maakt geen onderscheid in waar een training vandaan kwam — alleen wat je daadwerkelijk hebt gedaan telt voor je analyses.',
+      'Rowing, hardlopen, fietsen: elk met hun eigen sessietype-keuze door Trainer AI, passend bij je herstel. Modules waarvoor je geen equipment hebt zijn uitgeschakeld — je kunt ze instellen via het Equipment profiel.',
+      'Trainingsbibliotheek: naast het dagadvies kun je ook zelf een module kiezen. Trainer AI bepaalt dan het sessietype op basis van je actuele data. Alle trainingen tellen volledig mee voor je progressie.',
     ],
   },
   {
@@ -149,8 +172,7 @@ const SECTIES: Sectie[] = [
     inhoud: [
       'Garmin grafieken tonen 14 dagen data: rusthartslag, Body Battery, slaapscore, slaapduur, HRV, stress en ademhaling. Elke grafiek toont de trend en het laatste gemeten getal. Na 3+ imports beginnen de grafieken interessant te worden.',
       'Trends analyseren de richting van je herstelwaarden over 7-30 dagen. Een stijgende HRV en dalende rusthartslag zijn tekenen van verbetering. Een stijgende stress en dalende slaapscore zijn waarschuwingssignalen.',
-      'Coach inzichten zijn AI-gegenereerde patronen. Coach AI kijkt naar correlaties in je data — wat heeft invloed op wat? "Herstel correleert sterk met coach score (r=0.95)" betekent dat als je herstel stijgt, je coach score bijna altijd meestijgt.',
-      'De inzichten worden automatisch bijgewerkt als je de app opent. Als de laatste analyse van gisteren is, draait hij stilletjes een nieuwe op de achtergrond. Je kunt ook handmatig vernieuwen via de refresh knop.',
+      'Coach inzichten zijn AI-gegenereerde patronen. Coach AI kijkt naar correlaties in je data — wat heeft invloed op wat? Inzichten worden automatisch bijgewerkt als je de app opent.',
       'Inzichten zijn bereikbaar via Instellingen → Inzichten. Ze zijn bewust niet in de hoofdnavigatie — dit is een analyse-scherm, geen dagelijks scherm.',
     ],
   },
@@ -163,25 +185,10 @@ const SECTIES: Sectie[] = [
     inhoud: [
       'Body Battery (0-100): Garmin\'s eigen herstelindex. Combineert slaap, HRV en activiteit. Onder 40 = laag, 40-70 = normaal, boven 70 = goed geladen. Dit is de meest directe indicator voor trainingsbereidheid.',
       'Rusthartslag (bpm): je hartslag in volledige rust, gemeten tijdens slaap. Lager is beter. Als je rusthartslag hoger is dan normaal, is je lichaam harder aan het werken — teken van stress of ziekte.',
-      'HRV (ms): hartritmevariabiliteit, het 7-daags gemiddelde. Dit meet de variatie tussen hartslagen. Hoger is beter — het betekent dat je zenuwstelsel flexibel en veerkrachtig is. Garmin toont dit als 7-daags gemiddelde om dagelijkse ruis te filteren.',
+      'HRV (ms): hartritmevariabiliteit, het 7-daags gemiddelde. Dit meet de variatie tussen hartslagen. Hoger is beter — het betekent dat je zenuwstelsel flexibel en veerkrachtig is.',
       'Slaapscore (0-100): Garmin\'s beoordeling van je slaapkwaliteit. Onder 70 is matig. Combineer dit altijd met de slaapduur — een score van 80 bij 5 uur slaap is anders dan bij 8 uur.',
       'Stress (0-100): Garmin\'s stressmeting op basis van HRV-variaties overdag. Onder 25 = rust, 26-50 = licht, 51-75 = matig, boven 75 = hoog. Hoge stress + lage Body Battery = zeker geen zware training.',
       'Ademhaling (brpm): ademfrequentie in rust. Normaal 12-20 brpm. De slaapademhaling is het meest stabiel en relevant. Een lagere slaapademhaling is een teken van diepe ontspanning en goed herstel.',
-    ],
-  },
-  {
-    id: 'performance',
-    icoon: TrendingUp,
-    kleur: 'text-green-400',
-    titel: 'Performance AI',
-    intro: 'Performance AI analyseert je trainingsresultaten over tijd en geeft Coach AI concrete inzichten over je progressie.',
-    inhoud: [
-      'Performance AI kijkt naar drie dingen: progressie trend (worden je ratings beter?), consistentie (train je regelmatig genoeg?) en herstel na training (hoe herstelt je Body Battery de dag na een training?).',
-      'Progressie trend wordt bepaald door de gemiddelde rating van je laatste drie sessies te vergelijken met de drie daarvoor. Stijgend = gemiddelde is 0.5 punt of meer omhoog gegaan. Dalend = 0.5 punt of meer omlaag.',
-      'Consistentie kijkt naar het aantal trainingen per week over de afgelopen 30 dagen. Hoog = 3 of meer per week. Gemiddeld = 1.5 tot 3. Laag = minder dan 1.5.',
-      'Herstel na training vergelijkt je Body Battery de dag van training met de dag erna. Als je BB stijgt met 10+ punten na rust = goed herstel. Daalt het? Dan traint je lichaam zwaarder dan het aankan.',
-      'Niveau gereed combineert beide signalen: gem. rating ≥ 8 én Body Battery ≥ 70 → Trainer AI verhoogt automatisch het moeilijkheidsniveau bij de volgende sessie.',
-      'De analyse staat in de Progressie tab en wordt dagelijks gecached. Coach AI gebruikt de samenvatting in zijn dagelijkse analyse.',
     ],
   },
   {
@@ -189,13 +196,14 @@ const SECTIES: Sectie[] = [
     icoon: Zap,
     kleur: 'text-amber-400',
     titel: 'Blessures & levensgebeurtenissen',
-    intro: 'CoachOS houdt rekening met wat er in je leven speelt. Blessures en levensgebeurtenissen beïnvloeden direct de adviezen.',
+    intro: 'CoachOS houdt rekening met wat er in je leven speelt. Blessures en levensgebeurtenissen beïnvloeden direct de adviezen van zowel Coach AI als het dagplan.',
     inhoud: [
       'Blessures registreer je via Instellingen → Blessures. Geef aan welk lichaamsdeel, hoe ernstig (pijnscore 1-10) en of het actief is. Trainer AI filtert automatisch oefeningen die dat lichaamsdeel belasten.',
       'Een schouderklacht betekent geen press, overhead carry of Turkish Get-Up. Een knieklacht betekent geen squat varianten. Coach AI past ook het dagplan aan — geen wandelingen bij een voetblessure.',
-      'Levensgebeurtenissen registreer je via Instellingen → Levensgebeurtenissen. Nachtdienst, vroege dienst, hoge werkdruk, vakantie — dit heeft allemaal invloed op herstel. Coach AI houdt hier rekening mee bij het dagplan.',
-      'Een nachtdienst heeft impact op drie factoren: herstel, stress en slaap. Coach AI verlaagt de trainingsintensiteit automatisch na een nachtdienst en plant meer herstelactiviteiten.',
-      'Levensgebeurtenissen kunnen herhalend zijn — werkdagen, weekdagen of aangepaste dagen. Stel je roosters in en Coach AI past zich automatisch aan zonder dat je het elke dag opnieuw hoeft in te geven.',
+      'Levensgebeurtenissen registreer je via Instellingen → Levensgebeurtenissen. Coach AI luistert naar alle vier categorieën: Werk (nachtdienst, vroege dienst, werkstress), Leven (vakantie, reizen, feest, jetlag), Gezondheid (ziek, slecht geslapen, emotionele stress) en Omgeving (extreme hitte). Niet alleen werkdiensten, maar alles wat je invult telt mee.',
+      'De notitie bij een levensgebeurtenis wordt ook meegelezen — als je bij een nachtdienst schrijft "was extra druk", weet Coach AI dat ook. Vul het in, de coach leest het.',
+      'Levensgebeurtenissen kunnen herhalend zijn — werkdagen, weekdagen of aangepaste dagen. Stel je roosters in en Coach AI past zich automatisch aan zonder dat je het elke dag opnieuw hoeft in te geven. Je kunt bestaande events ook bewerken: datum, tijden en herhaling zijn aanpasbaar zonder dat je het event hoeft te verwijderen.',
+      'Coach AI en het dagplan zien altijd exact dezelfde levensgebeurtenissen — er is één gedeelde databron. Dit voorkomt dat het dagplan iets weet wat het coach-advies niet weet, of andersom.',
     ],
   },
 ]
@@ -210,7 +218,7 @@ function SectieKaart({ sectie }: { sectie: Sectie }) {
         onClick={() => setOpen(v => !v)}
         className="flex items-center gap-3 w-full px-4 py-4 active:bg-white/5"
       >
-        <div className={cn('w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0')}>
+        <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
           <Icon size={18} className={sectie.kleur} />
         </div>
         <p className="flex-1 text-left text-sm font-semibold text-white">{sectie.titel}</p>
@@ -237,7 +245,6 @@ export default function HoeWerktHetPage() {
 
   return (
     <AppShell showNav={false}>
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-14 pb-6">
         <button
           onClick={() => router.push('/settings')}
@@ -264,7 +271,7 @@ export default function HoeWerktHetPage() {
 
         <div className="rounded-2xl bg-white/5 border border-white/8 px-4 py-4 mt-2">
           <p className="text-xs text-slate-500 text-center">
-            CoachOS v{process.env.NEXT_PUBLIC_APP_VERSION || '5.6.0'} — wordt bijgewerkt bij elke versie
+            CoachOS v1.8.6 — wordt bijgewerkt bij elke versie
           </p>
         </div>
       </div>

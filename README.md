@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.8.5
+- Versie: 1.8.6
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -255,7 +255,8 @@ coach-calls/route.ts, coach-calls/rate/route.ts, activities/page.tsx,
 activities/route.ts, home/page.tsx, life-events/page.tsx, coach-call/page.tsx,
 training/page.tsx, daily-coach.ts, strava-activity-processor.ts,
 strava/sync/route.ts (POST/GET), layout.tsx (root), globals.css,
-components/layout (AppShell/BottomNav)
+components/layout (AppShell/BottomNav), settings/page.tsx,
+settings/hoe-werkt-het/page.tsx
 
 **Nooit gezien — alleen naam/rol bekend uit bestandsstructuur, NIET de
 inhoud:**
@@ -390,6 +391,17 @@ oefening bibliotheek.
   (recovery_impact/stress_load/sleep_disruption). Geen DB- of
   UI-wijziging, alleen prompt-context. training/today/route.ts
   ongewijzigd (leest alleen coach-output, geen ruwe brondata).
+
+- v1.8.6: Settings verbeterd — versienummer bijgewerkt naar v1.8.6,
+  Activiteiten-knop verplaatst van Profiel-sectie naar Strava-kaart (naast
+  synchroniseren), zodat alles wat met Strava te maken heeft op één plek
+  staat. Levensgebeurtenissen-detail nu volledig bewerkbaar: datum, tijden
+  (begin/einde), herhaling én notitie zijn aanpasbaar zonder verwijderen
+  en opnieuw aanmaken. Hoe-werkt-het pagina bijgewerkt: Coach Call sectie
+  toegevoegd, levensgebeurtenissen-uitleg gecorrigeerd (alle 4 categorieën),
+  Strava-deeplink gedocumenteerd, versienummer hardcoded v1.8.6.
+  settings/page.tsx + life-events/page.tsx + hoe-werkt-het/page.tsx
+  gewijzigd, geen DB- of API-wijziging.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

@@ -208,12 +208,9 @@ function NieuwEventSheet({ onClose, onSave }: {
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative bg-coach-darker rounded-t-3xl flex flex-col max-h-[88vh]">
-        {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-slate-600 rounded-full" />
         </div>
-
-        {/* Header */}
         <div className="flex items-center gap-3 px-5 py-3 border-b border-coach-border">
           {sheet !== 'categorie' && (
             <button onClick={() => setSheet(sheet === 'type' ? 'categorie' : sheet === 'herhaling' ? 'details' : 'type')}
@@ -228,8 +225,6 @@ function NieuwEventSheet({ onClose, onSave }: {
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-4">
-
-          {/* Stap 1: Categorie */}
           {sheet === 'categorie' && (
             <div className="grid grid-cols-2 gap-3">
               {EVENT_CATEGORIES.map(cat => (
@@ -242,7 +237,6 @@ function NieuwEventSheet({ onClose, onSave }: {
             </div>
           )}
 
-          {/* Stap 2: Type */}
           {sheet === 'type' && gekozenCategorie && (
             <div className="flex flex-col gap-2">
               {gekozenCategorie.events.map(et => (
@@ -261,18 +255,14 @@ function NieuwEventSheet({ onClose, onSave }: {
             </div>
           )}
 
-          {/* Stap 3: Details */}
           {sheet === 'details' && gekozenType && (
             <div className="flex flex-col gap-5">
-
-              {/* Datum */}
               <div className="flex flex-col gap-2">
                 <label className="text-xs text-slate-400 uppercase tracking-wider">Datum</label>
                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                   className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
               </div>
 
-              {/* Tijden (alleen bij diensten) */}
               {gekozenType.start_hour !== null && (
                 <div className="flex flex-col gap-2">
                   <label className="text-xs text-slate-400 uppercase tracking-wider">Tijden</label>
@@ -295,32 +285,6 @@ function NieuwEventSheet({ onClose, onSave }: {
                 </div>
               )}
 
-              {/* Vakantie specifiek */}
-              {gekozenType.type === 'vakantie' && (
-                <>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs text-slate-400 uppercase tracking-wider">Einddatum</label>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                      min={startDate}
-                      className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs text-slate-400 uppercase tracking-wider">Type vakantie</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[{ value: 'actief', label: '🚵 Actief', sub: 'wandelen, fietsen' }, { value: 'ontspanning', label: '🏖️ Ontspanning', sub: 'strand, city trip' }].map(opt => (
-                        <button key={opt.value} onClick={() => setVacationType(opt.value)}
-                          className={cn('p-4 rounded-xl text-left border',
-                            vacationType === opt.value ? 'bg-primary-600/20 border-primary-500/50' : 'bg-slate-800 border-transparent')}>
-                          <p className="text-sm font-medium text-white">{opt.label}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">{opt.sub}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Herhaling (niet bij vakantie) */}
               {gekozenType.type !== 'vakantie' && (
                 <button onClick={() => setSheet('herhaling')}
                   className="flex items-center gap-3 p-4 bg-slate-800 rounded-xl active:bg-slate-700">
@@ -332,7 +296,6 @@ function NieuwEventSheet({ onClose, onSave }: {
                 </button>
               )}
 
-              {/* Notitie */}
               <div className="flex flex-col gap-2">
                 <label className="text-xs text-slate-400 uppercase tracking-wider">Notitie</label>
                 <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Extra context (optioneel)"
@@ -343,7 +306,6 @@ function NieuwEventSheet({ onClose, onSave }: {
             </div>
           )}
 
-          {/* Stap 4: Herhaling */}
           {sheet === 'herhaling' && (
             <div className="flex flex-col gap-3">
               {RECURRENCE_OPTIONS.map(opt => (
@@ -358,7 +320,6 @@ function NieuwEventSheet({ onClose, onSave }: {
                 </button>
               ))}
 
-              {/* Dag kiezen bij wekelijks/om de week */}
               {(recurrence === 'weekly' || recurrence === 'biweekly') && (
                 <div className="mt-2">
                   <p className="text-xs text-slate-400 mb-2">Op welke dag?</p>
@@ -374,7 +335,6 @@ function NieuwEventSheet({ onClose, onSave }: {
                 </div>
               )}
 
-              {/* Aangepaste dagen */}
               {recurrence === 'custom' && (
                 <div className="mt-2">
                   <p className="text-xs text-slate-400 mb-2">Welke dagen?</p>
@@ -392,7 +352,6 @@ function NieuwEventSheet({ onClose, onSave }: {
                 </div>
               )}
 
-              {/* Einddatum */}
               {recurrence !== '' && (
                 <div className="mt-2 flex flex-col gap-2">
                   <p className="text-xs text-slate-400">Einddatum (optioneel)</p>
@@ -506,31 +465,130 @@ function WeekKalender({ events }: { events: LifeEvent[] }) {
   )
 }
 
-// ── Event Detail ──────────────────────────────────────────────────
+// ── Event Detail (nu bewerkbaar) ──────────────────────────────────
 function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
   event: LifeEvent; onClose: () => void
   onVerwijder: (id: string) => void; onUpdate: (id: string, updates: Partial<LifeEvent>) => void
 }) {
   const et = EVENT_TYPES.find(e => e.type === event.type)
+  const heeftTijden = et?.start_hour !== null
+
+  const [startHour, setStartHour] = useState<number>(event.start_hour ?? 9)
+  const [endHour, setEndHour] = useState<number>(event.end_hour ?? 17)
+  const [startDate, setStartDate] = useState(new Date(event.start_time).toISOString().split('T')[0])
+  const [recurrence, setRecurrence] = useState(event.recurrence || '')
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>(event.recurrence_days || [])
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState(event.recurrence_end_date || '')
   const [notes, setNotes] = useState(event.notes || '')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [showHerhaling, setShowHerhaling] = useState(false)
+
+  function kiesHerhaling(value: string) {
+    setRecurrence(value)
+    if (value === 'workdays') setRecurrenceDays([1,2,3,4,5])
+    else if (value === 'weekend') setRecurrenceDays([6,0])
+    else if (value === '' || value === 'daily') setRecurrenceDays([])
+  }
 
   async function slaOp() {
     setSaving(true)
     try {
+      const uur = startHour
+      const startTimeISO = new Date(`${startDate}T${String(uur).padStart(2,'0')}:00:00`).toISOString()
+      const updates: Partial<LifeEvent> = {
+        start_time: startTimeISO,
+        start_hour: heeftTijden ? startHour : event.start_hour,
+        end_hour: heeftTijden ? endHour : event.end_hour,
+        recurrence: recurrence || null,
+        recurrence_days: recurrenceDays.length > 0 ? recurrenceDays : null,
+        recurrence_end_date: recurrenceEndDate || null,
+        notes: notes || null,
+      }
       const res = await fetch('/api/life-events', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: event.id, notes: notes || null }),
+        body: JSON.stringify({ id: event.id, ...updates }),
       })
       const data = await res.json()
       if (data.success) {
-        onUpdate(event.id, { notes })
-        setMessage('✅ Opgeslagen')
+        onUpdate(event.id, updates)
+        setMessage('Opgeslagen')
         setTimeout(() => setMessage(''), 2000)
       }
-    } catch { setMessage('❌ Mislukt') } finally { setSaving(false) }
+    } catch { setMessage('Mislukt') } finally { setSaving(false) }
+  }
+
+  if (showHerhaling) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowHerhaling(false)} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center">
+            <ArrowLeft size={20} className="text-slate-400" />
+          </button>
+          <h2 className="text-lg font-bold text-white">Herhaling</h2>
+        </div>
+        <div className="flex flex-col gap-3">
+          {RECURRENCE_OPTIONS.map(opt => (
+            <button key={opt.value} onClick={() => kiesHerhaling(opt.value)}
+              className={cn('flex items-center gap-4 p-4 rounded-xl',
+                recurrence === opt.value ? 'bg-primary-600/20 border border-primary-500/50' : 'bg-slate-800')}>
+              <div className="flex-1 text-left">
+                <p className="text-white font-medium">{opt.label}</p>
+                {'sub' in opt && <p className="text-xs text-slate-400 mt-0.5">{opt.sub}</p>}
+              </div>
+              {recurrence === opt.value && <Check size={18} className="text-primary-400" />}
+            </button>
+          ))}
+
+          {(recurrence === 'weekly' || recurrence === 'biweekly') && (
+            <div className="mt-2">
+              <p className="text-xs text-slate-400 mb-2">Op welke dag?</p>
+              <div className="flex gap-2">
+                {DAGEN.map(dag => (
+                  <button key={dag.nummer} onClick={() => setRecurrenceDays([dag.nummer])}
+                    className={cn('flex-1 py-2.5 rounded-xl text-xs font-medium',
+                      recurrenceDays.includes(dag.nummer) ? 'bg-primary-600 text-white' : 'bg-slate-800 text-slate-400')}>
+                    {dag.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {recurrence === 'custom' && (
+            <div className="mt-2">
+              <p className="text-xs text-slate-400 mb-2">Welke dagen?</p>
+              <div className="flex gap-2">
+                {DAGEN.map(dag => (
+                  <button key={dag.nummer} onClick={() => setRecurrenceDays(
+                    recurrenceDays.includes(dag.nummer) ? recurrenceDays.filter(d => d !== dag.nummer) : [...recurrenceDays, dag.nummer]
+                  )}
+                    className={cn('flex-1 py-2.5 rounded-xl text-xs font-medium',
+                      recurrenceDays.includes(dag.nummer) ? 'bg-primary-600 text-white' : 'bg-slate-800 text-slate-400')}>
+                    {dag.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {recurrence !== '' && (
+            <div className="mt-2 flex flex-col gap-2">
+              <p className="text-xs text-slate-400">Einddatum (optioneel)</p>
+              <input type="date" value={recurrenceEndDate} onChange={e => setRecurrenceEndDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+              {recurrenceEndDate && (
+                <button onClick={() => setRecurrenceEndDate('')} className="text-xs text-slate-500">Geen einddatum</button>
+              )}
+            </div>
+          )}
+
+          <Button onClick={() => setShowHerhaling(false)} fullWidth className="mt-2">Klaar</Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -541,44 +599,17 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
         </button>
         <div className="flex-1">
           <h2 className="text-lg font-bold text-white">{et?.icon} {et?.label || event.type}</h2>
-          <p className="text-xs text-slate-500">
-            {formatDatum(event.start_time)}
-            {event.end_date && ` → ${formatDatum(event.end_date)}`}
-          </p>
         </div>
         <button onClick={() => onVerwijder(event.id)} className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center">
           <Trash2 size={16} className="text-red-400" />
         </button>
       </div>
 
-      {message && <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl px-4 py-3"><p className="text-primary-400 text-sm">{message}</p></div>}
-
-      <Card className="p-4 flex flex-col gap-3">
-        {event.start_hour !== null && event.end_hour !== null && (
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-400">Tijden</p>
-            <p className="text-sm text-white">{formatUur(event.start_hour)} – {formatUur(event.end_hour)}</p>
-          </div>
-        )}
-        {event.recurrence && (
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-400">Herhaling</p>
-            <p className="text-sm text-white">{formatHerhaling(event)}</p>
-          </div>
-        )}
-        {event.recurrence_end_date && (
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-400">Tot</p>
-            <p className="text-sm text-white">{formatDatum(event.recurrence_end_date)}</p>
-          </div>
-        )}
-        {event.vacation_type && (
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-400">Type</p>
-            <p className="text-sm text-white">{event.vacation_type === 'actief' ? '🚵 Actief' : '🏖️ Ontspanning'}</p>
-          </div>
-        )}
-      </Card>
+      {message && (
+        <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl px-4 py-3">
+          <p className="text-primary-400 text-sm">{message}</p>
+        </div>
+      )}
 
       <div className="flex gap-2 flex-wrap">
         <ImpactBadge label="Herstel" value={event.recovery_impact} />
@@ -586,11 +617,52 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
         <ImpactBadge label="Slaap" value={event.sleep_disruption} />
       </div>
 
-      <Card className="p-4 flex flex-col gap-2">
-        <label className="text-xs text-slate-400">Notitie</label>
-        <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Extra context..."
-          className="w-full bg-slate-800 text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
-      </Card>
+      {/* Datum */}
+      <div className="flex flex-col gap-2">
+        <label className="text-xs text-slate-400 uppercase tracking-wider">Datum</label>
+        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+          className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+      </div>
+
+      {/* Tijden */}
+      {heeftTijden && (
+        <div className="flex flex-col gap-2">
+          <label className="text-xs text-slate-400 uppercase tracking-wider">Tijden</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Begin</p>
+              <select value={startHour} onChange={e => setStartHour(Number(e.target.value))}
+                className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none">
+                {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2,'0')}:00</option>)}
+              </select>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Einde</p>
+              <select value={endHour} onChange={e => setEndHour(Number(e.target.value))}
+                className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none">
+                {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2,'0')}:00</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Herhaling */}
+      <button onClick={() => setShowHerhaling(true)}
+        className="flex items-center gap-3 p-4 bg-slate-800 rounded-xl active:bg-slate-700">
+        <div className="flex-1 text-left">
+          <p className="text-xs text-slate-400">Herhaling</p>
+          <p className="text-white text-sm mt-0.5">{recurrence ? RECURRENCE_LABELS[recurrence] || recurrence : 'Eenmalig'}</p>
+        </div>
+        <ChevronRight size={16} className="text-slate-600" />
+      </button>
+
+      {/* Notitie */}
+      <div className="flex flex-col gap-2">
+        <label className="text-xs text-slate-400 uppercase tracking-wider">Notitie</label>
+        <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Extra context (optioneel)"
+          className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+      </div>
 
       <Button onClick={slaOp} loading={saving} fullWidth>Opslaan</Button>
     </div>
@@ -632,13 +704,13 @@ export default function LifeEventsPage() {
       if (data.event) {
         setEvents(prev => [data.event, ...prev])
         setShowSheet(false)
-        setMessage('✅ Event toegevoegd')
+        setMessage('Event toegevoegd')
         setTimeout(() => setMessage(''), 2000)
       } else {
         throw new Error(data.error || 'Opslaan mislukt')
       }
     } catch (err) {
-      setMessage('❌ ' + String(err))
+      setMessage('Mislukt: ' + String(err))
       setTimeout(() => setMessage(''), 4000)
       throw err
     }
@@ -678,7 +750,11 @@ export default function LifeEventsPage() {
           </button>
         </div>
 
-        {message && <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl px-4 py-3"><p className="text-primary-400 text-sm">{message}</p></div>}
+        {message && (
+          <div className="bg-primary-500/10 border border-primary-500/30 rounded-xl px-4 py-3">
+            <p className="text-primary-400 text-sm">{message}</p>
+          </div>
+        )}
 
         {vandaagFeestdag && (
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">

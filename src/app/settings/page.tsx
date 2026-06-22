@@ -14,6 +14,7 @@ interface StravaStatus {
 
 function StravaSection() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [stravaStatus, setStravaStatus] = useState<StravaStatus>({ connected: false, athlete_name: null, last_sync: null })
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
@@ -59,10 +60,16 @@ function StravaSection() {
       </div>
       {syncMessage && <p className="text-xs text-primary-400 mb-3">{syncMessage}</p>}
       {stravaStatus.connected ? (
-        <Button onClick={handleStravaSync} loading={syncing} variant="secondary" fullWidth size="sm">
-          <RefreshCw size={14} className="mr-2" />
-          Activiteiten synchroniseren
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button onClick={handleStravaSync} loading={syncing} variant="secondary" fullWidth size="sm">
+            <RefreshCw size={14} className="mr-2" />
+            Activiteiten synchroniseren
+          </Button>
+          <Button onClick={() => router.push('/activities')} variant="secondary" fullWidth size="sm">
+            <BarChart2 size={14} className="mr-2" />
+            Bekijk activiteiten
+          </Button>
+        </div>
       ) : (
         <Button onClick={() => window.location.href = '/api/strava/auth'} variant="secondary" fullWidth size="sm">
           Verbind Strava
@@ -136,8 +143,6 @@ export default function SettingsPage() {
             <div className="h-px bg-coach-border mx-4" />
             <Row icon={Calendar} label="Levensgebeurtenissen" onClick={() => router.push('/life-events')} />
             <div className="h-px bg-coach-border mx-4" />
-            <Row icon={BarChart2} label="Activiteiten" onClick={() => router.push('/activities')} />
-            <div className="h-px bg-coach-border mx-4" />
             <Row icon={Info} label="Inzichten" onClick={() => router.push('/insights')} />
           </Card>
         </div>
@@ -154,11 +159,10 @@ export default function SettingsPage() {
           <Card>
             <Row icon={HelpCircle} label="Hoe werkt CoachOS" onClick={() => router.push('/settings/hoe-werkt-het')} />
             <div className="h-px bg-coach-border mx-4" />
-            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v1.4.6</span>} />
+            <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">v1.8.5</span>} />
           </Card>
         </div>
 
-        {/* Debug */}
         <Card>
           <Row icon={Bug} label="Debug diagnostiek" onClick={() => router.push('/debug')} />
         </Card>
