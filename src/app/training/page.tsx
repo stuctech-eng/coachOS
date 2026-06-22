@@ -116,11 +116,9 @@ const BIBLIOTHEEK = [
   { type: 'walk' as const, subtype: 'recovery_walk', label: 'Herstelwandeling', sub: 'lage intensiteit', duration: 20 },
 ]
 
-// Skeleton loading component
 function TrainingSkeleton() {
   return (
     <div className="flex flex-col gap-5">
-      {/* Coach bericht skeleton */}
       <div className="rounded-2xl bg-primary-500/5 border border-primary-500/20 p-5">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-4 h-4 rounded-full bg-primary-500/20 animate-pulse" />
@@ -129,38 +127,9 @@ function TrainingSkeleton() {
         <div className="space-y-2">
           <div className="h-3 w-full bg-slate-700 rounded animate-pulse" />
           <div className="h-3 w-5/6 bg-slate-700 rounded animate-pulse" />
-          <div className="h-3 w-4/6 bg-slate-700 rounded animate-pulse" />
-          <div className="h-3 w-3/4 bg-slate-700 rounded animate-pulse" />
-        </div>
-        <div className="flex items-center gap-1.5 mt-4">
-          <div className="w-3 h-3 rounded-full bg-slate-700 animate-pulse" />
-          <div className="h-3 w-24 bg-slate-700 rounded animate-pulse" />
         </div>
       </div>
-
-      {/* Vandaag plan skeleton */}
-      <div className="rounded-2xl bg-coach-card p-5">
-        <div className="h-3 w-28 bg-slate-700 rounded animate-pulse mb-4" />
-        <div className="flex items-center gap-3 pb-3 border-b border-coach-border mb-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-700 animate-pulse flex-shrink-0" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 w-36 bg-slate-700 rounded animate-pulse" />
-            <div className="h-3 w-24 bg-slate-700 rounded animate-pulse" />
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-700 animate-pulse flex-shrink-0" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 w-28 bg-slate-700 rounded animate-pulse" />
-            <div className="h-3 w-16 bg-slate-700 rounded animate-pulse" />
-          </div>
-        </div>
-      </div>
-
-      {/* Knop skeleton */}
       <div className="h-14 rounded-2xl bg-slate-700 animate-pulse" />
-
-      {/* Label */}
       <p className="text-center text-xs text-slate-500 animate-pulse">Coach AI stelt je plan samen...</p>
     </div>
   )
@@ -212,7 +181,6 @@ export default function TrainingPage() {
 
   async function genereerPlan() {
     setGenereren(true)
-    // Clear cache zodat refresh echt ververst
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('training_instructie_data')
       window.localStorage.removeItem('training_instructie_datum')
@@ -238,6 +206,17 @@ export default function TrainingPage() {
     router.push(getTrainingRoute(instruction?.training_type || 'kettlebell'))
   }
 
+  // Bibliotheek start — sla module op in localStorage zodat session-page
+  // het kan uitlezen zonder afhankelijk te zijn van URL query params
+  // (PWA gooit query params soms weg bij navigatie)
+  function startLibraryModule(module: TrainingModule) {
+    try {
+      localStorage.setItem('library_module_pending', module)
+      localStorage.setItem('library_module_datum', new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' }))
+    } catch { /* */ }
+    router.push(getTrainingRoute(module))
+  }
+
   const isTrainingType = !!(instruction?.training_allowed && instruction?.training_type)
 
   const totaalDuur = instruction ? (
@@ -248,8 +227,6 @@ export default function TrainingPage() {
   return (
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-5">
-
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">Training</h1>
@@ -261,12 +238,10 @@ export default function TrainingPage() {
           </button>
         </div>
 
-        {/* Skeleton tijdens laden */}
         {(laden || genereren) ? (
           <TrainingSkeleton />
         ) : instruction ? (
           <>
-            {/* Coach bericht */}
             <Card className="p-5 border border-primary-500/20 bg-primary-500/5">
               <p className="text-white text-sm leading-relaxed">{instruction.coach_message}</p>
               {totaalDuur > 0 && (
@@ -277,7 +252,6 @@ export default function TrainingPage() {
               )}
             </Card>
 
-            {/* Vandaag plan */}
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Vandaag voor jou</p>
 
@@ -326,7 +300,6 @@ export default function TrainingPage() {
               })}
             </Card>
 
-            {/* START knop */}
             {isTrainingType ? (
               <button onClick={startTraining}
                 className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700">
@@ -377,7 +350,7 @@ export default function TrainingPage() {
                 const beschikbaar = getAvailableModules(equipment).includes(item.module)
                 return (
                   <button key={i}
-                    onClick={() => beschikbaar && router.push(`${getTrainingRoute(item.module)}?source=library`)}
+                    onClick={() => beschikbaar && startLibraryModule(item.module)}
                     disabled={!beschikbaar}
                     className={cn('w-full text-left', beschikbaar ? 'active:opacity-70' : 'opacity-40')}>
                     <div className="p-3 flex items-center gap-3 w-full bg-coach-card rounded-2xl border border-coach-border">
@@ -437,7 +410,6 @@ export default function TrainingPage() {
             </div>
           )}
         </div>
-
       </div>
     </AppShell>
   )
