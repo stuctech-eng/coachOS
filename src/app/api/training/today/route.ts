@@ -159,16 +159,16 @@ export async function POST(req: NextRequest) {
         }).join('\n')
       : ''
 
-    // Coach sturing -- bij library-keuze bepaalt de gebruiker de module,
+    // Coach sturing — bij library-keuze bepaalt de gebruiker de module,
     // coach bepaalt alleen de intensiteit. Bij normale flow bepaalt coach alles.
     const coachActieType = coachRec?.actie_type || null
     const trainerInstructies = coachRec?.trainer_instructies || null
 
     let coachSturingContext = ''
     if (isLibrary) {
-      // Bibliotheek: gebruiker kiest module -- coach bepaalt alleen intensiteit
+      // Bibliotheek: gebruiker kiest module — coach bepaalt alleen intensiteit
       if (coachActieType === 'rust') {
-        coachSturingContext = `COACH ADVIES (intensiteit): Coach adviseerde rust vandaag. Kies recovery/light sessietype voor de gekozen module. training_allowed MOET true zijn -- de gebruiker heeft bewust gekozen deze module te starten.`
+        coachSturingContext = `COACH ADVIES (intensiteit): Coach adviseerde rust vandaag. Kies recovery/light sessietype voor de gekozen module. training_allowed MOET true zijn — de gebruiker heeft bewust gekozen deze module te starten.`
       } else if (coachActieType === 'herstel') {
         coachSturingContext = `COACH ADVIES (intensiteit): Coach adviseerde herstel vandaag. Kies recovery of licht sessietype voor de gekozen module. intensity MOET "light" zijn.`
       } else {
@@ -210,7 +210,7 @@ export async function POST(req: NextRequest) {
       m === 'kettlebell' ? kettlebellAvailable : m === 'rowing' ? rowingAvailable : m === 'running' ? runningAvailable : cyclingAvailable
     )
 
-    // Bij library-keuze wint forcedModule altijd -- coach bepaalt alleen intensiteit
+    // Bij library-keuze wint forcedModule altijd — coach bepaalt alleen intensiteit
     const moduleKeuze = isLibrary && forcedModule
       ? `De gebruiker heeft gekozen voor "${forcedModule}". training_type MOET "${forcedModule}" zijn. Bepaal het sessietype binnen deze module op basis van de coach-intensiteit hierboven.`
       : keuzeModules.length > 1
@@ -221,8 +221,10 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `Je bent Trainer AI van CoachOS. Genereer een trainingsschema.
 
+${isLibrary && forcedModule ? `⚠️ GEFIXEERDE MODULE: training_type is al bepaald door de gebruiker en STAAT VAST op "${forcedModule}". Jij vult ALLEEN de sessie-inhoud in (sessietype, segmenten, intensiteit, duur, bericht). Je mag training_type NIET wijzigen — zelfs niet als de coach herstel heeft geadviseerd. Dat is al verwerkt in de intensiteit hieronder.` : ''}
+
 COACH STURING:
-${coachSturingContext || 'Geen specifiek coach advies -- gebruik eigen inschatting op basis van de data.'}
+${coachSturingContext || 'Geen specifiek coach advies — gebruik eigen inschatting op basis van de data.'}
 
 DATA:
 ${context}
@@ -231,8 +233,8 @@ MODULE KEUZE:
 ${moduleKeuze}
 
 REGELS:
-- Bij library-keuze: training_type MOET exact de gekozen module zijn
-- Coach sturing bepaalt intensiteit, NIET het training_type bij library-keuze
+- training_type MOET "${isLibrary && forcedModule ? forcedModule : 'de gekozen module'}" zijn — niet wijzigen
+- Coach sturing bepaalt intensiteit en sessietype, NIET het training_type bij library-keuze
 - Bij lage energie of herstel: lichtere intensiteit, recovery sessietype
 - duration = totale sessieduur in minuten
 
@@ -247,7 +249,7 @@ CYCLING: session_type kiezen. Elk segment: type:"cycling", exercise, session_typ
 Reageer ALLEEN in dit JSON formaat:
 {
   "training_allowed": true,
-  "training_type": "rowing",
+  "training_type": "${isLibrary && forcedModule ? forcedModule : 'MODULE'}",
   "title": "Korte titel",
   "intensity": "light",
   "duration": 30,
@@ -259,7 +261,7 @@ Reageer ALLEEN in dit JSON formaat:
   "coach_message": "Persoonlijk motiverend bericht"
 }`
 
-    // Module-specifieke fallbacks -- bij mislukte AI-call altijd het juiste type terug
+    // Module-specifieke fallbacks — bij mislukte AI-call altijd het juiste type terug
     const kettlebellFallback: TrainingInstruction = {
       training_allowed: true,
       training_type: 'kettlebell',
@@ -307,7 +309,7 @@ Reageer ALLEEN in dit JSON formaat:
       ] as unknown[],
       recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
       reason: 'Standaard rowing sessie',
-      coach_message: 'Mooie rowing sessie -- focus op techniek!',
+      coach_message: 'Mooie rowing sessie — focus op techniek!',
     }
 
     const runningFallback: TrainingInstruction = {
@@ -380,7 +382,7 @@ Reageer ALLEEN in dit JSON formaat:
     let instruction: TrainingInstruction = fallbackInstruction
 
     try {
-      // Directe Anthropic API call -- geen /api/ai proxy (die geeft 500 errors)
+      // Directe Anthropic API call — geen /api/ai proxy (die geeft 500 errors)
       const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -402,12 +404,17 @@ Reageer ALLEEN in dit JSON formaat:
         const jsonMatch = rawText.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
-          const parsedType = parsed.training_type
 
-          // Bij library-keuze: alleen accepteren als het type overeenkomt
-          // Bij normale flow: accepteren als het een beschikbaar type is
+          // Bij library-keuze: forceer het type altijd, ongeacht wat AI teruggeeft
+          // De AI mag de segmenten/intensiteit/sessietype bepalen, niet het module-type
+          if (isLibrary && forcedModule) {
+            parsed.training_type = forcedModule
+            parsed.training_allowed = true
+          }
+
+          const parsedType = parsed.training_type
           const typeAllowed = isLibrary && forcedModule
-            ? parsedType === forcedModule
+            ? true // altijd toegestaan, type is al geforceerd
             : !parsedType || (parsedType === 'rowing' && rowingAvailable) ||
               (parsedType === 'kettlebell' && kettlebellAvailable) ||
               (parsedType === 'running' && runningAvailable) ||
@@ -416,7 +423,6 @@ Reageer ALLEEN in dit JSON formaat:
           if ((parsed.segments && parsed.segments.length > 0 && typeAllowed) || parsed.training_allowed === false) {
             instruction = parsed
           }
-          // Als typeAllowed false: AI gaf verkeerd type terug → gebruik module-specifieke fallback
         }
       }
     } catch {
