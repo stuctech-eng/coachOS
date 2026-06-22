@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.9.1
+- Versie: 1.9.2
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -527,6 +527,17 @@ oefening bibliotheek.
   training/today/route.ts uitgebreid met BODYWEIGHT FORMAT,
   bodyweightFallback en filter-logica. Bestaande modules ongewijzigd.
   Fase 2 (60-80 oefeningen) en uitlegpaginas volgen later.
+
+- v1.9.2: Bodyweight Bibliotheek Fase 2 — 35 extra oefeningen toegevoegd.
+  Totaal nu 65 oefeningen verdeeld over alle coachDoelen. Uitbreidingen:
+  benen (Bulgaarse Split Squat, Jump Squat, Curtsy Lunge, Zijwaartse Lunge,
+  Eénbeen Glute Bridge, Wall Sit March), bilspieren (Hip Thrust, Donkey Kick,
+  Fire Hydrant, Clamshell, Frog Pump), core (Hollow Hold, Beenheffen, V-Up,
+  Bicycle Crunch, Russian Twist, Shoulder Tap, Plank Jack), borst (Wide/
+  Diamond/Decline/Knie Push-Up), rug (Swimmer, Cobra Hold, Reverse Snow Angel),
+  mobiliteit (Pigeon Stretch, Thread the Needle, Hamstring/Quad Stretch),
+  conditie (Burpee, Butt Kicks, Skater Jump, Zijwaartse Shuffle), kracht
+  (Squat Hold, Good Morning). Alleen bodyweight-exercises.ts gewijzigd.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
