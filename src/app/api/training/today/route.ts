@@ -515,7 +515,7 @@ Reageer ALLEEN in dit JSON formaat:
               (parsedType === 'running' && runningAvailable) ||
               (parsedType === 'cycling' && cyclingAvailable) ||
               (parsedType === 'bodyweight' && bodyweightAvailable) ||
-              (parsedType === 'strength' && (profile?.strength_available ?? true))
+              (parsedType === 'strength' && (profile?.dumbbell_available || profile?.barbell_available || true))
 
             if ((parsed.segments && parsed.segments.length > 0 && typeAllowed) || parsed.training_allowed === false) {
               instruction = parsed
