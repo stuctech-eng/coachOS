@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.0.2
+- Versie: 2.0.3
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -628,6 +628,12 @@ oefening bibliotheek.
   uit de bibliotheek als de oefening gevonden wordt. Als niet gevonden
   valt het terug op de AI-response data. moduleType prop toegevoegd
   aan UitlegScherm en doorgegeven op alle 3 aanroeplaatsen.
+
+- v2.0.3: Bibliotheek naam matching verbeterd. Uitgebreide aliassen map
+  (80+ aliassen) voor veelvoorkomende AI naamvarianten: "Bodyweight Squats"
+  → Air Squat, "Push-ups" → Push-Up, etc. Prompt instructie toegevoegd
+  zodat AI exact de bibliotheek namen gebruikt voor toekomstige sessies.
+  Alleen session/[module]/page.tsx en training/today/route.ts gewijzigd.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

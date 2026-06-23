@@ -503,8 +503,12 @@ Reageer ALLEEN in dit JSON formaat:
       strengthContext,
     ].filter(Boolean).join('\n')
 
+    const naamInstructie = bibliotheekContext
+      ? '\n\nBELANGRIJK: Gebruik in het "exercise" veld UITSLUITEND de exacte naam zoals die in de BESCHIKBARE OEFENINGEN lijst staat. Gebruik GEEN vertalingen, varianten of alternatieve namen. Kopieer de naam exact over.'
+      : ''
+
     const systemPromptMet = bibliotheekContext
-      ? systemPrompt + '\n' + bibliotheekContext
+      ? systemPrompt + '\n' + bibliotheekContext + naamInstructie
       : systemPrompt
 
     let instruction: TrainingInstruction = fallbackInstruction

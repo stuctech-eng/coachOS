@@ -38,28 +38,161 @@ function formatTime(sec: number): string {
 }
 
 // Zoek oefening op in de bibliotheek op basis van naam
+// Probeert exacte match, dan fuzzy match (bevat), dan omgekeerde bevat
 function zoekInBibliotheek(naam: string, moduleType: string) {
   if (!naam) return null
-  const normNaam = naam.toLowerCase().trim()
+  const normNaam = naam.toLowerCase().trim().replace(/[-_]/g, ' ')
 
-  if (moduleType === 'bodyweight') {
-    return BODYWEIGHT_OEFENINGEN.find(o =>
-      o.naam.toLowerCase() === normNaam ||
-      o.id === normNaam.replace(/\s+/g, '-')
-    ) || null
+  // Aliassen — AI gebruikt soms andere namen dan de bibliotheek
+  const ALIASSEN: Record<string, string> = {
+    'bodyweight squat': 'air squat',
+    'bodyweight squats': 'air squat',
+    'squats': 'air squat',
+    'squat': 'air squat',
+    'push ups': 'push-up',
+    'push-ups': 'push-up',
+    'pushups': 'push-up',
+    'pushup': 'push-up',
+    'lunges': 'reverse lunge',
+    'lunge': 'reverse lunge',
+    'plank hold': 'plank',
+    'high plank': 'plank',
+    'glute bridges': 'glute bridge',
+    'hip bridges': 'glute bridge',
+    'mountain climbers': 'mountain climber',
+    'jumping jacks': 'jumping jacks',
+    'burpees': 'burpee',
+    'dead bugs': 'dead bug',
+    'bird dogs': 'bird dog',
+    'side planks': 'zijplank',
+    'side plank': 'zijplank',
+    'hollow body hold': 'hollow hold',
+    'hollow body': 'hollow hold',
+    'v ups': 'v-up',
+    'v-ups': 'v-up',
+    'russian twists': 'russian twist',
+    'bicycle crunches': 'bicycle crunch',
+    'leg raises': 'beenheffen',
+    'reverse crunches': 'reverse crunch',
+    'flutter kicks': 'flutter kick',
+    'hip thrusts': 'hip thrust',
+    'donkey kicks': 'donkey kick',
+    'fire hydrants': 'fire hydrant',
+    'clamshells': 'clamshell',
+    'frog pumps': 'frog pump',
+    'calf raises': 'kuitverheffen',
+    'step ups': 'step-up',
+    'goblet squats': 'goblet squat',
+    'split squats': 'split squat',
+    'bulgarian split squats': 'bulgaarse split squat',
+    'wall sits': 'wall sit',
+    'inchworms': 'inchworm',
+    'world greatest stretch': 'world\'s greatest stretch',
+    'worlds greatest stretch': 'world\'s greatest stretch',
+    'childs pose': 'child\'s pose',
+    'child pose': 'child\'s pose',
+    'cat cow': 'cat-cow',
+    'cat-cow stretch': 'cat-cow',
+    'deep squat': 'deep squat hold',
+    'thoracic rotations': 'thoracale rotatie',
+    'thoracic rotation': 'thoracale rotatie',
+    'hip flexor stretch': 'heupbuiger stretch',
+    'shoulder rolls': 'schouderrollen',
+    'box breathing': 'box breathing',
+    'superman hold': 'superman',
+    'supermans': 'superman',
+    'toe touches': 'toe touch',
+    'knee push ups': 'knie push-up',
+    'knee push-ups': 'knie push-up',
+    'incline push ups': 'incline push-up',
+    'decline push ups': 'decline push-up',
+    'wide push ups': 'wide push-up',
+    'diamond push ups': 'diamond push-up',
+    'pike push ups': 'pike push-up',
+    'skater jumps': 'skater jump',
+    'skater hops': 'skater jump',
+    'high knees': 'high knees',
+    'butt kicks': 'butt kicks',
+    'lateral shuffles': 'zijwaartse shuffle',
+    'lateral shuffle': 'zijwaartse shuffle',
+    'plank jacks': 'plank jack',
+    'tuck jumps': 'tuck jump',
+    'broad jumps': 'brede sprong',
+    'bear crawls': 'bear crawl',
+    'seal jacks': 'seal jack',
+    'speed skaters': 'speed skater',
+    'shoulder taps': 'shoulder tap',
+    'reverse snow angels': 'reverse snow angel',
+    'cobra pose': 'cobra hold',
+    'cobra stretch': 'cobra hold',
+    // Kettlebell aliassen
+    'two hand swing': 'kettlebell swing',
+    'two-hand swing': 'kettlebell swing',
+    'kb swing': 'kettlebell swing',
+    'kb deadlift': 'kettlebell deadlift',
+    'goblet squat kb': 'goblet squat',
+    'single arm press': 'strict press',
+    'overhead press kb': 'strict press',
+    'kb press': 'strict press',
+    'kb row': 'single arm row',
+    'kb clean': 'clean',
+    'kb snatch': 'snatch',
+    // Strength aliassen
+    'dumbbell squats': 'goblet squat',
+    'db squat': 'goblet squat',
+    'db press': 'dumbbell bench press',
+    'db bench press': 'dumbbell bench press',
+    'bench press db': 'dumbbell bench press',
+    'db row': 'dumbbell row',
+    'barbell squat': 'back squat',
+    'back squats': 'back squat',
+    'deadlifts': 'deadlift',
+    'romanian deadlifts': 'romanian deadlift dumbbell',
+    'rdl': 'romanian deadlift dumbbell',
+    'overhead press': 'dumbbell shoulder press',
+    'shoulder press': 'dumbbell shoulder press',
+    'bicep curls': 'dumbbell biceps curl',
+    'biceps curls': 'dumbbell biceps curl',
+    'curls': 'dumbbell biceps curl',
+    'tricep extensions': 'dumbbell triceps extension',
+    'triceps extensions': 'dumbbell triceps extension',
+    'lateral raises': 'lateral raise',
+    'farmer carries': 'farmer carry',
+    'farmer walk': 'farmer carry',
   }
-  if (moduleType === 'strength') {
-    return STRENGTH_OEFENINGEN.find(o =>
-      o.naam.toLowerCase() === normNaam ||
-      o.id === normNaam.replace(/\s+/g, '-')
-    ) || null
+
+  const genormaliseerd = ALIASSEN[normNaam] || normNaam
+
+  function vind(lijst: Array<{ naam: string; id: string }>) {
+    // 0. Alias match
+    if (genormaliseerd !== normNaam) {
+      const alias = lijst.find(o => o.naam.toLowerCase() === genormaliseerd)
+      if (alias) return alias
+    }
+    // 1. Exacte match
+    const exact = lijst.find(o => o.naam.toLowerCase() === normNaam)
+    if (exact) return exact
+    // 2. ID match
+    const idMatch = lijst.find(o => o.id === normNaam.replace(/\s+/g, '-'))
+    if (idMatch) return idMatch
+    // 3. Bibliotheek naam zit in AI naam (bijv. "Push-Up" in "Push-ups")
+    const bevatBib = lijst.find(o => normNaam.includes(o.naam.toLowerCase()))
+    if (bevatBib) return bevatBib
+    // 4. AI naam zit in bibliotheek naam
+    const bevatAI = lijst.find(o => o.naam.toLowerCase().includes(normNaam))
+    if (bevatAI) return bevatAI
+    // 5. Eerste woord match (minimaal 4 tekens)
+    const eersteWoord = normNaam.split(' ')[0]
+    if (eersteWoord.length > 3) {
+      const woordMatch = lijst.find(o => o.naam.toLowerCase().startsWith(eersteWoord))
+      if (woordMatch) return woordMatch
+    }
+    return null
   }
-  if (moduleType === 'kettlebell') {
-    return KETTLEBELL_OEFENINGEN.find(o =>
-      o.naam.toLowerCase() === normNaam ||
-      o.id === normNaam.replace(/\s+/g, '-')
-    ) || null
-  }
+
+  if (moduleType === 'bodyweight') return vind(BODYWEIGHT_OEFENINGEN as unknown as Array<{ naam: string; id: string }>)
+  if (moduleType === 'strength') return vind(STRENGTH_OEFENINGEN as unknown as Array<{ naam: string; id: string }>)
+  if (moduleType === 'kettlebell') return vind(KETTLEBELL_OEFENINGEN as unknown as Array<{ naam: string; id: string }>)
   return null
 }
 
