@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.9.7
+- Versie: 1.9.9
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -586,6 +586,23 @@ oefening bibliotheek.
   rack pull, RDL-row combinatie), both (giant set benen, giant set
   bovenlichaam, wave loading, cluster set, pre-exhaust, mechanische drop
   set). Alleen strength-exercises.ts gewijzigd.
+
+- v1.9.8: Strength Bibliotheek Fase 4 — 15 extra oefeningen toegevoegd.
+  Totaal nu 85 strength oefeningen. Uitbreidingen: dumbbell (goblet squat
+  zijstap, incline curl, overhead triceps, zijlunge curl, renegade row,
+  thruster), barbell (snatch grip deadlift, floor press, high pull,
+  landmine press), both (periodization blokken kracht/hypertrofie,
+  actief herstel, krachtcircuit, EMOM kracht).
+  Alleen strength-exercises.ts gewijzigd.
+
+- v1.9.9: Strength Bibliotheek compleet — 100 oefeningen.
+  Fase 5 toevoegingen: dumbbell (seal row, meadows row, spider curl,
+  kickback, paused row), barbell (jefferson curl, landmine squat, yates
+  row, barbell romanian pause), both (conjugate methode, AMRAP, rest-pause,
+  loaded carry complex, deload training, dumbbell krachtcomplex).
+  Strength bibliotheek volledig afgerond: 30 Fase 1 + 23 Fase 2 +
+  17 Fase 3 + 15 Fase 4 + 15 Fase 5 = 100 oefeningen.
+  Alleen strength-exercises.ts gewijzigd.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
