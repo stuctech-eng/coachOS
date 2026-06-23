@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.9.9
+- Versie: 2.0.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -603,6 +603,16 @@ oefening bibliotheek.
   Strength bibliotheek volledig afgerond: 30 Fase 1 + 23 Fase 2 +
   17 Fase 3 + 15 Fase 4 + 15 Fase 5 = 100 oefeningen.
   Alleen strength-exercises.ts gewijzigd.
+
+- v2.0.0: Kettlebell Bibliotheek volledig — 102 oefeningen in één keer
+  gebouwd. Nieuw bestand: src/lib/kettlebell-exercises.ts met types
+  KettlebellDoel, KettlebellNiveau, KettlebellCategorie, KettlebellLichaamsdeel
+  en KettlebellOefening. Categorieën: hinge (12), squat (14), push (11),
+  pull (7), ballistisch (10), carry (9), core (11), mobiliteit/herstel (10),
+  conditie (9), complexes/flows (9). Architectuur identiek aan bodyweight en
+  strength: filterKettlebell(), filterKettlebellNiveau(),
+  formateerKettlebellVoorPrompt(). CoachOS bibliotheek compleet:
+  Bodyweight 120 + Strength 100 + Kettlebell 102 = 322 oefeningen totaal.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
