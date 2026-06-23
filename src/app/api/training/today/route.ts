@@ -7,6 +7,8 @@ import { cookies } from 'next/headers'
 import { getAvailableModules, isModuleAvailable } from '@/utils/equipment'
 import { filterOpCoachDoel, formateerVoorPrompt } from '@/lib/bodyweight-exercises'
 import type { CoachDoel } from '@/lib/bodyweight-exercises'
+import { filterStrength, formateerStrengthVoorPrompt } from '@/lib/strength-exercises'
+import type { KrachtDoel, Equipment } from '@/lib/strength-exercises'
 import type { EquipmentProfile } from '@/app/api/equipment/route'
 import type { TrainingModule } from '@/types/training-engine'
 
@@ -379,6 +381,30 @@ Reageer ALLEEN in dit JSON formaat:
       coach_message: 'Rustig en gecontroleerd fietsen vandaag!',
     }
 
+    // Strength fallback
+    const strengthFallback: TrainingInstruction = {
+      training_allowed: true,
+      training_type: 'strength',
+      title: coachActieType === 'herstel' ? 'Herstel Kracht' : 'Krachttraining',
+      intensity: coachActieType === 'herstel' ? 'light' : 'medium',
+      duration: coachActieType === 'herstel' ? 20 : 45,
+      segments: [
+        { type: 'strength', exercise: 'Goblet Squat', session_type: 'kracht', sets: 4, reps: '10-12', rest_sec: 60,
+          instruction: 'Dumbbell voor de borst, diep squatten.', cue: 'Ellebogen duwen knieën naar buiten', common_errors: ['Borst naar voren', 'Knieën naar binnen'], equipment: 'dumbbell' },
+        { type: 'strength', exercise: 'Dumbbell Row', session_type: 'kracht', sets: 4, reps: '10-12', rest_sec: 60,
+          instruction: 'Elleboog recht omhoog langs het lichaam trekken.', cue: 'Trek naar de heup', common_errors: ['Romp roteren', 'Elleboog te wijd'], equipment: 'dumbbell' },
+        { type: 'strength', exercise: 'Dumbbell Bench Press', session_type: 'kracht', sets: 4, reps: '8-12', rest_sec: 60,
+          instruction: 'Dumbbells boven de borst omhoog drukken.', cue: 'Schouderbladen samenknijpen', common_errors: ['Ellebogen te wijd', 'Heupen optillen'], equipment: 'dumbbell' },
+        { type: 'strength', exercise: 'Romanian Deadlift Dumbbell', session_type: 'kracht', sets: 3, reps: '10-12', rest_sec: 60,
+          instruction: 'Buig vanuit de heupen met rechte rug.', cue: 'Stang dicht langs de benen', common_errors: ['Rug afronden', 'Knieën te veel buigen'], equipment: 'dumbbell' },
+        { type: 'strength', exercise: 'Dumbbell Shoulder Press', session_type: 'kracht', sets: 3, reps: '10-12', rest_sec: 60,
+          instruction: 'Dumbbells recht omhoog drukken vanuit schouderhoogte.', cue: 'Core actief houden', common_errors: ['Rug hol trekken', 'Dumbbells naar voren drukken'], equipment: 'dumbbell' },
+      ] as unknown[],
+      recovery_modules: [],
+      reason: coachActieType === 'herstel' ? 'Lichte krachtsessie op hersteldag' : 'Standaard krachttraining',
+      coach_message: coachActieType === 'herstel' ? 'Lichte krachttraining vandaag — focus op techniek.' : 'Krachttraining vandaag — compound bewegingen.',
+    }
+
     // Bodyweight fallback
     const bodyweightFallback: TrainingInstruction = {
       training_allowed: true,
@@ -425,6 +451,8 @@ Reageer ALLEEN in dit JSON formaat:
             ? kettlebellFallback
             : isLibrary && forcedModule === 'bodyweight'
               ? bodyweightFallback
+              : isLibrary && forcedModule === 'strength'
+              ? strengthFallback
               : coachActieType === 'rust'
               ? { training_allowed: false, training_type: null, intensity: null, duration: null,
                   recovery_modules: [], reason: 'Coach adviseert rust vandaag', coach_message: 'Vandaag is herstel de training.' }
@@ -486,7 +514,8 @@ Reageer ALLEEN in dit JSON formaat:
               (parsedType === 'kettlebell' && kettlebellAvailable) ||
               (parsedType === 'running' && runningAvailable) ||
               (parsedType === 'cycling' && cyclingAvailable) ||
-              (parsedType === 'bodyweight' && bodyweightAvailable)
+              (parsedType === 'bodyweight' && bodyweightAvailable) ||
+              (parsedType === 'strength' && (profile?.strength_available ?? true))
 
             if ((parsed.segments && parsed.segments.length > 0 && typeAllowed) || parsed.training_allowed === false) {
               instruction = parsed
