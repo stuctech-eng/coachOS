@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.0.0
+- Versie: 2.0.2
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -613,6 +613,21 @@ oefening bibliotheek.
   strength: filterKettlebell(), filterKettlebellNiveau(),
   formateerKettlebellVoorPrompt(). CoachOS bibliotheek compleet:
   Bodyweight 120 + Strength 100 + Kettlebell 102 = 322 oefeningen totaal.
+
+- v2.0.1: Kettlebell filter toegevoegd aan training/today/route.ts.
+  Optie C nu actief voor alle drie bibliotheken: kettlebell, bodyweight
+  en strength. filterKettlebell() en formateerKettlebellVoorPrompt()
+  geimporteerd. Alle drie bibliotheekcontexten worden samengevoegd in
+  systemPromptMet voor de Haiku AI call. kettlebell-exercises.ts fix:
+  hypertrofie vervangen door kracht (niet in KettlebellDoel type).
+
+- v2.0.2: Uitlegpagina koppelt aan bibliotheek — session/[module]/page.tsx
+  uitgebreid met zoekInBibliotheek() functie die oefening naam matcht
+  met BODYWEIGHT_OEFENINGEN, STRENGTH_OEFENINGEN en KETTLEBELL_OEFENINGEN.
+  UitlegScherm toont nu Nederlandse beschrijving, tips, spieren en fouten
+  uit de bibliotheek als de oefening gevonden wordt. Als niet gevonden
+  valt het terug op de AI-response data. moduleType prop toegevoegd
+  aan UitlegScherm en doorgegeven op alle 3 aanroeplaatsen.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

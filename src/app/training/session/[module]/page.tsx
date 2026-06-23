@@ -10,6 +10,9 @@ import type {
   TrainingSegment, KettlebellSegment, RowingSegment, SessionResult, TrainingModule, TrainingSource
 } from '@/types/training-engine'
 import { SESSION_STORAGE_KEY } from '@/types/training-engine'
+import { BODYWEIGHT_OEFENINGEN } from '@/lib/bodyweight-exercises'
+import { STRENGTH_OEFENINGEN } from '@/lib/strength-exercises'
+import { KETTLEBELL_OEFENINGEN } from '@/lib/kettlebell-exercises'
 
 type WorkoutPhase = 'active' | 'rest' | 'last_rest' | 'uitleg'
 
@@ -32,6 +35,32 @@ function formatTime(sec: number): string {
   const m = Math.floor(sec / 60)
   const s = sec % 60
   return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+// Zoek oefening op in de bibliotheek op basis van naam
+function zoekInBibliotheek(naam: string, moduleType: string) {
+  if (!naam) return null
+  const normNaam = naam.toLowerCase().trim()
+
+  if (moduleType === 'bodyweight') {
+    return BODYWEIGHT_OEFENINGEN.find(o =>
+      o.naam.toLowerCase() === normNaam ||
+      o.id === normNaam.replace(/\s+/g, '-')
+    ) || null
+  }
+  if (moduleType === 'strength') {
+    return STRENGTH_OEFENINGEN.find(o =>
+      o.naam.toLowerCase() === normNaam ||
+      o.id === normNaam.replace(/\s+/g, '-')
+    ) || null
+  }
+  if (moduleType === 'kettlebell') {
+    return KETTLEBELL_OEFENINGEN.find(o =>
+      o.naam.toLowerCase() === normNaam ||
+      o.id === normNaam.replace(/\s+/g, '-')
+    ) || null
+  }
+  return null
 }
 
 function saveSession(state: ExtendedSessionState) {
@@ -204,7 +233,7 @@ function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () 
 
 function UitlegScherm({
   segment, segmentIndex, totalSegments, elapsedSeconds,
-  restSeconds, onReady, onBack, showBack,
+  restSeconds, onReady, onBack, showBack, moduleType,
 }: {
   segment: TrainingSegment | undefined
   segmentIndex: number
@@ -214,8 +243,11 @@ function UitlegScherm({
   onReady: () => void
   onBack?: () => void
   showBack: boolean
+  moduleType?: string
 }) {
   const kb = asDisplay(segment)
+  // Zoek rijke Nederlandse data op in de bibliotheek
+  const bibliotheekOefening = moduleType ? zoekInBibliotheek(kb.exercise, moduleType) : null
   const isFirst = segmentIndex === 0
   const isPulsing = restSeconds !== undefined && restSeconds <= 3 && restSeconds > 0
   const isRowing = kb.type === 'rowing'
@@ -291,31 +323,62 @@ function UitlegScherm({
         </Card>
       )}
 
-      {kb.instruction && (
+      {/* 1. Beschrijving */}
+      {(bibliotheekOefening?.beschrijving || kb.instruction) && (
         <Card className="p-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Uitvoering</p>
-          <p className="text-sm text-slate-200 leading-relaxed">{kb.instruction}</p>
+          <p className="text-sm text-slate-200 leading-relaxed">
+            {bibliotheekOefening?.beschrijving || kb.instruction}
+          </p>
         </Card>
       )}
 
-      {kb.cue && (
-        <Card className="p-4 bg-primary-500/10 border-primary-500/20">
-          <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-1">Coaching tip</p>
-          <p className="text-sm text-white">{kb.cue}</p>
+      {/* 2. Spieren */}
+      {bibliotheekOefening?.primaireSpieren && bibliotheekOefening.primaireSpieren.length > 0 && (
+        <Card className="p-4">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Spieren</p>
+          <p className="text-sm text-slate-300">{bibliotheekOefening.primaireSpieren.join(', ')}</p>
+          {bibliotheekOefening.secundaireSpieren && bibliotheekOefening.secundaireSpieren.length > 0 && (
+            <p className="text-xs text-slate-500 mt-1">+ {bibliotheekOefening.secundaireSpieren.join(', ')}</p>
+          )}
         </Card>
       )}
 
-      {kb.common_errors.length > 0 && (
+      {/* 3. Tips */}
+      {bibliotheekOefening?.tips && bibliotheekOefening.tips.length > 0 && (
+        <Card className="p-5">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Tips</p>
+          <div className="flex flex-col gap-2">
+            {bibliotheekOefening.tips.map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="text-green-400 mt-0.5 flex-shrink-0 text-xs">✓</span>
+                <p className="text-sm text-slate-300">{tip}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* 4. Veelgemaakte fouten */}
+      {((bibliotheekOefening?.fouten && bibliotheekOefening.fouten.length > 0) || kb.common_errors.length > 0) && (
         <Card className="p-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Veelgemaakte fouten</p>
           <div className="flex flex-col gap-2">
-            {kb.common_errors.map((err, i) => (
+            {(bibliotheekOefening?.fouten || kb.common_errors).map((err, i) => (
               <div key={i} className="flex items-start gap-2">
                 <span className="text-red-400 mt-0.5 flex-shrink-0 text-xs">✕</span>
                 <p className="text-sm text-slate-300">{err}</p>
               </div>
             ))}
           </div>
+        </Card>
+      )}
+
+      {/* 5. Coaching tip (AI) */}
+      {kb.cue && (
+        <Card className="p-4 bg-primary-500/10 border-primary-500/20">
+          <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-1">Coaching tip</p>
+          <p className="text-sm text-white">{kb.cue}</p>
         </Card>
       )}
 
@@ -468,7 +531,7 @@ function WorkoutEngine({
         const nextSeg = segments[session.current_segment + 1]
         return nextSeg ? (
           <UitlegScherm segment={nextSeg} segmentIndex={session.current_segment + 1} totalSegments={segments.length}
-            elapsedSeconds={session.elapsed_seconds} restSeconds={session.rest_seconds} onReady={onNextSegment} showBack={false} />
+            elapsedSeconds={session.elapsed_seconds} restSeconds={session.rest_seconds} onReady={onNextSegment} showBack={false} moduleType={session.module} />
         ) : (
           <Card className="p-5 text-center bg-amber-500/10 border-amber-500/20">
             <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">Laatste rust</p>
@@ -967,7 +1030,7 @@ export default function SessionPage() {
 
             {session.status === 'learning' && (
               <UitlegScherm segment={segments[0]} segmentIndex={0} totalSegments={segments.length}
-                elapsedSeconds={0} showBack={true} onReady={handleReadyFromUitleg} onBack={() => updateStatus('schema')} />
+                elapsedSeconds={0} showBack={true} onReady={handleReadyFromUitleg} onBack={() => updateStatus('schema')} moduleType={module} />
             )}
 
             {session.status === 'workout' && session.workout_phase !== 'uitleg' && (
@@ -992,7 +1055,7 @@ export default function SessionPage() {
                 showBack={session.uitleg_index > 0} onReady={handleReadyFromUitleg}
                 onBack={() => setSession(prev => prev ? { ...prev,
                   uitleg_index: Math.max(0, prev.uitleg_index - 1),
-                  current_segment: Math.max(0, prev.uitleg_index - 1) } : prev)} />
+                  current_segment: Math.max(0, prev.uitleg_index - 1) } : prev)} moduleType={module} />
             )}
 
             {(session.status as string) === 'voltooid' && (
