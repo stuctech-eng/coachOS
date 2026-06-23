@@ -2,7 +2,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 1.9.4
+- Versie: 1.9.7
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -561,6 +561,31 @@ oefening bibliotheek.
   Coach heeft nu voor elke situatie een passende training:
   herstel, mobiliteit, hotel, blessure, core, kracht, conditie, warmup.
   Alleen bodyweight-exercises.ts gewijzigd.
+
+- v1.9.5: Strength Bibliotheek Fase 1 — 30 oefeningen (10 dumbbell,
+  10 barbell, 10 both/warmup/herstel/conditie). Nieuw bestand:
+  src/lib/strength-exercises.ts met types KrachtDoel, Equipment,
+  StrengthNiveau, StrengthLichaamsdeel en StrengthOefening. Architectuur
+  identiek aan bodyweight: Optie C — coach filtert op doel + equipment,
+  Trainer AI assembleert uit de gefilterde lijst. STRENGTH FORMAT
+  toegevoegd aan training/today/route.ts. strengthFallback toegevoegd.
+  Bestaande modules volledig intact.
+
+- v1.9.6: Strength Bibliotheek Fase 2 — 23 extra oefeningen toegevoegd.
+  Totaal nu 53 strength oefeningen. Uitbreidingen: dumbbell (sumo deadlift,
+  single arm press, pullover, hammer curl, skull crusher, chest fly, reverse
+  fly, split squat, step-up, kuitverheffen), barbell (lunge, sumo deadlift,
+  biceps curl, close grip press, power clean, upright row, shrug, zercher
+  squat), both (push-pull superset, drop set curl, pause squat, tempo
+  deadlift, bulgaarse split squat DB). Alleen strength-exercises.ts.
+
+- v1.9.7: Strength Bibliotheek Fase 3 — 17 extra oefeningen toegevoegd.
+  Totaal nu 70 strength oefeningen. Uitbreidingen: dumbbell (hip thrust,
+  arnold press, concentration curl, single leg RDL, bent over row, floor
+  press), barbell (hip thrust met pauze, deficit deadlift, pause bench,
+  rack pull, RDL-row combinatie), both (giant set benen, giant set
+  bovenlichaam, wave loading, cluster set, pre-exhaust, mechanische drop
+  set). Alleen strength-exercises.ts gewijzigd.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
