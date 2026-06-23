@@ -1,3 +1,46 @@
+# CoachOS
+
+> Data-first training engine met AI als uitvoerende coach laag.
+> De bibliotheek is altijd de bron van waarheid. AI assembleert alleen.
+
+## Core Architectuurregels
+
+1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
+2. **AI never creates exercises** — AI verzint geen oefeningen buiten de gefilterde lijst
+3. **Filter first, assemble second** — route filtert → AI assembleert
+4. **Equipment is a hard constraint** — geen dumbbell in profiel = geen dumbbell oefeningen
+5. **Progression is data-driven** — niveau en volume zijn data, geen AI-inschatting
+6. **Explanations come from libraries** — uitlegpagina = bibliotheek, AI is fallback
+7. **AI provides coaching cues only** — AI geeft één tip per oefening
+
+📖 Volledige architectuurspec: [docs/architecture.md](docs/architecture.md)
+🗺️ Roadmap: [docs/roadmap.md](docs/roadmap.md)
+📋 Changelog & beslissingen: [docs/changelog.md](docs/changelog.md)
+
+## Huidige Status
+
+| Module | Status | Oefeningen |
+|--------|--------|------------|
+| Bodyweight | ✅ Volledig | 120 |
+| Strength | ✅ Volledig | 100 |
+| Kettlebell | ✅ Volledig | 102 |
+| Running | 🟡 Drill structuur | — |
+| Cycling | 🟡 Drill structuur | — |
+| Rowing | 🟡 Drill structuur | — |
+| **Totaal** | | **322** |
+
+| Systeem | Status |
+|---------|--------|
+| Optie C Filter Layer | ✅ |
+| AI Assembly Layer | ✅ |
+| Coaching Cirkel | ✅ |
+| Coach Compliance | ✅ |
+| Uitlegpagina Bibliotheek | ✅ |
+| Progressie Tracking | ❌ |
+| Drill Libraries | ❌ |
+
+---
+
 # CoachOS - Project Geheugen
 
 ## Project
