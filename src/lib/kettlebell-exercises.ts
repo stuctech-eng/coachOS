@@ -597,7 +597,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
     naam: 'Arnold Press',
     categorie: 'push',
     lichaamsdelen: ['schouders'],
-    doelen: ['kracht', 'hypertrofie'],
+    doelen: ['kracht', 'kracht'],
     niveau: 'gemiddeld',
     herhalingen: '10-12',
     uitleg: 'Press met rotatie — begin met kettlebell voor het gezicht, roteer en druk omhoog. Traint alle koppen van de schouder.',
