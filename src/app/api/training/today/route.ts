@@ -9,6 +9,8 @@ import { filterOpCoachDoel, formateerVoorPrompt } from '@/lib/bodyweight-exercis
 import type { CoachDoel } from '@/lib/bodyweight-exercises'
 import { filterStrength, formateerStrengthVoorPrompt } from '@/lib/strength-exercises'
 import type { KrachtDoel, Equipment } from '@/lib/strength-exercises'
+import { filterKettlebell, formateerKettlebellVoorPrompt } from '@/lib/kettlebell-exercises'
+import type { KettlebellDoel } from '@/lib/kettlebell-exercises'
 import type { EquipmentProfile } from '@/app/api/equipment/route'
 import type { TrainingModule } from '@/types/training-engine'
 
@@ -223,6 +225,38 @@ export async function POST(req: NextRequest) {
         : keuzeModules.length === 1
           ? `training_type MOET "${keuzeModules[0]}" zijn.`
           : 'training_type MOET "kettlebell" zijn.'
+
+    // Optie C: Kettlebell filter — coach bepaalt doel → route filtert →
+    // Trainer AI krijgt de lijst en assembleert de sessie
+    let kettlebellContext = ''
+    if (isLibrary && forcedModule === 'kettlebell' || (!isLibrary && kettlebellAvailable)) {
+      const kbDoel: KettlebellDoel = coachActieType === 'herstel' ? 'herstel'
+        : coachActieType === 'rust' ? 'herstel'
+        : 'kracht'
+      const kbNiveau = profile?.experience_level === 'gevorderd' ? 'gevorderd'
+        : profile?.experience_level === 'intermediate' ? 'gemiddeld'
+        : 'beginner'
+      const kbOef = filterKettlebell(kbDoel, kbNiveau as 'beginner' | 'gemiddeld' | 'gevorderd')
+      if (kbOef.length > 0) {
+        kettlebellContext = `\nBESCHIKBARE KETTLEBELL OEFENINGEN (gebruik UITSLUITEND deze lijst bij kettlebell training):\n${formateerKettlebellVoorPrompt(kbOef)}`
+      }
+    }
+
+    // Optie C: Strength filter
+    let strengthContext = ''
+    if (isLibrary && forcedModule === 'strength' || (!isLibrary && (profile?.dumbbell_available || profile?.barbell_available))) {
+      const krachtDoel: KrachtDoel = coachActieType === 'herstel' ? 'herstel'
+        : coachActieType === 'rust' ? 'herstel'
+        : 'kracht'
+      const beschikbaarEquipment: Equipment[] = []
+      if (profile?.dumbbell_available) beschikbaarEquipment.push('dumbbell')
+      if (profile?.barbell_available) beschikbaarEquipment.push('barbell')
+      if (beschikbaarEquipment.length === 0) beschikbaarEquipment.push('dumbbell')
+      const strengthOef = filterStrength(krachtDoel, beschikbaarEquipment)
+      if (strengthOef.length > 0) {
+        strengthContext = `\nBESCHIKBARE STRENGTH OEFENINGEN (gebruik UITSLUITEND deze lijst bij strength training):\n${formateerStrengthVoorPrompt(strengthOef)}`
+      }
+    }
 
     // Optie C: Coach bepaalt doel → route filtert bodyweight oefeningen →
     // Trainer AI krijgt de lijst en maakt de sessie
@@ -462,6 +496,17 @@ Reageer ALLEEN in dit JSON formaat:
               : cyclingAvailable ? cyclingFallback
               : kettlebellFallback
 
+    // Voeg bibliotheek context toe aan de system prompt
+    const bibliotheekContext = [
+      kettlebellContext,
+      bodyweightContext,
+      strengthContext,
+    ].filter(Boolean).join('\n')
+
+    const systemPromptMet = bibliotheekContext
+      ? systemPrompt + '\n' + bibliotheekContext
+      : systemPrompt
+
     let instruction: TrainingInstruction = fallbackInstruction
 
     try {
@@ -476,7 +521,7 @@ Reageer ALLEEN in dit JSON formaat:
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 2000,
-          system: systemPrompt,
+          system: systemPromptMet,
           messages: [{ role: 'user', content: 'Genereer het trainingsschema.' }],
         }),
       })
