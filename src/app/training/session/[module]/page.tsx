@@ -173,7 +173,7 @@ function zoekInBibliotheek(naam: string, moduleType: string): BibliotheekOefenin
 
   const genormaliseerd = ALIASSEN[normNaam] || normNaam
 
-  function vind(lijst: Array<{ naam: string; id: string }>) {
+  function vind(lijst: BibliotheekOefening[]): BibliotheekOefening | null {
     // 0. Alias match
     if (genormaliseerd !== normNaam) {
       const alias = lijst.find(o => o.naam.toLowerCase() === genormaliseerd)
