@@ -1249,4 +1249,5 @@ export default function SessionPage() {
       </div>
     </AppShell>
   )
-}
+} 
+
