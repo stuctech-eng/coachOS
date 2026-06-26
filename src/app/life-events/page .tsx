@@ -820,4 +820,4 @@ export default function LifeEventsPage() {
       )}
     </AppShell>
   )
-}
+} 
