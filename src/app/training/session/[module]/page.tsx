@@ -190,9 +190,9 @@ function zoekInBibliotheek(naam: string, moduleType: string) {
     return null
   }
 
-  if (moduleType === 'bodyweight') return vind(BODYWEIGHT_OEFENINGEN as unknown as Array<{ naam: string; id: string }>)
-  if (moduleType === 'strength') return vind(STRENGTH_OEFENINGEN as unknown as Array<{ naam: string; id: string }>)
-  if (moduleType === 'kettlebell') return vind(KETTLEBELL_OEFENINGEN as unknown as Array<{ naam: string; id: string }>)
+  if (moduleType === 'bodyweight') return vind(BODYWEIGHT_OEFENINGEN as unknown as Array<{ naam: string; id: string; beschrijving: string; tips: string[]; fouten: string[]; primaireSpieren: string[]; secundaireSpieren: string[] }>)
+  if (moduleType === 'strength') return vind(STRENGTH_OEFENINGEN as unknown as Array<{ naam: string; id: string; beschrijving: string; tips: string[]; fouten: string[]; primaireSpieren: string[]; secundaireSpieren: string[] }>)
+  if (moduleType === 'kettlebell') return vind(KETTLEBELL_OEFENINGEN as unknown as Array<{ naam: string; id: string; beschrijving: string; tips: string[]; fouten: string[]; primaireSpieren: string[]; secundaireSpieren: string[] }>)
   return null
 }
 
