@@ -391,10 +391,8 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
           regels.push(`Trainingsbelasting t.o.v. vorige week: ${trendLabel} (${dezeWeekMin} vs ${vorigeWeekMin} min)`)
         }
 
-        regels.push('
-Gebruik deze trenddata in je advies. Benoem concrete progressie als die er is. Waarschuw bij stijgende belasting + hoge RPE. Stel progressie voor als trend stijgend is en RPE laag.')
-        progressieContext = regels.join('
-')
+        regels.push('Gebruik deze trenddata in je advies. Benoem concrete progressie als die er is. Waarschuw bij stijgende belasting + hoge RPE. Stel progressie voor als trend stijgend is en RPE laag.')
+        progressieContext = regels.join('\n')
       }
     }
 
