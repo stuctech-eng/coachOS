@@ -63,11 +63,12 @@ function getModuleBg(type: string, subtype?: string): string {
   return 'bg-purple-500/20'
 }
 
-function getModuleRoute(module: RecoveryModule): string {
-  if (module.type === 'breathing') return `/training/recovery/breathing?subtype=${module.subtype}&duration=${module.duration}&label=${encodeURIComponent(module.label)}`
-  if (module.type === 'mobility') return `/training/recovery/mobility?subtype=${module.subtype}&duration=${module.duration}&label=${encodeURIComponent(module.label)}`
-  if (module.type === 'walk' || module.subtype === 'recovery_walk') return `/training/recovery/walk?duration=${module.duration}`
-  if (module.type === 'relaxation') return `/training/recovery/relaxation?label=${encodeURIComponent(module.label)}`
+function getModuleRoute(module: RecoveryModule, categorie?: string): string {
+  const terug = categorie ? `&terug=${categorie}` : ''
+  if (module.type === 'breathing') return `/training/recovery/breathing?subtype=${module.subtype}&duration=${module.duration}&label=${encodeURIComponent(module.label)}${terug}`
+  if (module.type === 'mobility') return `/training/recovery/mobility?subtype=${module.subtype}&duration=${module.duration}&label=${encodeURIComponent(module.label)}${terug}`
+  if (module.type === 'walk' || module.subtype === 'recovery_walk') return `/training/recovery/walk?duration=${module.duration}${terug}`
+  if (module.type === 'relaxation') return `/training/recovery/relaxation?label=${encodeURIComponent(module.label)}${terug}`
   return '/training'
 }
 
@@ -221,10 +222,14 @@ function TrainingContent() {
   const vandaag = new Date().toISOString().split('T')[0]
   const herstelRef = React.useRef<HTMLDivElement>(null)
 
-  // Open herstelbibliotheek als ?herstel=1 in URL
+  // Open herstelbibliotheek als ?herstel=1 in URL, open specifieke categorie als ?terug=categorie
   useEffect(() => {
     if (searchParams.get('herstel') === '1') {
       setShowBibliotheek(true)
+      const terug = searchParams.get('terug')
+      if (terug) {
+        setOpenCategorieen([terug])
+      }
       setTimeout(() => {
         herstelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
@@ -495,7 +500,7 @@ function TrainingContent() {
                     {isOpen && (
                       <div className="flex flex-col border-t border-coach-border">
                         {cat.items.map((item, i) => {
-                          const route = getModuleRoute(item)
+                          const route = getModuleRoute(item, cat.id)
                           return (
                             <button key={i} onClick={() => router.push(route)}
                               className="w-full active:opacity-70 text-left px-4 py-3 flex items-center gap-3 border-b border-coach-border/50 last:border-0">

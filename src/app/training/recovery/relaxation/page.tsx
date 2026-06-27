@@ -101,6 +101,9 @@ function RelaxatieSession() {
   const label = searchParams.get('label') || 'Ontspanning'
 
   // Map label naar schema ID
+  const terug = searchParams.get('terug') || ''
+  const terugUrl = terug ? `/training?herstel=1&terug=${terug}` : '/training?herstel=1'
+
   function getLabelToSchema(lbl: string): string {
     const map: Record<string, string> = {
       'Progressieve Spierontspanning': 'progressieve_spierontspanning',
@@ -191,7 +194,7 @@ function RelaxatieSession() {
         <h1 className="text-2xl font-bold text-white mb-2">Goed gedaan!</h1>
         <p className="text-slate-400 mb-1">{schema.naam}</p>
         <p className="text-slate-500 text-sm mb-8">{Math.round(totaalDuur / 60)} minuten ontspanning</p>
-        <button onClick={() => router.push('/training?herstel=1')}
+        <button onClick={() => router.push(terugUrl)}
           className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg active:bg-primary-700">
           Terug naar Training
         </button>
@@ -203,7 +206,7 @@ function RelaxatieSession() {
     return (
       <div className="fixed inset-0 bg-coach-dark flex flex-col px-6">
         <div className="flex items-center justify-between pt-14 pb-8">
-          <button onClick={() => router.push('/training?herstel=1')}
+          <button onClick={() => router.push(terugUrl)}
             className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
             <X size={20} className="text-slate-400" />
           </button>
@@ -248,7 +251,7 @@ function RelaxatieSession() {
     <div className="fixed inset-0 flex flex-col" style={{ background: '#0a0f1a' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-6 pt-14 pb-4">
-        <button onClick={() => router.push('/training?herstel=1')}
+        <button onClick={() => router.push(terugUrl)}
           className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center">
           <X size={20} className="text-slate-400" />
         </button>
