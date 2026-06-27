@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Dumbbell, Wind, Footprints, Zap, Play, RefreshCw, Clock, ChevronRight, BookOpen, Waves, Bike } from 'lucide-react'
 import { AppShell } from '@/components/layout'
@@ -208,7 +208,7 @@ function TrainingSkeleton() {
   )
 }
 
-export default function TrainingPage() {
+function TrainingContent() {
   const router = useRouter()
   const [instruction, setInstruction] = useState<TrainingInstruction | null>(null)
   const [laden, setLaden] = useState(true)
@@ -517,5 +517,13 @@ export default function TrainingPage() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+export default function TrainingPage() {
+  return (
+    <Suspense fallback={null}>
+      <TrainingContent />
+    </Suspense>
   )
 }
