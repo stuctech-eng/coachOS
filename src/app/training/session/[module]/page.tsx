@@ -1090,7 +1090,13 @@ export default function SessionPage() {
       await fetch('/api/training/complete', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ module, ...result, training_type: module, training_source: session?.training_source || 'coach_plan' }),
+        body: JSON.stringify({
+          module,
+          ...result,
+          training_type: module,
+          training_source: session?.training_source || 'coach_plan',
+          segments: session?.schema?.segments || [],
+        }),
       })
       clearSession()
       setSession(prev => prev ? { ...prev, status: 'completed' } : prev)

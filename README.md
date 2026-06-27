@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.3.0
+- Versie: 2.3.1
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -723,6 +723,14 @@ oefening bibliotheek.
   kiezen uit bekende sessietypes voor alle modules.
   CoachOS totaal: 354 modules + 36 drill sessies = 390 totaal.
   Trainer Rule nu volledig van kracht voor ALLE modules.
+
+- v2.3.1: Exercise Records — progressie tracking per oefening.
+  Nieuwe tabel: exercise_records (id, user_id, training_result_id,
+  exercise_id, exercise_name, exercise_type, module, weight_kg, reps,
+  duration_sec, distance_m, sets, rpe, performed_at).
+  training/complete/route.ts: segments worden opgeslagen als exercise_records.
+  session/[module]/page.tsx: segments meegegeven bij opslaan.
+  Coach kan nu zien: "Goblet Squat 16kg → 20kg in 5 weken".
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

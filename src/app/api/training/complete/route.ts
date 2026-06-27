@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       fatigue_after,
       soreness,
       notes,
+      segments,
       rowing_technique_rating,
       rowing_pacing_rating,
       rowing_fatigue_rating,
@@ -103,7 +104,59 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error
 
-    // ── Stap 2: Coach Call aanmaken bij bibliotheek-training tegen advies in ──
+    // ── Stap 2: Exercise Records opslaan ────────────────────────────────────
+    // Sla individuele oefeningen op voor progressietracking
+    if (result?.id && segments && Array.isArray(segments) && segments.length > 0) {
+      try {
+        const moduleType = training_type || module || 'unknown'
+
+        // Bepaal exercise_type op basis van module
+        const exerciseTypeMap: Record<string, string> = {
+          kettlebell: 'kettlebell',
+          strength: 'strength',
+          bodyweight: 'bodyweight',
+          rowing: 'endurance',
+          running: 'endurance',
+          cycling: 'endurance',
+          mobility: 'mobility',
+        }
+        const defaultExerciseType = exerciseTypeMap[moduleType] || 'general'
+
+        const records = segments
+          .filter((seg: Record<string, unknown>) => seg.exercise || seg.naam)
+          .map((seg: Record<string, unknown>) => {
+            const naam = (seg.exercise || seg.naam || '') as string
+            // Genereer een consistente exercise_id van de naam
+            const exerciseId = naam.toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '')
+
+            return {
+              user_id: user.id,
+              training_result_id: result.id,
+              exercise_id: exerciseId,
+              exercise_name: naam,
+              exercise_type: (seg.type as string) || defaultExerciseType,
+              module: moduleType,
+              weight_kg: (seg.weight_kg as number) || null,
+              reps: typeof seg.reps === 'number' ? seg.reps : null,
+              duration_sec: typeof seg.duration_sec === 'number' ? seg.duration_sec : null,
+              distance_m: typeof seg.distance_m === 'number' ? seg.distance_m : null,
+              sets: typeof seg.sets === 'number' ? seg.sets : null,
+              rpe: typeof perceived_effort === 'number' ? perceived_effort : null,
+              performed_at: new Date().toISOString(),
+            }
+          })
+
+        if (records.length > 0) {
+          await supabase.from('exercise_records').insert(records)
+        }
+      } catch (exErr) {
+        console.error('[training/complete] exercise_records opslaan mislukt:', exErr)
+      }
+    }
+
+    // ── Stap 3: Coach Call aanmaken bij bibliotheek-training tegen advies in ──
     // Alleen als: training komt uit bibliotheek (library) EN coach adviseerde
     // herstel of rust vandaag — dan weet de coach het niet tenzij we het melden
     if (training_source === 'library' && result?.id) {
