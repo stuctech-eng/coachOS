@@ -366,9 +366,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
         : null
 
       if (gesorteerd.length > 0) {
-        const regels: string[] = ['
-
-Progressie analyse laatste 30 dagen:']
+        const regels: string[] = [`\n\nProgressie analyse laatste 30 dagen:`]
 
         for (const t of gesorteerd) {
           let regel = `- ${t.naam} (${t.module}, ${t.uitvoeringen}×)`
