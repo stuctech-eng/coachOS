@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.1.0
+- Versie: 2.1.1
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -685,6 +685,13 @@ oefening bibliotheek.
   Hulpfuncties: filterMobility(), formateerMobilityVoorPrompt().
   Mobility is nu Categorie A module — zelfde architectuur als
   bodyweight/strength/kettlebell.
+
+- v2.1.1: Mobility filter toegevoegd aan training/today/route.ts.
+  filterMobility() en formateerMobilityVoorPrompt() geimporteerd.
+  Coach blessures bepalen automatisch het lichaamsdeel focus.
+  mobilityContext toegevoegd aan bibliotheekContext voor de Trainer AI.
+  Mobility is nu volledig Categorie A — Coach bepaalt, Bibliotheek levert,
+  Trainer assembleert.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

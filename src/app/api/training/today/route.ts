@@ -11,6 +11,8 @@ import { filterStrength, formateerStrengthVoorPrompt } from '@/lib/strength-exer
 import type { KrachtDoel, Equipment } from '@/lib/strength-exercises'
 import { filterKettlebell, formateerKettlebellVoorPrompt } from '@/lib/kettlebell-exercises'
 import type { KettlebellDoel } from '@/lib/kettlebell-exercises'
+import { filterMobility, formateerMobilityVoorPrompt } from '@/lib/mobility-exercises'
+import type { MobilityDoel, MobilityLichaamsdeel } from '@/lib/mobility-exercises'
 import type { EquipmentProfile } from '@/app/api/equipment/route'
 import type { TrainingModule } from '@/types/training-engine'
 
@@ -258,6 +260,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Optie C: Mobility filter
+    let mobilityContext = ''
+    {
+      const mobilityDoel: MobilityDoel = coachActieType === 'herstel' || coachActieType === 'rust'
+        ? 'herstel' : 'mobiliteit'
+
+      // Blessure-gebaseerde lichaamsdeel focus
+      let mobilityLichaamsdeel: MobilityLichaamsdeel | undefined = undefined
+      if (blessures.length > 0) {
+        const blessurePart = blessures[0]?.body_part?.toLowerCase() || ''
+        if (blessurePart.includes('heup') || blessurePart.includes('hip')) mobilityLichaamsdeel = 'heupen'
+        else if (blessurePart.includes('hamstring')) mobilityLichaamsdeel = 'hamstrings'
+        else if (blessurePart.includes('kuit') || blessurePart.includes('enkel')) mobilityLichaamsdeel = 'kuiten'
+        else if (blessurePart.includes('rug') || blessurePart.includes('back')) mobilityLichaamsdeel = 'onderrug'
+        else if (blessurePart.includes('schouder')) mobilityLichaamsdeel = 'schouders'
+        else if (blessurePart.includes('nek')) mobilityLichaamsdeel = 'nek'
+      }
+
+      const mobilityOef = filterMobility(mobilityDoel, mobilityLichaamsdeel)
+      if (mobilityOef.length > 0) {
+        mobilityContext = `
+BESCHIKBARE MOBILITY OEFENINGEN (gebruik UITSLUITEND deze lijst bij mobility recovery_modules):
+${formateerMobilityVoorPrompt(mobilityOef)}`
+      }
+    }
+
     // Optie C: Coach bepaalt doel → route filtert bodyweight oefeningen →
     // Trainer AI krijgt de lijst en maakt de sessie
     let bodyweightContext = ''
@@ -501,13 +529,18 @@ Reageer ALLEEN in dit JSON formaat:
       kettlebellContext,
       bodyweightContext,
       strengthContext,
+      mobilityContext,
     ].filter(Boolean).join('\n')
 
     // Beschikbare mobility subtypes — AI mag alleen hieruit kiezen
+    // Mobility subtypes — exact de ids uit mobility-exercises.ts
     const mobilitySubtypes = [
       'neck_shoulders', 'hips', 'full_body', 'hamstring_stretch',
       'hip_flexor', 'lower_back', 'thoracic', 'shoulder_mobility',
-      'calf_ankle', 'recovery_flow', 'spine_mobility'
+      'calf_ankle', 'recovery_flow', 'spine_mobility',
+      'nek-kantelen', 'schouder-cirkels', 'cat-cow', 'kind-houding',
+      'heupbuiger-stretch', 'piriformis-stretch', 'hamstring-stretch-liggend',
+      'wereld-grootste-stretch', 'deep-squat-hold', 'savasana'
     ]
     const mobilityInstructie = `\n\nVOOR MOBILITY MODULES: gebruik als subtype UITSLUITEND één van deze waarden: ${mobilitySubtypes.join(', ')}. Gebruik GEEN andere subtype namen.`
 
