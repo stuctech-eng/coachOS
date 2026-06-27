@@ -503,12 +503,20 @@ Reageer ALLEEN in dit JSON formaat:
       strengthContext,
     ].filter(Boolean).join('\n')
 
+    // Beschikbare mobility subtypes — AI mag alleen hieruit kiezen
+    const mobilitySubtypes = [
+      'neck_shoulders', 'hips', 'full_body', 'hamstring_stretch',
+      'hip_flexor', 'lower_back', 'thoracic', 'shoulder_mobility',
+      'calf_ankle', 'recovery_flow', 'spine_mobility'
+    ]
+    const mobilityInstructie = `\n\nVOOR MOBILITY MODULES: gebruik als subtype UITSLUITEND één van deze waarden: ${mobilitySubtypes.join(', ')}. Gebruik GEEN andere subtype namen.`
+
     const naamInstructie = bibliotheekContext
       ? '\n\nBELANGRIJK: Gebruik in het "exercise" veld UITSLUITEND de exacte naam zoals die in de BESCHIKBARE OEFENINGEN lijst staat. Gebruik GEEN vertalingen, varianten of alternatieve namen. Kopieer de naam exact over.'
       : ''
 
     const systemPromptMet = bibliotheekContext
-      ? systemPrompt + '\n' + bibliotheekContext + naamInstructie
+      ? systemPrompt + '\n' + bibliotheekContext + naamInstructie + mobilityInstructie
       : systemPrompt
 
     let instruction: TrainingInstruction = fallbackInstruction

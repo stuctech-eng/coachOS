@@ -10,6 +10,106 @@ interface Oefening {
 }
 
 const SCHEMAS: Record<string, { naam: string; beschrijving: string; oefeningen: Oefening[] }> = {
+  hamstring_stretch: {
+    naam: 'Hamstring Stretch',
+    beschrijving: 'Rek en herstel voor de achterkant van de benen',
+    oefeningen: [
+      { naam: 'Staande hamstring stretch links', instructie: 'Strek je linkerbeen voor je en buig vanuit de heupen naar voren. Houd je rug recht. Voel de rek achter je linkerbeen.', duur: 45 },
+      { naam: 'Staande hamstring stretch rechts', instructie: 'Strek je rechterbeen voor je en buig vanuit de heupen naar voren. Houd je rug recht. Voel de rek achter je rechterbeen.', duur: 45 },
+      { naam: 'Liggende hamstring stretch links', instructie: 'Lig op je rug. Trek je linkerbeen omhoog met beide handen achter de knie. Strek het been zo ver als mogelijk. Adem rustig.', duur: 40 },
+      { naam: 'Liggende hamstring stretch rechts', instructie: 'Lig op je rug. Trek je rechterbeen omhoog met beide handen achter de knie. Strek het been zo ver als mogelijk. Adem rustig.', duur: 40 },
+      { naam: 'Zittende voorwaartse buiging', instructie: 'Zit met gestrekte benen. Buig langzaam naar voren vanuit de heupen. Reik naar je voeten. Houd de positie vast en adem uit.', duur: 50 },
+      { naam: 'Staande voorwaartse buiging', instructie: 'Sta met voeten heupbreed. Laat je romp langzaam naar beneden hangen. Knieën licht gebogen. Ontspan je nek en rug volledig.', duur: 40 },
+    ],
+  },
+  hip_flexor: {
+    naam: 'Heupbuiger Stretch',
+    beschrijving: 'Mobiliteit en rek voor de heupbuigers',
+    oefeningen: [
+      { naam: 'Uitvalspositie links', instructie: 'Stap met je linkerbeen naar voren. Laat je rechterknee zakken naar de grond. Duw je heupen naar voren en omlaag. Voel de rek voor in de rechterheup.', duur: 45 },
+      { naam: 'Uitvalspositie rechts', instructie: 'Stap met je rechterbeen naar voren. Laat je linkerknee zakken naar de grond. Duw je heupen naar voren en omlaag. Voel de rek voor in de linkerheup.', duur: 45 },
+      { naam: 'Laag uitval met rotatie links', instructie: 'Ga in een lage uitval links. Draai je bovenlichaam naar links en hef je linkerarm omhoog. Voel de diepe heuprek.', duur: 35 },
+      { naam: 'Laag uitval met rotatie rechts', instructie: 'Ga in een lage uitval rechts. Draai je bovenlichaam naar rechts en hef je rechterarm omhoog. Voel de diepe heuprek.', duur: 35 },
+      { naam: 'Liggende heupbuiger stretch links', instructie: 'Lig op je rug. Trek je rechterknie naar je borst. Laat je linkerbeen gestrekt op de grond liggen. Voel de rek voor in de linkerheup.', duur: 40 },
+      { naam: 'Liggende heupbuiger stretch rechts', instructie: 'Lig op je rug. Trek je linkerknie naar je borst. Laat je rechterbeen gestrekt op de grond liggen. Voel de rek voor in de rechterheup.', duur: 40 },
+    ],
+  },
+  lower_back: {
+    naam: 'Onderrug Mobiliteit',
+    beschrijving: 'Spanning loslaten in de onderrug',
+    oefeningen: [
+      { naam: 'Knie naar borst links', instructie: 'Lig op je rug. Trek je linkerknie langzaam naar je borst. Houd vast met beide handen. Voel de rek in je bil en onderrug.', duur: 40 },
+      { naam: 'Knie naar borst rechts', instructie: 'Lig op je rug. Trek je rechterknie langzaam naar je borst. Houd vast met beide handen. Voel de rek in je bil en onderrug.', duur: 40 },
+      { naam: 'Beide knieën naar borst', instructie: 'Trek beide knieën tegelijk naar je borst. Omarm je benen. Rol zachtjes van links naar rechts om je onderrug te masseren.', duur: 40 },
+      { naam: 'Kat-koe stretching', instructie: 'Op handen en knieën. Adem in: laat je buik zakken, hef je hoofd. Adem uit: rond je rug omhoog. Beweeg langzaam mee met je adem.', duur: 45 },
+      { naam: 'Kind houding', instructie: 'Zit terug op je hielen, strek je armen voor je uit op de grond. Laat je borst zakken en adem diep in je onderrug.', duur: 50 },
+      { naam: 'Liggende wervelrotatie links', instructie: 'Lig op je rug. Laat beide knieën naar links zakken. Armen gespreid. Kijk naar rechts. Voel de rotatie in je wervelkolom.', duur: 40 },
+      { naam: 'Liggende wervelrotatie rechts', instructie: 'Lig op je rug. Laat beide knieën naar rechts zakken. Armen gespreid. Kijk naar links. Voel de rotatie in je wervelkolom.', duur: 40 },
+    ],
+  },
+  thoracic: {
+    naam: 'Thoracale Mobiliteit',
+    beschrijving: 'Borstwervelkolom openen en rotatie verbeteren',
+    oefeningen: [
+      { naam: 'Thoracale rotatie links', instructie: 'Lig op je zij met knieën gestapeld. Roteer je bovenlichaam naar links. Volg je hand met je blik. Knieën blijven op de grond.', duur: 40 },
+      { naam: 'Thoracale rotatie rechts', instructie: 'Lig op je zij met knieën gestapeld. Roteer je bovenlichaam naar rechts. Volg je hand met je blik. Knieën blijven op de grond.', duur: 40 },
+      { naam: 'Kattenhouding rotatie', instructie: 'Op handen en knieën. Breng je rechterhand achter je hoofd. Roteer je elleboog naar het plafond. Wissel langzaam.', duur: 40 },
+      { naam: 'Zittende rotatie links', instructie: 'Zit rechtop. Draai je bovenlichaam langzaam naar links. Gebruik je rechterhand op je linkerknie als steun. Houd 5 seconden vast.', duur: 35 },
+      { naam: 'Zittende rotatie rechts', instructie: 'Zit rechtop. Draai je bovenlichaam langzaam naar rechts. Gebruik je linkerhand op je rechterknie als steun. Houd 5 seconden vast.', duur: 35 },
+      { naam: 'Borst opener', instructie: 'Klap je handen achter je rug ineen, hef je borst op en trek je schouderbladen naar elkaar. Houd vast en adem diep in.', duur: 35 },
+    ],
+  },
+  shoulder_mobility: {
+    naam: 'Schouder Mobiliteit',
+    beschrijving: 'Schoudergewricht openen en stijfheid verminderen',
+    oefeningen: [
+      { naam: 'Schouder cirkels voorwaarts', instructie: 'Maak grote cirkels met beide schouders naar voren. Beweeg langzaam en volledig. Voel elk deel van het bewegingsbereik.', duur: 35 },
+      { naam: 'Schouder cirkels achterwaarts', instructie: 'Maak grote cirkels met beide schouders naar achteren. Haal de schouderbladen samen bij elke cirkel.', duur: 35 },
+      { naam: 'Dwarslingse armrek links', instructie: 'Trek je linkerarm horizontaal over je borst. Gebruik je rechterarm om te trekken. Voel de rek in je linkerschouder.', duur: 35 },
+      { naam: 'Dwarslingse armrek rechts', instructie: 'Trek je rechterarm horizontaal over je borst. Gebruik je linkerarm om te trekken. Voel de rek in je rechterschouder.', duur: 35 },
+      { naam: 'Deurpost stretch links', instructie: 'Zet je linker onderarm verticaal tegen de muur. Draai je lichaam langzaam van de muur weg. Voel de rek in je linkerborst en schouder.', duur: 35 },
+      { naam: 'Deurpost stretch rechts', instructie: 'Zet je rechter onderarm verticaal tegen de muur. Draai je lichaam langzaam van de muur weg. Voel de rek in je rechterborst en schouder.', duur: 35 },
+    ],
+  },
+  calf_ankle: {
+    naam: 'Kuit & Enkel Mobiliteit',
+    beschrijving: 'Herstel en flexibiliteit voor kuiten en enkels',
+    oefeningen: [
+      { naam: 'Kuit stretch links aan muur', instructie: 'Zet je handen tegen de muur. Strek je linkerbeen achter je met hiel op de grond. Leun naar voren. Voel de rek in je linkerkuit.', duur: 40 },
+      { naam: 'Kuit stretch rechts aan muur', instructie: 'Zet je handen tegen de muur. Strek je rechterbeen achter je met hiel op de grond. Leun naar voren. Voel de rek in je rechterkuit.', duur: 40 },
+      { naam: 'Enkel cirkels links', instructie: 'Til je linkervoet iets op. Maak grote cirkels met je enkel — 10 keer links, 10 keer rechts. Beweeg langzaam en volledig.', duur: 35 },
+      { naam: 'Enkel cirkels rechts', instructie: 'Til je rechtervoet iets op. Maak grote cirkels met je enkel — 10 keer links, 10 keer rechts. Beweeg langzaam en volledig.', duur: 35 },
+      { naam: 'Diepe kuit stretch links', instructie: 'Kuit stretch met licht gebogen knie links. Dit rekt de diepere kuitspier. Houd je hiel op de grond.', duur: 35 },
+      { naam: 'Diepe kuit stretch rechts', instructie: 'Kuit stretch rechts met licht gebogen knie. Dit rekt de diepere kuitspier. Houd je hiel op de grond.', duur: 35 },
+    ],
+  },
+  recovery_flow: {
+    naam: 'Herstel Flow',
+    beschrijving: 'Volledige herstelroutine na intensieve training',
+    oefeningen: [
+      { naam: 'Kat-koe stretching', instructie: 'Op handen en knieën. Adem in: rug hol. Adem uit: rug rond. Langzaam en bewust bewegen.', duur: 40 },
+      { naam: 'Kind houding', instructie: 'Zit terug op je hielen, strek je armen voor je uit. Laat je borst zakken en adem diep in je onderrug.', duur: 45 },
+      { naam: 'Knie naar borst links', instructie: 'Trek je linkerknie naar je borst. Houd vast. Voel de rek in je bil en onderrug.', duur: 35 },
+      { naam: 'Knie naar borst rechts', instructie: 'Trek je rechterknie naar je borst. Houd vast. Voel de rek in je bil en onderrug.', duur: 35 },
+      { naam: 'Liggende vlinder', instructie: 'Voetzolen tegen elkaar. Laat je knieën naar buiten zakken. Ontspan je heupen volledig.', duur: 45 },
+      { naam: 'Liggende wervelrotatie links', instructie: 'Laat beide knieën naar links zakken. Kijk naar rechts. Voel de rotatie.', duur: 35 },
+      { naam: 'Liggende wervelrotatie rechts', instructie: 'Laat beide knieën naar rechts zakken. Kijk naar links. Voel de rotatie.', duur: 35 },
+      { naam: 'Savasana', instructie: 'Lig volledig ontspannen op je rug. Armen naast je lichaam. Adem rustig. Laat alle spanning los.', duur: 60 },
+    ],
+  },
+  spine_mobility: {
+    naam: 'Wervelkolom Mobiliteit',
+    beschrijving: 'Volledige wervelkolom mobiliseren',
+    oefeningen: [
+      { naam: 'Kat-koe stretching', instructie: 'Op handen en knieën. Adem in: rug hol. Adem uit: rug rond. Langzaam en bewust bewegen.', duur: 45 },
+      { naam: 'Zijwaartse buiging links', instructie: 'Sta rechtop. Hef je rechterarm omhoog en buig rustig naar links. Voel de rek langs je rechterzijde.', duur: 35 },
+      { naam: 'Zijwaartse buiging rechts', instructie: 'Sta rechtop. Hef je linkerarm omhoog en buig rustig naar rechts. Voel de rek langs je linkerzijde.', duur: 35 },
+      { naam: 'Staande rotatie links', instructie: 'Sta met voeten heupbreed. Draai je bovenlichaam langzaam naar links. Houd je heupen stabiel naar voren.', duur: 35 },
+      { naam: 'Staande rotatie rechts', instructie: 'Sta met voeten heupbreed. Draai je bovenlichaam langzaam naar rechts. Houd je heupen stabiel naar voren.', duur: 35 },
+      { naam: 'Staande voorwaartse buiging', instructie: 'Laat je romp langzaam naar beneden hangen. Knieën licht gebogen. Ontspan nek en rug volledig.', duur: 45 },
+      { naam: 'Rol omhoog', instructie: 'Kom wervel voor wervel omhoog vanuit de voorwaartse buiging. Hoofd komt als laatste omhoog.', duur: 30 },
+    ],
+  },
   neck_shoulders: {
     naam: 'Nek & Schouders',
     beschrijving: 'Bureaumobiliteit — span en stijfheid loslaten',
@@ -55,10 +155,10 @@ const SCHEMAS: Record<string, { naam: string; beschrijving: string; oefeningen: 
 function MobilitySession() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const subtype = searchParams.get('subtype') || 'neck_shoulders'
+  const subtype = searchParams.get('subtype') || 'full_body'
   const label = searchParams.get('label') || 'Mobiliteit'
 
-  const schema = SCHEMAS[subtype] || SCHEMAS.neck_shoulders
+  const schema = SCHEMAS[subtype] || SCHEMAS.full_body
   const totaalOefeningen = schema.oefeningen.length
 
   const [gestart, setGestart] = useState(false)
@@ -95,7 +195,6 @@ function MobilitySession() {
     intervalRef.current = setInterval(() => {
       setTeller(prev => {
         if (prev + 1 >= huidigeOefening.duur) {
-          // Oefening klaar
           if (oefenIndex + 1 >= totaalOefeningen) {
             setKlaar(true)
             slaOpResultaat()
@@ -189,8 +288,6 @@ function MobilitySession() {
 
   return (
     <div className="fixed inset-0 bg-coach-dark flex flex-col" style={{ background: '#0a0f1a' }}>
-
-      {/* Header */}
       <div className="flex items-center justify-between px-6 pt-14 pb-4">
         <button onClick={() => router.push('/training')}
           className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center">
@@ -203,7 +300,6 @@ function MobilitySession() {
         </button>
       </div>
 
-      {/* Voortgangsbalk totaal */}
       <div className="px-6 mb-6">
         <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
           <div className="h-full bg-green-500 rounded-full transition-all duration-500"
@@ -211,10 +307,7 @@ function MobilitySession() {
         </div>
       </div>
 
-      {/* Oefening */}
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
-
-        {/* Cirkel timer */}
         <div className="relative w-48 h-48 mb-8 flex items-center justify-center">
           <svg width="192" height="192" className="absolute">
             <circle cx="96" cy="96" r="88" fill="none" stroke="#1e293b" strokeWidth="4" />
@@ -234,12 +327,9 @@ function MobilitySession() {
         <h2 className="text-xl font-bold text-white mb-4">{huidigeOefening.naam}</h2>
         <p className="text-slate-400 text-sm leading-relaxed mb-8">{huidigeOefening.instructie}</p>
 
-        {gepauzeerd && (
-          <p className="text-slate-600 text-xs mb-4">Gepauzeerd</p>
-        )}
+        {gepauzeerd && <p className="text-slate-600 text-xs mb-4">Gepauzeerd</p>}
       </div>
 
-      {/* Volgende knop */}
       <div className="px-6 pb-12">
         <button onClick={volgendeManueel}
           className="w-full py-4 bg-slate-800 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 active:bg-slate-700">

@@ -239,3 +239,61 @@ Deze regels zijn geleerd door fouten — niet onderhandelen:
 - Gewicht/volume progressie tracking
 - Guided modules (Mobility/Recovery) als aparte categorie
 - iOS Shortcut Garmin import
+
+---
+
+## 12. De Trainer als Programmeur — Niet als Generator
+
+Dit is de kern van de CoachOS architectuur:
+
+```
+Coach
+    ↓ bepaalt doel, belasting, duur, beperkingen
+Bibliotheek
+    ↓ levert beschikbare oefeningen (gefilterd)
+Trainer AI
+    ↓ kiest beste combinatie, volgorde, sets, rust
+Workout
+    ↓ wordt uitgevoerd
+Evaluatie
+    ↓ gaat terug naar de coach
+```
+
+**Wat de Trainer AI NIET doet:**
+- ❌ Nieuwe oefeningen verzinnen
+- ❌ Nieuwe subtype-namen bedenken
+- ❌ Oefeningen geven die niet in de bibliotheek staan
+- ❌ Coach instructies negeren
+
+**Wat de Trainer AI WEL doet:**
+- ✅ Volgorde bepalen
+- ✅ Sets en duur bepalen
+- ✅ Rust bepalen
+- ✅ Variatie aanbrengen binnen de gefilterde set
+- ✅ Beste combinatie maken uit beschikbare oefeningen
+
+**Schaalbaarheid:**
+Voeg `Copenhagen Hold`, `Pigeon Stretch` of `Bear Crawl` toe aan de bibliotheek
+en de Trainer kan ze automatisch gebruiken zodra ze binnen de coach filters vallen.
+Geen aanpassingen aan de AI nodig. Geen nieuwe prompts. Geen nieuwe code.
+
+CoachOS is schaalbaar zonder dat de AI steeds opnieuw geleerd hoeft te worden
+welke oefeningen er bestaan.
+
+---
+
+## 13. Mobility Module — Huidige Status & Roadmap
+
+**Huidig probleem:**
+Mobility werkt als Categorie B (intensity-based) maar zou Categorie A moeten zijn.
+AI verzint subtype namen → UI kent ze niet → verkeerde fallback.
+
+**Roadmap:**
+
+Stap 1 (nu): Extra schemas + betere fallback in `mobility/page.tsx`
+Stap 2: `src/lib/mobility-exercises.ts` — 15-20 oefeningen
+Stap 3: `src/lib/recovery-exercises.ts` — ademhaling, ontspanning
+Stap 4: Alle bibliotheken samenvoegen onder `src/lib/exercises/`
+Stap 5: Universele `allExercises.filter()` engine
+
+**Doel:** Mobility wordt Categorie A — zelfde architectuur als bodyweight/strength/kettlebell.
