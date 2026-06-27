@@ -169,7 +169,7 @@ const BIBLIOTHEEK_CATEGORIEEN = [
 ]
 
 // Platte lijst voor backward compatibility
-const BIBLIOTHEEK = BIBLIOTHEEK_CATEGORIEEN.flatMap(c => c.items)
+const BIBLIOTHEEK = BIBLIOTHEEK_CATEGORIEEN.flatMap(c => c.items) as RecoveryModule[]
 
 function TrainingSkeleton() {
   return (
