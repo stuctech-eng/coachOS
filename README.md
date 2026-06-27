@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.3.1
+- Versie: 2.3.2
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -731,6 +731,12 @@ oefening bibliotheek.
   training/complete/route.ts: segments worden opgeslagen als exercise_records.
   session/[module]/page.tsx: segments meegegeven bij opslaan.
   Coach kan nu zien: "Goblet Squat 16kg → 20kg in 5 weken".
+
+- v2.3.2: Progressie pagina uitgebreid met Persoonlijke Records.
+  exercise_records data wordt geladen en gegroepeerd per oefening.
+  PR sectie toont max gewicht / max reps / max duur per oefening.
+  Filter op module (kettlebell, strength, bodyweight, etc.).
+  Sortering op meest uitgevoerd. Alleen progressie/page.tsx gewijzigd.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

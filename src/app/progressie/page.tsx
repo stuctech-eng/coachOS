@@ -57,6 +57,26 @@ interface Inzicht {
   observation?: string
 }
 
+interface ExerciseRecord {
+  exercise_name: string
+  exercise_type: string
+  module: string
+  weight_kg: number | null
+  reps: number | null
+  duration_sec: number | null
+  performed_at: string
+}
+
+interface PersonalRecord {
+  exercise_name: string
+  module: string
+  max_weight: number | null
+  max_reps: number | null
+  max_duration: number | null
+  totaal_sets: number
+  laatste_datum: string
+}
+
 interface ComplianceData {
   totaal_hersteladviezen: number
   gevolgd: number
@@ -165,6 +185,8 @@ export default function ProgressiePage() {
   const [inzichten, setInzichten] = useState<Inzicht[] | null>(null)
   const [predictions, setPredictions] = useState<Prediction[] | null>(null)
   const [compliance, setCompliance] = useState<ComplianceData | null>(null)
+  const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
+  const [selectedModule, setSelectedModule] = useState<string>('all')
 
   const laadData = useCallback(async () => {
     const supabase = createBrowserClient(
@@ -187,6 +209,48 @@ export default function ProgressiePage() {
       fetch('/api/training-load', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/compliance', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ])
+
+    // Fetch exercise records voor persoonlijke records
+    try {
+      const supabaseClient = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+      )
+      const { data: exRecords } = await supabaseClient
+        .from('exercise_records')
+        .select('exercise_name, exercise_type, module, weight_kg, reps, duration_sec, performed_at')
+        .order('performed_at', { ascending: false })
+        .limit(200)
+
+      if (exRecords && exRecords.length > 0) {
+        // Bereken PR per oefening
+        const prMap = new Map<string, PersonalRecord>()
+        for (const rec of exRecords as ExerciseRecord[]) {
+          const key = rec.exercise_name
+          const existing = prMap.get(key)
+          if (!existing) {
+            prMap.set(key, {
+              exercise_name: rec.exercise_name,
+              module: rec.module,
+              max_weight: rec.weight_kg,
+              max_reps: rec.reps,
+              max_duration: rec.duration_sec,
+              totaal_sets: 1,
+              laatste_datum: rec.performed_at,
+            })
+          } else {
+            prMap.set(key, {
+              ...existing,
+              max_weight: Math.max(existing.max_weight || 0, rec.weight_kg || 0) || null,
+              max_reps: Math.max(existing.max_reps || 0, rec.reps || 0) || null,
+              max_duration: Math.max(existing.max_duration || 0, rec.duration_sec || 0) || null,
+              totaal_sets: existing.totaal_sets + 1,
+            })
+          }
+        }
+        setPersonalRecords(Array.from(prMap.values()).sort((a, b) => b.totaal_sets - a.totaal_sets))
+      }
+    } catch { /* */ }
 
     setGarmin(garminRes.data?.parsed_data || null)
     setDagStatus(statusRes.data || null)
@@ -363,6 +427,52 @@ export default function ProgressiePage() {
                 <p className="text-xs text-slate-400 leading-relaxed">{compliance.advies}</p>
               </div>
             </Card>
+          </div>
+        )}
+
+        {/* 2b. Persoonlijke Records */}
+        {personalRecords.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Persoonlijke Records</p>
+            <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+              {['all', 'kettlebell', 'strength', 'bodyweight', 'running', 'rowing', 'cycling'].map(m => (
+                <button key={m} onClick={() => setSelectedModule(m)}
+                  className={cn('px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap flex-shrink-0',
+                    selectedModule === m ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
+                  )}>
+                  {m === 'all' ? 'Alles' : m.charAt(0).toUpperCase() + m.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2">
+              {personalRecords
+                .filter(pr => selectedModule === 'all' || pr.module === selectedModule)
+                .slice(0, 10)
+                .map((pr, i) => (
+                  <Card key={i} className="px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-white">{pr.exercise_name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{pr.module} · {pr.totaal_sets}× uitgevoerd</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        {pr.max_weight && pr.max_weight > 0 && (
+                          <p className="text-sm font-bold text-primary-400">{pr.max_weight} kg</p>
+                        )}
+                        {pr.max_reps && pr.max_reps > 0 && !pr.max_weight && (
+                          <p className="text-sm font-bold text-green-400">{pr.max_reps} reps</p>
+                        )}
+                        {pr.max_duration && pr.max_duration > 0 && !pr.max_weight && !pr.max_reps && (
+                          <p className="text-sm font-bold text-amber-400">{pr.max_duration}s</p>
+                        )}
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          {new Date(pr.laatste_datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+            </div>
           </div>
         )}
 
