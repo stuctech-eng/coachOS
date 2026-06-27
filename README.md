@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.2.0
+- Versie: 2.2.1
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -707,6 +707,14 @@ oefening bibliotheek.
   Progressieve Spierontspanning, Body Scan, Visualisatie Herstel, Savasana,
   Cooling Down Protocol, Diafragma Ademhaling.
   CoachOS totaal: 342 oefeningen + 12 recovery modules.
+
+- v2.2.1: Relaxation pagina + categorische herstelbibliotheek.
+  Nieuw: src/app/training/recovery/relaxation/page.tsx met 6 schemas:
+  Progressieve Spierontspanning, Body Scan, Visualisatie Herstel,
+  Savasana, Cooling Down Protocol, Diafragma Ademhaling.
+  Herstelbibliotheek nu inklapbaar per categorie: Ademhaling (5),
+  Mobiliteit (11), Ontspanning (5), Wandelen (2).
+  Route fix: relaxation type stuurt naar /training/recovery/relaxation.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

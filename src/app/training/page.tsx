@@ -66,6 +66,7 @@ function getModuleRoute(module: RecoveryModule): string {
   if (module.type === 'breathing') return `/training/recovery/breathing?subtype=${module.subtype}&duration=${module.duration}&label=${encodeURIComponent(module.label)}`
   if (module.type === 'mobility') return `/training/recovery/mobility?subtype=${module.subtype}&duration=${module.duration}&label=${encodeURIComponent(module.label)}`
   if (module.type === 'walk' || module.subtype === 'recovery_walk') return `/training/recovery/walk?duration=${module.duration}`
+  if (module.type === 'relaxation') return `/training/recovery/relaxation?label=${encodeURIComponent(module.label)}`
   return '/training'
 }
 
@@ -105,31 +106,70 @@ const TRAININGSBIBLIOTHEEK: Array<{ module: TrainingModule; label: string; sub: 
   { module: 'bodyweight', label: 'Bodyweight & Core', sub: 'Trainer AI kiest oefeningen' },
 ]
 
-const BIBLIOTHEEK = [
-  { type: 'breathing' as const, subtype: 'box_breathing', label: 'Box Breathing', sub: '4-4-4-4 ritme', duration: 6 },
-  { type: 'breathing' as const, subtype: 'breathing_478', label: '4-7-8 Ademhaling', sub: 'ontspanning', duration: 8 },
-  { type: 'breathing' as const, subtype: 'coherent_breathing', label: 'Coherent Breathing', sub: 'hartritmevariabiliteit', duration: 10 },
-  { type: 'breathing' as const, subtype: 'stress_reset', label: 'Stress Reset', sub: 'snel kalmeren', duration: 5 },
-  { type: 'mobility' as const, subtype: 'neck_shoulders', label: 'Nek & Schouders', sub: 'bureaumobiliteit', duration: 8 },
-  { type: 'mobility' as const, subtype: 'hips', label: 'Heup mobiliteit', sub: 'herstel & flexibiliteit', duration: 10 },
-  { type: 'mobility' as const, subtype: 'full_body', label: 'Full Body', sub: 'ochtend of avond routine', duration: 12 },
-  { type: 'mobility' as const, subtype: 'hamstring_stretch', label: 'Hamstring Mobiliteit', sub: 'achterkant benen', duration: 8 },
-  { type: 'mobility' as const, subtype: 'hip_flexor', label: 'Heupbuigers', sub: 'mobiliteit & rek', duration: 8 },
-  { type: 'mobility' as const, subtype: 'lower_back', label: 'Onderrug Ontspanning', sub: 'spanning loslaten', duration: 10 },
-  { type: 'mobility' as const, subtype: 'thoracic', label: 'Thoracale Mobiliteit', sub: 'borstwervelkolom', duration: 8 },
-  { type: 'mobility' as const, subtype: 'shoulder_mobility', label: 'Schouder Mobiliteit', sub: 'schoudergewricht openen', duration: 8 },
-  { type: 'mobility' as const, subtype: 'calf_ankle', label: 'Kuit & Enkel', sub: 'herstel & flexibiliteit', duration: 7 },
-  { type: 'mobility' as const, subtype: 'recovery_flow', label: 'Herstel Flow', sub: 'na intensieve training', duration: 12 },
-  { type: 'mobility' as const, subtype: 'spine_mobility', label: 'Wervelkolom Mobiliteit', sub: 'volledige wervelkolom', duration: 10 },
-  { type: 'walk' as const, subtype: 'recovery_walk', label: 'Herstelwandeling', sub: 'lage intensiteit', duration: 20 },
-  { type: 'walk' as const, subtype: 'recovery_walk', label: 'Wandeling in de Natuur', sub: 'mentaal herstel', duration: 30 },
-  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Progressieve Spierontspanning', sub: 'diepe ontspanning', duration: 15 },
-  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Body Scan', sub: 'spanning loslaten', duration: 10 },
-  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Visualisatie Herstel', sub: 'mentale techniek', duration: 8 },
-  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Savasana', sub: 'volledig loslaten', duration: 10 },
-  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Cooling Down Protocol', sub: 'na training', duration: 8 },
-  { type: 'breathing' as const, subtype: 'box_breathing', label: 'Diafragma Ademhaling', sub: 'buikademhaling', duration: 6 },
+const BIBLIOTHEEK_CATEGORIEEN = [
+  {
+    id: 'ademhaling',
+    label: 'Ademhaling',
+    icon: Wind,
+    kleur: 'text-blue-400',
+    bg: 'bg-blue-500/20',
+    items: [
+      { type: 'breathing' as const, subtype: 'box_breathing', label: 'Box Breathing', sub: '4-4-4-4 ritme', duration: 6 },
+      { type: 'breathing' as const, subtype: 'breathing_478', label: '4-7-8 Ademhaling', sub: 'ontspanning', duration: 8 },
+      { type: 'breathing' as const, subtype: 'coherent_breathing', label: 'Coherent Breathing', sub: 'hartritmevariabiliteit', duration: 10 },
+      { type: 'breathing' as const, subtype: 'stress_reset', label: 'Stress Reset', sub: 'snel kalmeren', duration: 5 },
+      { type: 'breathing' as const, subtype: 'box_breathing', label: 'Diafragma Ademhaling', sub: 'buikademhaling', duration: 6 },
+    ],
+  },
+  {
+    id: 'mobiliteit',
+    label: 'Mobiliteit',
+    icon: Zap,
+    kleur: 'text-green-400',
+    bg: 'bg-green-500/20',
+    items: [
+      { type: 'mobility' as const, subtype: 'neck_shoulders', label: 'Nek & Schouders', sub: 'bureaumobiliteit', duration: 8 },
+      { type: 'mobility' as const, subtype: 'hips', label: 'Heup mobiliteit', sub: 'herstel & flexibiliteit', duration: 10 },
+      { type: 'mobility' as const, subtype: 'full_body', label: 'Full Body', sub: 'ochtend of avond routine', duration: 12 },
+      { type: 'mobility' as const, subtype: 'hamstring_stretch', label: 'Hamstring Mobiliteit', sub: 'achterkant benen', duration: 8 },
+      { type: 'mobility' as const, subtype: 'hip_flexor', label: 'Heupbuigers', sub: 'mobiliteit & rek', duration: 8 },
+      { type: 'mobility' as const, subtype: 'lower_back', label: 'Onderrug Ontspanning', sub: 'spanning loslaten', duration: 10 },
+      { type: 'mobility' as const, subtype: 'thoracic', label: 'Thoracale Mobiliteit', sub: 'borstwervelkolom', duration: 8 },
+      { type: 'mobility' as const, subtype: 'shoulder_mobility', label: 'Schouder Mobiliteit', sub: 'schoudergewricht openen', duration: 8 },
+      { type: 'mobility' as const, subtype: 'calf_ankle', label: 'Kuit & Enkel', sub: 'herstel & flexibiliteit', duration: 7 },
+      { type: 'mobility' as const, subtype: 'recovery_flow', label: 'Herstel Flow', sub: 'na intensieve training', duration: 12 },
+      { type: 'mobility' as const, subtype: 'spine_mobility', label: 'Wervelkolom Mobiliteit', sub: 'volledige wervelkolom', duration: 10 },
+    ],
+  },
+  {
+    id: 'ontspanning',
+    label: 'Ontspanning',
+    icon: Wind,
+    kleur: 'text-purple-400',
+    bg: 'bg-purple-500/20',
+    items: [
+      { type: 'relaxation' as const, subtype: 'savasana', label: 'Savasana', sub: 'volledig loslaten', duration: 10 },
+      { type: 'relaxation' as const, subtype: 'body_scan', label: 'Body Scan', sub: 'spanning loslaten', duration: 10 },
+      { type: 'relaxation' as const, subtype: 'progressieve_spierontspanning', label: 'Progressieve Spierontspanning', sub: 'diepe ontspanning', duration: 15 },
+      { type: 'relaxation' as const, subtype: 'visualisatie_herstel', label: 'Visualisatie Herstel', sub: 'mentale techniek', duration: 8 },
+      { type: 'relaxation' as const, subtype: 'cooling_down', label: 'Cooling Down Protocol', sub: 'na training', duration: 8 },
+    ],
+  },
+  {
+    id: 'wandelen',
+    label: 'Wandelen',
+    icon: Footprints,
+    kleur: 'text-teal-400',
+    bg: 'bg-teal-500/20',
+    items: [
+      { type: 'walk' as const, subtype: 'recovery_walk', label: 'Herstelwandeling', sub: 'lage intensiteit', duration: 20 },
+      { type: 'walk' as const, subtype: 'recovery_walk', label: 'Wandeling in de Natuur', sub: 'mentaal herstel', duration: 30 },
+    ],
+  },
 ]
+
+// Platte lijst voor backward compatibility
+const BIBLIOTHEEK = BIBLIOTHEEK_CATEGORIEEN.flatMap(c => c.items)
 
 function TrainingSkeleton() {
   return (
@@ -403,23 +443,34 @@ export default function TrainingPage() {
           </button>
 
           {showBibliotheek && (
-            <div className="flex flex-col gap-2">
-              {BIBLIOTHEEK.map((item, i) => {
-                const Icon = getModuleIcon(item.type)
-                const route = getModuleRoute(item)
+            <div className="flex flex-col gap-3">
+              {BIBLIOTHEEK_CATEGORIEEN.map(cat => {
+                const CatIcon = cat.icon
                 return (
-                  <button key={i} onClick={() => router.push(route)} className="w-full active:opacity-70 text-left">
-                    <div className="p-3 flex items-center gap-3 w-full bg-coach-card rounded-2xl border border-coach-border">
-                      <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0', getModuleBg(item.type))}>
-                        <Icon size={18} className={getModuleKleur(item.type)} />
+                  <div key={cat.id} className="bg-coach-card rounded-2xl border border-coach-border overflow-hidden">
+                    <div className="px-4 py-3 flex items-center gap-3 border-b border-coach-border">
+                      <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0', cat.bg)}>
+                        <CatIcon size={14} className={cat.kleur} />
                       </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-white text-sm font-medium">{item.label}</p>
-                        <p className="text-slate-500 text-xs">{item.sub} · {item.duration} min</p>
-                      </div>
-                      <ChevronRight size={14} className="text-slate-600" />
+                      <p className={cn('text-sm font-semibold', cat.kleur)}>{cat.label}</p>
+                      <span className="text-xs text-slate-600 ml-auto">{cat.items.length}</span>
                     </div>
-                  </button>
+                    <div className="flex flex-col">
+                      {cat.items.map((item, i) => {
+                        const route = getModuleRoute(item)
+                        return (
+                          <button key={i} onClick={() => router.push(route)}
+                            className="w-full active:opacity-70 text-left px-4 py-3 flex items-center gap-3 border-b border-coach-border/50 last:border-0">
+                            <div className="flex-1">
+                              <p className="text-white text-sm">{item.label}</p>
+                              <p className="text-slate-500 text-xs mt-0.5">{item.sub} · {item.duration} min</p>
+                            </div>
+                            <ChevronRight size={14} className="text-slate-600 flex-shrink-0" />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 )
               })}
             </div>
