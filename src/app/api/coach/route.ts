@@ -66,7 +66,7 @@ export async function POST() {
     const vandaagNummer = new Date().getDay()
     const isWeekend = vandaagNummer === 0 || vandaagNummer === 6
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents, exerciseRecordsRes, coachCallsRes] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents, exerciseRecordsRes, coachCallsRes, weerRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -119,6 +119,8 @@ export async function POST() {
         .gte('performed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
         .order('performed_at', { ascending: false })
         .limit(100),
+      // Weerbericht voor coach context
+      fetch('https://coach-os-tau.vercel.app/api/weather').then(r => r.ok ? r.json() : null).catch(() => null),
       // Stap 3: Coach Call evaluaties laatste 3 dagen
       supabase.from('coach_calls')
         .select('date, coach_call_items(sport_type, duration_min, rating, mood, notes, status)')
@@ -396,6 +398,13 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       }
     }
 
+    // ── Weercontext voor de coach ────────────────────────────────────────────
+    const weerContext = weerRes?.coach_context
+      ? `
+
+Weersomstandigheden vandaag: ${weerRes.coach_context}`
+      : ''
+
     const systemPrompt = buildDailyCoachPrompt(
       profile,
       goalsRes.data || [],
@@ -405,7 +414,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + trainerInstructiePrompt
+    ) + garminContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (weerContext || '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + trainerInstructiePrompt
 
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
