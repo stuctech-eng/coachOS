@@ -12,6 +12,19 @@ import { getGreeting, formatDate } from '@/utils'
 import { cn } from '@/utils'
 import { createBrowserClient } from '@supabase/ssr'
 
+interface WeerData {
+  stad: string
+  temp: number
+  omschrijving: string
+  emoji: string
+  wind: number
+  dagdelen: {
+    ochtend: { label: string }
+    middag: { label: string }
+    avond: { label: string }
+  }
+}
+
 function getScoreLabel(score: number | null): string {
   if (!score) return '—'
   if (score >= 90) return 'Elite Readiness'
@@ -49,14 +62,23 @@ export default function HomePage() {
   const [berekenend, setBerekenend] = useState(false)
   const [laden, setLaden] = useState(true)
   const [generatingPlan, setGeneratingPlan] = useState(false)
-  const [garminImported, setGarminImported] = useState(true) // default true = geen banner
+  const [garminImported, setGarminImported] = useState(true)
   const [garminDatum, setGarminDatum] = useState<string | null>(null)
   const [coachCall, setCoachCall] = useState<{ id: string; pending_count: number; coach_call_items: { id: string }[] } | null>(null)
+  const [weer, setWeer] = useState<WeerData | null>(null)
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
   const score = coachStatus?.coach_score ?? null
   const vandaag = new Date().toISOString().split('T')[0]
   const heeftRisicos = coachStatus?.risk_flags && coachStatus.risk_flags.length > 0
+
+  // Weerbericht ophalen
+  useEffect(() => {
+    fetch('/api/weather')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.error) setWeer(data) })
+      .catch(() => {})
+  }, [])
 
   // Check Garmin import vandaag
   useEffect(() => {
@@ -68,7 +90,6 @@ export default function HomePage() {
         )
         const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
         const gisterenAms = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
-        // Check vandaag
         const { data: vandaagData } = await supabase
           .from('garmin_imports')
           .select('id, date')
@@ -88,16 +109,12 @@ export default function HomePage() {
     checkGarmin()
   }, [])
 
-  // Coach Score automatisch herberekenen — alleen wanneer ZOWEL Garmin (vandaag)
-  // ALS check-in (vandaag) aanwezig zijn. Triggert vanaf welke kant ook compleet
-  // wordt (eerst Garmin dan check-in, of omgekeerd). Geen AI-call — /api/status
-  // is pure berekening.
   const herberekenIndienCompleet = useCallback(() => {
     const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
     if (garminDatum !== vandaagAms || !hasCheckin) return
     if (typeof window === 'undefined') return
     const scoreDatum = window.localStorage.getItem('coach_status_datum')
-    if (scoreDatum === vandaagAms) return // al up-to-date voor vandaag
+    if (scoreDatum === vandaagAms) return
 
     fetch('/api/status', { method: 'POST', credentials: 'include' })
       .then(r => r.json())
@@ -122,7 +139,6 @@ export default function HomePage() {
 
   useEffect(() => { herberekenIndienCompleet() }, [herberekenIndienCompleet])
 
-  // Coach Call: detecteer qualifying Strava-activiteiten + haal pending call op
   useEffect(() => {
     fetch('/api/coach-calls', { method: 'POST', credentials: 'include' })
       .then(() => fetch('/api/coach-calls', { credentials: 'include' }))
@@ -131,7 +147,6 @@ export default function HomePage() {
       .catch(() => {})
   }, [])
 
-  // Laad coach status
   useEffect(() => {
     if (coachStatus && coachStatus.date === vandaag) {
       setLaden(false)
@@ -164,7 +179,6 @@ export default function HomePage() {
       .finally(() => setBerekenend(false))
   }, [])
 
-  // Laad dagplan
   useEffect(() => {
     if (actionPlan && actionPlanDatum === vandaag) return
     if (typeof window !== 'undefined') {
@@ -178,8 +192,6 @@ export default function HomePage() {
       } catch { /* */ }
     }
   }, [])
-
-
 
   const berekenCoachScore = async () => {
     setBerekenend(true)
@@ -211,8 +223,6 @@ export default function HomePage() {
     finally { setGeneratingPlan(false) }
   }
 
-
-
   return (
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
@@ -222,16 +232,25 @@ export default function HomePage() {
           <div>
             <p className="text-slate-400 text-sm capitalize">{formatDate(new Date())}</p>
             <h1 className="text-2xl font-bold text-white mt-0.5">{greeting}</h1>
+            {weer && (
+              <div className="mt-1.5 flex flex-col gap-0.5">
+                <p className="text-xs text-slate-400">
+                  {weer.emoji} {weer.stad} · {weer.temp}°C · {weer.omschrijving}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Ochtend {weer.dagdelen.ochtend.label} · Middag {weer.dagdelen.middag.label} · Avond {weer.dagdelen.avond.label}
+                </p>
+              </div>
+            )}
           </div>
           <button className="w-11 h-11 rounded-xl bg-coach-card flex items-center justify-center text-slate-400">
             <Bell size={20} />
           </button>
         </div>
 
-        {/* Coach Call — Strava activiteiten wachten op evaluatie */}
+        {/* Coach Call */}
         {coachCall && coachCall.pending_count > 0 && (
-          <button onClick={() => router.push('/coach-call')}
-            className="w-full text-left active:opacity-70">
+          <button onClick={() => router.push('/coach-call')} className="w-full text-left active:opacity-70">
             <Card className="px-5 py-4 border border-amber-500/30 bg-amber-500/5">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
@@ -273,12 +292,10 @@ export default function HomePage() {
           </p>
         )}
 
-        {/* Garmin reminder banner */}
+        {/* Garmin reminder */}
         {!garminImported && (
-          <button
-            onClick={() => router.push('/settings/garmin-import')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-left active:bg-blue-500/15 transition-colors"
-          >
+          <button onClick={() => router.push('/settings/garmin-import')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-left active:bg-blue-500/15 transition-colors">
             <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
               <Camera size={16} className="text-blue-400" />
             </div>
@@ -297,19 +314,13 @@ export default function HomePage() {
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-xs text-slate-400 uppercase tracking-wider">Coach Score</p>
                 {(() => {
-                  // Data-volledigheid indicator: Coach Score is alleen volledig
-                  // accuraat als Garmin (vandaag) ÉN check-in (vandaag) aanwezig zijn
                   const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
                   const gisterenStr = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
                   const garminVandaag = garminDatum === vandaagStr
                   const garminGisteren = garminDatum === gisterenStr
-                  if (garminVandaag && hasCheckin) {
-                    return <div className="w-2 h-2 rounded-full bg-green-400" title="Garmin + check-in vandaag ✓" />
-                  }
-                  if (garminVandaag || garminGisteren || hasCheckin) {
-                    return <div className="w-2 h-2 rounded-full bg-amber-400" title="Score gedeeltelijk gebaseerd op actuele data" />
-                  }
-                  return <div className="w-2 h-2 rounded-full bg-slate-500" title="Geen recente Garmin of check-in data" />
+                  if (garminVandaag && hasCheckin) return <div className="w-2 h-2 rounded-full bg-green-400" />
+                  if (garminVandaag || garminGisteren || hasCheckin) return <div className="w-2 h-2 rounded-full bg-amber-400" />
+                  return <div className="w-2 h-2 rounded-full bg-slate-500" />
                 })()}
               </div>
               <div className="flex items-end gap-2">
@@ -317,17 +328,13 @@ export default function HomePage() {
                   <div className="h-12 w-20 bg-slate-700 rounded-xl animate-pulse" />
                 ) : (
                   <>
-                    <p className={cn('text-5xl font-bold leading-none', getScoreKleur(score))}>
-                      {score ?? '—'}
-                    </p>
+                    <p className={cn('text-5xl font-bold leading-none', getScoreKleur(score))}>{score ?? '—'}</p>
                     <p className="text-slate-500 text-sm mb-1">/100</p>
                   </>
                 )}
               </div>
               {!laden && !berekenend && score && (
-                <p className={cn('text-sm font-semibold mt-1', getScoreKleur(score))}>
-                  {getScoreLabel(score)}
-                </p>
+                <p className={cn('text-sm font-semibold mt-1', getScoreKleur(score))}>{getScoreLabel(score)}</p>
               )}
             </div>
             <button onClick={berekenCoachScore} disabled={berekenend}
@@ -364,8 +371,7 @@ export default function HomePage() {
           </div>
         )}
 
-
-        {/* Dagboek knop */}
+        {/* Dagboek */}
         <Link href="/dagboek">
           <Card className="px-5 py-4 border border-slate-700/50 active:bg-slate-800/80 transition-colors">
             <div className="flex items-center justify-between">
@@ -383,8 +389,6 @@ export default function HomePage() {
           </Card>
         </Link>
 
-
-
         {/* Vandaag van je Coach */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
@@ -398,14 +402,9 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Advies */}
           {recommendation ? (
             <>
-              <p className="text-base font-semibold text-white leading-snug mb-3">
-                {recommendation.recommendation}
-              </p>
-
-              {/* Advice bullets */}
+              <p className="text-base font-semibold text-white leading-snug mb-3">{recommendation.recommendation}</p>
               {(() => {
                 const bullets: string[] = (() => {
                   try {
@@ -426,8 +425,6 @@ export default function HomePage() {
                   </ul>
                 ) : null
               })()}
-
-              {/* Actieknop */}
               {(() => {
                 const actie = (recommendation as {actie_type?: string}).actie_type || 'herstel'
                 const config = {
@@ -436,10 +433,8 @@ export default function HomePage() {
                   rust: { label: 'Rust vandaag', kleur: 'bg-slate-600 active:bg-slate-700', route: null },
                 }[actie] || { label: 'Start', kleur: 'bg-primary-500', route: '/training' }
                 return config.route ? (
-                  <button
-                    onClick={() => router.push(config.route!)}
-                    className={`w-full py-3 rounded-xl text-sm font-semibold text-white mb-3 ${config.kleur}`}
-                  >
+                  <button onClick={() => router.push(config.route!)}
+                    className={`w-full py-3 rounded-xl text-sm font-semibold text-white mb-3 ${config.kleur}`}>
                     {config.label}
                   </button>
                 ) : (
@@ -448,7 +443,6 @@ export default function HomePage() {
                   </div>
                 )
               })()}
-
               <button onClick={() => setShowReasoning(!showReasoning)}
                 className="flex items-center gap-2 text-sm text-primary-400 mb-4">
                 {showReasoning ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
