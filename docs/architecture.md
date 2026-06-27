@@ -297,3 +297,50 @@ Stap 4: Alle bibliotheken samenvoegen onder `src/lib/exercises/`
 Stap 5: Universele `allExercises.filter()` engine
 
 **Doel:** Mobility wordt Categorie A — zelfde architectuur als bodyweight/strength/kettlebell.
+
+
+---
+
+## 14. Trainer Rule — De Absolute Architectuurgregel
+
+```
+TRAINER RULE:
+De Trainer AI mag uitsluitend oefeningen,
+drills, stretches of herstelmodules gebruiken
+die in een CoachOS-bibliotheek bestaan.
+
+De Trainer bepaalt:
+  - selectie uit de gefilterde lijst
+  - volgorde
+  - intensiteit
+  - sets, reps, duur, rust
+
+De bibliotheek bepaalt:
+  - wat bestaat
+  - wat beschreven staat
+  - wat de gebruiker ziet
+```
+
+**Alles wat Trainer AI kan gebruiken, moet in een bibliotheek bestaan.**
+
+Dit geldt voor alle modules:
+
+| Module | Bibliotheek | Status |
+|--------|-------------|--------|
+| Kettlebell | kettlebell-exercises.ts | ✅ 102 oefeningen |
+| Bodyweight | bodyweight-exercises.ts | ✅ 120 oefeningen |
+| Strength | strength-exercises.ts | ✅ 100 oefeningen |
+| Mobility | mobility-exercises.ts | ✅ 20 oefeningen |
+| Recovery | recovery-exercises.ts | ❌ nog te bouwen |
+| Running drills | running-drills.ts | ❌ nog te bouwen |
+| Rowing drills | rowing-drills.ts | ❌ nog te bouwen |
+| Cycling drills | cycling-drills.ts | ❌ nog te bouwen |
+
+**Gevolgen:**
+- ✅ Geen AI-hallucinaties in oefeningen
+- ✅ Altijd Nederlandse uitleg
+- ✅ Uitlegpagina's werken automatisch
+- ✅ Blessurefilters zijn betrouwbaar
+- ✅ Afbeeldingen koppelbaar per oefening
+- ✅ Coach behoudt volledige controle
+- ✅ Trainer blijft slim — kiest, ordent, doseert

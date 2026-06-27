@@ -113,6 +113,14 @@ const BIBLIOTHEEK = [
   { type: 'mobility' as const, subtype: 'neck_shoulders', label: 'Nek & Schouders', sub: 'bureaumobiliteit', duration: 8 },
   { type: 'mobility' as const, subtype: 'hips', label: 'Heup mobiliteit', sub: 'herstel & flexibiliteit', duration: 10 },
   { type: 'mobility' as const, subtype: 'full_body', label: 'Full Body', sub: 'ochtend of avond routine', duration: 12 },
+  { type: 'mobility' as const, subtype: 'hamstring_stretch', label: 'Hamstring Mobiliteit', sub: 'achterkant benen', duration: 8 },
+  { type: 'mobility' as const, subtype: 'hip_flexor', label: 'Heupbuigers', sub: 'mobiliteit & rek', duration: 8 },
+  { type: 'mobility' as const, subtype: 'lower_back', label: 'Onderrug Ontspanning', sub: 'spanning loslaten', duration: 10 },
+  { type: 'mobility' as const, subtype: 'thoracic', label: 'Thoracale Mobiliteit', sub: 'borstwervelkolom', duration: 8 },
+  { type: 'mobility' as const, subtype: 'shoulder_mobility', label: 'Schouder Mobiliteit', sub: 'schoudergewricht openen', duration: 8 },
+  { type: 'mobility' as const, subtype: 'calf_ankle', label: 'Kuit & Enkel', sub: 'herstel & flexibiliteit', duration: 7 },
+  { type: 'mobility' as const, subtype: 'recovery_flow', label: 'Herstel Flow', sub: 'na intensieve training', duration: 12 },
+  { type: 'mobility' as const, subtype: 'spine_mobility', label: 'Wervelkolom Mobiliteit', sub: 'volledige wervelkolom', duration: 10 },
   { type: 'walk' as const, subtype: 'recovery_walk', label: 'Herstelwandeling', sub: 'lage intensiteit', duration: 20 },
 ]
 

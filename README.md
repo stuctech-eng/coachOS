@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.1.1
+- Versie: 2.1.2
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -692,6 +692,13 @@ oefening bibliotheek.
   mobilityContext toegevoegd aan bibliotheekContext voor de Trainer AI.
   Mobility is nu volledig Categorie A — Coach bepaalt, Bibliotheek levert,
   Trainer assembleert.
+
+- v2.1.2: Alle 11 mobility schemas zichtbaar in herstelbibliotheek.
+  training/page.tsx uitgebreid met: Hamstring Mobiliteit, Heupbuigers,
+  Onderrug Ontspanning, Thoracale Mobiliteit, Schouder Mobiliteit,
+  Kuit & Enkel, Herstel Flow, Wervelkolom Mobiliteit.
+  Trainer Rule gedocumenteerd in docs/architecture.md.
+  Gebruiker heeft nu directe toegang tot alle mobility modules.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
