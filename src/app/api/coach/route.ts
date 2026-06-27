@@ -278,49 +278,125 @@ ${blessures.length > 0 ? `De gebruiker heeft actieve blessures: ${blessures.map(
 
 Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe instructie voor Trainer AI over wat hij wel/niet moet doen vandaag. Bijvoorbeeld: "Vermijd heup-belastende oefeningen (swings, squats, lunges). Gebruik alleen upper body en carry oefeningen." of "Volle training toegestaan, focus op techniek." of "Alleen herstel vandaag, geen krachttraining."`
 
-    // ── Progressie context voor de coach ─────────────────────────────────────
+    // ── Progressie trendanalyse voor de coach (Fase 3A) ─────────────────────
     const exerciseRecords = exerciseRecordsRes.data || []
     let progressieContext = ''
+
     if (exerciseRecords.length > 0) {
-      // Groepeer per oefening en bereken PR
-      const prMap = new Map<string, { naam: string; module: string; max_weight: number; max_reps: number; uitvoeringen: number }>()
-      for (const rec of exerciseRecords) {
-        const key = rec.exercise_name
-        const existing = prMap.get(key)
-        if (!existing) {
-          prMap.set(key, {
-            naam: rec.exercise_name,
-            module: rec.module,
-            max_weight: rec.weight_kg || 0,
-            max_reps: rec.reps || 0,
-            uitvoeringen: 1,
-          })
-        } else {
-          prMap.set(key, {
-            ...existing,
-            max_weight: Math.max(existing.max_weight, rec.weight_kg || 0),
-            max_reps: Math.max(existing.max_reps, rec.reps || 0),
-            uitvoeringen: existing.uitvoeringen + 1,
-          })
-        }
+      // Groepeer per oefening — chronologisch gesorteerd (oudste eerst)
+      type ExRec = { exercise_name: string; module: string; weight_kg: number | null; reps: number | null; duration_sec: number | null; performed_at: string }
+      const groepen = new Map<string, ExRec[]>()
+      for (const rec of (exerciseRecords as ExRec[]).slice().reverse()) {
+        if (!groepen.has(rec.exercise_name)) groepen.set(rec.exercise_name, [])
+        groepen.get(rec.exercise_name)!.push(rec)
       }
 
-      const topOefeningen = Array.from(prMap.values())
-        .filter(pr => pr.max_weight > 0 || pr.max_reps > 0)
+      // Bereken trend per oefening
+      type Trend = {
+        naam: string; module: string; uitvoeringen: number
+        eerste_gewicht: number | null; laatste_gewicht: number | null
+        eerste_reps: number | null; laatste_reps: number | null
+        verandering_pct: number | null; trend: 'stijgend' | 'stabiel' | 'dalend'
+      }
+      const trends: Trend[] = []
+
+      for (const [naam, recs] of groepen) {
+        if (recs.length < 2) {
+          // Slechts 1 uitvoering — alleen PR tonen
+          const r = recs[0]
+          trends.push({
+            naam, module: r.module, uitvoeringen: 1,
+            eerste_gewicht: r.weight_kg, laatste_gewicht: r.weight_kg,
+            eerste_reps: r.reps, laatste_reps: r.reps,
+            verandering_pct: null, trend: 'stabiel',
+          })
+          continue
+        }
+
+        const eerste = recs[0]
+        const laatste = recs[recs.length - 1]
+
+        // Bereken % verandering — gebruik gewicht of reps
+        let verandering_pct: number | null = null
+        let trend: 'stijgend' | 'stabiel' | 'dalend' = 'stabiel'
+
+        if (eerste.weight_kg && laatste.weight_kg && eerste.weight_kg > 0) {
+          verandering_pct = Math.round(((laatste.weight_kg - eerste.weight_kg) / eerste.weight_kg) * 100)
+        } else if (eerste.reps && laatste.reps && eerste.reps > 0) {
+          verandering_pct = Math.round(((laatste.reps - eerste.reps) / eerste.reps) * 100)
+        }
+
+        if (verandering_pct !== null) {
+          if (verandering_pct >= 5) trend = 'stijgend'
+          else if (verandering_pct <= -5) trend = 'dalend'
+        }
+
+        trends.push({
+          naam, module: eerste.module, uitvoeringen: recs.length,
+          eerste_gewicht: eerste.weight_kg, laatste_gewicht: laatste.weight_kg,
+          eerste_reps: eerste.reps, laatste_reps: laatste.reps,
+          verandering_pct, trend,
+        })
+      }
+
+      // Sorteer — meest uitgevoerd en met trend bovenaan
+      const gesorteerd = trends
         .sort((a, b) => b.uitvoeringen - a.uitvoeringen)
         .slice(0, 8)
 
-      if (topOefeningen.length > 0) {
-        progressieContext = '\n\nOefeningprogressie laatste 30 dagen (persoonlijke records):\n'
-        for (const pr of topOefeningen) {
-          const details = [
-            pr.max_weight > 0 ? `max ${pr.max_weight} kg` : '',
-            pr.max_reps > 0 ? `max ${pr.max_reps} reps` : '',
-            `${pr.uitvoeringen}× uitgevoerd`,
-          ].filter(Boolean).join(', ')
-          progressieContext += `- ${pr.naam} (${pr.module}): ${details}\n`
+      // Gemiddelde RPE
+      const rpeWaarden = trainingsResultaten.filter(t => t.rating).map(t => t.rating as number)
+      const gemRpe = rpeWaarden.length > 0
+        ? Math.round(rpeWaarden.reduce((a, b) => a + b, 0) / rpeWaarden.length * 10) / 10
+        : null
+
+      // Belastingtrend — vergelijk laatste 2 weken
+      const nu = new Date()
+      const weekGeleden = new Date(nu.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const tweeWekenGeleden = new Date(nu.getTime() - 14 * 24 * 60 * 60 * 1000)
+      const dezeWeek = trainingsResultaten.filter(t => new Date(t.completed_at) >= weekGeleden)
+      const vorigeWeek = trainingsResultaten.filter(t => {
+        const d = new Date(t.completed_at)
+        return d >= tweeWekenGeleden && d < weekGeleden
+      })
+      const dezeWeekMin = dezeWeek.reduce((a, t) => a + (t.actual_duration || 0), 0)
+      const vorigeWeekMin = vorigeWeek.reduce((a, t) => a + (t.actual_duration || 0), 0)
+      const belastingTrend = vorigeWeekMin > 0
+        ? Math.round(((dezeWeekMin - vorigeWeekMin) / vorigeWeekMin) * 100)
+        : null
+
+      if (gesorteerd.length > 0) {
+        const regels: string[] = ['
+
+Progressie analyse laatste 30 dagen:']
+
+        for (const t of gesorteerd) {
+          let regel = `- ${t.naam} (${t.module}, ${t.uitvoeringen}×)`
+          if (t.verandering_pct !== null && t.uitvoeringen >= 2) {
+            const richting = t.trend === 'stijgend' ? '↑' : t.trend === 'dalend' ? '↓' : '→'
+            if (t.eerste_gewicht && t.laatste_gewicht) {
+              regel += `: ${t.eerste_gewicht}kg → ${t.laatste_gewicht}kg (${t.verandering_pct > 0 ? '+' : ''}${t.verandering_pct}%) ${richting}`
+            } else if (t.eerste_reps && t.laatste_reps) {
+              regel += `: ${t.eerste_reps} → ${t.laatste_reps} reps (${t.verandering_pct > 0 ? '+' : ''}${t.verandering_pct}%) ${richting}`
+            }
+          } else if (t.laatste_gewicht) {
+            regel += `: ${t.laatste_gewicht}kg`
+          } else if (t.laatste_reps) {
+            regel += `: ${t.laatste_reps} reps`
+          }
+          regels.push(regel)
         }
-        progressieContext += `Gebruik deze data om progressie te herkennen en te benoemen in je advies. Als een oefening veel herhaald is, kan het tijd zijn voor progressie.`
+
+        if (gemRpe !== null) regels.push(`Gemiddelde RPE laatste 7 dagen: ${gemRpe}/10`)
+        if (belastingTrend !== null) {
+          const trendLabel = belastingTrend > 0 ? `+${belastingTrend}%` : `${belastingTrend}%`
+          regels.push(`Trainingsbelasting t.o.v. vorige week: ${trendLabel} (${dezeWeekMin} vs ${vorigeWeekMin} min)`)
+        }
+
+        regels.push('
+Gebruik deze trenddata in je advies. Benoem concrete progressie als die er is. Waarschuw bij stijgende belasting + hoge RPE. Stel progressie voor als trend stijgend is en RPE laag.')
+        progressieContext = regels.join('
+')
       }
     }
 
