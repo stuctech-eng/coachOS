@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.0.3
+- Versie: 2.1.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -677,6 +677,14 @@ oefening bibliotheek.
   → Air Squat, "Push-ups" → Push-Up, etc. Prompt instructie toegevoegd
   zodat AI exact de bibliotheek namen gebruikt voor toekomstige sessies.
   Alleen session/[module]/page.tsx en training/today/route.ts gewijzigd.
+
+- v2.1.0: Mobility Bibliotheek — 20 oefeningen in src/lib/mobility-exercises.ts.
+  Types: MobilityDoel, MobilityNiveau, MobilityLichaamsdeel, MobilityCategorie,
+  MobilityOefening. Categorieën: nek/schouders (5), rug/wervelkolom (4),
+  heupen (4), hamstrings/benen (2), kuiten/enkels (2), full body (3).
+  Hulpfuncties: filterMobility(), formateerMobilityVoorPrompt().
+  Mobility is nu Categorie A module — zelfde architectuur als
+  bodyweight/strength/kettlebell.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
