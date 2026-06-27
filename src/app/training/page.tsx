@@ -122,6 +122,13 @@ const BIBLIOTHEEK = [
   { type: 'mobility' as const, subtype: 'recovery_flow', label: 'Herstel Flow', sub: 'na intensieve training', duration: 12 },
   { type: 'mobility' as const, subtype: 'spine_mobility', label: 'Wervelkolom Mobiliteit', sub: 'volledige wervelkolom', duration: 10 },
   { type: 'walk' as const, subtype: 'recovery_walk', label: 'Herstelwandeling', sub: 'lage intensiteit', duration: 20 },
+  { type: 'walk' as const, subtype: 'recovery_walk', label: 'Wandeling in de Natuur', sub: 'mentaal herstel', duration: 30 },
+  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Progressieve Spierontspanning', sub: 'diepe ontspanning', duration: 15 },
+  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Body Scan', sub: 'spanning loslaten', duration: 10 },
+  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Visualisatie Herstel', sub: 'mentale techniek', duration: 8 },
+  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Savasana', sub: 'volledig loslaten', duration: 10 },
+  { type: 'relaxation' as const, subtype: 'box_breathing', label: 'Cooling Down Protocol', sub: 'na training', duration: 8 },
+  { type: 'breathing' as const, subtype: 'box_breathing', label: 'Diafragma Ademhaling', sub: 'buikademhaling', duration: 6 },
 ]
 
 function TrainingSkeleton() {

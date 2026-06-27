@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.1.2
+- Versie: 2.2.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -699,6 +699,14 @@ oefening bibliotheek.
   Kuit & Enkel, Herstel Flow, Wervelkolom Mobiliteit.
   Trainer Rule gedocumenteerd in docs/architecture.md.
   Gebruiker heeft nu directe toegang tot alle mobility modules.
+
+- v2.2.0: Recovery Bibliotheek — 12 modules in src/lib/recovery-exercises.ts.
+  Categorieën: ademhaling (5), wandelen (2), ontspanning (4), visualisatie (1).
+  filterRecovery() en formateerRecoveryVoorPrompt() toegevoegd aan route.
+  Herstelbibliotheek uitgebreid met 7 nieuwe modules: Wandeling in de Natuur,
+  Progressieve Spierontspanning, Body Scan, Visualisatie Herstel, Savasana,
+  Cooling Down Protocol, Diafragma Ademhaling.
+  CoachOS totaal: 342 oefeningen + 12 recovery modules.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project

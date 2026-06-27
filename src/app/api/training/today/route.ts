@@ -13,6 +13,8 @@ import { filterKettlebell, formateerKettlebellVoorPrompt } from '@/lib/kettlebel
 import type { KettlebellDoel } from '@/lib/kettlebell-exercises'
 import { filterMobility, formateerMobilityVoorPrompt } from '@/lib/mobility-exercises'
 import type { MobilityDoel, MobilityLichaamsdeel } from '@/lib/mobility-exercises'
+import { filterRecovery, formateerRecoveryVoorPrompt } from '@/lib/recovery-exercises'
+import type { RecoveryDoel } from '@/lib/recovery-exercises'
 import type { EquipmentProfile } from '@/app/api/equipment/route'
 import type { TrainingModule } from '@/types/training-engine'
 
@@ -286,6 +288,19 @@ ${formateerMobilityVoorPrompt(mobilityOef)}`
       }
     }
 
+    // Optie C: Recovery filter
+    let recoveryContext = ''
+    {
+      const recoveryDoel: RecoveryDoel = coachActieType === 'herstel' || coachActieType === 'rust'
+        ? 'herstel'
+        : coachActieType === 'stress' ? 'stress'
+        : 'herstel'
+      const recoveryModules = filterRecovery(recoveryDoel)
+      if (recoveryModules.length > 0) {
+        recoveryContext = `\nBESCHIKBARE RECOVERY MODULES (gebruik UITSLUITEND deze lijst bij recovery_modules):\n${formateerRecoveryVoorPrompt(recoveryModules)}`
+      }
+    }
+
     // Optie C: Coach bepaalt doel → route filtert bodyweight oefeningen →
     // Trainer AI krijgt de lijst en maakt de sessie
     let bodyweightContext = ''
@@ -530,6 +545,7 @@ Reageer ALLEEN in dit JSON formaat:
       bodyweightContext,
       strengthContext,
       mobilityContext,
+      recoveryContext,
     ].filter(Boolean).join('\n')
 
     // Beschikbare mobility subtypes — AI mag alleen hieruit kiezen
