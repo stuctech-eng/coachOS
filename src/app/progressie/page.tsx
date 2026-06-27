@@ -77,6 +77,13 @@ interface PersonalRecord {
   laatste_datum: string
 }
 
+interface OefeningGeschiedenis {
+  datum: string
+  gewicht: number | null
+  reps: number | null
+  duur: number | null
+}
+
 interface ComplianceData {
   totaal_hersteladviezen: number
   gevolgd: number
@@ -187,6 +194,11 @@ export default function ProgressiePage() {
   const [compliance, setCompliance] = useState<ComplianceData | null>(null)
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
   const [selectedModule, setSelectedModule] = useState<string>('all')
+  const [selectedOefening, setSelectedOefening] = useState<string | null>(null)
+  const [oefeningGeschiedenis, setOefeningGeschiedenis] = useState<Record<string, OefeningGeschiedenis[]>>({})
+  const [volumePerWeek, setVolumePerWeek] = useState<Array<{ week: string; sessies: number; minuten: number }>>([])
+  const [allExerciseRecords, setAllExerciseRecords] = useState<ExerciseRecord[]>([]
+)
 
   const laadData = useCallback(async () => {
     const supabase = createBrowserClient(
@@ -223,9 +235,14 @@ export default function ProgressiePage() {
         .limit(200)
 
       if (exRecords && exRecords.length > 0) {
+        const records = exRecords as ExerciseRecord[]
+        setAllExerciseRecords(records)
+
         // Bereken PR per oefening
         const prMap = new Map<string, PersonalRecord>()
-        for (const rec of exRecords as ExerciseRecord[]) {
+        const geschiedenisMap: Record<string, OefeningGeschiedenis[]> = {}
+
+        for (const rec of records) {
           const key = rec.exercise_name
           const existing = prMap.get(key)
           if (!existing) {
@@ -247,8 +264,24 @@ export default function ProgressiePage() {
               totaal_sets: existing.totaal_sets + 1,
             })
           }
+
+          // Bouw geschiedenis op per oefening
+          if (!geschiedenisMap[key]) geschiedenisMap[key] = []
+          geschiedenisMap[key].push({
+            datum: new Date(rec.performed_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }),
+            gewicht: rec.weight_kg,
+            reps: rec.reps,
+            duur: rec.duration_sec,
+          })
         }
+
+        // Keer geschiedenis om — oudste eerst voor grafiek
+        for (const key of Object.keys(geschiedenisMap)) {
+          geschiedenisMap[key] = geschiedenisMap[key].reverse().slice(-10)
+        }
+
         setPersonalRecords(Array.from(prMap.values()).sort((a, b) => b.totaal_sets - a.totaal_sets))
+        setOefeningGeschiedenis(geschiedenisMap)
       }
     } catch { /* */ }
 
@@ -278,6 +311,23 @@ export default function ProgressiePage() {
       })
     }
     setWeekGrafiek(grafiekData)
+    // Volume per week per module
+    const volumeData = []
+    for (let i = 7; i >= 0; i--) {
+      const start = new Date(weekStart(-i))
+      const end = new Date(start)
+      end.setDate(end.getDate() + 7)
+      const weekData = (alleRes.data || []).filter(r => {
+        const d = new Date(r.completed_at)
+        return d >= start && d < end
+      })
+      volumeData.push({
+        week: start.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }),
+        sessies: weekData.length,
+        minuten: weekData.reduce((a, r) => a + (r.actual_duration || 0), 0),
+      })
+    }
+    setVolumePerWeek(volumeData)
     setLoading(false)
 
     try {
@@ -449,7 +499,8 @@ export default function ProgressiePage() {
                 .filter(pr => selectedModule === 'all' || pr.module === selectedModule)
                 .slice(0, 10)
                 .map((pr, i) => (
-                  <Card key={i} className="px-4 py-3">
+                  <Card key={i} className={cn("px-4 py-3 cursor-pointer active:opacity-70", selectedOefening === pr.exercise_name && "border-primary-500/40 bg-primary-500/5")}
+                    onClick={() => setSelectedOefening(selectedOefening === pr.exercise_name ? null : pr.exercise_name)}>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <p className="text-sm font-medium text-white">{pr.exercise_name}</p>
@@ -473,6 +524,67 @@ export default function ProgressiePage() {
                   </Card>
                 ))}
             </div>
+          </div>
+        )}
+
+        {/* 2c. Volume per week */}
+        {volumePerWeek.some(w => w.sessies > 0) && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Volume per week</p>
+            <Card className="p-4">
+              <ResponsiveContainer width="100%" height={120}>
+                <BarChart data={volumePerWeek} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2d333b" vertical={false} />
+                  <XAxis dataKey="week" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} width={30} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1c2128', border: '1px solid #2d333b', borderRadius: 8, fontSize: 11 }}
+                    formatter={(v: number) => [`${v} min`, 'Tijd']}
+                  />
+                  <Bar dataKey="minuten" fill="#4ade80" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex justify-between mt-2">
+                {volumePerWeek.slice(-4).map((w, i) => (
+                  <div key={i} className="text-center">
+                    <p className="text-xs text-primary-400 font-semibold">{w.sessies}</p>
+                    <p className="text-xs text-slate-600">sessies</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* 2d. Oefening detail grafiek */}
+        {selectedOefening && oefeningGeschiedenis[selectedOefening] && oefeningGeschiedenis[selectedOefening].length >= 2 && (
+          <div>
+            <div className="flex items-center justify-between mb-3 px-1">
+              <p className="text-xs text-slate-500 uppercase tracking-wider">{selectedOefening}</p>
+              <button onClick={() => setSelectedOefening(null)} className="text-xs text-slate-500 active:opacity-70">Sluiten</button>
+            </div>
+            <Card className="p-4">
+              <ResponsiveContainer width="100%" height={120}>
+                <LineChart data={oefeningGeschiedenis[selectedOefening]} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2d333b" vertical={false} />
+                  <XAxis dataKey="datum" tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: '#64748b' }} tickLine={false} axisLine={false} width={30} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1c2128', border: '1px solid #2d333b', borderRadius: 8, fontSize: 11 }}
+                    formatter={(v: number, name: string) => [
+                      name === 'gewicht' ? `${v} kg` : name === 'reps' ? `${v} reps` : `${v}s`,
+                      name
+                    ]}
+                  />
+                  {oefeningGeschiedenis[selectedOefening][0]?.gewicht !== null && (
+                    <Line type="monotone" dataKey="gewicht" stroke="#818cf8" strokeWidth={2} dot={{ r: 3, fill: '#818cf8' }} name="gewicht" />
+                  )}
+                  {oefeningGeschiedenis[selectedOefening][0]?.reps !== null && (
+                    <Line type="monotone" dataKey="reps" stroke="#4ade80" strokeWidth={2} dot={{ r: 3, fill: '#4ade80' }} name="reps" />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </Card>
           </div>
         )}
 

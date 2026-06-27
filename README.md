@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.3.2
+- Versie: 2.3.3
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -737,6 +737,12 @@ oefening bibliotheek.
   PR sectie toont max gewicht / max reps / max duur per oefening.
   Filter op module (kettlebell, strength, bodyweight, etc.).
   Sortering op meest uitgevoerd. Alleen progressie/page.tsx gewijzigd.
+
+- v2.3.3: Progressie Fase 2 — grafieken per oefening en volume per week.
+  Tik op een oefening in Persoonlijke Records → grafiek toont gewicht/reps
+  over tijd (laatste 10 uitvoeringen). Volume per week grafiek toegevoegd
+  (sessies + minuten per week, 8 weken). OefeningGeschiedenis berekend
+  uit exercise_records. Alleen progressie/page.tsx gewijzigd.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
