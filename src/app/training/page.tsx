@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Dumbbell, Wind, Footprints, Zap, Play, RefreshCw, Clock, ChevronRight, BookOpen, Waves, Bike } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
@@ -213,10 +213,23 @@ export default function TrainingPage() {
   const [instruction, setInstruction] = useState<TrainingInstruction | null>(null)
   const [laden, setLaden] = useState(true)
   const [genereren, setGenereren] = useState(false)
+  const searchParams = useSearchParams()
   const [showBibliotheek, setShowBibliotheek] = useState(false)
   const [showTrainingsBibliotheek, setShowTrainingsBibliotheek] = useState(false)
+  const [openCategorieen, setOpenCategorieen] = useState<string[]>([])
   const [equipment, setEquipment] = useState<Partial<EquipmentProfile> | null>(null)
   const vandaag = new Date().toISOString().split('T')[0]
+  const herstelRef = React.useRef<HTMLDivElement>(null)
+
+  // Open herstelbibliotheek als ?herstel=1 in URL
+  useEffect(() => {
+    if (searchParams.get('herstel') === '1') {
+      setShowBibliotheek(true)
+      setTimeout(() => {
+        herstelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     fetch('/api/equipment')
@@ -452,7 +465,7 @@ export default function TrainingPage() {
         </div>
 
         {/* Herstelbibliotheek */}
-        <div>
+        <div ref={herstelRef}>
           <button onClick={() => setShowBibliotheek(!showBibliotheek)}
             className="flex items-center gap-2 text-slate-400 text-sm mb-3">
             <BookOpen size={16} />
@@ -464,30 +477,38 @@ export default function TrainingPage() {
             <div className="flex flex-col gap-3">
               {BIBLIOTHEEK_CATEGORIEEN.map(cat => {
                 const CatIcon = cat.icon
+                const isOpen = openCategorieen.includes(cat.id)
                 return (
                   <div key={cat.id} className="bg-coach-card rounded-2xl border border-coach-border overflow-hidden">
-                    <div className="px-4 py-3 flex items-center gap-3 border-b border-coach-border">
+                    <button
+                      onClick={() => setOpenCategorieen(prev =>
+                        prev.includes(cat.id) ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                      )}
+                      className="w-full px-4 py-3 flex items-center gap-3 active:opacity-70">
                       <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0', cat.bg)}>
                         <CatIcon size={14} className={cat.kleur} />
                       </div>
-                      <p className={cn('text-sm font-semibold', cat.kleur)}>{cat.label}</p>
-                      <span className="text-xs text-slate-600 ml-auto">{cat.items.length}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      {cat.items.map((item, i) => {
-                        const route = getModuleRoute(item)
-                        return (
-                          <button key={i} onClick={() => router.push(route)}
-                            className="w-full active:opacity-70 text-left px-4 py-3 flex items-center gap-3 border-b border-coach-border/50 last:border-0">
-                            <div className="flex-1">
-                              <p className="text-white text-sm">{item.label}</p>
-                              <p className="text-slate-500 text-xs mt-0.5">{item.sub} · {item.duration} min</p>
-                            </div>
-                            <ChevronRight size={14} className="text-slate-600 flex-shrink-0" />
-                          </button>
-                        )
-                      })}
-                    </div>
+                      <p className={cn('text-sm font-semibold flex-1 text-left', cat.kleur)}>{cat.label}</p>
+                      <span className="text-xs text-slate-600 mr-2">{cat.items.length}</span>
+                      <ChevronRight size={14} className={cn('text-slate-600 transition-transform flex-shrink-0', isOpen && 'rotate-90')} />
+                    </button>
+                    {isOpen && (
+                      <div className="flex flex-col border-t border-coach-border">
+                        {cat.items.map((item, i) => {
+                          const route = getModuleRoute(item)
+                          return (
+                            <button key={i} onClick={() => router.push(route)}
+                              className="w-full active:opacity-70 text-left px-4 py-3 flex items-center gap-3 border-b border-coach-border/50 last:border-0">
+                              <div className="flex-1">
+                                <p className="text-white text-sm">{item.label}</p>
+                                <p className="text-slate-500 text-xs mt-0.5">{item.sub} · {item.duration} min</p>
+                              </div>
+                              <ChevronRight size={14} className="text-slate-600 flex-shrink-0" />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )
               })}
