@@ -221,6 +221,7 @@ function TrainingContent() {
   const [equipment, setEquipment] = useState<Partial<EquipmentProfile> | null>(null)
   const vandaag = new Date().toISOString().split('T')[0]
   const herstelRef = React.useRef<HTMLDivElement>(null)
+  const categorieRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
 
   // Open herstelbibliotheek als ?herstel=1 in URL, open specifieke categorie als ?terug=categorie
   useEffect(() => {
@@ -484,11 +485,19 @@ function TrainingContent() {
                 const CatIcon = cat.icon
                 const isOpen = openCategorieen.includes(cat.id)
                 return (
-                  <div key={cat.id} className="bg-coach-card rounded-2xl border border-coach-border overflow-hidden">
+                  <div key={cat.id} ref={el => { categorieRefs.current[cat.id] = el }} className="bg-coach-card rounded-2xl border border-coach-border overflow-hidden">
                     <button
-                      onClick={() => setOpenCategorieen(prev =>
-                        prev.includes(cat.id) ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
-                      )}
+                      onClick={() => {
+                        const isCurrentlyOpen = openCategorieen.includes(cat.id)
+                        setOpenCategorieen(prev =>
+                          isCurrentlyOpen ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                        )
+                        if (!isCurrentlyOpen) {
+                          setTimeout(() => {
+                            categorieRefs.current[cat.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                          }, 50)
+                        }
+                      }}
                       className="w-full px-4 py-3 flex items-center gap-3 active:opacity-70">
                       <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0', cat.bg)}>
                         <CatIcon size={14} className={cat.kleur} />
