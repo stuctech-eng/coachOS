@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, Dumbbell, Clock, Star, Battery, Moon, Trophy, Flame, ChevronDown, ChevronUp, BarChart2, ShieldCheck, ShieldAlert, HelpCircle } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Dumbbell, Clock, Star, Battery, Moon, Trophy, Flame, ChevronDown, ChevronUp, BarChart2, ShieldCheck, ShieldAlert, HelpCircle, Sparkles, RefreshCw } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
@@ -75,6 +75,17 @@ interface PersonalRecord {
   max_duration: number | null
   totaal_sets: number
   laatste_datum: string
+}
+
+interface ProgressAnalysis {
+  kracht: string
+  conditie: string
+  herstel: string
+  compliance: string
+  risicos: string
+  focus: string
+  samenvatting: string
+  generated_at: string
 }
 
 interface OefeningGeschiedenis {
@@ -197,8 +208,10 @@ export default function ProgressiePage() {
   const [selectedOefening, setSelectedOefening] = useState<string | null>(null)
   const [oefeningGeschiedenis, setOefeningGeschiedenis] = useState<Record<string, OefeningGeschiedenis[]>>({})
   const [volumePerWeek, setVolumePerWeek] = useState<Array<{ week: string; sessies: number; minuten: number }>>([])
-  const [allExerciseRecords, setAllExerciseRecords] = useState<ExerciseRecord[]>([]
-)
+  const [allExerciseRecords, setAllExerciseRecords] = useState<ExerciseRecord[]>([])
+  const [progressAnalysis, setProgressAnalysis] = useState<ProgressAnalysis | null>(null)
+  const [analyseLoading, setAnalyseLoading] = useState(false)
+  const [analyseOpen, setAnalyseOpen] = useState(false)
 
   const laadData = useCallback(async () => {
     const supabase = createBrowserClient(
@@ -328,6 +341,14 @@ export default function ProgressiePage() {
       })
     }
     setVolumePerWeek(volumeData)
+    // Laad gecachede analyse
+    try {
+      const analyseRes = await fetch('/api/progress-analysis', { credentials: 'include' })
+      if (analyseRes.ok) {
+        const analyseData = await analyseRes.json()
+        if (analyseData?.analysis) setProgressAnalysis(analyseData.analysis)
+      }
+    } catch { /* */ }
     setLoading(false)
 
     try {
@@ -359,6 +380,20 @@ export default function ProgressiePage() {
   }, [])
 
   useEffect(() => { laadData() }, [laadData])
+
+  async function genereerAnalyse() {
+    setAnalyseLoading(true)
+    setAnalyseOpen(true)
+    try {
+      const res = await fetch('/api/progress-analysis', { method: 'POST', credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.analysis) setProgressAnalysis(data.analysis)
+      }
+    } catch { /* */ } finally {
+      setAnalyseLoading(false)
+    }
+  }
 
   const weekGemRating = gemRating(weekResultaten)
   const weekTotaalMin = weekResultaten.reduce((a, r) => a + (r.actual_duration || 0), 0)
@@ -689,7 +724,65 @@ export default function ProgressiePage() {
           </div>
         )}
 
-        {/* 6. Historisch (inklapbaar) */}
+        {/* 6. Coach Rapport */}
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-primary-400" />
+              <p className="text-xs text-slate-500 uppercase tracking-wider">Coach Rapport</p>
+            </div>
+            {progressAnalysis && (
+              <p className="text-xs text-slate-600">
+                {new Date(progressAnalysis.generated_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+              </p>
+            )}
+          </div>
+
+          {!analyseOpen && !progressAnalysis && (
+            <button onClick={genereerAnalyse} disabled={analyseLoading}
+              className="w-full py-4 bg-coach-card border border-coach-border rounded-2xl flex items-center justify-center gap-3 active:opacity-70 disabled:opacity-50">
+              <Sparkles size={18} className="text-primary-400" />
+              <span className="text-white font-semibold">Analyseer mijn ontwikkeling</span>
+            </button>
+          )}
+
+          {progressAnalysis && (
+            <Card className="p-5">
+              <div className="mb-4 pb-4 border-b border-coach-border">
+                <p className="text-sm font-semibold text-white leading-relaxed">{progressAnalysis.samenvatting}</p>
+              </div>
+              <div className="flex flex-col gap-4">
+                {[
+                  { label: 'Kracht', value: progressAnalysis.kracht, kleur: 'text-orange-400' },
+                  { label: 'Conditie', value: progressAnalysis.conditie, kleur: 'text-blue-400' },
+                  { label: 'Herstel', value: progressAnalysis.herstel, kleur: 'text-green-400' },
+                  { label: 'Coach Compliance', value: progressAnalysis.compliance, kleur: 'text-purple-400' },
+                  { label: "Risico's", value: progressAnalysis.risicos, kleur: 'text-amber-400' },
+                  { label: 'Focus komende weken', value: progressAnalysis.focus, kleur: 'text-primary-400' },
+                ].map((item, i) => (
+                  <div key={i}>
+                    <p className={cn('text-xs font-semibold mb-1', item.kleur)}>{item.label}</p>
+                    <p className="text-sm text-slate-300 leading-relaxed">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+              <button onClick={genereerAnalyse} disabled={analyseLoading}
+                className="mt-4 w-full py-2.5 bg-slate-800 rounded-xl flex items-center justify-center gap-2 active:opacity-70 disabled:opacity-50">
+                <RefreshCw size={14} className={cn('text-slate-400', analyseLoading && 'animate-spin')} />
+                <span className="text-xs text-slate-400">{analyseLoading ? 'Analyseren...' : 'Opnieuw analyseren'}</span>
+              </button>
+            </Card>
+          )}
+
+          {analyseLoading && !progressAnalysis && (
+            <Card className="p-6 text-center">
+              <div className="w-8 h-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin mx-auto mb-3" />
+              <p className="text-slate-400 text-sm">Coach analyseert je ontwikkeling...</p>
+            </Card>
+          )}
+        </div>
+
+        {/* 7. Historisch (inklapbaar) */}
         <div>
           <button onClick={() => setHistorischOpen(!historischOpen)} className="w-full">
             <Card className="p-4 active:bg-slate-800/80 transition-colors">

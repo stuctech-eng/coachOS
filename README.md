@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.3.4
+- Versie: 2.3.5
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -750,6 +750,14 @@ oefening bibliotheek.
   Gemiddelde RPE laatste 7 dagen. Belastingtrend t.o.v. vorige week.
   Coach ziet nu: "Goblet Squat 16kg → 20kg (+25%) ↑"
   Geen DB wijziging, geen UI wijziging. Alleen coach context uitgebreid.
+
+- v2.3.5: Fase 3B — Coach Rapport op aanvraag.
+  Nieuw: src/app/api/progress-analysis/route.ts
+  Input: 60 dagen training_results, exercise_records, compliance, coach calls.
+  Output: kracht/conditie/herstel/compliance/risicos/focus/samenvatting.
+  Cache: max 1 analyse per 24 uur in progress_analyses tabel.
+  UI: "Analyseer mijn ontwikkeling" knop in progressie pagina.
+  Opnieuw analyseren knop voor refresh.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
