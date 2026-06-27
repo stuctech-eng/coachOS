@@ -66,7 +66,7 @@ export async function POST() {
     const vandaagNummer = new Date().getDay()
     const isWeekend = vandaagNummer === 0 || vandaagNummer === 6
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents, coachCallsRes] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents, exerciseRecordsRes, coachCallsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -112,6 +112,13 @@ export async function POST() {
         .order('created_at', { ascending: false })
         .limit(3),
       fetchTodaysLifeEvents(supabase, user.id, vandaagNummer, isWeekend),
+      // Progressie: exercise records laatste 30 dagen voor PR context
+      supabase.from('exercise_records')
+        .select('exercise_name, module, weight_kg, reps, duration_sec, performed_at')
+        .eq('user_id', user.id)
+        .gte('performed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .order('performed_at', { ascending: false })
+        .limit(100),
       // Stap 3: Coach Call evaluaties laatste 3 dagen
       supabase.from('coach_calls')
         .select('date, coach_call_items(sport_type, duration_min, rating, mood, notes, status)')
@@ -271,6 +278,56 @@ ${blessures.length > 0 ? `De gebruiker heeft actieve blessures: ${blessures.map(
 
 Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe instructie voor Trainer AI over wat hij wel/niet moet doen vandaag. Bijvoorbeeld: "Vermijd heup-belastende oefeningen (swings, squats, lunges). Gebruik alleen upper body en carry oefeningen." of "Volle training toegestaan, focus op techniek." of "Alleen herstel vandaag, geen krachttraining."`
 
+    // ── Progressie context voor de coach ─────────────────────────────────────
+    const exerciseRecords = exerciseRecordsRes.data || []
+    let progressieContext = ''
+    if (exerciseRecords.length > 0) {
+      // Groepeer per oefening en bereken PR
+      const prMap = new Map<string, { naam: string; module: string; max_weight: number; max_reps: number; uitvoeringen: number }>()
+      for (const rec of exerciseRecords) {
+        const key = rec.exercise_name
+        const existing = prMap.get(key)
+        if (!existing) {
+          prMap.set(key, {
+            naam: rec.exercise_name,
+            module: rec.module,
+            max_weight: rec.weight_kg || 0,
+            max_reps: rec.reps || 0,
+            uitvoeringen: 1,
+          })
+        } else {
+          prMap.set(key, {
+            ...existing,
+            max_weight: Math.max(existing.max_weight, rec.weight_kg || 0),
+            max_reps: Math.max(existing.max_reps, rec.reps || 0),
+            uitvoeringen: existing.uitvoeringen + 1,
+          })
+        }
+      }
+
+      const topOefeningen = Array.from(prMap.values())
+        .filter(pr => pr.max_weight > 0 || pr.max_reps > 0)
+        .sort((a, b) => b.uitvoeringen - a.uitvoeringen)
+        .slice(0, 8)
+
+      if (topOefeningen.length > 0) {
+        progressieContext = '
+
+Oefeningprogressie laatste 30 dagen (persoonlijke records):
+'
+        for (const pr of topOefeningen) {
+          const details = [
+            pr.max_weight > 0 ? `max ${pr.max_weight} kg` : '',
+            pr.max_reps > 0 ? `max ${pr.max_reps} reps` : '',
+            `${pr.uitvoeringen}× uitgevoerd`,
+          ].filter(Boolean).join(', ')
+          progressieContext += `- ${pr.naam} (${pr.module}): ${details}
+`
+        }
+        progressieContext += 'Gebruik deze data om progressie te herkennen en te benoemen in je advies. Als een oefening veel herhaald is, kan het tijd zijn voor progressie.'
+      }
+    }
+
     const systemPrompt = buildDailyCoachPrompt(
       profile,
       goalsRes.data || [],
@@ -280,7 +337,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + trainerInstructiePrompt
+    ) + garminContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + trainerInstructiePrompt
 
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
