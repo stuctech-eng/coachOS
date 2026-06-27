@@ -15,6 +15,12 @@ import { filterMobility, formateerMobilityVoorPrompt } from '@/lib/mobility-exer
 import type { MobilityDoel, MobilityLichaamsdeel } from '@/lib/mobility-exercises'
 import { filterRecovery, formateerRecoveryVoorPrompt } from '@/lib/recovery-exercises'
 import type { RecoveryDoel } from '@/lib/recovery-exercises'
+import { filterRunning, formateerRunningVoorPrompt } from '@/lib/running-drills'
+import type { RunningDoel } from '@/lib/running-drills'
+import { filterRowing, formateerRowingVoorPrompt } from '@/lib/rowing-drills'
+import type { RowingDoel } from '@/lib/rowing-drills'
+import { filterCycling, formateerCyclingVoorPrompt } from '@/lib/cycling-drills'
+import type { CyclingDoel } from '@/lib/cycling-drills'
 import type { EquipmentProfile } from '@/app/api/equipment/route'
 import type { TrainingModule } from '@/types/training-engine'
 
@@ -288,6 +294,51 @@ ${formateerMobilityVoorPrompt(mobilityOef)}`
       }
     }
 
+    // Optie C: Running drill filter
+    let runningContext = ''
+    if (isLibrary && forcedModule === 'running' || (!isLibrary && runningAvailable)) {
+      const runningDoel: RunningDoel = coachActieType === 'herstel' || coachActieType === 'rust'
+        ? 'herstel' : 'uithoudingsvermogen'
+      const runningNiveau = profile?.experience_level === 'gevorderd' ? 'gevorderd'
+        : profile?.experience_level === 'intermediate' ? 'gemiddeld' : 'beginner'
+      const runningDrills = filterRunning(runningDoel, runningNiveau as 'beginner' | 'gemiddeld' | 'gevorderd')
+      if (runningDrills.length > 0) {
+        runningContext = `
+BESCHIKBARE RUNNING SESSIES (gebruik UITSLUITEND deze lijst bij running training, gebruik de session_type waarde):
+${formateerRunningVoorPrompt(runningDrills)}`
+      }
+    }
+
+    // Optie C: Rowing drill filter
+    let rowingContext = ''
+    if (isLibrary && forcedModule === 'rowing' || (!isLibrary && rowingAvailable)) {
+      const rowingDoel: RowingDoel = coachActieType === 'herstel' || coachActieType === 'rust'
+        ? 'herstel' : 'uithoudingsvermogen'
+      const rowingNiveau = profile?.experience_level === 'gevorderd' ? 'gevorderd'
+        : profile?.experience_level === 'intermediate' ? 'gemiddeld' : 'beginner'
+      const rowingDrills = filterRowing(rowingDoel, rowingNiveau as 'beginner' | 'gemiddeld' | 'gevorderd')
+      if (rowingDrills.length > 0) {
+        rowingContext = `
+BESCHIKBARE ROWING SESSIES (gebruik UITSLUITEND deze lijst bij rowing training, gebruik de session_type waarde):
+${formateerRowingVoorPrompt(rowingDrills)}`
+      }
+    }
+
+    // Optie C: Cycling drill filter
+    let cyclingContext = ''
+    if (isLibrary && forcedModule === 'cycling' || (!isLibrary && cyclingAvailable)) {
+      const cyclingDoel: CyclingDoel = coachActieType === 'herstel' || coachActieType === 'rust'
+        ? 'herstel' : 'uithoudingsvermogen'
+      const cyclingNiveau = profile?.experience_level === 'gevorderd' ? 'gevorderd'
+        : profile?.experience_level === 'intermediate' ? 'gemiddeld' : 'beginner'
+      const cyclingDrills = filterCycling(cyclingDoel, cyclingNiveau as 'beginner' | 'gemiddeld' | 'gevorderd')
+      if (cyclingDrills.length > 0) {
+        cyclingContext = `
+BESCHIKBARE CYCLING SESSIES (gebruik UITSLUITEND deze lijst bij cycling training, gebruik de session_type waarde):
+${formateerCyclingVoorPrompt(cyclingDrills)}`
+      }
+    }
+
     // Optie C: Recovery filter
     let recoveryContext = ''
     {
@@ -546,6 +597,9 @@ Reageer ALLEEN in dit JSON formaat:
       strengthContext,
       mobilityContext,
       recoveryContext,
+      runningContext,
+      rowingContext,
+      cyclingContext,
     ].filter(Boolean).join('\n')
 
     // Beschikbare mobility subtypes — AI mag alleen hieruit kiezen

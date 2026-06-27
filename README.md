@@ -45,7 +45,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.2.1
+- Versie: 2.3.0
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Supabase: https://fabtmkrzqrrwbvgaugjm.supabase.co
@@ -715,6 +715,14 @@ oefening bibliotheek.
   Herstelbibliotheek nu inklapbaar per categorie: Ademhaling (5),
   Mobiliteit (11), Ontspanning (5), Wandelen (2).
   Route fix: relaxation type stuurt naar /training/recovery/relaxation.
+
+- v2.3.0: Drill Libraries voor Running, Rowing en Cycling.
+  running-drills.ts (13 drills), rowing-drills.ts (12 drills),
+  cycling-drills.ts (11 drills). Alle drie geintegreerd in
+  training/today/route.ts via Optie C. Trainer AI mag nu alleen
+  kiezen uit bekende sessietypes voor alle modules.
+  CoachOS totaal: 354 modules + 36 drill sessies = 390 totaal.
+  Trainer Rule nu volledig van kracht voor ALLE modules.
 
 ## Coach-routes — geverifieerde architectuur (Sonnet 4.6, tenzij anders vermeld)
 Alle drie onderstaande bestanden zijn in de loop van het project
