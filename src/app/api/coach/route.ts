@@ -399,10 +399,10 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
     }
 
     // ── Weercontext voor de coach ────────────────────────────────────────────
-    const weerContext = weerRes?.coach_context
-      ? `
-
-Weersomstandigheden vandaag: ${weerRes.coach_context}`
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const weerData = weerRes as any
+    const weerContext = weerData?.coach_context
+      ? `\n\nWeersomstandigheden vandaag: ${weerData.coach_context}`
       : ''
 
     const systemPrompt = buildDailyCoachPrompt(
