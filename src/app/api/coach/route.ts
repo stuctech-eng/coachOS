@@ -311,20 +311,16 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
         .slice(0, 8)
 
       if (topOefeningen.length > 0) {
-        progressieContext = '
-
-Oefeningprogressie laatste 30 dagen (persoonlijke records):
-'
+        progressieContext = '\n\nOefeningprogressie laatste 30 dagen (persoonlijke records):\n'
         for (const pr of topOefeningen) {
           const details = [
             pr.max_weight > 0 ? `max ${pr.max_weight} kg` : '',
             pr.max_reps > 0 ? `max ${pr.max_reps} reps` : '',
             `${pr.uitvoeringen}× uitgevoerd`,
           ].filter(Boolean).join(', ')
-          progressieContext += `- ${pr.naam} (${pr.module}): ${details}
-`
+          progressieContext += `- ${pr.naam} (${pr.module}): ${details}\n`
         }
-        progressieContext += 'Gebruik deze data om progressie te herkennen en te benoemen in je advies. Als een oefening veel herhaald is, kan het tijd zijn voor progressie.'
+        progressieContext += `Gebruik deze data om progressie te herkennen en te benoemen in je advies. Als een oefening veel herhaald is, kan het tijd zijn voor progressie.`
       }
     }
 
