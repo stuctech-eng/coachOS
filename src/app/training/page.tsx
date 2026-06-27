@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Dumbbell, Wind, Footprints, Zap, Play, RefreshCw, Clock, ChevronRight, BookOpen, Waves, Bike } from 'lucide-react'
@@ -106,7 +107,24 @@ const TRAININGSBIBLIOTHEEK: Array<{ module: TrainingModule; label: string; sub: 
   { module: 'bodyweight', label: 'Bodyweight & Core', sub: 'Trainer AI kiest oefeningen' },
 ]
 
-const BIBLIOTHEEK_CATEGORIEEN = [
+type BibliotheekItem = {
+  type: 'breathing' | 'mobility' | 'walk' | 'relaxation'
+  subtype: string
+  label: string
+  sub: string
+  duration: number
+}
+
+type BibliotheekCategorie = {
+  id: string
+  label: string
+  icon: React.ElementType
+  kleur: string
+  bg: string
+  items: BibliotheekItem[]
+}
+
+const BIBLIOTHEEK_CATEGORIEEN: BibliotheekCategorie[] = [
   {
     id: 'ademhaling',
     label: 'Ademhaling',
@@ -169,7 +187,7 @@ const BIBLIOTHEEK_CATEGORIEEN = [
 ]
 
 // Platte lijst voor backward compatibility
-const BIBLIOTHEEK = BIBLIOTHEEK_CATEGORIEEN.flatMap(c => c.items) as RecoveryModule[]
+const BIBLIOTHEEK: BibliotheekItem[] = BIBLIOTHEEK_CATEGORIEEN.flatMap(c => c.items)
 
 function TrainingSkeleton() {
   return (
