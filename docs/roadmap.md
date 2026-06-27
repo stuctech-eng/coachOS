@@ -23,67 +23,68 @@
 
 ---
 
-## Fase 2 — Verdieping (In Progress)
+## Fase 2 — Verdieping (✅ Voltooid v2.0 - v2.3)
 
-### Category B — Intensity Modules
-**Doel:** Drill libraries toevoegen voor cardio modules
-
-**Running drill library**
-- easy run / recovery run / tempo run / interval run / fartlek / long run
-- Elk met beschrijving, doelpace, hartslagzone
-- Filter op niveau + coachDoel
-
-**Cycling drill library**
-- endurance ride / tempo ride / interval ride / recovery ride / sweetspot
-- Filter op niveau + FTP percentage
-
-**Rowing drill library**
-- steady state / power intervals / technique focus / pyramid / race prep
-- Filter op niveau + splits
-
-### Progressie Engine
-**Doel:** Data-driven progressie tracking
-
-- Gewicht tracking per oefening over tijd
-- Volume tracking (sets × reps × gewicht)
-- Progressieregels (wanneer verhogen)
-- Persoonlijke records per oefening
-- Belastingsgrafiek in Progressie pagina
-
-### Naam Matching Verbetering
-- Automatische alias generatie bij bibliotheekupdate
-- Logging van niet-gevonden namen voor aliassen uitbreiding
+- ✅ Mobility bibliotheek (20 oefeningen)
+- ✅ Recovery bibliotheek (12 modules)
+- ✅ Relaxation pagina (6 sessies)
+- ✅ Herstelbibliotheek inklapbaar per categorie
+- ✅ Scroll naar categorie bij openen
+- ✅ Terug → juiste categorie blijft open
+- ✅ Running drill library (13 drills)
+- ✅ Rowing drill library (12 drills)
+- ✅ Cycling drill library (11 drills)
+- ✅ Trainer Rule — AI mag alleen uit bibliotheek kiezen (alle modules)
+- ✅ Life-events module
 
 ---
 
-## Fase 3 — Uitbreiding
+## Fase 3 — Progressie (✅ Voltooid v2.3)
 
-### Category C — Guided Modules
-- Mobility module (30+ oefeningen)
-- Recovery module (ademhaling, ontspanning, foam rolling)
-- Warming-up module (dynamische warming-ups)
+- ✅ exercise_records tabel (Supabase)
+- ✅ Oefeningen opslaan bij voltooide training
+- ✅ Persoonlijke Records per oefening
+- ✅ Filter op module (kettlebell/bodyweight/strength/etc.)
+- ✅ Oefening detail grafiek (gewicht/reps over tijd)
+- ✅ Volume per week grafiek
+- ✅ Coach trendanalyse Fase 3A (eerste→laatste, % verandering)
+- ✅ Coach Rapport op aanvraag Fase 3B (maandrapport)
+- ✅ progress_analyses tabel met 24u cache
+
+---
+
+## Fase 4 — Uitbreiding (Volgende)
+
+### Openstaand
+- 🟡 GitHub tags aanmaken v2.0.4 t/m v2.3.5
+- 🟡 Life-events pagina testen
+- 🟡 Exercise records vullen na eerste training post-v2.3.1
+
+### Warming-up Module
+- Dynamische warming-up bibliotheek
+- Coach koppelt warming-up aan training type
+- 10-15 warming-up drills
 
 ### Oefening Uitlegpagina's
 - Aparte pagina per oefening met volledige uitleg
 - Toegankelijk vanuit sessie én los
-- Video placeholder per oefening
+- Tips + veelgemaakte fouten
+
+### Progressie Fase 4
+- Deload detectie (belasting stijgt te snel)
+- Coach stelt automatisch progressie voor
+- "Je Goblet Squat staat 3 weken op 20kg — tijd voor 22kg"
 
 ### iOS Shortcut Garmin Import
 - Automatische dagelijkse Garmin sync
 - Geen handmatige import meer nodig
 
-### Meer Strava Data
-- Route kaart per activiteit
-- Splits per kilometer/interval
-- Hartslag grafiek
-
 ---
 
-## Fase 4 — Toekomst
+## Fase 5 — Toekomst
 
 ### Adaptieve Coaching
 - Coach past adviezen aan op basis van compliance history
-- "Je negeert rustdagen vaak — plan we dit anders?"
 - Seizoensgebonden planning
 
 ### Periodisering
@@ -91,19 +92,26 @@
 - Piektraining voor evenementen
 - Tapering protocollen
 
-### Social Features
-- Trainingslog delen
-- Vergelijken met vorige week/maand
-- Uitdagingen
-
 ### Wearable Integratie
 - Apple Watch real-time hartslag
 - Apple Health sync
-- Whoop integratie
+
+### Universele Exercise Database
+```
+src/lib/exercises/
+    kettlebell.ts
+    bodyweight.ts
+    mobility.ts
+    recovery.ts
+    running.ts
+    rowing.ts
+    cycling.ts
+```
+Met één gedeeld `Exercise` interface en `allExercises.filter()` als universele engine.
 
 ---
 
-## Architectuurprincipes voor toekomstige ontwikkeling
+## Architectuurprincipes
 
 Bij elke nieuwe feature:
 
@@ -112,3 +120,4 @@ Bij elke nieuwe feature:
 3. **Coach bepaalt, Trainer voert uit** — scheiding bewaken
 4. **Bestaande code intact** — alleen uitbreiding, nooit afbraak
 5. **Documenteer de beslissing** — update changelog.md
+6. **Trainer Rule** — AI mag NOOIT oefeningen verzinnen buiten de bibliotheek
