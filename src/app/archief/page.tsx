@@ -137,18 +137,7 @@ export default function ArchiefPage() {
   }
 
   function startOefening(categorie: ArchiefCategorie, oefening: ArchiefOefening) {
-    // Sla de gekozen losse oefening op zodat de sessie-engine
-    // weet dat dit een archief-test is, los van de coach
-    try {
-      localStorage.setItem('archief_oefening_pending', JSON.stringify({
-        module: categorie.module,
-        oefeningNaam: oefening.naam,
-        oefeningId: oefening.id,
-      }))
-      localStorage.setItem('library_module_pending', categorie.module)
-      localStorage.setItem('library_module_datum', new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' }))
-    } catch { /* */ }
-    router.push(`/training/session/${categorie.module}?source=library&archief=1&oefening=${encodeURIComponent(oefening.naam)}`)
+    router.push(`/archief/oefening/${oefening.id}`)
   }
 
   const totaalOefeningen = CATEGORIEEN.reduce((a, c) => a + c.oefeningen.length, 0)

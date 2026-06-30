@@ -130,6 +130,16 @@ Coach (leert van data → past advies aan)
   categorie, los van coach advies. Zoekfunctie, direct te starten,
   evaluatie werkt via bestaande sessie-engine.
 
+- v2.4.1: Archief — standalone losse oefening flow, volledig zonder AI.
+  Nieuw: src/app/archief/oefening/[id]/page.tsx
+  Instelpaneel: sets/reps/duur/rust instelbaar, kettlebell gewicht
+  keuzemenu (14/16/20kg, uitbreidbaar tot 32kg). Toont vorige sessie
+  uit exercise_records als referentie. Geen Trainer AI call.
+  Eigen mini workout-engine (1 oefening, geen 2e/3e erbij).
+  training_source: library triggert bestaande Coach Call logica
+  zodat coach ziet dat er buiten advies om getraind is.
+  Niets aan bestaande flows gewijzigd — pure uitbreiding.
+
 ## Coach-routes — geverifieerde architectuur
 Alle filters actief in `src/app/api/training/today/route.ts`:
 - filterKettlebell() → kettlebellContext
