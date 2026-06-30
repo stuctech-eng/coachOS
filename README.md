@@ -80,6 +80,20 @@
 - `coach_recommendations` — dagadvies + compliance
 - `coach_calls` — evaluatie na training
 
+## Exercise Illustraties — Voortgang
+
+Mannequin-stijl illustraties per oefening, gegenereerd via GPT, opgeslagen in
+`public/exercises/[id].png`. Gekoppeld via `illustratie` veld op de
+BibliotheekOefening interfaces. Eerste categorie: Kettlebell (102 oefeningen).
+
+| # | Oefening | Status |
+|---|----------|--------|
+| 1 | Kettlebell Swing | ✅ Live in app |
+
+**Volgende:** vraag "volgende" voor de prompt van de 2e kettlebell oefening.
+Prompt-sjabloon (stijl, layout, kwaliteitseisen) blijft hetzelfde — alleen
+oefeningnaam en de 5 fasenamen wijzigen per oefening.
+
 ## Bibliotheek Totaal
 - Bodyweight: 120 oefeningen (`src/lib/bodyweight-exercises.ts`)
 - Strength: 100 oefeningen (`src/lib/strength-exercises.ts`)
@@ -139,6 +153,12 @@ Coach (leert van data → past advies aan)
   training_source: library triggert bestaande Coach Call logica
   zodat coach ziet dat er buiten advies om getraind is.
   Niets aan bestaande flows gewijzigd — pure uitbreiding.
+
+- v2.4.2: Timer + countdown fix in Archief losse-oefening flow.
+  5 seconden countdown toegevoegd (cirkel-voortgang, skip-knop).
+  Reps omgezet naar tijdseenheid (3 sec/rep) zodat altijd een
+  aftellende timer zichtbaar is, ook bij rep-gebaseerde oefeningen.
+  Consistent met sessie-engine, mobility en relaxation pagina's.
 
 ## Coach-routes — geverifieerde architectuur
 Alle filters actief in `src/app/api/training/today/route.ts`:
