@@ -65,7 +65,7 @@ const CATEGORIEEN: ArchiefCategorie[] = [
     bg: 'bg-red-500/20',
     module: 'strength',
     oefeningen: STRENGTH_OEFENINGEN.map(o => ({
-      id: o.id, naam: o.naam, sub: o.categorie,
+      id: o.id, naam: o.naam, sub: o.lichaamsdelen?.[0] || o.equipment?.[0] || '',
       illustratie: (o as { illustratie?: string }).illustratie,
     })),
   },
