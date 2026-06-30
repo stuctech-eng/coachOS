@@ -6,8 +6,10 @@ import { X, Play, Pause, ChevronRight } from 'lucide-react'
 interface Stap {
   titel: string
   instructie: string
-  duur: number // seconden, 0 = geen timer
+  duur: number
 }
+
+const COUNTDOWN_DURATION = 5
 
 const SCHEMAS: Record<string, { naam: string; beschrijving: string; stappen: Stap[]; emoji: string }> = {
   progressieve_spierontspanning: {
@@ -95,12 +97,31 @@ const SCHEMAS: Record<string, { naam: string; beschrijving: string; stappen: Sta
   },
 }
 
+function CountdownRing({ seconds, label }: { seconds: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-8 text-center flex-1">
+      <p className="text-xs text-purple-400 font-semibold uppercase tracking-wider mb-3">Klaarmaken</p>
+      <p className="text-sm text-slate-300 mb-6">{label}</p>
+      <div className="relative w-32 h-32 flex items-center justify-center">
+        <svg width="128" height="128" className="absolute -rotate-90">
+          <circle cx="64" cy="64" r="58" fill="none" stroke="#1e293b" strokeWidth="6" />
+          <circle cx="64" cy="64" r="58" fill="none"
+            stroke="#a855f7" strokeWidth="6" strokeLinecap="round"
+            strokeDasharray={`${2 * Math.PI * 58}`}
+            strokeDashoffset={`${2 * Math.PI * 58 * (1 - seconds / COUNTDOWN_DURATION)}`}
+            style={{ transition: 'stroke-dashoffset 1s linear' }} />
+        </svg>
+        <p key={seconds} className="text-6xl font-bold text-white" style={{ animation: 'countdownPulse 1s ease-out' }}>{seconds}</p>
+      </div>
+      <style>{`@keyframes countdownPulse { 0% { transform: scale(1.4); opacity: 0.3; } 100% { transform: scale(1); opacity: 1; } }`}</style>
+    </div>
+  )
+}
+
 function RelaxatieSession() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const label = searchParams.get('label') || 'Ontspanning'
-
-  // Map label naar schema ID
   const terug = searchParams.get('terug') || ''
   const terugUrl = terug ? `/training?herstel=1&terug=${terug}` : '/training?herstel=1'
 
@@ -122,12 +143,15 @@ function RelaxatieSession() {
 
   const [gestart, setGestart] = useState(false)
   const [klaar, setKlaar] = useState(false)
+  const [countingDown, setCountingDown] = useState(false)
+  const [countdownSec, setCountdownSec] = useState(COUNTDOWN_DURATION)
   const [stapIndex, setStapIndex] = useState(0)
   const [teller, setTeller] = useState(0)
   const [gepauzeerd, setGepauzeerd] = useState(false)
   const [voltooid, setVoltooid] = useState<number[]>([])
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const huidigeStap = schema.stappen[stapIndex]
   const totaalDuur = schema.stappen.reduce((s, st) => s + st.duur, 0)
   const verlopenDuur = voltooid.reduce((s, i) => s + schema.stappen[i].duur, 0) + teller
@@ -135,21 +159,29 @@ function RelaxatieSession() {
   const slaOpResultaat = useCallback(async () => {
     try {
       await fetch('/api/recovery/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'relaxation',
-          module: schemaId,
-          duration: Math.round(totaalDuur / 60),
-          completion_status: 'completed',
-          recovery_impact: 'high',
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'relaxation', module: schemaId, duration: Math.round(totaalDuur / 60), completion_status: 'completed', recovery_impact: 'high' }),
       })
     } catch { /* */ }
   }, [schemaId, totaalDuur])
 
   useEffect(() => {
-    if (!gestart || gepauzeerd || klaar || huidigeStap.duur === 0) return
+    if (!countingDown || gepauzeerd) return
+    countdownRef.current = setInterval(() => {
+      setCountdownSec(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current!)
+          setCountingDown(false)
+          return COUNTDOWN_DURATION
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current) }
+  }, [countingDown, gepauzeerd])
+
+  useEffect(() => {
+    if (!gestart || gepauzeerd || klaar || countingDown || huidigeStap.duur === 0) return
 
     intervalRef.current = setInterval(() => {
       setTeller(prev => {
@@ -161,6 +193,8 @@ function RelaxatieSession() {
           }
           setVoltooid(v => [...v, stapIndex])
           setStapIndex(i => i + 1)
+          setCountingDown(true)
+          setCountdownSec(COUNTDOWN_DURATION)
           return 0
         }
         return prev + 1
@@ -168,10 +202,21 @@ function RelaxatieSession() {
     }, 1000)
 
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [gestart, gepauzeerd, klaar, huidigeStap, stapIndex, totaalStappen, slaOpResultaat])
+  }, [gestart, gepauzeerd, klaar, countingDown, huidigeStap, stapIndex, totaalStappen, slaOpResultaat])
+
+  function startSessie() {
+    setGestart(true)
+    setCountingDown(true)
+    setCountdownSec(COUNTDOWN_DURATION)
+  }
 
   function volgendeManueel() {
     if (intervalRef.current) clearInterval(intervalRef.current)
+    if (countingDown) {
+      if (countdownRef.current) clearInterval(countdownRef.current)
+      setCountingDown(false)
+      return
+    }
     if (stapIndex + 1 >= totaalStappen) {
       setKlaar(true)
       slaOpResultaat()
@@ -180,6 +225,8 @@ function RelaxatieSession() {
     setVoltooid(v => [...v, stapIndex])
     setStapIndex(i => i + 1)
     setTeller(0)
+    setCountingDown(true)
+    setCountdownSec(COUNTDOWN_DURATION)
   }
 
   const totaalVoortgang = verlopenDuur / totaalDuur
@@ -237,7 +284,7 @@ function RelaxatieSession() {
         </div>
 
         <div className="pb-12">
-          <button onClick={() => setGestart(true)}
+          <button onClick={startSessie}
             className="w-full py-4 bg-purple-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-purple-700">
             <Play size={22} fill="white" />
             Start sessie
@@ -249,20 +296,20 @@ function RelaxatieSession() {
 
   return (
     <div className="fixed inset-0 flex flex-col" style={{ background: '#0a0f1a' }}>
-      {/* Header */}
       <div className="flex items-center justify-between px-6 pt-14 pb-4">
         <button onClick={() => router.push(terugUrl)}
           className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center">
           <X size={20} className="text-slate-400" />
         </button>
         <p className="text-slate-500 text-sm">{stapIndex + 1} / {totaalStappen}</p>
-        <button onClick={() => setGepauzeerd(p => !p)}
-          className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center">
-          {gepauzeerd ? <Play size={18} className="text-white" /> : <Pause size={18} className="text-white" />}
-        </button>
+        {!countingDown ? (
+          <button onClick={() => setGepauzeerd(p => !p)}
+            className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center">
+            {gepauzeerd ? <Play size={18} className="text-white" /> : <Pause size={18} className="text-white" />}
+          </button>
+        ) : <div className="w-10 h-10" />}
       </div>
 
-      {/* Voortgangsbalk totaal */}
       <div className="px-6 mb-6">
         <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
           <div className="h-full bg-purple-500 rounded-full transition-all duration-500"
@@ -270,40 +317,39 @@ function RelaxatieSession() {
         </div>
       </div>
 
-      {/* Inhoud */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
-        {/* Emoji cirkel */}
-        <div className="relative w-40 h-40 mb-8 flex items-center justify-center">
-          <svg width="160" height="160" className="absolute">
-            <circle cx="80" cy="80" r="72" fill="none" stroke="#1e293b" strokeWidth="3" />
-            <circle cx="80" cy="80" r="72" fill="none"
-              stroke="#a855f7" strokeWidth="3" strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 72}`}
-              strokeDashoffset={`${2 * Math.PI * 72 * (1 - stapVoortgang)}`}
-              transform="rotate(-90 80 80)"
-              style={{ transition: 'stroke-dashoffset 0.9s linear' }} />
-          </svg>
-          <div className="text-center">
-            <span className="text-5xl">{schema.emoji}</span>
-            {huidigeStap.duur > 0 && (
-              <p className="text-lg font-bold text-purple-400 mt-1">
-                {Math.max(huidigeStap.duur - teller, 0)}s
-              </p>
-            )}
+      {countingDown ? (
+        <CountdownRing seconds={countdownSec} label={huidigeStap.titel} />
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
+          <div className="relative w-40 h-40 mb-8 flex items-center justify-center">
+            <svg width="160" height="160" className="absolute">
+              <circle cx="80" cy="80" r="72" fill="none" stroke="#1e293b" strokeWidth="3" />
+              <circle cx="80" cy="80" r="72" fill="none"
+                stroke="#a855f7" strokeWidth="3" strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 72}`}
+                strokeDashoffset={`${2 * Math.PI * 72 * (1 - stapVoortgang)}`}
+                transform="rotate(-90 80 80)"
+                style={{ transition: 'stroke-dashoffset 0.9s linear' }} />
+            </svg>
+            <div className="text-center">
+              <span className="text-5xl">{schema.emoji}</span>
+              {huidigeStap.duur > 0 && (
+                <p className="text-lg font-bold text-purple-400 mt-1">{Math.max(huidigeStap.duur - teller, 0)}s</p>
+              )}
+            </div>
           </div>
+
+          <h2 className="text-xl font-bold text-white mb-4">{huidigeStap.titel}</h2>
+          <p className="text-slate-300 text-sm leading-relaxed mb-8">{huidigeStap.instructie}</p>
+
+          {gepauzeerd && <p className="text-slate-600 text-xs mb-4">Gepauzeerd</p>}
         </div>
+      )}
 
-        <h2 className="text-xl font-bold text-white mb-4">{huidigeStap.titel}</h2>
-        <p className="text-slate-300 text-sm leading-relaxed mb-8">{huidigeStap.instructie}</p>
-
-        {gepauzeerd && <p className="text-slate-600 text-xs mb-4">Gepauzeerd</p>}
-      </div>
-
-      {/* Volgende knop */}
       <div className="px-6 pb-12">
         <button onClick={volgendeManueel}
           className="w-full py-4 bg-slate-800 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 active:bg-slate-700">
-          {stapIndex + 1 >= totaalStappen ? 'Afronden' : 'Volgende stap'}
+          {countingDown ? 'Skip countdown' : stapIndex + 1 >= totaalStappen ? 'Afronden' : 'Volgende stap'}
           <ChevronRight size={18} />
         </button>
       </div>

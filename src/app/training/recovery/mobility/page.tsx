@@ -9,6 +9,8 @@ interface Oefening {
   duur: number
 }
 
+const COUNTDOWN_DURATION = 5
+
 const SCHEMAS: Record<string, { naam: string; beschrijving: string; oefeningen: Oefening[] }> = {
   hamstring_stretch: {
     naam: 'Hamstring Stretch',
@@ -152,25 +154,48 @@ const SCHEMAS: Record<string, { naam: string; beschrijving: string; oefeningen: 
   },
 }
 
+function CountdownRing({ seconds, label }: { seconds: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-8 text-center flex-1">
+      <p className="text-xs text-green-400 font-semibold uppercase tracking-wider mb-3">Klaarmaken</p>
+      <p className="text-sm text-slate-300 mb-6">{label}</p>
+      <div className="relative w-32 h-32 flex items-center justify-center">
+        <svg width="128" height="128" className="absolute -rotate-90">
+          <circle cx="64" cy="64" r="58" fill="none" stroke="#1e293b" strokeWidth="6" />
+          <circle cx="64" cy="64" r="58" fill="none"
+            stroke="#34d399" strokeWidth="6" strokeLinecap="round"
+            strokeDasharray={`${2 * Math.PI * 58}`}
+            strokeDashoffset={`${2 * Math.PI * 58 * (1 - seconds / COUNTDOWN_DURATION)}`}
+            style={{ transition: 'stroke-dashoffset 1s linear' }} />
+        </svg>
+        <p key={seconds} className="text-6xl font-bold text-white" style={{ animation: 'countdownPulse 1s ease-out' }}>{seconds}</p>
+      </div>
+      <style>{`@keyframes countdownPulse { 0% { transform: scale(1.4); opacity: 0.3; } 100% { transform: scale(1); opacity: 1; } }`}</style>
+    </div>
+  )
+}
+
 function MobilitySession() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const subtype = searchParams.get('subtype') || 'full_body'
   const terug = searchParams.get('terug') || ''
   const terugUrl = terug ? `/training?herstel=1&terug=${terug}` : '/training?herstel=1'
-  const label = searchParams.get('label') || 'Mobiliteit'
 
   const schema = SCHEMAS[subtype] || SCHEMAS.full_body
   const totaalOefeningen = schema.oefeningen.length
 
   const [gestart, setGestart] = useState(false)
   const [klaar, setKlaar] = useState(false)
+  const [countingDown, setCountingDown] = useState(false)
+  const [countdownSec, setCountdownSec] = useState(COUNTDOWN_DURATION)
   const [oefenIndex, setOefenIndex] = useState(0)
   const [teller, setTeller] = useState(0)
   const [gepauzeerd, setGepauzeerd] = useState(false)
   const [voltooid, setVoltooid] = useState<number[]>([])
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const huidigeOefening = schema.oefeningen[oefenIndex]
   const totaalDuur = schema.oefeningen.reduce((s, o) => s + o.duur, 0)
   const verlopenDuur = voltooid.reduce((s, i) => s + schema.oefeningen[i].duur, 0) + teller
@@ -178,21 +203,30 @@ function MobilitySession() {
   const slaOpResultaat = useCallback(async () => {
     try {
       await fetch('/api/recovery/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'mobility',
-          module: subtype,
-          duration: Math.round(totaalDuur / 60),
-          completion_status: 'completed',
-          recovery_impact: 'medium',
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'mobility', module: subtype, duration: Math.round(totaalDuur / 60), completion_status: 'completed', recovery_impact: 'medium' }),
       })
     } catch { /* */ }
   }, [subtype, totaalDuur])
 
+  // Countdown voor de start van elke oefening
   useEffect(() => {
-    if (!gestart || gepauzeerd || klaar) return
+    if (!countingDown || gepauzeerd) return
+    countdownRef.current = setInterval(() => {
+      setCountdownSec(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current!)
+          setCountingDown(false)
+          return COUNTDOWN_DURATION
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current) }
+  }, [countingDown, gepauzeerd])
+
+  useEffect(() => {
+    if (!gestart || gepauzeerd || klaar || countingDown) return
 
     intervalRef.current = setInterval(() => {
       setTeller(prev => {
@@ -204,6 +238,8 @@ function MobilitySession() {
           }
           setVoltooid(v => [...v, oefenIndex])
           setOefenIndex(i => i + 1)
+          setCountingDown(true)
+          setCountdownSec(COUNTDOWN_DURATION)
           return 0
         }
         return prev + 1
@@ -211,10 +247,21 @@ function MobilitySession() {
     }, 1000)
 
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [gestart, gepauzeerd, klaar, huidigeOefening, oefenIndex, totaalOefeningen, slaOpResultaat])
+  }, [gestart, gepauzeerd, klaar, countingDown, huidigeOefening, oefenIndex, totaalOefeningen, slaOpResultaat])
+
+  function startSessie() {
+    setGestart(true)
+    setCountingDown(true)
+    setCountdownSec(COUNTDOWN_DURATION)
+  }
 
   function volgendeManueel() {
     if (intervalRef.current) clearInterval(intervalRef.current)
+    if (countingDown) {
+      if (countdownRef.current) clearInterval(countdownRef.current)
+      setCountingDown(false)
+      return
+    }
     if (oefenIndex + 1 >= totaalOefeningen) {
       setKlaar(true)
       slaOpResultaat()
@@ -223,6 +270,8 @@ function MobilitySession() {
     setVoltooid(v => [...v, oefenIndex])
     setOefenIndex(i => i + 1)
     setTeller(0)
+    setCountingDown(true)
+    setCountdownSec(COUNTDOWN_DURATION)
   }
 
   const oefVoortgang = teller / huidigeOefening.duur
@@ -278,7 +327,7 @@ function MobilitySession() {
         </div>
 
         <div className="pb-12">
-          <button onClick={() => setGestart(true)}
+          <button onClick={startSessie}
             className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 active:bg-primary-700">
             <Play size={22} fill="white" />
             Start sessie
@@ -296,10 +345,13 @@ function MobilitySession() {
           <X size={20} className="text-slate-400" />
         </button>
         <p className="text-slate-500 text-sm">{oefenIndex + 1} / {totaalOefeningen}</p>
-        <button onClick={() => setGepauzeerd(p => !p)}
-          className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center">
-          {gepauzeerd ? <Play size={18} className="text-white" /> : <Pause size={18} className="text-white" />}
-        </button>
+        {!countingDown && (
+          <button onClick={() => setGepauzeerd(p => !p)}
+            className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center">
+            {gepauzeerd ? <Play size={18} className="text-white" /> : <Pause size={18} className="text-white" />}
+          </button>
+        )}
+        {countingDown && <div className="w-10 h-10" />}
       </div>
 
       <div className="px-6 mb-6">
@@ -309,33 +361,37 @@ function MobilitySession() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
-        <div className="relative w-48 h-48 mb-8 flex items-center justify-center">
-          <svg width="192" height="192" className="absolute">
-            <circle cx="96" cy="96" r="88" fill="none" stroke="#1e293b" strokeWidth="4" />
-            <circle cx="96" cy="96" r="88" fill="none"
-              stroke="#34d399" strokeWidth="4" strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 88}`}
-              strokeDashoffset={`${2 * Math.PI * 88 * (1 - oefVoortgang)}`}
-              transform="rotate(-90 96 96)"
-              style={{ transition: 'stroke-dashoffset 0.9s linear' }} />
-          </svg>
-          <div className="text-center">
-            <p className="text-4xl font-bold text-white">{Math.max(huidigeOefening.duur - teller, 0)}</p>
-            <p className="text-xs text-slate-500 mt-1">seconden</p>
+      {countingDown ? (
+        <CountdownRing seconds={countdownSec} label={huidigeOefening.naam} />
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
+          <div className="relative w-48 h-48 mb-8 flex items-center justify-center">
+            <svg width="192" height="192" className="absolute">
+              <circle cx="96" cy="96" r="88" fill="none" stroke="#1e293b" strokeWidth="4" />
+              <circle cx="96" cy="96" r="88" fill="none"
+                stroke="#34d399" strokeWidth="4" strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 88}`}
+                strokeDashoffset={`${2 * Math.PI * 88 * (1 - oefVoortgang)}`}
+                transform="rotate(-90 96 96)"
+                style={{ transition: 'stroke-dashoffset 0.9s linear' }} />
+            </svg>
+            <div className="text-center">
+              <p className="text-4xl font-bold text-white">{Math.max(huidigeOefening.duur - teller, 0)}</p>
+              <p className="text-xs text-slate-500 mt-1">seconden</p>
+            </div>
           </div>
+
+          <h2 className="text-xl font-bold text-white mb-4">{huidigeOefening.naam}</h2>
+          <p className="text-slate-400 text-sm leading-relaxed mb-8">{huidigeOefening.instructie}</p>
+
+          {gepauzeerd && <p className="text-slate-600 text-xs mb-4">Gepauzeerd</p>}
         </div>
-
-        <h2 className="text-xl font-bold text-white mb-4">{huidigeOefening.naam}</h2>
-        <p className="text-slate-400 text-sm leading-relaxed mb-8">{huidigeOefening.instructie}</p>
-
-        {gepauzeerd && <p className="text-slate-600 text-xs mb-4">Gepauzeerd</p>}
-      </div>
+      )}
 
       <div className="px-6 pb-12">
         <button onClick={volgendeManueel}
           className="w-full py-4 bg-slate-800 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 active:bg-slate-700">
-          {oefenIndex + 1 >= totaalOefeningen ? 'Afronden' : 'Volgende'}
+          {countingDown ? 'Skip countdown' : oefenIndex + 1 >= totaalOefeningen ? 'Afronden' : 'Volgende'}
           <ChevronRight size={18} />
         </button>
       </div>
