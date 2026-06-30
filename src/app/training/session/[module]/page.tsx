@@ -48,6 +48,7 @@ interface BibliotheekOefening {
   fouten: string[]
   primaireSpieren: string[]
   secundaireSpieren: string[]
+  illustratie?: string
 }
 
 function zoekInBibliotheek(naam: string, moduleType: string): BibliotheekOefening | null {
@@ -365,6 +366,17 @@ function UitlegScherm({
           </div>
         )}
       </div>
+
+      {bibliotheekOefening?.illustratie && (
+        <div className="bg-white rounded-2xl p-2">
+          <img
+            src={`/exercises/${bibliotheekOefening.illustratie}`}
+            alt={kb.exercise}
+            className="w-full rounded-xl"
+            onError={(e) => { (e.target as HTMLImageElement).closest('div')!.style.display = 'none' }}
+          />
+        </div>
+      )}
 
       {hasTargets && (
         <Card className="p-4">

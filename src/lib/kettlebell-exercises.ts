@@ -53,6 +53,7 @@ export interface KettlebellOefening {
   secundaireSpieren: string[]
   herstel: boolean
   mobiliteit: boolean
+  illustratie?: string
 }
 
 export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
@@ -148,6 +149,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
     id: 'kb-swing',
     naam: 'Kettlebell Swing',
     categorie: 'hinge',
+    illustratie: 'kettlebell-swing.png',
     lichaamsdelen: ['billen', 'rug', 'fullbody'],
     doelen: ['kracht', 'conditie', 'ballistisch'],
     niveau: 'beginner',
