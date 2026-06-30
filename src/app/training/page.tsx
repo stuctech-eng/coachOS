@@ -426,21 +426,6 @@ function TrainingContent() {
           </Card>
         )}
 
-        {/* Archief — alle oefeningen los testen, buiten de coach om */}
-        <button onClick={() => router.push('/archief')}
-          className="w-full active:opacity-70 text-left">
-          <Card className="px-4 py-3 flex items-center gap-3 border border-coach-border">
-            <div className="w-8 h-8 rounded-lg bg-slate-700/40 flex items-center justify-center flex-shrink-0">
-              <BookOpen size={16} className="text-slate-300" />
-            </div>
-            <div className="flex-1">
-              <p className="text-white text-sm font-medium">Archief</p>
-              <p className="text-slate-500 text-xs">Alle oefeningen los bekijken en testen</p>
-            </div>
-            <ChevronRight size={14} className="text-slate-600" />
-          </Card>
-        </button>
-
         {/* Trainingsbibliotheek */}
         <div>
           <button onClick={() => setShowTrainingsBibliotheek(!showTrainingsBibliotheek)}
@@ -544,6 +529,21 @@ function TrainingContent() {
             </div>
           )}
         </div>
+
+        {/* Archief — alle oefeningen los testen, buiten de coach om */}
+        <button onClick={() => router.push('/archief')}
+          className="w-full active:opacity-70 text-left">
+          <Card className="px-4 py-3 flex items-center gap-3 border border-coach-border">
+            <div className="w-8 h-8 rounded-lg bg-slate-700/40 flex items-center justify-center flex-shrink-0">
+              <BookOpen size={16} className="text-slate-300" />
+            </div>
+            <div className="flex-1">
+              <p className="text-white text-sm font-medium">Archief</p>
+              <p className="text-slate-500 text-xs">Alle oefeningen los bekijken en testen</p>
+            </div>
+            <ChevronRight size={14} className="text-slate-600" />
+          </Card>
+        </button>
       </div>
     </AppShell>
   )

@@ -373,6 +373,7 @@ function UitlegScherm({
             src={`/exercises/${bibliotheekOefening.illustratie}`}
             alt={kb.exercise}
             className="w-full rounded-xl"
+            onError={(e) => { (e.target as HTMLImageElement).closest('div')!.style.display = 'none' }}
           />
         </div>
       )}
