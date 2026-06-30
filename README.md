@@ -121,6 +121,15 @@ Coach (leert van data → past advies aan)
 - v2.3.4 — Coach Trendanalyse Fase 3A (eerste→laatste, % verandering)
 - v2.3.5 — Coach Rapport op aanvraag Fase 3B (progress-analysis route)
 
+- v2.4.0: Exercise Illustraties + Archief.
+  illustratie veld toegevoegd aan BibliotheekOefening interfaces.
+  Kettlebell Swing eerste oefening met mannequin-stijl illustratie
+  (public/exercises/kettlebell-swing.png). UitlegScherm toont
+  illustratie boven Doelwaarden als beschikbaar.
+  Nieuw: /archief pagina — alle 354 oefeningen doorbladerbaar per
+  categorie, los van coach advies. Zoekfunctie, direct te starten,
+  evaluatie werkt via bestaande sessie-engine.
+
 ## Coach-routes — geverifieerde architectuur
 Alle filters actief in `src/app/api/training/today/route.ts`:
 - filterKettlebell() → kettlebellContext
