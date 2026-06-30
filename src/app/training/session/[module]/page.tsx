@@ -14,7 +14,9 @@ import { BODYWEIGHT_OEFENINGEN } from '@/lib/bodyweight-exercises'
 import { STRENGTH_OEFENINGEN } from '@/lib/strength-exercises'
 import { KETTLEBELL_OEFENINGEN } from '@/lib/kettlebell-exercises'
 
-type WorkoutPhase = 'active' | 'rest' | 'last_rest' | 'uitleg'
+type WorkoutPhase = 'countdown' | 'active' | 'rest' | 'last_rest' | 'uitleg'
+
+const COUNTDOWN_DURATION = 5
 
 interface ExtendedSessionState extends LiveSessionState {
   current_set: number
@@ -25,6 +27,7 @@ interface ExtendedSessionState extends LiveSessionState {
   skipped_segments: number[]
   completed_sets: number
   uitleg_index: number
+  countdown_seconds: number
 }
 
 function generateSessionId(): string {
@@ -37,8 +40,6 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-// Zoek oefening op in de bibliotheek op basis van naam
-// Probeert exacte match, dan fuzzy match (bevat), dan omgekeerde bevat
 interface BibliotheekOefening {
   naam: string
   id: string
@@ -53,145 +54,61 @@ function zoekInBibliotheek(naam: string, moduleType: string): BibliotheekOefenin
   if (!naam) return null
   const normNaam = naam.toLowerCase().trim().replace(/[-_]/g, ' ')
 
-  // Aliassen — AI gebruikt soms andere namen dan de bibliotheek
   const ALIASSEN: Record<string, string> = {
-    'bodyweight squat': 'air squat',
-    'bodyweight squats': 'air squat',
-    'squats': 'air squat',
-    'squat': 'air squat',
-    'push ups': 'push-up',
-    'push-ups': 'push-up',
-    'pushups': 'push-up',
-    'pushup': 'push-up',
-    'lunges': 'reverse lunge',
-    'lunge': 'reverse lunge',
-    'plank hold': 'plank',
-    'high plank': 'plank',
-    'glute bridges': 'glute bridge',
-    'hip bridges': 'glute bridge',
-    'mountain climbers': 'mountain climber',
-    'jumping jacks': 'jumping jacks',
-    'burpees': 'burpee',
-    'dead bugs': 'dead bug',
-    'bird dogs': 'bird dog',
-    'side planks': 'zijplank',
-    'side plank': 'zijplank',
-    'hollow body hold': 'hollow hold',
-    'hollow body': 'hollow hold',
-    'v ups': 'v-up',
-    'v-ups': 'v-up',
-    'russian twists': 'russian twist',
-    'bicycle crunches': 'bicycle crunch',
-    'leg raises': 'beenheffen',
-    'reverse crunches': 'reverse crunch',
-    'flutter kicks': 'flutter kick',
-    'hip thrusts': 'hip thrust',
-    'donkey kicks': 'donkey kick',
-    'fire hydrants': 'fire hydrant',
-    'clamshells': 'clamshell',
-    'frog pumps': 'frog pump',
-    'calf raises': 'kuitverheffen',
-    'step ups': 'step-up',
-    'goblet squats': 'goblet squat',
-    'split squats': 'split squat',
-    'bulgarian split squats': 'bulgaarse split squat',
-    'wall sits': 'wall sit',
-    'inchworms': 'inchworm',
-    'world greatest stretch': 'world\'s greatest stretch',
-    'worlds greatest stretch': 'world\'s greatest stretch',
-    'childs pose': 'child\'s pose',
-    'child pose': 'child\'s pose',
-    'cat cow': 'cat-cow',
-    'cat-cow stretch': 'cat-cow',
-    'deep squat': 'deep squat hold',
-    'thoracic rotations': 'thoracale rotatie',
-    'thoracic rotation': 'thoracale rotatie',
-    'hip flexor stretch': 'heupbuiger stretch',
-    'shoulder rolls': 'schouderrollen',
-    'box breathing': 'box breathing',
-    'superman hold': 'superman',
-    'supermans': 'superman',
-    'toe touches': 'toe touch',
-    'knee push ups': 'knie push-up',
-    'knee push-ups': 'knie push-up',
-    'incline push ups': 'incline push-up',
-    'decline push ups': 'decline push-up',
-    'wide push ups': 'wide push-up',
-    'diamond push ups': 'diamond push-up',
-    'pike push ups': 'pike push-up',
-    'skater jumps': 'skater jump',
-    'skater hops': 'skater jump',
-    'high knees': 'high knees',
-    'butt kicks': 'butt kicks',
-    'lateral shuffles': 'zijwaartse shuffle',
-    'lateral shuffle': 'zijwaartse shuffle',
-    'plank jacks': 'plank jack',
-    'tuck jumps': 'tuck jump',
-    'broad jumps': 'brede sprong',
-    'bear crawls': 'bear crawl',
-    'seal jacks': 'seal jack',
-    'speed skaters': 'speed skater',
-    'shoulder taps': 'shoulder tap',
-    'reverse snow angels': 'reverse snow angel',
-    'cobra pose': 'cobra hold',
-    'cobra stretch': 'cobra hold',
-    // Kettlebell aliassen
-    'two hand swing': 'kettlebell swing',
-    'two-hand swing': 'kettlebell swing',
-    'kb swing': 'kettlebell swing',
-    'kb deadlift': 'kettlebell deadlift',
-    'goblet squat kb': 'goblet squat',
-    'single arm press': 'strict press',
-    'overhead press kb': 'strict press',
-    'kb press': 'strict press',
-    'kb row': 'single arm row',
-    'kb clean': 'clean',
-    'kb snatch': 'snatch',
-    // Strength aliassen
-    'dumbbell squats': 'goblet squat',
-    'db squat': 'goblet squat',
-    'db press': 'dumbbell bench press',
-    'db bench press': 'dumbbell bench press',
-    'bench press db': 'dumbbell bench press',
-    'db row': 'dumbbell row',
-    'barbell squat': 'back squat',
-    'back squats': 'back squat',
-    'deadlifts': 'deadlift',
-    'romanian deadlifts': 'romanian deadlift dumbbell',
-    'rdl': 'romanian deadlift dumbbell',
-    'overhead press': 'dumbbell shoulder press',
-    'shoulder press': 'dumbbell shoulder press',
-    'bicep curls': 'dumbbell biceps curl',
-    'biceps curls': 'dumbbell biceps curl',
-    'curls': 'dumbbell biceps curl',
-    'tricep extensions': 'dumbbell triceps extension',
-    'triceps extensions': 'dumbbell triceps extension',
-    'lateral raises': 'lateral raise',
-    'farmer carries': 'farmer carry',
-    'farmer walk': 'farmer carry',
+    'bodyweight squat': 'air squat', 'bodyweight squats': 'air squat', 'squats': 'air squat', 'squat': 'air squat',
+    'push ups': 'push-up', 'push-ups': 'push-up', 'pushups': 'push-up', 'pushup': 'push-up',
+    'lunges': 'reverse lunge', 'lunge': 'reverse lunge', 'plank hold': 'plank', 'high plank': 'plank',
+    'glute bridges': 'glute bridge', 'hip bridges': 'glute bridge', 'mountain climbers': 'mountain climber',
+    'jumping jacks': 'jumping jacks', 'burpees': 'burpee', 'dead bugs': 'dead bug', 'bird dogs': 'bird dog',
+    'side planks': 'zijplank', 'side plank': 'zijplank', 'hollow body hold': 'hollow hold', 'hollow body': 'hollow hold',
+    'v ups': 'v-up', 'v-ups': 'v-up', 'russian twists': 'russian twist', 'bicycle crunches': 'bicycle crunch',
+    'leg raises': 'beenheffen', 'reverse crunches': 'reverse crunch', 'flutter kicks': 'flutter kick',
+    'hip thrusts': 'hip thrust', 'donkey kicks': 'donkey kick', 'fire hydrants': 'fire hydrant',
+    'clamshells': 'clamshell', 'frog pumps': 'frog pump', 'calf raises': 'kuitverheffen', 'step ups': 'step-up',
+    'goblet squats': 'goblet squat', 'split squats': 'split squat', 'bulgarian split squats': 'bulgaarse split squat',
+    'wall sits': 'wall sit', 'inchworms': 'inchworm', 'world greatest stretch': 'world\'s greatest stretch',
+    'worlds greatest stretch': 'world\'s greatest stretch', 'childs pose': 'child\'s pose', 'child pose': 'child\'s pose',
+    'cat cow': 'cat-cow', 'cat-cow stretch': 'cat-cow', 'deep squat': 'deep squat hold',
+    'thoracic rotations': 'thoracale rotatie', 'thoracic rotation': 'thoracale rotatie',
+    'hip flexor stretch': 'heupbuiger stretch', 'shoulder rolls': 'schouderrollen', 'box breathing': 'box breathing',
+    'superman hold': 'superman', 'supermans': 'superman', 'toe touches': 'toe touch',
+    'knee push ups': 'knie push-up', 'knee push-ups': 'knie push-up', 'incline push ups': 'incline push-up',
+    'decline push ups': 'decline push-up', 'wide push ups': 'wide push-up', 'diamond push ups': 'diamond push-up',
+    'pike push ups': 'pike push-up', 'skater jumps': 'skater jump', 'skater hops': 'skater jump',
+    'high knees': 'high knees', 'butt kicks': 'butt kicks', 'lateral shuffles': 'zijwaartse shuffle',
+    'lateral shuffle': 'zijwaartse shuffle', 'plank jacks': 'plank jack', 'tuck jumps': 'tuck jump',
+    'broad jumps': 'brede sprong', 'bear crawls': 'bear crawl', 'seal jacks': 'seal jack',
+    'speed skaters': 'speed skater', 'shoulder taps': 'shoulder tap', 'reverse snow angels': 'reverse snow angel',
+    'cobra pose': 'cobra hold', 'cobra stretch': 'cobra hold',
+    'two hand swing': 'kettlebell swing', 'two-hand swing': 'kettlebell swing', 'kb swing': 'kettlebell swing',
+    'kb deadlift': 'kettlebell deadlift', 'goblet squat kb': 'goblet squat', 'single arm press': 'strict press',
+    'overhead press kb': 'strict press', 'kb press': 'strict press', 'kb row': 'single arm row',
+    'kb clean': 'clean', 'kb snatch': 'snatch',
+    'dumbbell squats': 'goblet squat', 'db squat': 'goblet squat', 'db press': 'dumbbell bench press',
+    'db bench press': 'dumbbell bench press', 'bench press db': 'dumbbell bench press', 'db row': 'dumbbell row',
+    'barbell squat': 'back squat', 'back squats': 'back squat', 'deadlifts': 'deadlift',
+    'romanian deadlifts': 'romanian deadlift dumbbell', 'rdl': 'romanian deadlift dumbbell',
+    'overhead press': 'dumbbell shoulder press', 'shoulder press': 'dumbbell shoulder press',
+    'bicep curls': 'dumbbell biceps curl', 'biceps curls': 'dumbbell biceps curl', 'curls': 'dumbbell biceps curl',
+    'tricep extensions': 'dumbbell triceps extension', 'triceps extensions': 'dumbbell triceps extension',
+    'lateral raises': 'lateral raise', 'farmer carries': 'farmer carry', 'farmer walk': 'farmer carry',
   }
 
   const genormaliseerd = ALIASSEN[normNaam] || normNaam
 
   function vind(lijst: BibliotheekOefening[]): BibliotheekOefening | null {
-    // 0. Alias match
     if (genormaliseerd !== normNaam) {
       const alias = lijst.find(o => o.naam.toLowerCase() === genormaliseerd)
       if (alias) return alias
     }
-    // 1. Exacte match
     const exact = lijst.find(o => o.naam.toLowerCase() === normNaam)
     if (exact) return exact
-    // 2. ID match
     const idMatch = lijst.find(o => o.id === normNaam.replace(/\s+/g, '-'))
     if (idMatch) return idMatch
-    // 3. Bibliotheek naam zit in AI naam (bijv. "Push-Up" in "Push-ups")
     const bevatBib = lijst.find(o => normNaam.includes(o.naam.toLowerCase()))
     if (bevatBib) return bevatBib
-    // 4. AI naam zit in bibliotheek naam
     const bevatAI = lijst.find(o => o.naam.toLowerCase().includes(normNaam))
     if (bevatAI) return bevatAI
-    // 5. Eerste woord match (minimaal 4 tekens)
     const eersteWoord = normNaam.split(' ')[0]
     if (eersteWoord.length > 3) {
       const woordMatch = lijst.find(o => o.naam.toLowerCase().startsWith(eersteWoord))
@@ -389,7 +306,6 @@ function UitlegScherm({
   moduleType?: string
 }) {
   const kb = asDisplay(segment)
-  // Zoek rijke Nederlandse data op in de bibliotheek
   const bibliotheekOefening = moduleType ? zoekInBibliotheek(kb.exercise, moduleType) : null
   const isFirst = segmentIndex === 0
   const isPulsing = restSeconds !== undefined && restSeconds <= 3 && restSeconds > 0
@@ -466,7 +382,6 @@ function UitlegScherm({
         </Card>
       )}
 
-      {/* 1. Beschrijving */}
       {(bibliotheekOefening?.beschrijving || kb.instruction) && (
         <Card className="p-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Uitvoering</p>
@@ -476,7 +391,6 @@ function UitlegScherm({
         </Card>
       )}
 
-      {/* 2. Spieren */}
       {bibliotheekOefening?.primaireSpieren && bibliotheekOefening.primaireSpieren.length > 0 && (
         <Card className="p-4">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Spieren</p>
@@ -487,7 +401,6 @@ function UitlegScherm({
         </Card>
       )}
 
-      {/* 3. Tips */}
       {bibliotheekOefening?.tips && bibliotheekOefening.tips.length > 0 && (
         <Card className="p-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Tips</p>
@@ -502,7 +415,6 @@ function UitlegScherm({
         </Card>
       )}
 
-      {/* 4. Veelgemaakte fouten */}
       {((bibliotheekOefening?.fouten && bibliotheekOefening.fouten.length > 0) || kb.common_errors.length > 0) && (
         <Card className="p-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Veelgemaakte fouten</p>
@@ -517,7 +429,6 @@ function UitlegScherm({
         </Card>
       )}
 
-      {/* 5. Coaching tip (AI) */}
       {kb.cue && (
         <Card className="p-4 bg-primary-500/10 border-primary-500/20">
           <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-1">Coaching tip</p>
@@ -543,13 +454,45 @@ function UitlegScherm({
   )
 }
 
+function CountdownScherm({ seconds, exercise }: { seconds: number; exercise: string }) {
+  return (
+    <div className="flex flex-col gap-4 pb-4">
+      <Card className="p-8 text-center bg-primary-500/10 border-primary-500/30">
+        <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-4">Klaarmaken</p>
+        <p className="text-sm text-slate-300 mb-6">{exercise}</p>
+        <div className="relative w-32 h-32 mx-auto flex items-center justify-center">
+          <svg width="128" height="128" className="absolute -rotate-90">
+            <circle cx="64" cy="64" r="58" fill="none" stroke="#1e293b" strokeWidth="6" />
+            <circle cx="64" cy="64" r="58" fill="none"
+              stroke="#818cf8" strokeWidth="6" strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 58}`}
+              strokeDashoffset={`${2 * Math.PI * 58 * (1 - seconds / COUNTDOWN_DURATION)}`}
+              style={{ transition: 'stroke-dashoffset 1s linear' }} />
+          </svg>
+          <p key={seconds} className="text-6xl font-bold text-white" style={{ animation: 'countdownPulse 1s ease-out' }}>
+            {seconds}
+          </p>
+        </div>
+        <p className="text-xs text-slate-500 mt-6">Maak je klaar voor de oefening</p>
+      </Card>
+      <style>{`
+        @keyframes countdownPulse {
+          0% { transform: scale(1.4); opacity: 0.3; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 function WorkoutEngine({
-  session, onTick, onRestTick, onNextSet, onNextSegment,
+  session, onTick, onRestTick, onCountdownTick, onNextSet, onNextSegment,
   onComplete, onBackOefening, onVolgendOefening, onNext, onPause, onTempoChange,
 }: {
   session: ExtendedSessionState
   onTick: () => void
   onRestTick: () => void
+  onCountdownTick: () => void
   onNextSet: () => void
   onNextSegment: () => void
   onComplete: () => void
@@ -566,11 +509,26 @@ function WorkoutEngine({
   const isCycling = seg.type === 'cycling'
   const totalSets = seg.sets || 1
   const isLastSegment = session.current_segment === segments.length - 1
+  const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const tickRef = useRef<NodeJS.Timeout | null>(null)
   const restRef = useRef<NodeJS.Timeout | null>(null)
   const [currentTempo, setCurrentTempo] = useState<Tempo>(getTempo(seg.exercise))
 
   useEffect(() => { setCurrentTempo(getTempo(seg.exercise)) }, [seg.exercise])
+
+  useEffect(() => {
+    if (session.workout_phase === 'countdown' && session.auto_running) {
+      countdownRef.current = setInterval(() => {
+        if (session.countdown_seconds <= 1) {
+          clearInterval(countdownRef.current!)
+          onNextSet()
+        } else {
+          onCountdownTick()
+        }
+      }, 1000)
+    }
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current) }
+  }, [session.workout_phase, session.auto_running, session.countdown_seconds, onCountdownTick, onNextSet])
 
   useEffect(() => {
     if (session.workout_phase === 'active' && session.auto_running) {
@@ -611,6 +569,10 @@ function WorkoutEngine({
         </p>
         <p className="text-2xl font-mono font-bold text-white">{formatTime(session.elapsed_seconds)}</p>
       </div>
+
+      {session.workout_phase === 'countdown' && (
+        <CountdownScherm seconds={session.countdown_seconds} exercise={seg.exercise || 'Oefening'} />
+      )}
 
       {session.workout_phase === 'active' && (
         <Card className="p-5">
@@ -683,7 +645,7 @@ function WorkoutEngine({
         )
       })()}
 
-      {session.workout_phase !== 'last_rest' && (
+      {session.workout_phase !== 'last_rest' && session.workout_phase !== 'countdown' && (
         <div className="flex gap-2">
           <button onClick={onBackOefening}
             disabled={session.current_segment === 0 && session.current_set === 1 && session.workout_phase === 'active'}
@@ -699,6 +661,13 @@ function WorkoutEngine({
             Volgend <ChevronRight size={14} />
           </button>
         </div>
+      )}
+
+      {session.workout_phase === 'countdown' && (
+        <button onClick={onNext}
+          className="w-full py-3.5 bg-slate-800 text-slate-300 rounded-xl font-semibold text-sm active:bg-slate-700 flex items-center justify-center gap-1">
+          <SkipForward size={14} /> Skip countdown
+        </button>
       )}
 
       <button onClick={onPause}
@@ -841,9 +810,6 @@ export default function SessionPage() {
   const searchParams = useSearchParams()
   const module = params.module as TrainingModule
 
-  // isLibrary wordt bepaald in de useEffect hieronder (client-side only)
-  // zodat localStorage altijd beschikbaar is — niet hier op module-niveau
-
   const [session, setSession] = useState<ExtendedSessionState | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -854,7 +820,6 @@ export default function SessionPage() {
   const [pendingSession, setPendingSession] = useState<ExtendedSessionState | null>(null)
 
   useEffect(() => {
-    // Library detectie EERST — voorkomt dat resume-dialog de library-flow blokkeert
     const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
     const libPending = localStorage.getItem('library_module_pending')
     const libDatum = localStorage.getItem('library_module_datum')
@@ -863,8 +828,6 @@ export default function SessionPage() {
     const existing = loadSession()
     const hasSegments = existing?.schema && getSegments(existing.schema).length > 0
 
-    // Alleen hervatten als GEEN library-keuze pending is
-    // Library-flow moet altijd vers genereren, nooit een oude sessie hervatten
     if (!isLibrary && existing && existing.module === module && existing.status !== 'completed' && hasSegments) {
       setPendingSession(existing)
       setShowResumeDialog(true)
@@ -874,8 +837,6 @@ export default function SessionPage() {
     clearSession()
     const run = async () => {
       try {
-        
-
         if (isLibrary) {
           const vandaag = vandaagStr
           const libKey = `training_lib_${module}_data`
@@ -900,7 +861,6 @@ export default function SessionPage() {
             if (instruction?.training_type || instruction?.segments) {
               localStorage.setItem(libKey, JSON.stringify(instruction))
               localStorage.setItem(libDatumKey, vandaag)
-              // Wis de pending library-keuze na succesvolle sessie-opbouw
               localStorage.removeItem('library_module_pending')
               localStorage.removeItem('library_module_datum')
               buildAndSetSession(instruction, 'library')
@@ -954,6 +914,7 @@ export default function SessionPage() {
       elapsed_seconds: 0, current_set: 1, workout_phase: 'active', rest_seconds: 0,
       active_seconds_left: getActiveDuration(firstSeg),
       auto_running: false, skipped_segments: [], completed_sets: 0, uitleg_index: 0,
+      countdown_seconds: COUNTDOWN_DURATION,
       training_source: source,
     }
     saveSession(newSession)
@@ -974,6 +935,10 @@ export default function SessionPage() {
     setSession(prev => prev && prev.auto_running ? { ...prev, rest_seconds: Math.max(0, prev.rest_seconds - 1) } : prev)
   }, [])
 
+  const handleCountdownTick = useCallback(() => {
+    setSession(prev => prev && prev.auto_running ? { ...prev, countdown_seconds: Math.max(0, prev.countdown_seconds - 1) } : prev)
+  }, [])
+
   function updateStatus(status: SessionStatus) {
     setSession(prev => prev ? { ...prev, status } : prev)
   }
@@ -981,6 +946,12 @@ export default function SessionPage() {
   function handleNextSet() {
     setSession(prev => {
       if (!prev) return prev
+
+      if (prev.workout_phase === 'countdown') {
+        const seg = getSeg(prev.schema, prev.current_segment)
+        return { ...prev, workout_phase: 'active', active_seconds_left: getActiveDuration(seg), countdown_seconds: COUNTDOWN_DURATION }
+      }
+
       const seg = getSeg(prev.schema, prev.current_segment)
       const totalSets = seg?.sets || 1
       const restSec = seg?.rest_sec || 60
@@ -988,8 +959,7 @@ export default function SessionPage() {
         const isLastSet = prev.current_set >= totalSets
         return { ...prev, workout_phase: isLastSet ? 'last_rest' : 'rest', rest_seconds: restSec, completed_sets: prev.completed_sets + 1 }
       } else {
-        const seg2 = getSeg(prev.schema, prev.current_segment)
-        return { ...prev, workout_phase: 'active', current_set: prev.current_set + 1, rest_seconds: 0, active_seconds_left: getActiveDuration(seg2) }
+        return { ...prev, workout_phase: 'countdown', countdown_seconds: COUNTDOWN_DURATION, current_set: prev.current_set + 1, rest_seconds: 0 }
       }
     })
   }
@@ -998,9 +968,8 @@ export default function SessionPage() {
     setSession(prev => {
       if (!prev) return prev
       const next = prev.current_segment + 1
-      const nextSeg = getSeg(prev.schema, next)
       return { ...prev, current_segment: next, completed_segments: [...prev.completed_segments, prev.current_segment],
-        current_set: 1, workout_phase: 'active', rest_seconds: 0, auto_running: true, active_seconds_left: getActiveDuration(nextSeg) }
+        current_set: 1, workout_phase: 'countdown', countdown_seconds: COUNTDOWN_DURATION, rest_seconds: 0, auto_running: true }
     })
   }
 
@@ -1012,20 +981,25 @@ export default function SessionPage() {
     setSession(prev => {
       if (!prev) return prev
       const segments = getSegments(prev.schema)
+      const isLastSegment = prev.current_segment === segments.length - 1
+
+      if (prev.workout_phase === 'countdown') {
+        const seg = getSeg(prev.schema, prev.current_segment)
+        return { ...prev, workout_phase: 'active', active_seconds_left: getActiveDuration(seg), countdown_seconds: COUNTDOWN_DURATION }
+      }
+
       const seg = getSeg(prev.schema, prev.current_segment)
       const totalSets = seg?.sets || 1
       const restSec = seg?.rest_sec || 60
-      const isLastSegment = prev.current_segment === segments.length - 1
       if (prev.workout_phase === 'active') {
         const isLastSet = prev.current_set >= totalSets
         return { ...prev, workout_phase: isLastSet ? 'last_rest' : 'rest', rest_seconds: restSec, completed_sets: prev.completed_sets + 1 }
       } else if (prev.workout_phase === 'rest') {
-        return { ...prev, workout_phase: 'active', current_set: prev.current_set + 1, rest_seconds: 0, active_seconds_left: getActiveDuration(seg) }
+        return { ...prev, workout_phase: 'countdown', countdown_seconds: COUNTDOWN_DURATION, current_set: prev.current_set + 1, rest_seconds: 0 }
       } else if (prev.workout_phase === 'last_rest') {
         if (isLastSegment) return { ...prev, status: 'voltooid' as SessionStatus, auto_running: false }
-        const nextSeg3 = getSeg(prev.schema, prev.current_segment + 1)
         return { ...prev, current_segment: prev.current_segment + 1, completed_segments: [...prev.completed_segments, prev.current_segment],
-          current_set: 1, workout_phase: 'active', rest_seconds: 0, active_seconds_left: getActiveDuration(nextSeg3) }
+          current_set: 1, workout_phase: 'countdown', countdown_seconds: COUNTDOWN_DURATION, rest_seconds: 0 }
       }
       return prev
     })
@@ -1034,10 +1008,10 @@ export default function SessionPage() {
   function handleBackOefening() {
     setSession(prev => {
       if (!prev) return prev
-      const targetIndex = prev.workout_phase === 'active' && prev.current_set === 1 && prev.current_segment > 0
+      const targetIndex = (prev.workout_phase === 'active' || prev.workout_phase === 'countdown') && prev.current_set === 1 && prev.current_segment > 0
         ? prev.current_segment - 1 : prev.current_segment
       return { ...prev, auto_running: false, workout_phase: 'uitleg', uitleg_index: targetIndex,
-        current_segment: targetIndex, current_set: 1, rest_seconds: 0, elapsed_seconds: 0 }
+        current_segment: targetIndex, current_set: 1, rest_seconds: 0, elapsed_seconds: 0, countdown_seconds: COUNTDOWN_DURATION }
     })
   }
 
@@ -1047,7 +1021,7 @@ export default function SessionPage() {
       const segments = getSegments(prev.schema)
       const next = Math.min(prev.current_segment + 1, Math.max(0, segments.length - 1))
       return { ...prev, auto_running: false, workout_phase: 'uitleg', uitleg_index: next,
-        current_segment: next, current_set: 1, rest_seconds: 0, elapsed_seconds: 0 }
+        current_segment: next, current_set: 1, rest_seconds: 0, elapsed_seconds: 0, countdown_seconds: COUNTDOWN_DURATION }
     })
   }
 
@@ -1077,9 +1051,8 @@ export default function SessionPage() {
   function handleReadyFromUitleg() {
     setSession(prev => {
       if (!prev) return prev
-      const seg = getSeg(prev.schema, prev.current_segment)
-      return { ...prev, status: 'workout', workout_phase: 'active', auto_running: true,
-        current_set: 1, rest_seconds: 0, active_seconds_left: getActiveDuration(seg) }
+      return { ...prev, status: 'workout', workout_phase: 'countdown', auto_running: true,
+        current_set: 1, rest_seconds: 0, countdown_seconds: COUNTDOWN_DURATION }
     })
   }
 
@@ -1183,7 +1156,7 @@ export default function SessionPage() {
             )}
 
             {session.status === 'workout' && session.workout_phase !== 'uitleg' && (
-              <WorkoutEngine session={session} onTick={handleTick} onRestTick={handleRestTick}
+              <WorkoutEngine session={session} onTick={handleTick} onRestTick={handleRestTick} onCountdownTick={handleCountdownTick}
                 onNextSet={handleNextSet} onNextSegment={handleNextSegment} onComplete={handleComplete}
                 onBackOefening={handleBackOefening} onVolgendOefening={handleVolgendOefening} onNext={handleNext}
                 onPause={() => { setSession(prev => prev ? { ...prev, auto_running: false } : prev); setShowPause(true) }}
