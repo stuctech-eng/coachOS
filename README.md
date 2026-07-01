@@ -52,21 +52,15 @@
 | Coach Rapport op aanvraag (Fase 3B) | ✅ |
 | Life-events Module | ✅ |
 | Trainer Rule (alle modules) | ✅ |
-| Weerbericht (Open-Meteo) | ✅ |
-| Archief (354 oefeningen los) | ✅ |
-| Exercise Illustraties Systeem | ✅ |
-| Countdown + Timer (alle modules) | ✅ |
-| Coach Rapport op aanvraag (Fase 3B) | ✅ |
 
 ## Openstaand
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.2 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.3.5 | 🟡 |
 | Life-events pagina testen | 🟡 |
-| Kettlebell illustraties uitrollen (1/6 klaar) | 🔄 In progress |
-| Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
 | Exercise records vullen na eerste training | 🔄 automatisch |
+| Fase 3B testen na data | 🔄 automatisch |
 
 ---
 
@@ -74,7 +68,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.2
+- Versie: 2.3.5
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
