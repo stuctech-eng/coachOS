@@ -15,6 +15,7 @@ import { MOBILITY_OEFENINGEN } from '@/lib/mobility-exercises'
 // Gewicht-stappen voor kettlebell — later uitbreidbaar tot 32kg in stappen van 4
 const KETTLEBELL_GEWICHTEN = [14, 16, 20]
 // Toekomstige uitbreiding: const KETTLEBELL_GEWICHTEN = [14, 16, 20, 24, 28, 32]
+const COUNTDOWN_DURATION = 5
 
 interface OefeningData {
   id: string
@@ -89,7 +90,7 @@ export default function ArchiefOefeningPage() {
   const [gewicht, setGewicht] = useState<number | null>(null)
 
   // Workout state
-  const [fase, setFase] = useState<'instellen' | 'actief' | 'rust' | 'voltooid' | 'evaluatie' | 'opgeslagen'>('instellen')
+  const [fase, setFase] = useState<'instellen' | 'countdown' | 'actief' | 'rust' | 'voltooid' | 'evaluatie' | 'opgeslagen'>('instellen')
   const [huidigeSet, setHuidigeSet] = useState(1)
   const [tellerSec, setTellerSec] = useState(0)
   const [gepauzeerd, setGepauzeerd] = useState(false)
@@ -99,7 +100,11 @@ export default function ArchiefOefeningPage() {
   const [rating, setRating] = useState<number | null>(null)
   const [opslaan, setOpslaan] = useState(false)
 
+  // Reps worden omgezet naar tijdseenheid via tempo (3 sec/rep) zodat er
+  // altijd een aftellende timer getoond kan worden — ook bij rep-oefeningen.
   const isTijdGebaseerd = data?.oefening.duur !== undefined && !data?.oefening.herhalingen
+  const TEMPO_SEC_PER_REP = 3
+  const effectieveDuurSec = isTijdGebaseerd ? duurSec : reps * TEMPO_SEC_PER_REP
 
   useEffect(() => {
     const gevonden = vindOefening(oefeningId)
@@ -181,20 +186,30 @@ export default function ArchiefOefeningPage() {
     finally { setOpslaan(false) }
   }, [data, sets, reps, duurSec, gewicht, isTijdGebaseerd, rustSec, router])
 
-  // Workout timer
+  // Workout timer — countdown vooraf, daarna altijd aftellende timer
+  // (reps worden via effectieveDuurSec omgezet naar seconden)
   useEffect(() => {
-    if (fase !== 'actief' && fase !== 'rust') return
+    if (fase !== 'countdown' && fase !== 'actief' && fase !== 'rust') return
     if (gepauzeerd) return
 
     intervalRef.current = setInterval(() => {
       setTellerSec(prev => {
-        const target = fase === 'actief' ? (isTijdGebaseerd ? duurSec : 999) : rustSec
-        if (fase === 'rust' && prev + 1 >= target) {
-          setFase('actief')
-          return 0
+        if (fase === 'countdown') {
+          if (prev + 1 >= COUNTDOWN_DURATION) {
+            setFase('actief')
+            return 0
+          }
+          return prev + 1
         }
-        if (fase === 'actief' && isTijdGebaseerd && prev + 1 >= duurSec) {
-          // Tijd-gebaseerde set klaar
+        if (fase === 'rust') {
+          if (prev + 1 >= rustSec) {
+            setFase('countdown')
+            return 0
+          }
+          return prev + 1
+        }
+        // fase === 'actief'
+        if (prev + 1 >= effectieveDuurSec) {
           if (huidigeSet >= sets) {
             setFase('voltooid')
           } else {
@@ -208,10 +223,10 @@ export default function ArchiefOefeningPage() {
     }, 1000)
 
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [fase, gepauzeerd, isTijdGebaseerd, duurSec, rustSec, huidigeSet, sets])
+  }, [fase, gepauzeerd, effectieveDuurSec, rustSec, huidigeSet, sets])
 
   function startWorkout() {
-    setFase('actief')
+    setFase('countdown')
     setHuidigeSet(1)
     setTellerSec(0)
   }
@@ -416,18 +431,40 @@ export default function ArchiefOefeningPage() {
           </>
         )}
 
+        {fase === 'countdown' && (
+          <Card className="p-8 text-center bg-primary-500/10 border-primary-500/30">
+            <p className="text-xs text-primary-400 font-semibold uppercase tracking-wider mb-4">Klaarmaken</p>
+            <p className="text-sm text-slate-300 mb-6">{oefening.naam} · Set {huidigeSet} van {sets}</p>
+            <div className="relative w-32 h-32 mx-auto flex items-center justify-center">
+              <svg width="128" height="128" className="absolute -rotate-90">
+                <circle cx="64" cy="64" r="58" fill="none" stroke="#1e293b" strokeWidth="6" />
+                <circle cx="64" cy="64" r="58" fill="none"
+                  stroke="#818cf8" strokeWidth="6" strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 58}`}
+                  strokeDashoffset={`${2 * Math.PI * 58 * (1 - tellerSec / COUNTDOWN_DURATION)}`}
+                  style={{ transition: 'stroke-dashoffset 1s linear' }} />
+              </svg>
+              <p className="text-6xl font-bold text-white">{Math.max(COUNTDOWN_DURATION - tellerSec, 0)}</p>
+            </div>
+            <button onClick={() => { setFase('actief'); setTellerSec(0) }}
+              className="mt-6 w-full py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold">
+              Skip countdown
+            </button>
+          </Card>
+        )}
+
         {fase === 'actief' && (
           <Card className="p-6 text-center">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Set {huidigeSet} van {sets}</p>
             <p className="text-5xl font-bold text-primary-400 mb-2">
-              {isTijdGebaseerd ? `${Math.max(duurSec - tellerSec, 0)}s` : `${reps}×`}
+              {Math.max(effectieveDuurSec - tellerSec, 0)}s
             </p>
+            {!isTijdGebaseerd && (
+              <p className="text-slate-500 text-xs mb-1">{reps} herhalingen op eigen tempo</p>
+            )}
             <p className="text-slate-400 text-sm mb-1">
               {oefening.naam}{gewicht ? ` · ${gewicht}kg` : ''}
             </p>
-            {!isTijdGebaseerd && (
-              <p className="text-slate-500 text-xs mb-6">Tik op Volgende als je klaar bent met deze set</p>
-            )}
             <div className="flex gap-3 mt-6">
               <button onClick={() => setGepauzeerd(p => !p)}
                 className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold flex items-center justify-center gap-2">
@@ -447,7 +484,7 @@ export default function ArchiefOefeningPage() {
           <Card className="p-6 text-center bg-amber-500/10 border-amber-500/20">
             <p className="text-xs text-amber-400 uppercase tracking-wider mb-3">Rust · Set {huidigeSet} volgt</p>
             <p className="text-6xl font-mono font-bold text-amber-400">{Math.max(rustSec - tellerSec, 0)}s</p>
-            <button onClick={() => { setFase('actief'); setTellerSec(0) }}
+            <button onClick={() => { setFase('countdown'); setTellerSec(0) }}
               className="mt-6 w-full py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold">
               Skip rust
             </button>

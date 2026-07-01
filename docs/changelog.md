@@ -1,5 +1,28 @@
 # CoachOS — Changelog
 
+## v2.4.2 — Timer + Countdown Fix Archief
+- `src/app/archief/oefening/[id]/page.tsx` — 5 seconden countdown toegevoegd
+  vóór elke set (cirkel-voortgang, skip-knop). Reps omgezet naar tijdseenheid
+  (3 sec/rep) zodat altijd een aftellende timer zichtbaar is, ook bij
+  rep-gebaseerde oefeningen zoals Kettlebell Swing.
+  Consistent met sessie-engine, mobility en relaxation pagina's.
+
+## v2.4.1 — Archief Standalone Flow
+- Nieuw: `src/app/archief/oefening/[id]/page.tsx`
+  Instelpaneel: sets/reps/duur/rust instelbaar, kettlebell gewicht
+  keuzemenu (14/16/20kg, uitbreidbaar tot 32kg in stappen van 4).
+  Toont vorige sessie uit exercise_records als referentie.
+  Geen Trainer AI call — eigen mini workout-engine voor 1 oefening.
+  training_source: library triggert bestaande Coach Call logica.
+
+## v2.4.0 — Exercise Illustraties + Archief
+- `illustratie` veld toegevoegd aan BibliotheekOefening interfaces
+- Kettlebell Swing eerste oefening met mannequin-stijl illustratie
+  (public/exercises/kettlebell-swing.png), GPT-gegenereerd
+- UitlegScherm toont illustratie boven Doelwaarden als beschikbaar
+- Nieuw: `/archief` pagina — alle 354 oefeningen doorbladerbaar per
+  categorie, los van coach advies. Zoekfunctie.
+
 ## v2.3.6 — Weerbericht
 - `src/app/api/weather/route.ts` — nieuw. IP → locatie → Open-Meteo.
   Uurlijkse data voor ochtend/middag/avond regen. Geen API key.

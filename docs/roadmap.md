@@ -53,12 +53,29 @@
 
 ---
 
-## Fase 4 — Uitbreiding (Volgende)
+## Fase 4 — Uitbreiding (In Progress)
+
+### Voltooid v2.4.0 - v2.4.2
+- ✅ Archief — alle 354 oefeningen los doorbladerbaar, buiten coach om
+- ✅ Standalone losse-oefening flow zonder AI (instelpaneel sets/reps/rust/gewicht)
+- ✅ Exercise illustraties systeem — mannequin-stijl, GPT-gegenereerd
+- ✅ Kettlebell Swing eerste oefening met illustratie live
+- ✅ Vorige sessie tonen als referentie (uit exercise_records)
+- ✅ Coach Call trigger bij archief-training (training_source: library)
+- ✅ Countdown + tijd-gebaseerde timer in archief flow
+
+### Exercise Illustraties — Uitrol
+- 🔄 Kettlebell bibliotheek (1/102 — Swing klaar)
+- ⬜ Bodyweight bibliotheek (0/120)
+- ⬜ Strength bibliotheek (0/100)
+- ⬜ Mobility bibliotheek (0/20)
+- Prompt-sjabloon staat vast in README.md, per oefening alleen
+  naam + 5 fasenamen aanpassen
 
 ### Openstaand
-- 🟡 GitHub tags aanmaken v2.0.4 t/m v2.3.5
+- 🟡 GitHub tags aanmaken v2.0.4 t/m v2.4.2
 - 🟡 Life-events pagina testen
-- 🟡 Exercise records vullen na eerste training post-v2.3.1
+- 🟡 Kettlebell gewicht uitbreiden naar 32kg (stappen van 4)
 
 ### Warming-up Module
 - Dynamische warming-up bibliotheek
