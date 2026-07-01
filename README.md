@@ -52,15 +52,21 @@
 | Coach Rapport op aanvraag (Fase 3B) | ✅ |
 | Life-events Module | ✅ |
 | Trainer Rule (alle modules) | ✅ |
+| Weerbericht (Open-Meteo) | ✅ |
+| Archief (354 oefeningen los) | ✅ |
+| Exercise Illustraties Systeem | ✅ |
+| Countdown + Timer (alle modules) | ✅ |
+| Coach Rapport op aanvraag (Fase 3B) | ✅ |
 
 ## Openstaand
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.3.5 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.2 | 🟡 |
 | Life-events pagina testen | 🟡 |
+| Kettlebell illustraties uitrollen (1/6 klaar) | 🔄 In progress |
+| Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
 | Exercise records vullen na eerste training | 🔄 automatisch |
-| Fase 3B testen na data | 🔄 automatisch |
 
 ---
 
@@ -68,7 +74,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.3.5
+- Versie: 2.4.2
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -177,3 +183,80 @@ Alle filters actief in `src/app/api/training/today/route.ts`:
 - filterCycling() → cyclingContext
 
 Trainer AI mag ALLEEN kiezen uit de gefilterde lijst.
+
+---
+
+## Start Prompt — MASTER SYSTEM v7.3
+
+Je bent een senior software engineer, software architect, systems designer en iPhone-first applicatiespecialist.
+
+Dit systeem is volledig ontworpen voor iPhone-first ontwikkeling. Desktop-workflows zijn optioneel en nooit verplicht.
+
+**Kernregels:**
+- Geen aannames, geen gokken, geen verzonnen bestanden/API's/routes
+- Ontbrekende informatie → STOP, stel exact één gerichte vraag
+- Nooit implementeren vóór analyse, tenzij expliciet gevraagd
+- Stabiliteit boven snelheid
+- Bestaande functionaliteit beschermen
+- Eerst uitbreiden, daarna vervangen
+
+**Volgorde van waarheid:**
+1. README.md
+2. docs/architecture.md
+3. docs/roadmap.md
+4. docs/changelog.md
+5. Bestaande broncode
+
+**Implementatieregels:**
+- Volledige bestanden, geen gedeeltelijke implementaties
+- Bestaande stijl en naamgeving behouden
+- Geen dubbele code, geen dode code, geen placeholders
+- ZIP naam: `coachos-fix.zip` / `coachos-update.zip` / `coachos-docs.zip`
+- Paden beginnen bij repo root: `src/app/page.tsx` niet `coachOS/src/app/page.tsx`
+
+**iPhone-first workflow:**
+- iPhone + Working Copy + GitHub + Vercel + Supabase
+- Oplossingen uitvoerbaar vanaf iPhone
+- Git-oplossingen compatibel met Working Copy
+- Deployments geschikt voor Vercel
+
+**Beslissingsprioriteit:** Stabiliteit → Architectuur → Onderhoudbaarheid → Schaalbaarheid → Prestaties → Functionaliteit → Snelheid
+
+---
+
+## Illustratie Prompt Sjabloon
+
+Voor het genereren van oefening-illustraties via GPT. Vaste tekst — pas alleen **[OEFENINGNAAM]** en de **5 fasen** aan per oefening.
+
+---
+
+Maak een spritesheet-afbeelding voor een trainingsapp die de oefening **[OEFENINGNAAM]** uitlegt in 5 stappen, naast elkaar in één afbeelding.
+
+**Stijl:**
+- Mannequinpop / 3D-skeletfiguur stijl: ovaal hoofd, ronde gewrichtsbollen, dikke cilindrische ledematen met zachte gradient-belichting (licht-naar-donker) voor een ruimtelijk, "draaibaar 3D-model" effect
+- Lichte, neutrale achtergrond (wit of zeer lichtgrijs, geen scène of decor)
+- Donkere lijnkleur voor de contouren (slate/navy, geen zwart)
+- Subtiele slagschaduw onder de voeten van elke pose
+- Een groene gestippelde lijn die de hoofd-naar-schouder houding aangeeft
+- Het gewicht (kettlebell/dumbbell) duidelijk zichtbaar in de juiste positie per stap, donkergrijs/zwart metaal kleur
+
+**Layout:**
+- 5 poses naast elkaar in een horizontale rij, gelijke afstand
+- Onder elke pose: een nummer (1-5) en een korte titel (max 2 woorden)
+- Geen extra decoratie, geen logo's, geen tekst behalve stapnummers en titels
+- Consistente schaal en oriëntatie — zelfde personage, zijaanzicht
+
+**Functioneel:**
+- De 5 poses moeten de daadwerkelijke beweging duidelijk laten zien
+- Zichtbare verandering in gewrichtshoeken tussen elke stap
+- Geen anatomische fouten, realistische proporties
+
+**De 5 fasen zijn:** [FASE 1 — FASE 2 — FASE 3 — FASE 4 — FASE 5]
+
+**Bestandsnaam:** `[oefening-id].png`
+**Bestandsformaat:** PNG, witte achtergrond, minimaal 1200px breed
+
+---
+
+Bestandsnaam-conventie: `[oefening-id].png` in `/public/exercises/`
+Voorbeeld: Kettlebell Swing → `kettlebell-swing.png`
