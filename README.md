@@ -89,6 +89,11 @@ BibliotheekOefening interfaces. Eerste categorie: Kettlebell (102 oefeningen).
 | # | Oefening | Status |
 |---|----------|--------|
 | 1 | Kettlebell Swing | ✅ Live in app |
+| 2 | Kettlebell Deadlift | 🔄 Prompt klaar |
+| 3 | Goblet Squat | 🔄 Prompt klaar |
+| 4 | Kettlebell Clean | 🔄 Prompt klaar |
+| 5 | Kettlebell Press | 🔄 Prompt klaar |
+| 6 | Farmer Carry | 🔄 Prompt klaar |
 
 **Volgende:** vraag "volgende" voor de prompt van de 2e kettlebell oefening.
 Prompt-sjabloon (stijl, layout, kwaliteitseisen) blijft hetzelfde — alleen
