@@ -114,11 +114,12 @@ export async function POST(_req: NextRequest) {
 
     let created = 0
     let updated = 0
+    let reopened = 0
 
     for (const [date, activities] of Object.entries(byDate)) {
       const { data: existing } = await supabase
         .from('coach_calls')
-        .select('id, coach_call_items(activity_session_id)')
+        .select('id, status, coach_call_items(activity_session_id)')
         .eq('user_id', user.id)
         .eq('date', date)
         .single()
@@ -128,6 +129,7 @@ export async function POST(_req: NextRequest) {
           (existing.coach_call_items as { activity_session_id: string }[] || []).map(i => i.activity_session_id)
         )
         const newActivities = activities.filter(a => !existingIds.has(a.id))
+
         if (newActivities.length > 0) {
           await supabase.from('coach_call_items').insert(
             newActivities.map(a => ({
@@ -140,6 +142,15 @@ export async function POST(_req: NextRequest) {
             }))
           )
           updated++
+
+          // FIX v2.4.3: als de call al 'completed' of 'expired' was, heropen hem —
+          // anders blijft hij onzichtbaar in GET (die filtert op pending/partial)
+          if (existing.status === 'completed' || existing.status === 'expired') {
+            await supabase.from('coach_calls')
+              .update({ status: 'pending', completed_at: null })
+              .eq('id', existing.id)
+            reopened++
+          }
         }
         continue
       }
@@ -165,7 +176,7 @@ export async function POST(_req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ created, updated })
+    return NextResponse.json({ created, updated, reopened })
   } catch (err) {
     console.error('[coach-calls POST]', err)
     return NextResponse.json({ error: 'Server fout' }, { status: 500 })

@@ -1,5 +1,22 @@
 # CoachOS — Changelog
 
+## v2.4.3 — Fix: Strava Coach Call niet zichtbaar na voltooide call
+- `src/app/api/coach-calls/route.ts` — POST heropent een bestaande `coach_call`
+  (status `completed` of `expired`) wanneer er nieuwe kwalificerende Strava-
+  activiteiten voor diezelfde datum bijkomen. Voorheen werden nieuwe
+  `coach_call_items` wel toegevoegd aan de bestaande call, maar bleef de
+  `coach_calls.status` op `completed`/`expired` staan — waardoor de GET-route
+  (die filtert op `status in (pending, partial)`) de call nooit meer teruggaf
+  en de banner op de home-pagina niet verscheen.
+  Root cause: als een gebruiker die dag al één Coach Call had afgerond en
+  daarna een nieuwe kwalificerende activiteit synchroniseerde (bv. een
+  Strava-fietsrit), werd die activiteit stil toegevoegd aan een call die al
+  als voltooid gemarkeerd stond.
+  Fix: bij het toevoegen van nieuwe items aan een bestaande call wordt nu ook
+  gecontroleerd of die call `completed`/`expired` is — zo ja, dan wordt de
+  status teruggezet naar `pending` en `completed_at` naar `null`.
+  Geen wijziging aan drempelwaarden, database-schema of overige flows.
+
 ## v2.4.2 — Timer + Countdown Fix Archief
 - `src/app/archief/oefening/[id]/page.tsx` — 5 seconden countdown toegevoegd
   vóór elke set (cirkel-voortgang, skip-knop). Reps omgezet naar tijdseenheid
