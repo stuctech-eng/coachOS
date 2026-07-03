@@ -157,7 +157,7 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.11 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.12 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
@@ -171,7 +171,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.11
+- Versie: 2.4.12
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -229,7 +229,21 @@ Een call die 24 uur oud is zonder voltooiing wordt automatisch `expired`.
 - **v2.4.3:** als er op een datum al een `completed`/`expired` call bestond en er kwam een nieuwe kwalificerende Strava-activiteit bij, bleef die call onzichtbaar (GET filtert op `pending`/`partial`). De `POST`-route (`coach-calls/route.ts`) heropent zo'n call nu automatisch.
 - **v2.4.6:** de bibliotheek-tak (`training/complete/route.ts`) triggerde voorheen alleen een Coach Call als het coach-advies die dag `herstel` of `rust` was. Dat miste gevallen zonder advies of met advies `trainen`. Nu triggert elke Archief/Trainingsbibliotheek-training altijd een Coach Call. Tegelijk is de Strava-drempel verruimd naar OR-logica (afstand of duur) met 30 min i.p.v. 45 min.
 - **v2.4.8:** dezelfde "onzichtbaar na completed/expired"-bug als v2.4.3, maar dan in de bibliotheek-tak — `training/complete/route.ts` had de heropen-logica nog niet.
-- **v2.4.9:** root cause gevonden waarom v2.4.8 in een vervolgtest alsnog niet werkte — een kortstondige Supabase pooler-timeout ("Warp server error: Thread killed by timeout manager", zichtbaar in Supabase → Logs → Postgres Logs) liet de `coach_call_items`-insert stil mislukken terwijl de route toch 200 teruggaf. Retry-logica toegevoegd (één herhaalpoging na 400ms) plus een nieuwe Debug Panel-check ("Coach Call Integriteit") die dit soort mismatches direct in de app zichtbaar maakt, zonder Vercel/Supabase-logs te hoeven doorzoeken.
+- **v2.4.9-v2.4.11:** een reeks pogingen om een aanhoudend "geen Coach Call na bibliotheek-training"-probleem op te lossen. v2.4.9 vermoedde een kortstondige Supabase pooler-timeout en voegde retry-logica toe — **dit was een verkeerd spoor**, de timeout in de Postgres Logs bleek een eenmalig, ongerelateerd voorval. v2.4.11 bracht de echte doorbraak: de retry-logica checkte nooit het `.error`-veld van Supabase-responses (Supabase gooit geen JS-exception bij een DB-fout), waardoor de werkelijke foutmelding nooit gelogd werd. Zodra dat gefixt was, bleek de oorzaak in één test duidelijk (zie v2.4.12).
+- **v2.4.12 — DEFINITIEVE FIX:** `coach_call_items.activity_session_id` had een `NOT NULL`-constraint uit de tijd dat deze tabel alleen voor Strava-items bestond. Bibliotheek-trainingen vullen die kolom nooit (ze gebruiken `training_result_id`), dus elke insert vanuit de bibliotheek-tak faalde met Postgres-foutcode `23502`. Opgelost met `alter table coach_call_items alter column activity_session_id drop not null;` in Supabase SQL Editor — geen codewijziging nodig. **Les:** bij een stil falende Supabase-insert altijd eerst checken of `.error` daadwerkelijk gelogd wordt, vóór tijd te steken in RLS/policy-onderzoek.
+
+**Databaseschema — belangrijk voor toekomstige wijzigingen:**
+`coach_call_items` bedient nu twee verschillende bronnen met verschillende
+verplichte velden:
+- Strava-items: `activity_session_id` ingevuld, `training_result_id` NULL
+- Bibliotheek-items (Archief/Trainingsbibliotheek): `training_result_id`
+  ingevuld, `activity_session_id` NULL
+Beide kolommen zijn dus terecht **nullable** (sinds v2.4.12) — dat is geen
+datakwaliteitsprobleem, maar een bewuste consequentie van één tabel die
+twee brontypes bedient. Voeg bij een nieuwe Coach Call-bron altijd expliciet
+een `CHECK`- of applicatie-validatie toe die garandeert dat minstens één
+van de twee kolommen gevuld is, in plaats van te vertrouwen op `NOT NULL`
+op één specifieke kolom.
 
 **Bekend gedrag (geen bug):** de Strava-`POST`-trigger draait alleen wanneer `home/page.tsx` geladen wordt. Na een Strava-sync moet de gebruiker dus naar de home-pagina navigeren voordat een nieuwe Coach Call verschijnt.
 
@@ -377,6 +391,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.12 — DEFINITIEVE FIX: NOT NULL constraint activity_session_id opgeheven (SQL, geen code) — hele Coach Call-traject afgesloten
 - v2.4.11 — Fix: retry checkte nooit het .error-veld — echte Postgres-foutmelding nu zichtbaar in logs
 - v2.4.10 — Build-fix: TypeScript-fout in withRetry-helper (v2.4.9 deployde niet)
 - v2.4.9 — Retry-logica Stap 3 + nieuwe debug-check "Coach Call Integriteit"

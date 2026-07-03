@@ -1,5 +1,49 @@
 # CoachOS — Changelog
 
+## v2.4.12 — DEFINITIEVE FIX: NOT NULL constraint op activity_session_id
+**Root cause van het volledige "geen Coach Call na bibliotheek-training"-
+traject (v2.4.6 t/m v2.4.11), eindelijk gevonden en opgelost.**
+
+- **Databasewijziging (uitgevoerd in Supabase SQL Editor, geen code):**
+  ```sql
+  alter table coach_call_items
+  alter column activity_session_id drop not null;
+  ```
+- **Wat er mis was:** `coach_call_items` is oorspronkelijk ontworpen voor
+  uitsluitend Strava-items, met `activity_session_id` als verplichte
+  (`NOT NULL`) kolom. Toen v2.4.6 bibliotheek-trainingen dezelfde tabel
+  liet gebruiken (met `training_result_id` in plaats van
+  `activity_session_id`, dat laatste dus leeg), is het databaseschema zelf
+  nooit aangepast. Elke insert vanuit de bibliotheek-tak faalde daardoor
+  met Postgres-foutcode `23502` ("null value in column
+  activity_session_id... violates not-null constraint") — 100% consistent,
+  geen toeval, geen RLS-probleem.
+- **Waarom dit zo lang duurde om te vinden:** de fout was van meet af aan
+  onzichtbaar. `training/complete/route.ts` had de insert in een
+  `try/catch` die alleen logde, en de retry-helper (v2.4.9) checkte het
+  `.error`-veld van de Supabase-response niet — Supabase gooit standaard
+  geen JS-exception bij een DB-fout. Pas v2.4.11 (expliciete
+  `.error`-check + eigen Error met volledige Postgres-details) maakte de
+  echte foutmelding zichtbaar in Vercel logs, waarna de oorzaak in één
+  oogopslag duidelijk werd.
+- **Onderzoekspad ter referentie (voor vergelijkbare toekomstige gevallen):**
+  1. v2.4.8 loste een écht ander probleem op (completed/expired call niet
+     heropend) — nodig maar niet voldoende
+  2. Vercel function trace liet zien dat de POST naar `coach_call_items`
+     wél plaatsvond, met 200-status op de hele route
+  3. SQL-onderzoek naar RLS-policies (`pg_policies`, `rolbypassrls`) bleek
+     achteraf een verkeerd spoor — alle policies waren consistent en
+     correct; dit kostte de meeste tijd
+  4. Pas expliciete `.error`-logging (v2.4.11) gaf het echte antwoord:
+     een constraint-violation, geen RLS-probleem
+- **Les voor toekomstige Supabase-debugging:** controleer bij een "stil
+  falende" insert altijd eerst of de code het `.error`-veld daadwerkelijk
+  checkt, vóórdat er tijd gestoken wordt in RLS/policy-onderzoek. Supabase
+  se client-bibliotheek gooit geen exceptions bij databasefouten.
+- **Bevestigd werkend:** test via Trainingsbibliotheek (kettlebell, 3 juli
+  21:37) — Coach Call verscheen, evaluatie (rating + mood verplicht) kon
+  verstuurd worden, AI coach-reactie werd correct gegenereerd.
+
 ## v2.4.11 — Fix: retry checkte nooit het .error-veld van Supabase-responses
 - `src/app/api/training/complete/route.ts` — root cause van het aanhoudende
   "geen Coach Call na bibliotheek-training"-probleem (ook na v2.4.9/v2.4.10):
