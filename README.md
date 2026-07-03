@@ -87,10 +87,11 @@ Deze regels gelden vanaf nu en altijd, in elke sessie over dit project:
   geen herwerk van reeds voltooide illustraties (Kernregel: geen quick fixes
   die technische schuld verhogen, stabiliteit boven netheid). Alle **nieuwe**
   illustraties vanaf #16 worden WebP.
-- Bevestigd zonder enige codewijziging nodig: zowel `src/app/oefening/[id]/page.tsx`
-  als `src/app/archief/oefening/[id]/page.tsx` gebruiken een kale `<img src=...>`
-  zonder formaat-afhankelijke logica — een `.webp`-bestand werkt daar identiek
-  aan `.png`. iOS Safari 16.4+ (al vereist, zie §13) ondersteunt WebP volledig.
+- Bevestigd zonder enige codewijziging nodig: `src/app/archief/oefening/[id]/page.tsx`
+  (de enige plek die illustraties toont, zie sectie "Oefening-databron"
+  hieronder) gebruikt een kale `<img src=...>` zonder formaat-afhankelijke
+  logica — een `.webp`-bestand werkt daar identiek aan `.png`. iOS Safari
+  16.4+ (al vereist, zie §13) ondersteunt WebP volledig.
 
 **Bijgewerkte workflow (vanaf #16):**
 ```
@@ -113,29 +114,42 @@ Commit + push → Vercel deploy
 
 ---
 
-## Bekende architectuur-inconsistentie — twee oefening-databronnen
+## Oefening-databron — historie en huidige staat (opgelost v2.4.7)
 
-**Gevonden tijdens troubleshooting (juli 2026), nog niet opgelost — puur
-gedocumenteerd conform Kernregel "documentatie boven aannames".**
+**Dit is nu de enige waarheid:** de acht bibliotheekbestanden in `src/lib/`
+(`kettlebell-exercises.ts`, `bodyweight-exercises.ts`, `strength-exercises.ts`,
+`mobility-exercises.ts`, `recovery-exercises.ts`, `running-drills.ts`,
+`rowing-drills.ts`, `cycling-drills.ts` — samen 390 oefeningen) zijn de
+**enige** bron voor oefeningdata in de hele app. Er bestaat geen alternatieve
+of parallelle lijst meer.
 
-Er bestaan twee parallelle, deels overlappende bronnen voor oefeningdata:
+**Toegang tot een losse oefening met uitleg/illustratie loopt altijd via:**
+```
+/archief → /archief/oefening/[id]
+```
+Bestand: `src/app/archief/oefening/[id]/page.tsx`, functie `vindOefening()`
+zoekt op `id` door alle acht bibliotheken heen. Het `illustratie`-veld
+(alleen bestandsnaam, bv. `goblet-squat.png` of `sumo-deadlift.webp`) wordt
+gecombineerd met `public/exercises/` om het pad te vormen.
 
-1. **`src/lib/exercises.ts`** — kleine, hardcoded lijst (5 oefeningen: Two
-   Hand Swing, Goblet Squat, Kettlebell Clean, Kettlebell Press, Farmer
-   Carry). Veld: `afbeelding` (volledig pad, bv. `/exercises/kettlebell-swing.png`).
-   Gebruikt door: `src/app/oefening/[id]/page.tsx`.
-2. **`src/lib/kettlebell-exercises.ts`** (+ `bodyweight-`, `strength-`,
-   `mobility-exercises.ts`) — de volledige bibliotheken (390 oefeningen
-   totaal). Veld: `illustratie` (alleen bestandsnaam, bv. `goblet-squat.png`).
-   Gebruikt door: `src/app/archief/oefening/[id]/page.tsx` (via `vindOefening()`).
+**Wat er eerder was en waarom het weg is (context voor toekomstige sessies):**
+Tot v2.4.7 bestond er ook `src/lib/exercises.ts` — een kleine, losse lijst
+met 5 hardcoded oefeningen en een ander ID-formaat (`two-hand-swing` i.p.v.
+`kb-swing`), gerenderd door `src/app/oefening/[id]/page.tsx`. Onderzoek wees
+uit dat **niets in de app** naar die route linkte (niet vanuit Archief,
+Trainingsbibliotheek, bottom nav, of de Trainer AI-output) — het was dode
+code, waarschijnlijk een vroege implementatie van vóór het Archief-systeem
+(v2.4.0) die nooit werd opgeruimd. Beide bestanden zijn in v2.4.7 verwijderd.
+Zie `docs/changelog.md` v2.4.7 voor het volledige onderzoek dat hieraan
+voorafging.
 
-Dezelfde oefening (bv. Goblet Squat) staat dus in **beide** bestanden, met
-**verschillende ID's** (`two-hand-swing` vs. `kb-swing` voor Kettlebell
-Swing) maar wijzend naar hetzelfde afbeeldingsbestand. Dit is een
-ongedocumenteerd dubbel-databronpatroon (raakt Architectuurregel "geen
-dubbele modules"). Niet aangepakt zonder expliciete beslissing — zie Fase 5
-Roadmap voor het geplande "Universele Exercise Database"-patroon
-(`allExercises.filter()`) dat dit op termijn zou kunnen consolideren.
+**Als je dit leest als nieuwe sessie:** ga er niet vanuit dat er ooit weer
+een aparte `exercises.ts` of `/oefening/[id]`-route nodig is. Als iemand
+vraagt om "de oefeningpagina" te wijzigen, is dat vrijwel zeker
+`src/app/archief/oefening/[id]/page.tsx` — controleer dat expliciet voordat
+je een nieuw bestand aanmaakt, om deze duplicatie niet opnieuw te
+introduceren (Kernregel: geen dubbele modules, eerst uitbreiden dan
+vervangen).
 
 ---
 
@@ -143,12 +157,12 @@ Roadmap voor het geplande "Universele Exercise Database"-patroon
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.6 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.7 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
-| Twee parallelle oefening-databronnen (exercises.ts vs bibliotheken) — gedocumenteerd, niet opgelost | ℹ️ Info |
+| Los "v1.8.6"-versienummer onderaan hoe-werkt-het-pagina, niet gesynchroniseerd met hoofdversie | ℹ️ Info |
 | Exercise records vullen na eerste training | 🔄 automatisch |
 
 ---
@@ -157,7 +171,7 @@ Roadmap voor het geplande "Universele Exercise Database"-patroon
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.6
+- Versie: 2.4.7
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -345,6 +359,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.7 — Opruiming: dubbele oefening-databron verwijderd (exercises.ts + oefening/[id]/page.tsx)
 - v2.4.6 — Coach Call: OR-drempel Strava (30 min of afstand) + altijd triggeren bij bibliotheek-training
 - v2.4.5 — Illustratie-koppeling 12 kettlebell-oefeningen + Dropbox afgeschaft, WebP vanaf #16
 - v2.4.4 — Fix: "Genereer advies" hangt bij trage/onbereikbare Open-Meteo (timeout toegevoegd)
