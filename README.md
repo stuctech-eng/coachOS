@@ -157,12 +157,12 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.12 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.13 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
-| Los "v1.8.6"-versienummer onderaan hoe-werkt-het-pagina, niet gesynchroniseerd met hoofdversie | ℹ️ Info |
+| Los "v1.8.6"-versienummer onderaan hoe-werkt-het-pagina, niet gesynchroniseerd met hoofdversie — blokkeert ook automatische gezondheidscheck-trigger na update (zie v2.4.13) | 🟡 |
 | Exercise records vullen na eerste training | 🔄 automatisch |
 
 ---
@@ -171,7 +171,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.12
+- Versie: 2.4.13
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -391,6 +391,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.13 — Debug Panel uitgebreid tot volledige gezondheidscheck (29 tabellen, 17 routes, schrijftest)
 - v2.4.12 — DEFINITIEVE FIX: NOT NULL constraint activity_session_id opgeheven (SQL, geen code) — hele Coach Call-traject afgesloten
 - v2.4.11 — Fix: retry checkte nooit het .error-veld — echte Postgres-foutmelding nu zichtbaar in logs
 - v2.4.10 — Build-fix: TypeScript-fout in withRetry-helper (v2.4.9 deployde niet)

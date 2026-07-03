@@ -1,5 +1,35 @@
 # CoachOS — Changelog
 
+## v2.4.13 — Debug Panel uitgebreid tot volledige gezondheidscheck
+- `src/app/debug/page.tsx` — drie lagen toegevoegd/uitgebreid:
+  - **Laag 1 — alle tabellen:** bereikbaarheidscheck uitgebreid van 4 naar
+    alle 29 tabellen uit het schema (`select id limit 1`, puur lezend).
+    Toont nooit inhoud van gevoelige tabellen (`strava_tokens`,
+    `health_api_keys`) — alleen bereikbaar/niet.
+  - **Laag 2 — kernroutes:** uitgebreid van 2 naar 17 veilig-te-testen
+    GET-routes. Schrijfroutes (training/complete, coach-calls/rate,
+    strava/sync, etc.) worden bewust NIET aangeroepen — dat zou echte data
+    aanmaken/wijzigen.
+  - **Laag 3 — schrijftest coach_calls/coach_call_items:** maakt een
+    tijdelijke, herkenbare testrij aan (`sport_type: '__SELFTEST__'`,
+    datum `1900-01-01`, status `__selftest_pending__`/`__selftest__` — kan
+    nooit met echte data clashen), test de insert, en ruimt direct op via
+    een `finally`-blok (ook bij een fout onderweg). Ruimt bij elke run ook
+    oude testrijen op (ouder dan 5 min) mocht een eerdere run gecrasht
+    zijn vóór opruiming. Dit is precies de test die de v2.4.12
+    NOT NULL-constraint-bug **direct** had gevangen, in plaats van het
+    uren durende onderzoekstraject dat nu nodig was.
+  - Kleine bugfix: de bestaande localStorage-check gaf een false-positive
+    "GEEN geldige JSON" voor `*_datum`-keys (die bewust kale datumstrings
+    bevatten, geen JSON) — nu correct herkend als verwacht gedrag.
+- **Nog niet gebouwd:** automatisch draaien na een update (zoals
+  besproken). Vereist een betrouwbaar versienummer-mechanisme in de app
+  (bv. `NEXT_PUBLIC_APP_VERSION` env-variabele vergeleken met een
+  `localStorage`-waarde) — dat bestaat momenteel niet. De
+  "hoe-werkt-het"-pagina toont een hardcoded "v1.8.6", losstaand van het
+  README-versienummer; dit moet eerst rechtgetrokken worden voordat
+  automatische update-detectie zinvol gebouwd kan worden. Zie Openstaand.
+
 ## v2.4.12 — DEFINITIEVE FIX: NOT NULL constraint op activity_session_id
 **Root cause van het volledige "geen Coach Call na bibliotheek-training"-
 traject (v2.4.6 t/m v2.4.11), eindelijk gevonden en opgelost.**

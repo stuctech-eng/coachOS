@@ -8,6 +8,46 @@ interface LogItem {
   status: 'ok' | 'fout' | 'info' | 'warn'
 }
 
+// v2.4.13: volledige tabellenlijst — alle 29 tabellen uit het schema.
+// Elke check doet alleen `select id limit 1` (of minimaal veld) puur om
+// bereikbaarheid te testen — nooit de inhoud van gevoelige tabellen
+// (strava_tokens, health_api_keys) tonen.
+const ALLE_TABELLEN = [
+  'activities', 'activity_sessions', 'activity_templates', 'ai_conversations',
+  'coach_call_items', 'coach_calls', 'coach_insights', 'coach_memory',
+  'coach_recommendations', 'daily_checkins', 'daily_status', 'exercise_records',
+  'garmin_imports', 'goal_updates', 'health_api_keys', 'health_metrics',
+  'injuries', 'injury_updates', 'journal_entries', 'knowledge_observations',
+  'life_events', 'profiles', 'progress_analyses', 'recovery_results',
+  'recovery_sessions', 'strava_tokens', 'training_results', 'training_sessions',
+  'user_goals',
+] as const
+
+// v2.4.13: kern-routes die veilig te testen zijn met GET zonder bijeffecten.
+// Routes die alleen POST/schrijfacties ondersteunen (training/complete,
+// coach-calls/rate, training/today POST, strava/sync, etc.) worden bewust
+// NIET aangeroepen — dat zou echte data aanmaken/wijzigen, wat buiten de
+// scope van Laag 1+2 valt (puur lees-gezondheidscheck).
+const KERN_ROUTES_GET = [
+  '/api/checkin',
+  '/api/status',
+  '/api/coach',
+  '/api/coach-calls',
+  '/api/training/today',
+  '/api/weather',
+  '/api/activities',
+  '/api/goals',
+  '/api/injuries',
+  '/api/life-events',
+  '/api/compliance',
+  '/api/trends',
+  '/api/performance',
+  '/api/predictions',
+  '/api/profile',
+  '/api/equipment',
+  '/api/weekly',
+] as const
+
 export default function DebugPage() {
   const [logs, setLogs] = useState<LogItem[]>([])
   const [bezig, setBezig] = useState(false)
@@ -49,58 +89,60 @@ export default function DebugPage() {
         log('Auth sessie: geen sessie (niet ingelogd)', 'warn')
       }
 
-      // 3. Supabase database
-      log('── DATABASE ──', 'info')
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .limit(1)
-        .single()
-
-      if (profileError) {
-        log(`Profiles query FOUT: ${profileError.message}`, 'fout')
-      } else {
-        log(`Profiles tabel: bereikbaar (${profileData?.display_name || profileData?.user_id?.slice(0, 8)})`, 'ok')
-      }
-
-      const { error: checkinError } = await supabase
-        .from('daily_checkins')
-        .select('id')
-        .limit(1)
-      log(`daily_checkins: ${checkinError ? 'FOUT — ' + checkinError.message : 'bereikbaar'}`,
-        checkinError ? 'fout' : 'ok')
-
-      const { error: garminError } = await supabase
-        .from('garmin_imports')
-        .select('id')
-        .limit(1)
-      log(`garmin_imports: ${garminError ? 'FOUT — ' + garminError.message : 'bereikbaar'}`,
-        garminError ? 'fout' : 'ok')
-
-      const { error: coachError } = await supabase
-        .from('coach_recommendations')
-        .select('id')
-        .limit(1)
-      log(`coach_recommendations: ${coachError ? 'FOUT — ' + coachError.message : 'bereikbaar'}`,
-        coachError ? 'fout' : 'ok')
-
-      // 4. API routes
-      log('── API ROUTES ──', 'info')
-
-      const apiTests = [
-        { naam: '/api/checkin', methode: 'GET' },
-        { naam: '/api/status', methode: 'GET' },
-      ]
-
-      for (const test of apiTests) {
+      // ── LAAG 1: ALLE TABELLEN — bereikbaarheid ───────────────────────────
+      // v2.4.13: uitgebreid van 4 naar alle 29 tabellen uit het schema.
+      // Puur lezend: `select id limit 1`. Toont nooit inhoud van gevoelige
+      // tabellen (strava_tokens, health_api_keys) — alleen bereikbaar/niet.
+      log('── LAAG 1: DATABASE — ALLE TABELLEN ──', 'info')
+      let tabellenOk = 0
+      let tabellenFout = 0
+      for (const tabel of ALLE_TABELLEN) {
         try {
-          const res = await fetch(test.naam, { method: test.methode, credentials: 'include' })
-          log(`${test.naam}: ${res.status} ${res.ok ? 'OK' : 'FOUT'}`,
-            res.ok ? 'ok' : 'fout')
+          const { error: tabelError } = await supabase
+            .from(tabel)
+            .select('id')
+            .limit(1)
+          if (tabelError) {
+            log(`${tabel}: FOUT — ${tabelError.message}`, 'fout')
+            tabellenFout++
+          } else {
+            tabellenOk++
+          }
         } catch (e) {
-          log(`${test.naam}: FOUT — ${(e as Error).message}`, 'fout')
+          log(`${tabel}: FOUT — ${(e as Error).message}`, 'fout')
+          tabellenFout++
         }
       }
+      log(`Tabellen bereikbaar: ${tabellenOk}/${ALLE_TABELLEN.length}${tabellenFout > 0 ? ` — ${tabellenFout} FOUT (zie hierboven)` : ''}`,
+        tabellenFout === 0 ? 'ok' : 'fout')
+
+      // ── LAAG 2: KERN API-ROUTES ───────────────────────────────────────────
+      // v2.4.13: uitgebreid van 2 naar alle veilig-te-testen (GET, geen
+      // bijeffecten) kernroutes. Schrijfroutes (POST training/complete,
+      // coach-calls/rate, strava/sync, etc.) worden bewust NIET aangeroepen.
+      log('── LAAG 2: API ROUTES ──', 'info')
+      let routesOk = 0
+      let routesFout = 0
+      for (const route of KERN_ROUTES_GET) {
+        try {
+          const res = await fetch(route, { method: 'GET', credentials: 'include' })
+          // 401 (niet ingelogd voor deze check) en 404 (route bestaat niet
+          // meer) worden als fout gerekend; overige 2xx/3xx als ok, want
+          // sommige routes geven bewust null/leeg terug zonder body-data
+          if (res.ok || res.status === 304) {
+            log(`${route}: ${res.status} OK`, 'ok')
+            routesOk++
+          } else {
+            log(`${route}: ${res.status} FOUT`, 'fout')
+            routesFout++
+          }
+        } catch (e) {
+          log(`${route}: FOUT — ${(e as Error).message}`, 'fout')
+          routesFout++
+        }
+      }
+      log(`Routes bereikbaar: ${routesOk}/${KERN_ROUTES_GET.length}${routesFout > 0 ? ` — ${routesFout} FOUT (zie hierboven)` : ''}`,
+        routesFout === 0 ? 'ok' : 'fout')
 
       // 5. Anthropic API
       log('── ANTHROPIC API ──', 'info')
@@ -187,7 +229,13 @@ export default function DebugPage() {
               const keys2 = typeof parsed === 'object' && parsed !== null ? Object.keys(parsed).join(', ') : typeof parsed
               log(`${key}: aanwezig (${raw.length} chars) — velden: ${keys2}`, 'info')
             } catch {
-              log(`${key}: aanwezig maar GEEN geldige JSON (${raw.slice(0, 40)}...)`, 'fout')
+              // Kale datumstrings (bv. "2026-07-03") zijn geen geldige JSON
+              // maar ook geen fout — dat is verwacht gedrag voor *_datum keys
+              if (key.endsWith('_datum')) {
+                log(`${key}: aanwezig (datumwaarde, geen JSON — verwacht)`, 'info')
+              } else {
+                log(`${key}: aanwezig maar GEEN geldige JSON (${raw.slice(0, 40)}...)`, 'fout')
+              }
             }
           }
         }
@@ -201,12 +249,6 @@ export default function DebugPage() {
       }
 
       // ── COACH CALL INTEGRITEIT ────────────────────────────────────────────
-      // v2.4.9: vergelijkt recente bibliotheek-trainingen (training_source
-      // 'library', laatste 24u) met coach_call_items. Detecteert precies het
-      // probleem dat leidde tot deze check: een training_results-rij zonder
-      // bijbehorend coach_call_item — bijvoorbeeld door een kortstondige
-      // Supabase pooler-timeout die Stap 3 in training/complete/route.ts
-      // liet mislukken (stil, want de hoofdroute gaf alsnog 200 terug).
       log('── COACH CALL INTEGRITEIT (laatste 24u) ──', 'info')
       try {
         const vanaf = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
@@ -243,12 +285,91 @@ export default function DebugPage() {
                 const tijd = t.completed_at ? new Date(t.completed_at).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }) : '?'
                 log(`ONTBREEKT: ${t.training_type || 'training'} (${tijd}) — geen coach_call_item, training_result_id ${(t.id as string).slice(0, 8)}...`, 'fout')
               }
-              log('Tip: dit duidt op een mislukte Stap 3 in training/complete/route.ts (bv. tijdelijke Supabase-timeout). Zie changelog v2.4.8/v2.4.9.', 'warn')
+              log('Tip: dit duidt op een mislukte Stap 3 in training/complete/route.ts. Zie changelog v2.4.8 t/m v2.4.12.', 'warn')
             }
           }
         }
       } catch (e) {
         log(`Coach Call integriteit check FOUT: ${(e as Error).message}`, 'fout')
+      }
+
+      // ── LAAG 3: SCHRIJFTEST coach_calls / coach_call_items ────────────────
+      // v2.4.13: maakt een tijdelijke, herkenbare testrij aan, controleert
+      // of insert/select werkt, en verwijdert hem direct weer (finally-blok
+      // garandeert opruiming, ook bij een fout onderweg). Ruimt ook oude
+      // testrijen op (ouder dan 5 min) mocht een eerdere run niet zijn
+      // opgeruimd door een crash. Dit is de enige schrijvende check — vangt
+      // precies het type constraint-fout dat Laag 1 (read-only) niet kan
+      // zien, zoals de NOT NULL-bug uit v2.4.12.
+      log('── LAAG 3: SCHRIJFTEST coach_calls / coach_call_items ──', 'info')
+      const SELFTEST_MARKER = '__SELFTEST__'
+      let testCallId: string | null = null
+      try {
+        const userId = sessionData.session?.user.id
+        if (!userId) {
+          log('Geen actieve sessie — schrijftest overgeslagen', 'warn')
+        } else {
+          // Ruim eventuele oude testrijen op (van een gecrashte vorige run)
+          const vijfMinGeleden = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+          const { data: oudeTests } = await supabase
+            .from('coach_call_items')
+            .select('id, coach_call_id, sport_type, created_at')
+            .eq('sport_type', SELFTEST_MARKER)
+            .lt('created_at', vijfMinGeleden)
+          if (oudeTests && oudeTests.length > 0) {
+            for (const oud of oudeTests) {
+              await supabase.from('coach_call_items').delete().eq('id', oud.id)
+              await supabase.from('coach_calls').delete().eq('id', oud.coach_call_id).eq('status', '__selftest_pending__')
+            }
+            log(`${oudeTests.length} oude testrij(en) opgeruimd van eerdere (gecrashte) run`, 'warn')
+          }
+
+          // Stap A: tijdelijke coach_calls testrij (eigen status-waarde,
+          // nooit gelijk aan een echte status, zodat hij nooit door de
+          // normale app-logica als een echte call wordt gezien)
+          const testDatum = `1900-01-01` // ver in het verleden — kan nooit met een echte call clashen
+          const { data: testCall, error: callErr } = await supabase
+            .from('coach_calls')
+            .insert({ user_id: userId, date: testDatum, status: '__selftest_pending__' })
+            .select('id')
+            .single()
+
+          if (callErr) {
+            log(`coach_calls schrijftest FOUT: ${callErr.message} (code: ${callErr.code || '?'})`, 'fout')
+          } else if (testCall) {
+            testCallId = testCall.id
+            log('coach_calls: insert OK', 'ok')
+
+            // Stap B: tijdelijke coach_call_items testrij — dit is exact de
+            // insert die in v2.4.12 faalde door de NOT NULL constraint
+            const { error: itemErr } = await supabase
+              .from('coach_call_items')
+              .insert({
+                coach_call_id: testCallId,
+                training_result_id: null,
+                activity_session_id: null,
+                sport_type: SELFTEST_MARKER,
+                duration_min: 0,
+                status: '__selftest__',
+              })
+
+            if (itemErr) {
+              log(`coach_call_items schrijftest FOUT: ${itemErr.message} (code: ${itemErr.code || '?'})`, 'fout')
+              log('Tip: dit is exact het type fout dat in v2.4.12 handmatig gevonden moest worden (bv. een NOT NULL constraint). Nu direct zichtbaar.', 'warn')
+            } else {
+              log('coach_call_items: insert OK (zowel training_result_id als activity_session_id null toegestaan)', 'ok')
+            }
+          }
+        }
+      } catch (e) {
+        log(`Schrijftest FOUT: ${(e as Error).message}`, 'fout')
+      } finally {
+        // Opruimen — altijd, ongeacht of de test slaagde of faalde
+        if (testCallId) {
+          await supabase.from('coach_call_items').delete().eq('coach_call_id', testCallId)
+          await supabase.from('coach_calls').delete().eq('id', testCallId)
+          log('Testdata opgeruimd', 'info')
+        }
       }
 
       log('── KLAAR ──', 'info')
@@ -280,7 +401,7 @@ export default function DebugPage() {
 
         <div>
           <h1 className="text-2xl font-bold text-white">Debug</h1>
-          <p className="text-slate-400 text-sm mt-0.5">CoachOS diagnostiek</p>
+          <p className="text-slate-400 text-sm mt-0.5">CoachOS gezondheidscheck — {ALLE_TABELLEN.length} tabellen, {KERN_ROUTES_GET.length} routes, schrijftest coach_calls</p>
         </div>
 
         <button
