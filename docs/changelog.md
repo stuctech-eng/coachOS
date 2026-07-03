@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.9 — Retry-logica Stap 3 + nieuwe debug-check "Coach Call Integriteit"
+- `src/app/api/training/complete/route.ts` — Stap 3 (Coach Call aanmaken/
+  heropenen) krijgt nu een retry: bij falen wordt na 400ms één keer
+  opnieuw geprobeerd, via een kleine `withRetry()`-helper. Vangt
+  kortstondige Supabase pooler-timeouts op (zie v2.4.8 root cause —
+  "Warp server error: Thread killed by timeout manager" in Postgres Logs).
+  Een structureel probleem faalt ook na de retry en wordt gelogd zoals
+  voorheen; dit lost dus specifiek het "eenmalige hik"-scenario op, niet
+  een aanhoudende infrastructuurstoring.
+- `src/app/debug/page.tsx` — nieuwe diagnostiek-sectie "Coach Call
+  Integriteit (laatste 24u)". Vergelijkt alle `training_results` met
+  `training_source: 'library'` van de afgelopen 24 uur tegen
+  `coach_call_items`, en meldt expliciet welke trainingen geen
+  bijbehorend Coach Call-item hebben — dat is precies het probleem dat
+  leidde tot deze toevoeging (een training werd opgeslagen, maar het
+  Coach Call-item niet, door een tijdelijke Supabase-storing). Voorheen
+  was dit alleen op te sporen via Vercel function traces + Supabase
+  Postgres Logs (zie sessie juli 2026, coach_call_id 85e5b7d6...). Nu
+  zichtbaar met één druk op "Start diagnostiek" in de app zelf, conform
+  Kernregel §15 (fouten moeten zichtbaar zijn zonder externe tools).
+
 ## v2.4.8 — Fix: bibliotheek-Coach Call onzichtbaar na eerdere afgeronde call
 - `src/app/api/training/complete/route.ts` — Stap 3 heropent nu een bestaande
   `coach_call` als die al `completed`/`expired` was, vóórdat het nieuwe item
@@ -15,6 +36,13 @@
   Reproductiestap die dit aan het licht bracht: Coach Call afronden (bv. via
   Strava), daarna dezelfde dag een training uit de Trainingsbibliotheek
   doorlopen en evalueren — geen nieuwe Coach Call zichtbaar op Home.
+  **Vervolgonderzoek (zelfde sessie):** een tweede test, ná deze fix, liet
+  alsnog geen Coach Call zien. Onderzoek via Vercel function trace + Supabase
+  Postgres Logs bracht de échte oorzaak van dié herhaling aan het licht: een
+  kortstondige Supabase-pooler-timeout ("Warp server error: Thread killed by
+  timeout manager") liet de `coach_call_items`-insert stil mislukken, terwijl
+  de hoofdroute alsnog 200 teruggaf. Dit is geen logicafout in deze fix, maar
+  een infrastructuur-timing-probleem — opgelost in v2.4.9 met retry-logica.
 
 ## v2.4.7 — Opruiming: dubbele oefening-databron verwijderd
 

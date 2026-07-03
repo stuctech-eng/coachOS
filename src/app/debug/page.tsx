@@ -200,6 +200,57 @@ export default function DebugPage() {
         log(`localStorage check FOUT: ${(e as Error).message}`, 'fout')
       }
 
+      // ── COACH CALL INTEGRITEIT ────────────────────────────────────────────
+      // v2.4.9: vergelijkt recente bibliotheek-trainingen (training_source
+      // 'library', laatste 24u) met coach_call_items. Detecteert precies het
+      // probleem dat leidde tot deze check: een training_results-rij zonder
+      // bijbehorend coach_call_item — bijvoorbeeld door een kortstondige
+      // Supabase pooler-timeout die Stap 3 in training/complete/route.ts
+      // liet mislukken (stil, want de hoofdroute gaf alsnog 200 terug).
+      log('── COACH CALL INTEGRITEIT (laatste 24u) ──', 'info')
+      try {
+        const vanaf = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+        const { data: recenteLibraryTrainingen, error: trErr } = await supabase
+          .from('training_results')
+          .select('id, training_type, completed_at')
+          .eq('user_id', sessionData.session?.user.id || '')
+          .eq('training_source', 'library')
+          .gte('completed_at', vanaf)
+          .order('completed_at', { ascending: false })
+
+        if (trErr) {
+          log(`training_results query FOUT: ${trErr.message}`, 'fout')
+        } else if (!recenteLibraryTrainingen || recenteLibraryTrainingen.length === 0) {
+          log('Geen bibliotheek-trainingen in de laatste 24u — niets te checken', 'info')
+        } else {
+          log(`${recenteLibraryTrainingen.length} bibliotheek-training(en) gevonden laatste 24u`, 'info')
+
+          const { data: items, error: itemsErr } = await supabase
+            .from('coach_call_items')
+            .select('training_result_id')
+            .in('training_result_id', recenteLibraryTrainingen.map(t => t.id))
+
+          if (itemsErr) {
+            log(`coach_call_items query FOUT: ${itemsErr.message}`, 'fout')
+          } else {
+            const gekoppeldeIds = new Set((items || []).map(i => i.training_result_id))
+            const ontbrekend = recenteLibraryTrainingen.filter(t => !gekoppeldeIds.has(t.id))
+
+            if (ontbrekend.length === 0) {
+              log('Alle recente bibliotheek-trainingen hebben een Coach Call item — OK', 'ok')
+            } else {
+              for (const t of ontbrekend) {
+                const tijd = t.completed_at ? new Date(t.completed_at).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }) : '?'
+                log(`ONTBREEKT: ${t.training_type || 'training'} (${tijd}) — geen coach_call_item, training_result_id ${(t.id as string).slice(0, 8)}...`, 'fout')
+              }
+              log('Tip: dit duidt op een mislukte Stap 3 in training/complete/route.ts (bv. tijdelijke Supabase-timeout). Zie changelog v2.4.8/v2.4.9.', 'warn')
+            }
+          }
+        }
+      } catch (e) {
+        log(`Coach Call integriteit check FOUT: ${(e as Error).message}`, 'fout')
+      }
+
       log('── KLAAR ──', 'info')
 
     } catch (e) {

@@ -21,6 +21,21 @@ async function getUser() {
   return user
 }
 
+// v2.4.9: kleine retry-helper — vangt kortstondige Supabase pooler-timeouts
+// op ("Warp server error: Thread killed by timeout manager", gezien in
+// Postgres Logs). Eén herhaalpoging na 400ms is voldoende voor dit type
+// voorbijgaande hik; een structureel probleem zou ook bij de retry falen
+// en wordt dan gelogd zoals voorheen.
+async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    console.error(`[training/complete] ${label} eerste poging mislukt, retry over 400ms:`, err)
+    await new Promise(resolve => setTimeout(resolve, 400))
+    return await fn()
+  }
+}
+
 // POST — sla evaluatie van een Universal Training Engine sessie op
 // Body komt van session/[module]/page.tsx: { module, training_type, ...SessionResult }
 export async function POST(req: NextRequest) {
@@ -160,23 +175,23 @@ export async function POST(req: NextRequest) {
     // v2.4.6: Coach Call wordt ALTIJD aangemaakt bij training_source 'library'
     // (Archief + Trainingsbibliotheek) — ongeacht welk coach-advies die dag
     // was, of zelfs als er geen advies was gegenereerd.
-    // v2.4.8: FIX — als er die dag al een coach_call bestond met status
-    // 'completed' of 'expired' (bv. van een eerder afgeronde Strava-evaluatie
-    // dezelfde dag), werd het nieuwe item daar wel aan toegevoegd, maar bleef
-    // de call zelf op 'completed'/'expired' staan. GET /api/coach-calls
-    // filtert op status pending/partial, dus de banner op Home verscheen
-    // dan nooit — ook al was het item wel degelijk aangemaakt. Zelfde root
-    // cause en fix als v2.4.3 in coach-calls/route.ts, hier toegepast op
-    // de bibliotheek-tak.
+    // v2.4.8: heropent een bestaande completed/expired call (zelfde fix als
+    // v2.4.3 in coach-calls/route.ts).
+    // v2.4.9: retry op de coach_call_items insert — vangt kortstondige
+    // Supabase pooler-timeouts op die eerder stil faalden (200-response op
+    // de hele route, terwijl het item niet werd weggeschreven).
     if (training_source === 'library' && result?.id) {
       try {
         // Zoek of er al een coach_call is voor vandaag — nu ook status ophalen
-        const { data: existing } = await supabase
-          .from('coach_calls')
-          .select('id, status, coach_call_items(training_result_id)')
-          .eq('user_id', user.id)
-          .eq('date', today)
-          .single()
+        const { data: existing } = await withRetry(
+          () => supabase
+            .from('coach_calls')
+            .select('id, status, coach_call_items(training_result_id)')
+            .eq('user_id', user.id)
+            .eq('date', today)
+            .single(),
+          'coach_calls select'
+        )
 
         // Check of dit training_result_id al bestaat
         const alreadyAdded = (existing?.coach_call_items as { training_result_id: string }[] || [])
@@ -186,11 +201,14 @@ export async function POST(req: NextRequest) {
           let callId = existing?.id
 
           if (!callId) {
-            const { data: newCall } = await supabase
-              .from('coach_calls')
-              .insert({ user_id: user.id, date: today, status: 'pending' })
-              .select('id')
-              .single()
+            const { data: newCall } = await withRetry(
+              () => supabase
+                .from('coach_calls')
+                .insert({ user_id: user.id, date: today, status: 'pending' })
+                .select('id')
+                .single(),
+              'coach_calls insert'
+            )
             callId = newCall?.id
           }
 
@@ -203,27 +221,36 @@ export async function POST(req: NextRequest) {
               strength: 'Kracht',
               bodyweight: 'Bodyweight',
             }
-            await supabase.from('coach_call_items').insert({
-              coach_call_id: callId,
-              training_result_id: result.id,
-              sport_type: sportLabel[training_type || module] || training_type || module || 'Training',
-              duration_min: actual_duration ?? null,
-              status: 'pending',
-            })
+            await withRetry(
+              () => supabase.from('coach_call_items').insert({
+                coach_call_id: callId,
+                training_result_id: result.id,
+                sport_type: sportLabel[training_type || module] || training_type || module || 'Training',
+                duration_min: actual_duration ?? null,
+                status: 'pending',
+              }),
+              'coach_call_items insert'
+            )
 
             // FIX v2.4.8: als de bestaande call al completed/expired was,
             // heropen hem — anders blijft hij onzichtbaar in GET
             // (die filtert op status pending/partial)
             if (existing && (existing.status === 'completed' || existing.status === 'expired')) {
-              await supabase.from('coach_calls')
-                .update({ status: 'pending', completed_at: null })
-                .eq('id', callId)
+              await withRetry(
+                () => supabase.from('coach_calls')
+                  .update({ status: 'pending', completed_at: null })
+                  .eq('id', callId),
+                'coach_calls heropenen'
+              )
             }
           }
         }
       } catch (coachCallErr) {
-        // Coach Call aanmaken is niet kritisch — log maar gooi geen error
-        console.error('[training/complete] coach_call aanmaken mislukt:', coachCallErr)
+        // Coach Call aanmaken is niet kritisch voor de training zelf — log
+        // maar gooi geen error. Na retry (withRetry) is dit een structureel
+        // falen, niet meer een eenmalige hik — check Vercel logs op
+        // '[training/complete]' bij herhaling.
+        console.error('[training/complete] coach_call aanmaken mislukt (na retry):', coachCallErr)
       }
     }
 

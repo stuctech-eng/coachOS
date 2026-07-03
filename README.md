@@ -157,7 +157,7 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.8 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.9 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
@@ -171,7 +171,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.8
+- Versie: 2.4.9
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -212,13 +212,14 @@ Afstand **of** duur is voldoende — niet beide tegelijk nodig (vóór v2.4.6 wa
 | Bestand | Rol |
 |---------|-----|
 | `src/app/api/coach-calls/route.ts` | **Kern (Strava-tak).** `POST` maakt/heropent `coach_calls` + `coach_call_items` op basis van kwalificerende Strava-activiteiten (OR-drempel). `GET` haalt de actieve (pending/partial) call op, inclusief 24u-expiry check. |
-| `src/app/api/training/complete/route.ts` | **Kern (bibliotheek-tak).** Stap 3 maakt altijd een Coach Call aan bij `training_source: 'library'`, ongeacht coach-advies (sinds v2.4.6). Slaat ook `training_results` en `exercise_records` op. |
+| `src/app/api/training/complete/route.ts` | **Kern (bibliotheek-tak).** Stap 3 maakt altijd een Coach Call aan bij `training_source: 'library'`, ongeacht coach-advies (sinds v2.4.6), heropent completed/expired calls (v2.4.8), met retry op de insert (v2.4.9). Slaat ook `training_results` en `exercise_records` op. |
 | `src/app/api/coach-calls/rate/route.ts` | Verwerkt de evaluatie (rating/mood/notes) per item, genereert een AI coach-reactie per item, herberekent de call-status (pending → partial → completed). |
 | `src/app/home/page.tsx` | Roept bij laden `POST` aan (Strava-trigger), daarna `GET` (ophalen), en toont de Coach Call-banner als `pending_count > 0`. **Belangrijk:** de Strava-trigger draait dus alleen als de home-pagina geladen wordt. |
 | `src/app/coach-call/page.tsx` | De evaluatiepagina zelf waar de gebruiker rating/mood/notities invult. |
 | `src/app/activities/page.tsx` | Toont Strava/Garmin-activiteiten; bron van de data die `coach-calls/route.ts` filtert. |
 | `src/lib/strava-activity-processor.ts` | Verwerkt de ruwe Strava-sync naar `activity_sessions` (sporttype-mapping, metrics). Draait vóór de Coach Call-logica, niet erin. |
 | `src/app/settings/hoe-werkt-het/page.tsx` | In-app uitleg voor de gebruiker (sectie "Coach Call") — houd dit synchroon met wijzigingen aan de trigger-logica. |
+| `src/app/debug/page.tsx` | Bevat sinds v2.4.9 de sectie "Coach Call Integriteit" — vergelijkt recente `training_results` (library-bron) tegen `coach_call_items` en meldt ontbrekende koppelingen. Eerste stap bij een "geen Coach Call"-melding: laat de gebruiker hier "Start diagnostiek" draaien. |
 
 **Statusmachine van een `coach_call`:**
 `pending` → (items deels beoordeeld) → `partial` → (alle items beoordeeld) → `completed`
@@ -227,7 +228,8 @@ Een call die 24 uur oud is zonder voltooiing wordt automatisch `expired`.
 **Bekende fixes:**
 - **v2.4.3:** als er op een datum al een `completed`/`expired` call bestond en er kwam een nieuwe kwalificerende Strava-activiteit bij, bleef die call onzichtbaar (GET filtert op `pending`/`partial`). De `POST`-route (`coach-calls/route.ts`) heropent zo'n call nu automatisch.
 - **v2.4.6:** de bibliotheek-tak (`training/complete/route.ts`) triggerde voorheen alleen een Coach Call als het coach-advies die dag `herstel` of `rust` was. Dat miste gevallen zonder advies of met advies `trainen`. Nu triggert elke Archief/Trainingsbibliotheek-training altijd een Coach Call. Tegelijk is de Strava-drempel verruimd naar OR-logica (afstand of duur) met 30 min i.p.v. 45 min.
-- **v2.4.8:** dezelfde "onzichtbaar na completed/expired"-bug als v2.4.3, maar dan in de bibliotheek-tak — `training/complete/route.ts` had de heropen-logica nog niet. Als er die dag al een afgeronde Coach Call bestond (bv. via Strava) en je deed daarna een Trainingsbibliotheek- of Archief-training, werd het item wel aangemaakt maar bleef de call onzichtbaar. Bevestigd via Vercel function trace (200-status, `coach_call_items` correct aangemaakt, maar `coach_calls.status` bleef `completed`). Nu ook hier heropend.
+- **v2.4.8:** dezelfde "onzichtbaar na completed/expired"-bug als v2.4.3, maar dan in de bibliotheek-tak — `training/complete/route.ts` had de heropen-logica nog niet.
+- **v2.4.9:** root cause gevonden waarom v2.4.8 in een vervolgtest alsnog niet werkte — een kortstondige Supabase pooler-timeout ("Warp server error: Thread killed by timeout manager", zichtbaar in Supabase → Logs → Postgres Logs) liet de `coach_call_items`-insert stil mislukken terwijl de route toch 200 teruggaf. Retry-logica toegevoegd (één herhaalpoging na 400ms) plus een nieuwe Debug Panel-check ("Coach Call Integriteit") die dit soort mismatches direct in de app zichtbaar maakt, zonder Vercel/Supabase-logs te hoeven doorzoeken.
 
 **Bekend gedrag (geen bug):** de Strava-`POST`-trigger draait alleen wanneer `home/page.tsx` geladen wordt. Na een Strava-sync moet de gebruiker dus naar de home-pagina navigeren voordat een nieuwe Coach Call verschijnt.
 
@@ -254,17 +256,32 @@ een `.catch()` in de code. Vraag bij twijfel ook om de Vercel Logs-screenshot
 uitgeklapte error-tekst.
 
 ### Coach Call (Strava of bibliotheek-training) verschijnt niet
+**Eerste stap, vóórdat je bestanden opvraagt:** vraag de gebruiker "Start
+diagnostiek" te draaien op `/debug` en te kijken naar de sectie "Coach Call
+Integriteit (laatste 24u)". Die check (sinds v2.4.9) vergelijkt recente
+bibliotheek-trainingen met hun Coach Call-item en meldt direct een mismatch
+— dat scheelt het hele traject van Vercel-logs + Supabase Postgres Logs
+doorzoeken dat nodig was om deze check te bouwen.
 ```
 src/app/api/coach-calls/route.ts
+src/app/api/training/complete/route.ts
 src/app/api/coach-calls/rate/route.ts
-src/hooks/useCoach.ts (niet van toepassing — zie useCoach vs coach-calls onderscheid hieronder)
 src/app/home/page.tsx
 src/lib/strava-activity-processor.ts
+src/app/debug/page.tsx
 ```
 Let op onderscheid: `/api/coach` (enkelvoud) = dagelijks coach-advies.
 `/api/coach-calls` (meervoud) = evaluatie van trainingen/activiteiten. Dit
 zijn twee losse routes met eigen bugs — niet aannemen dat een fix in de één
 de ander raakt.
+
+**Bekend patroon (v2.4.8/v2.4.9):** als een `training_results`-rij wél
+bestaat maar het bijbehorende `coach_call_item` niet, controleer eerst
+Supabase → Logs → Postgres Logs op "Warp server error: Thread killed by
+timeout manager" rond het tijdstip van de training. Dat is een kortstondige
+infrastructuur-timeout, geen logicafout — de retry in Stap 3 zou dit sinds
+v2.4.9 grotendeels moeten opvangen, maar bij herhaling is een hogere
+Supabase compute-tier het te onderzoeken vervolgspoor.
 
 ### Exercise illustraties tonen niet in UitlegScherm
 ```
@@ -360,7 +377,8 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
-- v2.4.8 — Fix: bibliotheek-Coach Call onzichtbaar na eerdere afgeronde call (zelfde bug als v2.4.3, andere tak)
+- v2.4.9 — Retry-logica Stap 3 + nieuwe debug-check "Coach Call Integriteit"
+- v2.4.8 — Fix: bibliotheek-Coach Call onzichtbaar na eerdere afgeronde call (zelfde bug als v2.4.3, andere tak) + gevonden root cause Supabase pooler-timeout
 - v2.4.7 — Opruiming: dubbele oefening-databron verwijderd (exercises.ts + oefening/[id]/page.tsx)
 - v2.4.6 — Coach Call: OR-drempel Strava (30 min of afstand) + altijd triggeren bij bibliotheek-training
 - v2.4.5 — Illustratie-koppeling 12 kettlebell-oefeningen + Dropbox afgeschaft, WebP vanaf #16
