@@ -21,26 +21,34 @@ async function getUser() {
   return user
 }
 
-// v2.4.9: kleine retry-helper — vangt kortstondige Supabase pooler-timeouts
-// op ("Warp server error: Thread killed by timeout manager", gezien in
-// Postgres Logs). Eén herhaalpoging na 400ms is voldoende voor dit type
-// voorbijgaande hik; een structureel probleem zou ook bij de retry falen
-// en wordt dan gelogd zoals voorheen.
-// v2.4.10: generic-signatuur aangepast (F extends () => PromiseLike<any>,
-// return Awaited<ReturnType<F>>) — de oorspronkelijke `fn: () => Promise<T>`
-// liet TypeScript falen op build ("Property 'data' does not exist on type
-// 'unknown'"), omdat Supabase's query builders een PromiseLike (thenable)
-// zijn, geen echte Promise-instantie. Deze vorm infereert correct.
-async function withRetry<F extends () => PromiseLike<unknown>>(
+// v2.4.11: Supabase-queries gooien standaard GEEN exception bij een
+// database-fout (RLS-blokkade, constraint-violation, etc.) — ze retourneren
+// { data, error }. De v2.4.9 retry-helper checkte dit .error-veld nergens,
+// waardoor een mislukte insert stil werd genegeerd: geen retry, geen log,
+// geen enkele indicatie. Deze helper checkt expliciet op .error en gooit
+// zelf een Error met de volledige Postgres-foutdetails (code/message/
+// details/hint), zodat zowel retry als logging daadwerkelijk werken.
+async function withRetry<F extends () => PromiseLike<{ data: unknown; error: unknown }>>(
   fn: F,
   label: string
 ): Promise<Awaited<ReturnType<F>>> {
+  const attempt = async () => {
+    const result = await fn() as Awaited<ReturnType<F>>
+    if (result.error) {
+      const e = result.error as { code?: string; message?: string; details?: string; hint?: string }
+      throw new Error(
+        `${label} FOUT — code: ${e.code || '?'}, message: ${e.message || '?'}, details: ${e.details || '?'}, hint: ${e.hint || '?'}`
+      )
+    }
+    return result
+  }
+
   try {
-    return await fn() as Awaited<ReturnType<F>>
+    return await attempt()
   } catch (err) {
     console.error(`[training/complete] ${label} eerste poging mislukt, retry over 400ms:`, err)
     await new Promise(resolve => setTimeout(resolve, 400))
-    return await fn() as Awaited<ReturnType<F>>
+    return await attempt()
   }
 }
 
@@ -172,7 +180,10 @@ export async function POST(req: NextRequest) {
           })
 
         if (records.length > 0) {
-          await supabase.from('exercise_records').insert(records)
+          const { error: exErr } = await supabase.from('exercise_records').insert(records)
+          if (exErr) {
+            console.error('[training/complete] exercise_records opslaan mislukt:', exErr)
+          }
         }
       } catch (exErr) {
         console.error('[training/complete] exercise_records opslaan mislukt:', exErr)
@@ -183,15 +194,18 @@ export async function POST(req: NextRequest) {
     // v2.4.6: Coach Call wordt ALTIJD aangemaakt bij training_source 'library'
     // (Archief + Trainingsbibliotheek) — ongeacht welk coach-advies die dag
     // was, of zelfs als er geen advies was gegenereerd.
-    // v2.4.8: heropent een bestaande completed/expired call (zelfde fix als
-    // v2.4.3 in coach-calls/route.ts).
-    // v2.4.9: retry op de coach_call_items insert — vangt kortstondige
-    // Supabase pooler-timeouts op die eerder stil faalden (200-response op
-    // de hele route, terwijl het item niet werd weggeschreven).
+    // v2.4.8: heropent een bestaande completed/expired call.
+    // v2.4.9: retry op de coach_call_items insert.
+    // v2.4.11: withRetry checkt nu ook daadwerkelijk het .error-veld van
+    // elke Supabase-response (zie helper hierboven) — v2.4.9/v2.4.10 lieten
+    // een mislukte insert stil door, ondanks retry-logica, omdat Supabase
+    // geen exception gooit bij een DB-fout. Dit maakt de root cause van het
+    // "geen Coach Call na bibliotheek-training"-probleem eindelijk zichtbaar
+    // in Vercel logs onder '[training/complete] coach_call aanmaken mislukt'.
     if (training_source === 'library' && result?.id) {
       try {
         // Zoek of er al een coach_call is voor vandaag — nu ook status ophalen
-        const { data: existing } = await withRetry(
+        const existingResult = await withRetry(
           () => supabase
             .from('coach_calls')
             .select('id, status, coach_call_items(training_result_id)')
@@ -200,16 +214,17 @@ export async function POST(req: NextRequest) {
             .single(),
           'coach_calls select'
         )
+        const existing = existingResult.data as { id: string; status: string; coach_call_items: { training_result_id: string }[] } | null
 
         // Check of dit training_result_id al bestaat
-        const alreadyAdded = (existing?.coach_call_items as { training_result_id: string }[] || [])
+        const alreadyAdded = (existing?.coach_call_items || [])
           .some(i => i.training_result_id === result.id)
 
         if (!alreadyAdded) {
           let callId = existing?.id
 
           if (!callId) {
-            const { data: newCall } = await withRetry(
+            const newCallResult = await withRetry(
               () => supabase
                 .from('coach_calls')
                 .insert({ user_id: user.id, date: today, status: 'pending' })
@@ -217,7 +232,7 @@ export async function POST(req: NextRequest) {
                 .single(),
               'coach_calls insert'
             )
-            callId = newCall?.id
+            callId = (newCallResult.data as { id: string } | null)?.id
           }
 
           if (callId) {
@@ -255,9 +270,9 @@ export async function POST(req: NextRequest) {
         }
       } catch (coachCallErr) {
         // Coach Call aanmaken is niet kritisch voor de training zelf — log
-        // maar gooi geen error. Na retry (withRetry) is dit een structureel
-        // falen, niet meer een eenmalige hik — check Vercel logs op
-        // '[training/complete]' bij herhaling.
+        // maar gooi geen error. Deze log bevat nu (v2.4.11) de volledige
+        // Postgres-foutdetails (code/message/details/hint) i.p.v. een
+        // generieke of lege fout.
         console.error('[training/complete] coach_call aanmaken mislukt (na retry):', coachCallErr)
       }
     }

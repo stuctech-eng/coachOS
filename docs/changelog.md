@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.11 — Fix: retry checkte nooit het .error-veld van Supabase-responses
+- `src/app/api/training/complete/route.ts` — root cause van het aanhoudende
+  "geen Coach Call na bibliotheek-training"-probleem (ook na v2.4.9/v2.4.10):
+  Supabase-queries gooien standaard GEEN JavaScript-exception bij een
+  database-fout (RLS-blokkade, constraint-violation, etc.) — ze retourneren
+  gewoon `{ data: null, error: {...} }`. De `withRetry()`-helper uit v2.4.9
+  checkte dit `.error`-veld nergens, ving alleen echte JS-exceptions
+  (netwerkfouten) op. Een mislukte insert werd dus stil als "succesvol"
+  behandeld: geen retry, geen log, geen enkele indicatie — precies wat het
+  onderzoek deze sessie liet zien (4 van 4 bibliotheek-trainingen misten
+  hun coach_call_item, zonder een enkele foutmelding in Vercel logs).
+  Fix: `withRetry()` checkt nu expliciet `result.error` en gooit zelf een
+  `Error` met de volledige Postgres-foutdetails (code/message/details/hint).
+  Dit maakt retry en logging voor het eerst daadwerkelijk functioneel voor
+  deze Supabase-call-patronen.
+  **Nog open:** de exacte onderliggende oorzaak (waarom de insert faalt —
+  RLS, key-configuratie, of iets anders) is nog niet bevestigd. RLS-policies
+  op `training_results`, `coach_calls` en `exercise_records` bleken bij
+  onderzoek vergelijkbaar met die van `coach_call_items` (allemaal
+  `auth.uid() = user_id`), wat de eenvoudige "verkeerde key"-hypothese
+  weerlegt aangezien `training_results` wél altijd slaagt. Met deze fix
+  live wordt de eerstvolgende mislukking eindelijk met exacte Postgres-
+  foutcode gelogd — dat is de volgende stap om de echte oorzaak te vinden.
+
 ## v2.4.10 — Build-fix: TypeScript-fout in withRetry-helper (v2.4.9)
 - `src/app/api/training/complete/route.ts` — de `withRetry()`-helper uit
   v2.4.9 gaf een Vercel build-fout: `Property 'data' does not exist on

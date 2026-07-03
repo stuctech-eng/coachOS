@@ -157,7 +157,7 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.10 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.11 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
@@ -171,7 +171,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.10
+- Versie: 2.4.11
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -377,6 +377,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.11 — Fix: retry checkte nooit het .error-veld — echte Postgres-foutmelding nu zichtbaar in logs
 - v2.4.10 — Build-fix: TypeScript-fout in withRetry-helper (v2.4.9 deployde niet)
 - v2.4.9 — Retry-logica Stap 3 + nieuwe debug-check "Coach Call Integriteit"
 - v2.4.8 — Fix: bibliotheek-Coach Call onzichtbaar na eerdere afgeronde call (zelfde bug als v2.4.3, andere tak) + gevonden root cause Supabase pooler-timeout
