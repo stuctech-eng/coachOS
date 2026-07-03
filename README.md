@@ -58,15 +58,97 @@
 | Exercise Illustraties Systeem | ✅ |
 | Countdown + Timer (alle modules) | ✅ |
 
+## Werkinstructies aan Claude — vaste regels deze sessie
+
+Deze regels gelden vanaf nu en altijd, in elke sessie over dit project:
+
+1. **Bestandsverzoeken altijd in een apart copy-blok.** Als Claude een bestand
+   nodig heeft, wordt het exacte pad in een losse code-blok gegeven — niet in
+   lopende tekst — zodat het direct te kopiëren is.
+2. **STOP bij ontbrekende informatie** (Kernregel, zie Start Prompt hieronder)
+   — nooit aannemen welk bestand relevant is; zie sectie Troubleshooting voor
+   bekende bestand-per-probleemtype lijsten.
+
+---
+
+## Illustratie Workflow — WebP vanaf #16
+
+**Besloten (overleg juli 2026, herzien):**
+
+- **Geen Dropbox.** Overwogen als centraal archief, maar afgeschaft — GitHub
+  zelf is al een archief (volledige versiegeschiedenis van elk bestand), en
+  een extra opslaglaag voegt alleen frictie toe zonder functioneel voordeel
+  bij één beheerder die rechtstreeks naar de repo werkt.
+- **`public/exercises/` blijft de enige locatie** waaruit de app illustraties
+  laadt tijdens runtime. Architectuur ongewijzigd.
+- **PNG t/m #15, WebP vanaf #16 (Box Squat).** De eerste 18 kettlebell-
+  illustraties (de oorspronkelijke 6 + de 12 die deze sessie zijn gegenereerd
+  en al in Working Copy stonden toen WebP werd afgesproken) blijven PNG —
+  geen herwerk van reeds voltooide illustraties (Kernregel: geen quick fixes
+  die technische schuld verhogen, stabiliteit boven netheid). Alle **nieuwe**
+  illustraties vanaf #16 worden WebP.
+- Bevestigd zonder enige codewijziging nodig: zowel `src/app/oefening/[id]/page.tsx`
+  als `src/app/archief/oefening/[id]/page.tsx` gebruiken een kale `<img src=...>`
+  zonder formaat-afhankelijke logica — een `.webp`-bestand werkt daar identiek
+  aan `.png`. iOS Safari 16.4+ (al vereist, zie §13) ondersteunt WebP volledig.
+
+**Bijgewerkte workflow (vanaf #16):**
+```
+Claude genereert illustratie-prompt (bestaand sjabloon, ongewijzigd)
+    ↓
+Genereren via GPT, exporteren als WebP (PNG alleen bij noodzakelijke transparantie)
+    ↓
+Kopiëren naar public/exercises/[naam].webp via Working Copy
+    ↓
+illustratie-veld koppelen in de betreffende bibliotheek
+    ↓
+Commit + push → Vercel deploy
+```
+
+**Exportvereisten (nieuwe illustraties, vanaf #16):**
+- Formaat: WebP (voorkeur), PNG alleen bij noodzakelijke transparantie
+- Doelgrootte: ~100-300 KB per illustratie
+- Resolutie: 1024×1024px (of hoger), sRGB, geen onnodige metadata
+- Scherpe lijnen en professionele uitstraling behouden
+
+---
+
+## Bekende architectuur-inconsistentie — twee oefening-databronnen
+
+**Gevonden tijdens troubleshooting (juli 2026), nog niet opgelost — puur
+gedocumenteerd conform Kernregel "documentatie boven aannames".**
+
+Er bestaan twee parallelle, deels overlappende bronnen voor oefeningdata:
+
+1. **`src/lib/exercises.ts`** — kleine, hardcoded lijst (5 oefeningen: Two
+   Hand Swing, Goblet Squat, Kettlebell Clean, Kettlebell Press, Farmer
+   Carry). Veld: `afbeelding` (volledig pad, bv. `/exercises/kettlebell-swing.png`).
+   Gebruikt door: `src/app/oefening/[id]/page.tsx`.
+2. **`src/lib/kettlebell-exercises.ts`** (+ `bodyweight-`, `strength-`,
+   `mobility-exercises.ts`) — de volledige bibliotheken (390 oefeningen
+   totaal). Veld: `illustratie` (alleen bestandsnaam, bv. `goblet-squat.png`).
+   Gebruikt door: `src/app/archief/oefening/[id]/page.tsx` (via `vindOefening()`).
+
+Dezelfde oefening (bv. Goblet Squat) staat dus in **beide** bestanden, met
+**verschillende ID's** (`two-hand-swing` vs. `kb-swing` voor Kettlebell
+Swing) maar wijzend naar hetzelfde afbeeldingsbestand. Dit is een
+ongedocumenteerd dubbel-databronpatroon (raakt Architectuurregel "geen
+dubbele modules"). Niet aangepakt zonder expliciete beslissing — zie Fase 5
+Roadmap voor het geplande "Universele Exercise Database"-patroon
+(`allExercises.filter()`) dat dit op termijn zou kunnen consolideren.
+
+---
+
 ## Openstaand
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.3 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.5 | 🟡 |
 | Life-events pagina testen | 🟡 |
-| Kettlebell illustraties uitrollen (prompts klaar t/m #15, uploaden loopt) | 🔄 In progress |
+| Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
+| Twee parallelle oefening-databronnen (exercises.ts vs bibliotheken) — gedocumenteerd, niet opgelost | ℹ️ Info |
 | Exercise records vullen na eerste training | 🔄 automatisch |
 
 ---
@@ -75,7 +157,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.4
+- Versie: 2.4.5
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -193,37 +275,41 @@ Vraag altijd eerst om:
 ## Exercise Illustraties — Voortgang
 
 Mannequin-stijl illustraties per oefening, gegenereerd via GPT, opgeslagen in
-`public/exercises/[id].png`. Gekoppeld via `illustratie` veld op de
-BibliotheekOefening interfaces. Eerste categorie: Kettlebell (102 oefeningen).
+`public/exercises/[id].png` (t/m #15) of `.webp` (vanaf #16). Gekoppeld via
+`illustratie` veld op de BibliotheekOefening interfaces. Eerste categorie:
+Kettlebell (102 oefeningen).
 
 Volgorde: array-volgorde in `src/lib/kettlebell-exercises.ts`, met reeds
 voltooide oefeningen overgeslagen (niet chronologisch op array-index).
+Zie sectie "Illustratie Workflow" voor de PNG→WebP-knip vanaf #16.
 
 | Oefening | Status |
 |----------|--------|
-| Kettlebell Deadlift | ✅ Live |
-| Kettlebell Swing | ✅ Live |
-| Goblet Squat | ✅ Live |
-| Strict Press | ✅ Live |
-| Clean | ✅ Live |
-| Farmer Carry | ✅ Live |
-| Sumo Deadlift | 🔄 Prompt klaar |
-| Single Arm Deadlift | 🔄 Prompt klaar |
-| Romanian Deadlift | 🔄 Prompt klaar |
-| Staggered Stance Deadlift | 🔄 Prompt klaar |
-| Russian Swing | 🔄 Prompt klaar |
-| American Swing | 🔄 Prompt klaar |
-| One Arm Swing | 🔄 Prompt klaar |
-| Hand-to-Hand Swing | 🔄 Prompt klaar |
-| Double Swing | 🔄 Prompt klaar |
-| Alternating Swing | 🔄 Prompt klaar |
-| Front Squat | 🔄 Prompt klaar |
-| Double Front Squat | 🔄 Prompt klaar |
+| Kettlebell Deadlift | ✅ Live (PNG) |
+| Sumo Deadlift | ✅ Live (PNG) |
+| Single Arm Deadlift | ✅ Live (PNG) |
+| Romanian Deadlift | ✅ Live (PNG) |
+| Staggered Stance Deadlift | ✅ Live (PNG) |
+| Kettlebell Swing | ✅ Live (PNG) |
+| Russian Swing | ✅ Live (PNG) |
+| American Swing | ✅ Live (PNG) |
+| One Arm Swing | ✅ Live (PNG) |
+| Hand-to-Hand Swing | ✅ Live (PNG) |
+| Double Swing | ✅ Live (PNG) |
+| Alternating Swing | ✅ Live (PNG) |
+| Goblet Squat | ✅ Live (PNG) |
+| Front Squat | ✅ Live (PNG) |
+| Double Front Squat | ✅ Live (PNG) |
+| Strict Press | ✅ Live (PNG) |
+| Clean | ✅ Live (PNG) |
+| Farmer Carry | ✅ Live (PNG) |
+| Box Squat | 🔄 Prompt klaar (WebP) |
 
 **Volgende:** vraag "volgende" voor de eerstvolgende oefening zonder illustratie
 (array-volgorde in `kettlebell-exercises.ts`, reeds voltooide overgeslagen).
 Prompt-sjabloon (stijl, layout, kwaliteitseisen) blijft hetzelfde — alleen
-oefeningnaam en de 5 fasenamen wijzigen per oefening.
+oefeningnaam, 5 fasenamen en bestandsformaat (WebP vanaf #16) wijzigen per
+oefening.
 
 ## Bibliotheek Totaal
 - Bodyweight: 120 oefeningen (`src/lib/bodyweight-exercises.ts`)

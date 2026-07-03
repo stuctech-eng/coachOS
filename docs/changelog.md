@@ -1,5 +1,20 @@
 # CoachOS — Changelog
 
+## v2.4.5 — Illustratie-koppeling 12 kettlebell-oefeningen + workflow-herziening
+- `src/lib/kettlebell-exercises.ts` — `illustratie`-veld toegevoegd aan 12
+  entries: kb-sumo-deadlift, kb-single-arm-deadlift, kb-romanian-deadlift,
+  kb-staggered-deadlift, kb-russian-swing, kb-american-swing,
+  kb-one-arm-swing, kb-hand-to-hand-swing, kb-double-swing,
+  kb-alternating-swing, kb-front-squat, kb-double-front-squat.
+  Bestanden waren al als PNG geüpload naar `public/exercises/` in Working
+  Copy; deze wijziging koppelt ze aan de bibliotheek-entries.
+  Totaal nu 18/102 kettlebell-oefeningen met live illustratie.
+- Workflow-besluit: Dropbox als centraal archief overwogen en weer
+  afgeschaft — GitHub zelf is al voldoende archief/backup. WebP als
+  standaardformaat blijft staan, maar alleen vanaf illustratie #16 (Box
+  Squat) — de 18 hierboven blijven PNG (geen herwerk van reeds voltooide
+  illustraties). Zie README sectie "Illustratie Workflow" voor details.
+
 ## v2.4.4 — Fix: "Genereer advies" hangt bij trage/onbereikbare Open-Meteo
 - Nieuw: `src/lib/fetch-with-timeout.ts` — gedeelde helper die `fetch` wrapt
   met een `AbortController`-timeout. Voorkomt dat een trage externe API een
