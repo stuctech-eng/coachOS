@@ -26,13 +26,21 @@ async function getUser() {
 // Postgres Logs). Eén herhaalpoging na 400ms is voldoende voor dit type
 // voorbijgaande hik; een structureel probleem zou ook bij de retry falen
 // en wordt dan gelogd zoals voorheen.
-async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+// v2.4.10: generic-signatuur aangepast (F extends () => PromiseLike<any>,
+// return Awaited<ReturnType<F>>) — de oorspronkelijke `fn: () => Promise<T>`
+// liet TypeScript falen op build ("Property 'data' does not exist on type
+// 'unknown'"), omdat Supabase's query builders een PromiseLike (thenable)
+// zijn, geen echte Promise-instantie. Deze vorm infereert correct.
+async function withRetry<F extends () => PromiseLike<unknown>>(
+  fn: F,
+  label: string
+): Promise<Awaited<ReturnType<F>>> {
   try {
-    return await fn()
+    return await fn() as Awaited<ReturnType<F>>
   } catch (err) {
     console.error(`[training/complete] ${label} eerste poging mislukt, retry over 400ms:`, err)
     await new Promise(resolve => setTimeout(resolve, 400))
-    return await fn()
+    return await fn() as Awaited<ReturnType<F>>
   }
 }
 

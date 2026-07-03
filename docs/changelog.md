@@ -1,5 +1,18 @@
 # CoachOS — Changelog
 
+## v2.4.10 — Build-fix: TypeScript-fout in withRetry-helper (v2.4.9)
+- `src/app/api/training/complete/route.ts` — de `withRetry()`-helper uit
+  v2.4.9 gaf een Vercel build-fout: `Property 'data' does not exist on
+  type 'unknown'`. Oorzaak: de signatuur `fn: () => Promise<T>` liet
+  TypeScript het generic type `T` niet correct afleiden, omdat Supabase's
+  query builders een `PromiseLike` (thenable) zijn, geen echte `Promise`-
+  instantie — daardoor viel `T` terug op `unknown`.
+  Fix: signatuur aangepast naar `F extends () => PromiseLike<unknown>` met
+  `Promise<Awaited<ReturnType<F>>>` als retourtype. Lokaal geverifieerd met
+  `tsc --strict` tegen een gesimuleerde thenable query builder — compileert
+  zonder fouten. Functioneel identiek gedrag aan v2.4.9, alleen de types
+  gecorrigeerd.
+
 ## v2.4.9 — Retry-logica Stap 3 + nieuwe debug-check "Coach Call Integriteit"
 - `src/app/api/training/complete/route.ts` — Stap 3 (Coach Call aanmaken/
   heropenen) krijgt nu een retry: bij falen wordt na 400ms één keer
