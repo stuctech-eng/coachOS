@@ -157,7 +157,7 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.7 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.8 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
@@ -171,7 +171,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.7
+- Versie: 2.4.8
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -225,8 +225,9 @@ Afstand **of** duur is voldoende — niet beide tegelijk nodig (vóór v2.4.6 wa
 Een call die 24 uur oud is zonder voltooiing wordt automatisch `expired`.
 
 **Bekende fixes:**
-- **v2.4.3:** als er op een datum al een `completed`/`expired` call bestond en er kwam een nieuwe kwalificerende Strava-activiteit bij, bleef die call onzichtbaar (GET filtert op `pending`/`partial`). De `POST`-route heropent zo'n call nu automatisch.
+- **v2.4.3:** als er op een datum al een `completed`/`expired` call bestond en er kwam een nieuwe kwalificerende Strava-activiteit bij, bleef die call onzichtbaar (GET filtert op `pending`/`partial`). De `POST`-route (`coach-calls/route.ts`) heropent zo'n call nu automatisch.
 - **v2.4.6:** de bibliotheek-tak (`training/complete/route.ts`) triggerde voorheen alleen een Coach Call als het coach-advies die dag `herstel` of `rust` was. Dat miste gevallen zonder advies of met advies `trainen`. Nu triggert elke Archief/Trainingsbibliotheek-training altijd een Coach Call. Tegelijk is de Strava-drempel verruimd naar OR-logica (afstand of duur) met 30 min i.p.v. 45 min.
+- **v2.4.8:** dezelfde "onzichtbaar na completed/expired"-bug als v2.4.3, maar dan in de bibliotheek-tak — `training/complete/route.ts` had de heropen-logica nog niet. Als er die dag al een afgeronde Coach Call bestond (bv. via Strava) en je deed daarna een Trainingsbibliotheek- of Archief-training, werd het item wel aangemaakt maar bleef de call onzichtbaar. Bevestigd via Vercel function trace (200-status, `coach_call_items` correct aangemaakt, maar `coach_calls.status` bleef `completed`). Nu ook hier heropend.
 
 **Bekend gedrag (geen bug):** de Strava-`POST`-trigger draait alleen wanneer `home/page.tsx` geladen wordt. Na een Strava-sync moet de gebruiker dus naar de home-pagina navigeren voordat een nieuwe Coach Call verschijnt.
 
@@ -359,6 +360,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.8 — Fix: bibliotheek-Coach Call onzichtbaar na eerdere afgeronde call (zelfde bug als v2.4.3, andere tak)
 - v2.4.7 — Opruiming: dubbele oefening-databron verwijderd (exercises.ts + oefening/[id]/page.tsx)
 - v2.4.6 — Coach Call: OR-drempel Strava (30 min of afstand) + altijd triggeren bij bibliotheek-training
 - v2.4.5 — Illustratie-koppeling 12 kettlebell-oefeningen + Dropbox afgeschaft, WebP vanaf #16

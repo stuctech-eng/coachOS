@@ -157,20 +157,23 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Stap 3: Coach Call aanmaken bij elke bibliotheek-training ───────────
-    // v2.4.6: Coach Call wordt nu ALTIJD aangemaakt bij training_source
-    // 'library' (Archief + Trainingsbibliotheek) — ongeacht welk coach-advies
-    // die dag was, of zelfs als er geen advies was gegenereerd. Reden: de
-    // evaluatie zit al in de sessie zelf (EvaluatieLayer), maar de coach
-    // moet altijd weten dát er buiten zijn advies om getraind is, voor de
-    // herstel-/belastingsinschatting van morgen. Voorheen triggerde dit
-    // alleen als coachActieType 'herstel' of 'rust' was — dat miste gevallen
-    // zonder advies of met advies 'trainen'.
+    // v2.4.6: Coach Call wordt ALTIJD aangemaakt bij training_source 'library'
+    // (Archief + Trainingsbibliotheek) — ongeacht welk coach-advies die dag
+    // was, of zelfs als er geen advies was gegenereerd.
+    // v2.4.8: FIX — als er die dag al een coach_call bestond met status
+    // 'completed' of 'expired' (bv. van een eerder afgeronde Strava-evaluatie
+    // dezelfde dag), werd het nieuwe item daar wel aan toegevoegd, maar bleef
+    // de call zelf op 'completed'/'expired' staan. GET /api/coach-calls
+    // filtert op status pending/partial, dus de banner op Home verscheen
+    // dan nooit — ook al was het item wel degelijk aangemaakt. Zelfde root
+    // cause en fix als v2.4.3 in coach-calls/route.ts, hier toegepast op
+    // de bibliotheek-tak.
     if (training_source === 'library' && result?.id) {
       try {
-        // Zoek of er al een coach_call is voor vandaag
+        // Zoek of er al een coach_call is voor vandaag — nu ook status ophalen
         const { data: existing } = await supabase
           .from('coach_calls')
-          .select('id, coach_call_items(training_result_id)')
+          .select('id, status, coach_call_items(training_result_id)')
           .eq('user_id', user.id)
           .eq('date', today)
           .single()
@@ -207,6 +210,15 @@ export async function POST(req: NextRequest) {
               duration_min: actual_duration ?? null,
               status: 'pending',
             })
+
+            // FIX v2.4.8: als de bestaande call al completed/expired was,
+            // heropen hem — anders blijft hij onzichtbaar in GET
+            // (die filtert op status pending/partial)
+            if (existing && (existing.status === 'completed' || existing.status === 'expired')) {
+              await supabase.from('coach_calls')
+                .update({ status: 'pending', completed_at: null })
+                .eq('id', callId)
+            }
           }
         }
       } catch (coachCallErr) {

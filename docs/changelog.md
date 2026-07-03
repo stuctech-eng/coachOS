@@ -1,5 +1,21 @@
 # CoachOS — Changelog
 
+## v2.4.8 — Fix: bibliotheek-Coach Call onzichtbaar na eerdere afgeronde call
+- `src/app/api/training/complete/route.ts` — Stap 3 heropent nu een bestaande
+  `coach_call` als die al `completed`/`expired` was, vóórdat het nieuwe item
+  wordt toegevoegd. Zelfde root cause en fix als v2.4.3 (`coach-calls/route.ts`),
+  hier ontbrak de heropen-logica nog in de bibliotheek-tak.
+  Bevestigd via test + Vercel function trace: de POST naar `/api/training/complete`
+  gaf 200, `coach_call_items` werd wel degelijk aangemaakt (zichtbaar in de
+  external API calls: GET coach_calls → POST coach_call_items), maar de
+  bijbehorende `coach_calls`-rij bleef op status `completed` staan van een
+  eerder die dag afgeronde evaluatie. `GET /api/coach-calls` filtert op
+  `pending`/`partial`, dus de banner op Home verscheen niet — ondanks dat de
+  data correct was opgeslagen.
+  Reproductiestap die dit aan het licht bracht: Coach Call afronden (bv. via
+  Strava), daarna dezelfde dag een training uit de Trainingsbibliotheek
+  doorlopen en evalueren — geen nieuwe Coach Call zichtbaar op Home.
+
 ## v2.4.7 — Opruiming: dubbele oefening-databron verwijderd
 
 **Wat er weg is:**
