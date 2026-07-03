@@ -1,5 +1,28 @@
 # CoachOS — Changelog
 
+## v2.4.6 — Coach Call: OR-drempel Strava + altijd triggeren bij bibliotheek
+- `src/app/api/coach-calls/route.ts` — Strava-kwalificatie gewijzigd van
+  AND naar OR: een activiteit kwalificeert nu als afstand ÓF duur voldoet,
+  niet beide tegelijk. `MIN_DURATION_MIN` verlaagd van 45 naar 30 minuten.
+  Afstandsdrempels ongewijzigd (Hardlopen 5km, Fietsen 20km, Roeien 5km).
+  Reden: in herstelfases is afstand soms niet haalbaar maar duur wel een
+  reëel belastingssignaal — dat moet de coach kunnen zien.
+- `src/app/api/training/complete/route.ts` — Coach Call wordt nu ALTIJD
+  aangemaakt bij `training_source: 'library'` (Archief + Trainingsbibliotheek),
+  ongeacht welk coach-advies die dag gold. Voorheen alleen bij advies
+  'herstel' of 'rust' — dat miste gevallen zonder advies of met advies
+  'trainen'. De evaluatie zelf zat al in de sessie (EvaluatieLayer); dit
+  triggert nu consistent de melding aan de coach dat er buiten zijn advies
+  om getraind is, voor de herstelinschatting van de volgende dag.
+- `src/app/settings/hoe-werkt-het/page.tsx` — sectie "Coach Call" herschreven:
+  legt nu het onderscheid uit tussen Strava (OR-drempel, enige bron van
+  evaluatiedata) en Archief/Trainingsbibliotheek (altijd triggeren, evaluatie
+  zit al in de sessie zelf). Trainer AI-sectie kreeg een verwijzing naar
+  dezelfde Coach Call-trigger voor Trainingsbibliotheek.
+  Noot: deze pagina toont onderaan "CoachOS v1.8.6" — een apart, niet met
+  de hoofdversie gesynchroniseerd versienummer. Niet gewijzigd, want de
+  juiste waarde is niet vastgesteld (geen aanname gemaakt).
+
 ## v2.4.5 — Illustratie-koppeling 12 kettlebell-oefeningen + workflow-herziening
 - `src/lib/kettlebell-exercises.ts` — `illustratie`-veld toegevoegd aan 12
   entries: kb-sumo-deadlift, kb-single-arm-deadlift, kb-romanian-deadlift,

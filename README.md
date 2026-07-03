@@ -143,7 +143,7 @@ Roadmap voor het geplande "Universele Exercise Database"-patroon
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.5 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.6 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
@@ -157,7 +157,7 @@ Roadmap voor het geplande "Universele Exercise Database"-patroon
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.5
+- Versie: 2.4.6
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -176,38 +176,45 @@ Roadmap voor het geplande "Universele Exercise Database"-patroon
 ## Coach Call Systeem
 
 **Wat het is:**
-De Coach Call is de evaluatiestap in de Coaching Cirkel (zie `docs/architecture.md` §4). Na een training of Strava-activiteit vraagt de app de gebruiker om een korte evaluatie (RPE + mood + notitie). Op basis daarvan genereert de coach een persoonlijke reactie, en die evaluatie stroomt terug in het dagadvies van de coach (zie `coachCallContext` in `src/app/api/coach/route.ts`).
+De Coach Call is de evaluatiestap in de Coaching Cirkel (zie `docs/architecture.md` §4). Coach AI wil altijd weten wanneer er getraind is — via Strava, Archief of Trainingsbibliotheek — zodat dit meeweegt in het herstel-/belastingadvies van de volgende dag (zie `coachCallContext` in `src/app/api/coach/route.ts`).
 
-Er zijn twee bronnen die een Coach Call kunnen triggeren:
-1. **Interne bibliotheek-training** (`training_source: library`) — bijvoorbeeld een losse Archief-oefening (v2.4.1)
-2. **Strava-activiteit** — alleen als de activiteit een drempelwaarde haalt (zie hieronder)
+Er zijn twee bronnen die een Coach Call kunnen triggeren, met elk een andere reden (zie tabel):
 
-**Strava-drempelwaarden (hardcoded in `route.ts`):**
+| Bron | Reden voor Coach Call | Wanneer triggert het? |
+|---|---|---|
+| **Strava-activiteit** | Enige manier om evaluatiedata (RPE/mood) binnen te krijgen — een Strava-rit heeft zelf geen evaluatiescherm en de belasting telt zonder Coach Call niet mee in de herstel-berekening | Alleen als een drempelwaarde gehaald wordt (zie hieronder) |
+| **Archief / Trainingsbibliotheek** (`training_source: library`) | De evaluatie (RPE, energie, techniek) zit al in de sessie zelf vóór opslag — de Coach Call meldt hier dát er buiten het coach-advies om getraind is | **Altijd**, ongeacht welk advies die dag gold of zelfs als er geen advies was (sinds v2.4.6) |
+
+**Strava-drempelwaarden (hardcoded in `route.ts`, sinds v2.4.6):**
 ```
-Hardlopen: 5km + 45 min
-Fietsen:   20km + 45 min
-Roeien:    5km + 45 min
+Hardlopen: 5km OF 30 min
+Fietsen:   20km OF 30 min
+Roeien:    5km OF 30 min
 ```
-Beide voorwaarden (afstand ÉN duur) moeten gehaald worden. Andere sporttypes (Wandelen, Yoga, Krachttraining, etc.) triggeren geen Coach Call via Strava.
+Afstand **of** duur is voldoende — niet beide tegelijk nodig (vóór v2.4.6 was dit een AND-voorwaarde met 45 min). Reden: in herstelfases is afstand soms niet haalbaar maar duur wel een reëel belastingssignaal. Andere sporttypes (Wandelen, Yoga, Krachttraining, etc.) triggeren geen Coach Call via Strava.
 
 **Betrokken bestanden:**
 
 | Bestand | Rol |
 |---------|-----|
-| `src/app/api/coach-calls/route.ts` | **Kern.** `POST` maakt/heropent `coach_calls` + `coach_call_items` op basis van kwalificerende Strava-activiteiten. `GET` haalt de actieve (pending/partial) call op, inclusief 24u-expiry check. |
+| `src/app/api/coach-calls/route.ts` | **Kern (Strava-tak).** `POST` maakt/heropent `coach_calls` + `coach_call_items` op basis van kwalificerende Strava-activiteiten (OR-drempel). `GET` haalt de actieve (pending/partial) call op, inclusief 24u-expiry check. |
+| `src/app/api/training/complete/route.ts` | **Kern (bibliotheek-tak).** Stap 3 maakt altijd een Coach Call aan bij `training_source: 'library'`, ongeacht coach-advies (sinds v2.4.6). Slaat ook `training_results` en `exercise_records` op. |
 | `src/app/api/coach-calls/rate/route.ts` | Verwerkt de evaluatie (rating/mood/notes) per item, genereert een AI coach-reactie per item, herberekent de call-status (pending → partial → completed). |
-| `src/app/home/page.tsx` | Roept bij laden `POST` aan (trigger), daarna `GET` (ophalen), en toont de Coach Call-banner als `pending_count > 0`. **Belangrijk:** de trigger draait dus alleen als de home-pagina geladen wordt. |
+| `src/app/home/page.tsx` | Roept bij laden `POST` aan (Strava-trigger), daarna `GET` (ophalen), en toont de Coach Call-banner als `pending_count > 0`. **Belangrijk:** de Strava-trigger draait dus alleen als de home-pagina geladen wordt. |
 | `src/app/coach-call/page.tsx` | De evaluatiepagina zelf waar de gebruiker rating/mood/notities invult. |
 | `src/app/activities/page.tsx` | Toont Strava/Garmin-activiteiten; bron van de data die `coach-calls/route.ts` filtert. |
 | `src/lib/strava-activity-processor.ts` | Verwerkt de ruwe Strava-sync naar `activity_sessions` (sporttype-mapping, metrics). Draait vóór de Coach Call-logica, niet erin. |
+| `src/app/settings/hoe-werkt-het/page.tsx` | In-app uitleg voor de gebruiker (sectie "Coach Call") — houd dit synchroon met wijzigingen aan de trigger-logica. |
 
 **Statusmachine van een `coach_call`:**
 `pending` → (items deels beoordeeld) → `partial` → (alle items beoordeeld) → `completed`
 Een call die 24 uur oud is zonder voltooiing wordt automatisch `expired`.
 
-**Bekende fix (v2.4.3):** als er op een datum al een `completed`/`expired` call bestond en er kwam een nieuwe kwalificerende Strava-activiteit bij, bleef die call onzichtbaar (GET filtert op `pending`/`partial`). De `POST`-route heropent zo'n call nu automatisch. Zie changelog v2.4.3 voor detail.
+**Bekende fixes:**
+- **v2.4.3:** als er op een datum al een `completed`/`expired` call bestond en er kwam een nieuwe kwalificerende Strava-activiteit bij, bleef die call onzichtbaar (GET filtert op `pending`/`partial`). De `POST`-route heropent zo'n call nu automatisch.
+- **v2.4.6:** de bibliotheek-tak (`training/complete/route.ts`) triggerde voorheen alleen een Coach Call als het coach-advies die dag `herstel` of `rust` was. Dat miste gevallen zonder advies of met advies `trainen`. Nu triggert elke Archief/Trainingsbibliotheek-training altijd een Coach Call. Tegelijk is de Strava-drempel verruimd naar OR-logica (afstand of duur) met 30 min i.p.v. 45 min.
 
-**Bekend gedrag (geen bug):** de `POST`-trigger draait alleen wanneer `home/page.tsx` geladen wordt. Na een Strava-sync moet de gebruiker dus naar de home-pagina navigeren voordat een nieuwe Coach Call verschijnt.
+**Bekend gedrag (geen bug):** de Strava-`POST`-trigger draait alleen wanneer `home/page.tsx` geladen wordt. Na een Strava-sync moet de gebruiker dus naar de home-pagina navigeren voordat een nieuwe Coach Call verschijnt.
 
 ---
 
@@ -338,6 +345,9 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.6 — Coach Call: OR-drempel Strava (30 min of afstand) + altijd triggeren bij bibliotheek-training
+- v2.4.5 — Illustratie-koppeling 12 kettlebell-oefeningen + Dropbox afgeschaft, WebP vanaf #16
+- v2.4.4 — Fix: "Genereer advies" hangt bij trage/onbereikbare Open-Meteo (timeout toegevoegd)
 - v2.4.3 — Fix: Strava Coach Call niet zichtbaar na voltooide call (zie sectie Coach Call Systeem + changelog)
 - v2.4.2 — Timer + countdown fix Archief losse-oefening flow
 - v2.4.1 — Archief standalone losse oefening flow

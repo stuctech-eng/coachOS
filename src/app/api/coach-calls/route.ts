@@ -21,7 +21,10 @@ const QUALIFYING_THRESHOLDS: Record<string, number> = {
   Fietsen: 20000,
   Roeien: 5000,
 }
-const MIN_DURATION_MIN = 45
+// v2.4.6: verlaagd van 45 naar 30 min. Logica gewijzigd van AND naar OR
+// (zie qualifying-filter hieronder) — relevant bij herstelfases waarin
+// afstand niet haalbaar is maar duur wel telt als belasting.
+const MIN_DURATION_MIN = 30
 
 export async function GET() {
   try {
@@ -96,12 +99,14 @@ export async function POST(_req: NextRequest) {
 
     if (!sessions || sessions.length === 0) return NextResponse.json({ created: false, reason: 'no_activities' })
 
+    // v2.4.6: AND → OR. Afstand OF duur is genoeg — niet beide nodig.
+    // Alleen sporttypes met een gedefinieerde drempel kwalificeren.
     const qualifying = sessions.filter(s => {
       const sportName = (s.activities as { name?: string } | null)?.name || ''
       const threshold = QUALIFYING_THRESHOLDS[sportName]
       if (!threshold) return false
       const distance = (s.metrics as Record<string, number>)?.distance || 0
-      return s.duration >= MIN_DURATION_MIN && distance >= threshold
+      return s.duration >= MIN_DURATION_MIN || distance >= threshold
     })
 
     if (qualifying.length === 0) return NextResponse.json({ created: false, reason: 'below_threshold' })
@@ -143,7 +148,7 @@ export async function POST(_req: NextRequest) {
           )
           updated++
 
-          // FIX v2.4.3: als de call al 'completed' of 'expired' was, heropen hem —
+          // v2.4.3: als de call al 'completed' of 'expired' was, heropen hem —
           // anders blijft hij onzichtbaar in GET (die filtert op pending/partial)
           if (existing.status === 'completed' || existing.status === 'expired') {
             await supabase.from('coach_calls')

@@ -156,63 +156,57 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Stap 3: Coach Call aanmaken bij bibliotheek-training tegen advies in ──
-    // Alleen als: training komt uit bibliotheek (library) EN coach adviseerde
-    // herstel of rust vandaag — dan weet de coach het niet tenzij we het melden
+    // ── Stap 3: Coach Call aanmaken bij elke bibliotheek-training ───────────
+    // v2.4.6: Coach Call wordt nu ALTIJD aangemaakt bij training_source
+    // 'library' (Archief + Trainingsbibliotheek) — ongeacht welk coach-advies
+    // die dag was, of zelfs als er geen advies was gegenereerd. Reden: de
+    // evaluatie zit al in de sessie zelf (EvaluatieLayer), maar de coach
+    // moet altijd weten dát er buiten zijn advies om getraind is, voor de
+    // herstel-/belastingsinschatting van morgen. Voorheen triggerde dit
+    // alleen als coachActieType 'herstel' of 'rust' was — dat miste gevallen
+    // zonder advies of met advies 'trainen'.
     if (training_source === 'library' && result?.id) {
       try {
-        const { data: coachRec } = await supabase
-          .from('coach_recommendations')
-          .select('actie_type')
+        // Zoek of er al een coach_call is voor vandaag
+        const { data: existing } = await supabase
+          .from('coach_calls')
+          .select('id, coach_call_items(training_result_id)')
           .eq('user_id', user.id)
           .eq('date', today)
-          .eq('type', 'coach')
           .single()
 
-        const coachActieType = coachRec?.actie_type || null
+        // Check of dit training_result_id al bestaat
+        const alreadyAdded = (existing?.coach_call_items as { training_result_id: string }[] || [])
+          .some(i => i.training_result_id === result.id)
 
-        if (coachActieType === 'herstel' || coachActieType === 'rust') {
-          // Zoek of er al een coach_call is voor vandaag
-          const { data: existing } = await supabase
-            .from('coach_calls')
-            .select('id, coach_call_items(training_result_id)')
-            .eq('user_id', user.id)
-            .eq('date', today)
-            .single()
+        if (!alreadyAdded) {
+          let callId = existing?.id
 
-          // Check of dit training_result_id al bestaat
-          const alreadyAdded = (existing?.coach_call_items as { training_result_id: string }[] || [])
-            .some(i => i.training_result_id === result.id)
+          if (!callId) {
+            const { data: newCall } = await supabase
+              .from('coach_calls')
+              .insert({ user_id: user.id, date: today, status: 'pending' })
+              .select('id')
+              .single()
+            callId = newCall?.id
+          }
 
-          if (!alreadyAdded) {
-            let callId = existing?.id
-
-            if (!callId) {
-              const { data: newCall } = await supabase
-                .from('coach_calls')
-                .insert({ user_id: user.id, date: today, status: 'pending' })
-                .select('id')
-                .single()
-              callId = newCall?.id
+          if (callId) {
+            const sportLabel: Record<string, string> = {
+              kettlebell: 'Kettlebell',
+              rowing: 'Roeien',
+              running: 'Hardlopen',
+              cycling: 'Fietsen',
+              strength: 'Kracht',
+              bodyweight: 'Bodyweight',
             }
-
-            if (callId) {
-              const sportLabel: Record<string, string> = {
-                kettlebell: 'Kettlebell',
-                rowing: 'Roeien',
-                running: 'Hardlopen',
-                cycling: 'Fietsen',
-                strength: 'Kracht',
-                bodyweight: 'Bodyweight',
-              }
-              await supabase.from('coach_call_items').insert({
-                coach_call_id: callId,
-                training_result_id: result.id,
-                sport_type: sportLabel[training_type || module] || training_type || module || 'Training',
-                duration_min: actual_duration ?? null,
-                status: 'pending',
-              })
-            }
+            await supabase.from('coach_call_items').insert({
+              coach_call_id: callId,
+              training_result_id: result.id,
+              sport_type: sportLabel[training_type || module] || training_type || module || 'Training',
+              duration_min: actual_duration ?? null,
+              status: 'pending',
+            })
           }
         }
       } catch (coachCallErr) {
