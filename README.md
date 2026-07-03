@@ -71,6 +71,61 @@ Deze regels gelden vanaf nu en altijd, in elke sessie over dit project:
 
 ---
 
+## Versienummer — één bron van waarheid (vastgelegd juli 2026)
+
+**`package.json` is het enige, leidende versienummer van CoachOS.** Er
+bestond lang verwarring doordat drie plekken losstaande nummers toonden
+(`package.json` bleef op `1.8.0` steken, `hoe-werkt-het/page.tsx` toonde een
+hardcoded `"v1.8.6"`, en README/changelog liepen apart op naar 2.4.x). Dat is
+sinds v2.4.14 opgelost:
+
+- **Bij elke wijziging: `package.json`, README en `docs/changelog.md` gaan
+  altijd samen omhoog, in dezelfde beweging.** Nooit één van de drie
+  vergeten — dat is precies hoe de verwarring ontstond.
+- **`src/app/api/version/route.ts`** leest het nummer rechtstreeks uit
+  `package.json` en dient als enige runtime-bron voor de app zelf. Andere
+  schermen (zoals `hoe-werkt-het/page.tsx`) tonen het versienummer via een
+  `fetch('/api/version')`-call — nooit een eigen hardcoded string.
+- **Automatische update-detectie:** `src/app/home/page.tsx` vergelijkt bij
+  elk bezoek het huidige versienummer met `localStorage`
+  (`coachos_laatst_geziene_versie`). Bij een verschil draait een lichte
+  gezondheidscheck (kerntabellen + kernroutes, puur lezend) op de
+  achtergrond; bij gevonden problemen verschijnt een banner die naar
+  `/debug` verwijst voor de volledige diagnose (inclusief de schrijftest
+  uit Laag 3, zie sectie hieronder). Dit is de "onderdelen tester die
+  waarschuwt als een update de code breekt" die tijdens deze sessie werd
+  gevraagd — met de kanttekening dat dit een update **detecteert na
+  deploy**, niet **voorkomt vóór** deploy (dat vereist een CI/CD-pipeline,
+  die nu niet bestaat).
+- **Als je ooit een nieuw versienummer-achtig veld tegenkomt** (een tweede
+  `VERSION`-constante, een ander hardcoded getal ergens), behandel dat met
+  dezelfde argwaan als de vorige twee dubbele-databron-gevallen deze sessie
+  (oefening-databronnen, zie verderop): eerst navragen of het een bewuste
+  losse waarde is, niet aannemen dat het hetzelfde hoort te zijn als
+  `package.json`.
+
+---
+
+## Gezondheidscheck — Debug Panel (`/debug`)
+
+Sinds v2.4.13 is `/debug` uitgebreid van een kleine diagnostiek naar een
+volledige gezondheidscheck, in drie lagen:
+
+| Laag | Wat | Risico | Wanneer |
+|------|-----|--------|---------|
+| **1 — Tabellen** | Alle 29 tabellen uit het schema, `select id limit 1` | Geen (puur lezend) | Handmatig (`/debug`) én automatisch-licht (Home, subset van 5 tabellen) |
+| **2 — Routes** | 17 kern-GET-routes | Geen (puur lezend, geen schrijfroutes aangeroepen) | Handmatig én automatisch-licht (Home, subset van 3 routes) |
+| **3 — Schrijftest** | Tijdelijke testrij in `coach_calls`/`coach_call_items`, direct weer opgeruimd | Laag — herkenbaar gemarkeerd (`__SELFTEST__`, datum 1900-01-01), opruiming via `finally`-blok + cleanup van oude testrijen | **Alleen handmatig** via `/debug` — nooit automatisch op de achtergrond |
+
+Laag 3 is bewust beperkt tot `coach_calls`/`coach_call_items` — de twee
+tabellen die in juli 2026 daadwerkelijk een probleem gaven (zie Coach Call
+Systeem-sectie, v2.4.12). Uitbreiden naar andere tabellen kan, maar vraagt
+per tabel eigen zorgvuldige opruim-logica (bijv. foreign-key-afhankelijkheden
+checken) — niet in één keer voor alle tabellen doen, dat verhoogt het risico
+op precies het soort fout die deze gezondheidscheck juist moet voorkomen.
+
+---
+
 ## Illustratie Workflow — WebP vanaf #16
 
 **Besloten (overleg juli 2026, herzien):**
@@ -157,12 +212,11 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.13 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.14 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
-| Los "v1.8.6"-versienummer onderaan hoe-werkt-het-pagina, niet gesynchroniseerd met hoofdversie — blokkeert ook automatische gezondheidscheck-trigger na update (zie v2.4.13) | 🟡 |
 | Exercise records vullen na eerste training | 🔄 automatisch |
 
 ---
@@ -171,7 +225,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.13
+- Versie: 2.4.14
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -391,6 +445,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.14 — Eén versienummer (package.json leidend) + automatische update-detectie met lichte gezondheidscheck op Home
 - v2.4.13 — Debug Panel uitgebreid tot volledige gezondheidscheck (29 tabellen, 17 routes, schrijftest)
 - v2.4.12 — DEFINITIEVE FIX: NOT NULL constraint activity_session_id opgeheven (SQL, geen code) — hele Coach Call-traject afgesloten
 - v2.4.11 — Fix: retry checkte nooit het .error-veld — echte Postgres-foutmelding nu zichtbaar in logs

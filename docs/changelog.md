@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.14 — Eén versienummer: package.json leidend, automatische update-detectie
+**Definitieve oplossing voor drie los van elkaar lopende versienummers
+(package.json 1.8.0, hoe-werkt-het-pagina "v1.8.6" hardcoded, README
+2.4.13) — vastgesteld tijdens de gezondheidscheck-discussie.**
+
+- `package.json` — versienummer bijgewerkt naar `2.4.14`. **Dit is vanaf
+  nu de enige bron van waarheid voor het app-versienummer.** Bij elke
+  toekomstige wijziging: `package.json`, README en changelog gaan altijd
+  samen omhoog, in dezelfde beweging.
+- **Nieuw:** `src/app/api/version/route.ts` — leest het versienummer
+  rechtstreeks uit `package.json` en geeft het terug als JSON. Geen
+  wijziging aan `next.config.js` nodig (geen build-time env-injectie) —
+  een simpele runtime-route volstaat en is minder risicovol.
+- `src/app/settings/hoe-werkt-het/page.tsx` — de hardcoded `"CoachOS
+  v1.8.6"`-tekst is vervangen door een `fetch('/api/version')`-call. Kan
+  nooit meer los gaan lopen van de werkelijke versie.
+- `src/app/home/page.tsx` — **automatische update-detectie toegevoegd.**
+  Bij elke keer dat de app opent, vergelijkt een nieuwe `useEffect` het
+  versienummer (via `/api/version`) met wat in `localStorage`
+  (`coachos_laatst_geziene_versie`) stond bij het vorige bezoek. Bij een
+  verschil draait een **lichte** gezondheidscheck op de achtergrond (5
+  kerntabellen + 3 kernroutes, puur lezend — bewust géén Laag 3
+  schrijftest op de achtergrond, dat blijft voorbehouden aan een bewuste
+  handmatige `/debug`-run). Bij gevonden problemen verschijnt een rode
+  banner bovenaan Home die doorlinkt naar `/debug` voor de volledige
+  diagnose. Faalt de check zelf (netwerk e.d.), dan gebeurt er stil niets
+  — geen storende fout-banner voor een probleem dat er niet is.
+- **Wat dit oplost:** de oorspronkelijke wens ("waarschuwen als een update
+  de code breekt") is nu functioneel — niet volledig automatisch vóóraf
+  (dat kan niet zonder CI/CD-pipeline, zie eerdere overleg), maar wel
+  automatisch **gedetecteerd bij het eerstvolgende bezoek na een update**,
+  zonder dat de gebruiker zelf naar `/debug` hoeft te navigeren.
+
 ## v2.4.13 — Debug Panel uitgebreid tot volledige gezondheidscheck
 - `src/app/debug/page.tsx` — drie lagen toegevoegd/uitgebreid:
   - **Laag 1 — alle tabellen:** bereikbaarheidscheck uitgebreid van 4 naar

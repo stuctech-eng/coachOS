@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen, Phone } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen, Phone, ShieldAlert } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -23,6 +23,37 @@ interface WeerData {
     middag: { label: string }
     avond: { label: string }
   }
+}
+
+const VERSIE_STORAGE_KEY = 'coachos_laatst_geziene_versie'
+
+// v2.4.14: lichte gezondheidscheck — alleen Laag 1 (kerntabellen) + Laag 2
+// (kernroutes), GEEN schrijftest (die hoort thuis in /debug, niet
+// ongevraagd op de achtergrond op Home). Dit is bewust een subset van de
+// volledige check in debug/page.tsx: snel, puur lezend, alleen bedoeld om
+// een net-gedeployde-en-mogelijk-kapotte update snel te signaleren.
+const KERN_TABELLEN_LICHT = ['profiles', 'coach_calls', 'coach_call_items', 'training_results', 'coach_recommendations'] as const
+const KERN_ROUTES_LICHT = ['/api/status', '/api/coach', '/api/coach-calls'] as const
+
+async function draaiLichteGezondheidscheck(supabase: ReturnType<typeof createBrowserClient>): Promise<number> {
+  let problemen = 0
+  for (const tabel of KERN_TABELLEN_LICHT) {
+    try {
+      const { error } = await supabase.from(tabel).select('id').limit(1)
+      if (error) problemen++
+    } catch {
+      problemen++
+    }
+  }
+  for (const route of KERN_ROUTES_LICHT) {
+    try {
+      const res = await fetch(route, { method: 'GET', credentials: 'include' })
+      if (!res.ok && res.status !== 304) problemen++
+    } catch {
+      problemen++
+    }
+  }
+  return problemen
 }
 
 function getScoreLabel(score: number | null): string {
@@ -66,6 +97,8 @@ export default function HomePage() {
   const [garminDatum, setGarminDatum] = useState<string | null>(null)
   const [coachCall, setCoachCall] = useState<{ id: string; pending_count: number; coach_call_items: { id: string }[] } | null>(null)
   const [weer, setWeer] = useState<WeerData | null>(null)
+  // v2.4.14: automatische update-detectie + lichte gezondheidscheck
+  const [updateProbleem, setUpdateProbleem] = useState<{ nieuweVersie: string; problemen: number } | null>(null)
 
   const greeting = getGreeting(profile?.display_name || profile?.first_name)
   const score = coachStatus?.coach_score ?? null
@@ -78,6 +111,40 @@ export default function HomePage() {
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data && !data.error) setWeer(data) })
       .catch(() => {})
+  }, [])
+
+  // v2.4.14: versie-check — bij een nieuw versienummer t.o.v. de vorige
+  // sessie draait een lichte gezondheidscheck op de achtergrond. Bij
+  // problemen verschijnt een banner die naar /debug verwijst voor de
+  // volledige diagnose (inclusief Laag 3 schrijftest). Faalt de check zelf
+  // stil (netwerk, etc.) → geen banner, geen verstoring van de gebruiker.
+  useEffect(() => {
+    const checkVersie = async () => {
+      try {
+        const res = await fetch('/api/version')
+        if (!res.ok) return
+        const data = await res.json()
+        const nieuweVersie = data?.version
+        if (!nieuweVersie) return
+
+        const laatstGezien = window.localStorage.getItem(VERSIE_STORAGE_KEY)
+        if (laatstGezien === nieuweVersie) return // geen update sinds vorige keer
+
+        // Nieuwe versie gedetecteerd (of eerste bezoek — laatstGezien is null)
+        if (laatstGezien !== null) {
+          const supabase = createBrowserClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+          )
+          const problemen = await draaiLichteGezondheidscheck(supabase)
+          if (problemen > 0) {
+            setUpdateProbleem({ nieuweVersie, problemen })
+          }
+        }
+        window.localStorage.setItem(VERSIE_STORAGE_KEY, nieuweVersie)
+      } catch { /* stil falen — geen storende banner bij een netwerkhikje */ }
+    }
+    checkVersie()
   }, [])
 
   // Check Garmin import vandaag
@@ -247,6 +314,27 @@ export default function HomePage() {
             <Bell size={20} />
           </button>
         </div>
+
+        {/* v2.4.14: Update-probleem banner — alleen zichtbaar na een
+            gedetecteerde versiewissel MET gevonden problemen */}
+        {updateProbleem && (
+          <button onClick={() => router.push('/debug')} className="w-full text-left active:opacity-70">
+            <Card className="px-5 py-4 border border-red-500/30 bg-red-500/5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <ShieldAlert size={18} className="text-red-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-semibold text-sm">Update gedetecteerd (v{updateProbleem.nieuweVersie})</p>
+                  <p className="text-slate-400 text-xs mt-0.5">
+                    {updateProbleem.problemen} {updateProbleem.problemen === 1 ? 'probleem' : 'problemen'} gevonden — tik voor volledige diagnose
+                  </p>
+                </div>
+                <ChevronDown size={16} className="text-red-400/50 -rotate-90 flex-shrink-0" />
+              </div>
+            </Card>
+          </button>
+        )}
 
         {/* Coach Call */}
         {coachCall && coachCall.pending_count > 0 && (

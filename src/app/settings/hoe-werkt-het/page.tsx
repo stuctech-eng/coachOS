@@ -1,7 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Brain, Dumbbell, Wind, TrendingUp, Battery, Heart, Zap, Clock, Camera, BarChart2, ChevronDown, Phone } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
 
@@ -244,6 +244,17 @@ function SectieKaart({ sectie }: { sectie: Sectie }) {
 
 export default function HoeWerktHetPage() {
   const router = useRouter()
+  // v2.4.14: versienummer komt uit package.json (via /api/version), niet
+  // meer hardcoded. package.json is de enige bron van waarheid — zie
+  // README sectie "Versienummer — één bron van waarheid".
+  const [versie, setVersie] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/version')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.version) setVersie(data.version) })
+      .catch(() => {})
+  }, [])
 
   return (
     <AppShell showNav={false}>
@@ -273,7 +284,7 @@ export default function HoeWerktHetPage() {
 
         <div className="rounded-2xl bg-white/5 border border-white/8 px-4 py-4 mt-2">
           <p className="text-xs text-slate-500 text-center">
-            CoachOS v1.8.6 — wordt bijgewerkt bij elke versie
+            CoachOS {versie ? `v${versie}` : ''} — wordt bijgewerkt bij elke versie
           </p>
         </div>
       </div>
