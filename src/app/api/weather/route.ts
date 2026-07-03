@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 function weerOmschrijving(code: number): string {
   if (code === 0) return 'Helder'
@@ -59,9 +60,12 @@ export async function GET(req: NextRequest) {
 
     if (ip && ip !== '127.0.0.1' && !ip.startsWith('192.168') && !ip.startsWith('::1')) {
       try {
-        const geoRes = await fetch(`https://ipapi.co/${ip}/json/`, {
-          headers: { 'User-Agent': 'CoachOS/1.0' },
-        })
+        // FIX v2.4.4: timeout toegevoegd — voorkomt hangende function bij trage geo-lookup
+        const geoRes = await fetchWithTimeout(
+          `https://ipapi.co/${ip}/json/`,
+          { headers: { 'User-Agent': 'CoachOS/1.0' } },
+          3000
+        )
         if (geoRes.ok) {
           const geo = await geoRes.json()
           if (geo.latitude && geo.longitude) {
@@ -70,13 +74,14 @@ export async function GET(req: NextRequest) {
             stad = geo.city || geo.region || 'Onbekend'
           }
         }
-      } catch { /* gebruik fallback */ }
+      } catch { /* gebruik fallback — timeout of netwerkfout, niet blokkerend */ }
     }
 
     // Open-Meteo met uurlijkse data voor ochtend/middag/avond
     const weerUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,precipitation&hourly=precipitation,weathercode,temperature_2m&timezone=Europe/Amsterdam&forecast_days=1`
 
-    const weerRes = await fetch(weerUrl)
+    // FIX v2.4.4: timeout toegevoegd — voorkomt hangende function bij trage/onbereikbare Open-Meteo
+    const weerRes = await fetchWithTimeout(weerUrl, {}, 4000)
     if (!weerRes.ok) throw new Error('Open-Meteo niet beschikbaar')
 
     const weerData = await weerRes.json()

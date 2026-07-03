@@ -7,6 +7,7 @@ import { cookies } from 'next/headers'
 import { calculateRecoveryScore } from '@/core/ai-engine/recovery-engine'
 import { buildDailyCoachPrompt, WeekMetrics } from '@/core/prompts/daily-coach'
 import { fetchTodaysLifeEvents, formatLifeEventsContext } from '@/core/utils/life-events-context'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -119,8 +120,6 @@ export async function POST() {
         .gte('performed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
         .order('performed_at', { ascending: false })
         .limit(100),
-      // Weerbericht voor coach context
-      fetch('https://coach-os-tau.vercel.app/api/weather').then(r => r.ok ? r.json() : null).catch(() => null),
       // Stap 3: Coach Call evaluaties laatste 3 dagen
       supabase.from('coach_calls')
         .select('date, coach_call_items(sport_type, duration_min, rating, mood, notes, status)')
@@ -129,6 +128,11 @@ export async function POST() {
         .in('status', ['pending', 'partial', 'completed'])
         .order('date', { ascending: false })
         .limit(3),
+      // FIX v2.4.4: timeout toegevoegd — voorkomt dat een hangende Open-Meteo
+      // verbinding de volledige coach-advies-generatie blokkeert (500 na platform-timeout)
+      fetchWithTimeout('https://coach-os-tau.vercel.app/api/weather', {}, 3000)
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null),
     ])
 
     const profile = profileRes.data

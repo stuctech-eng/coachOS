@@ -40,6 +40,7 @@
 | AI Assembly Layer | ✅ |
 | Coaching Cirkel | ✅ |
 | Coach Compliance | ✅ |
+| Coach Call Systeem (interne + Strava) | ✅ |
 | Uitlegpagina Bibliotheek | ✅ |
 | Drill Libraries (Running/Rowing/Cycling) | ✅ |
 | Mobility Bibliotheek | ✅ |
@@ -56,16 +57,16 @@
 | Archief (354 oefeningen los) | ✅ |
 | Exercise Illustraties Systeem | ✅ |
 | Countdown + Timer (alle modules) | ✅ |
-| Coach Rapport op aanvraag (Fase 3B) | ✅ |
 
 ## Openstaand
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.2 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.3 | 🟡 |
 | Life-events pagina testen | 🟡 |
-| Kettlebell illustraties uitrollen (1/6 klaar) | 🔄 In progress |
+| Kettlebell illustraties uitrollen (prompts klaar t/m #15, uploaden loopt) | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
+| Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
 | Exercise records vullen na eerste training | 🔄 automatisch |
 
 ---
@@ -74,7 +75,7 @@
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.2
+- Versie: 2.4.4
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -84,7 +85,110 @@
 - `exercise_records` — detaillaag (oefening, gewicht, reps, sets, module) — v2.3.1
 - `progress_analyses` — coach rapporten op aanvraag — v2.3.5
 - `coach_recommendations` — dagadvies + compliance
-- `coach_calls` — evaluatie na training
+- `coach_calls` — evaluatie na training (zie sectie Coach Call Systeem)
+- `coach_call_items` — losse activiteiten/trainingen binnen één Coach Call
+- `activity_sessions` — Strava/Garmin activiteiten
+
+---
+
+## Coach Call Systeem
+
+**Wat het is:**
+De Coach Call is de evaluatiestap in de Coaching Cirkel (zie `docs/architecture.md` §4). Na een training of Strava-activiteit vraagt de app de gebruiker om een korte evaluatie (RPE + mood + notitie). Op basis daarvan genereert de coach een persoonlijke reactie, en die evaluatie stroomt terug in het dagadvies van de coach (zie `coachCallContext` in `src/app/api/coach/route.ts`).
+
+Er zijn twee bronnen die een Coach Call kunnen triggeren:
+1. **Interne bibliotheek-training** (`training_source: library`) — bijvoorbeeld een losse Archief-oefening (v2.4.1)
+2. **Strava-activiteit** — alleen als de activiteit een drempelwaarde haalt (zie hieronder)
+
+**Strava-drempelwaarden (hardcoded in `route.ts`):**
+```
+Hardlopen: 5km + 45 min
+Fietsen:   20km + 45 min
+Roeien:    5km + 45 min
+```
+Beide voorwaarden (afstand ÉN duur) moeten gehaald worden. Andere sporttypes (Wandelen, Yoga, Krachttraining, etc.) triggeren geen Coach Call via Strava.
+
+**Betrokken bestanden:**
+
+| Bestand | Rol |
+|---------|-----|
+| `src/app/api/coach-calls/route.ts` | **Kern.** `POST` maakt/heropent `coach_calls` + `coach_call_items` op basis van kwalificerende Strava-activiteiten. `GET` haalt de actieve (pending/partial) call op, inclusief 24u-expiry check. |
+| `src/app/api/coach-calls/rate/route.ts` | Verwerkt de evaluatie (rating/mood/notes) per item, genereert een AI coach-reactie per item, herberekent de call-status (pending → partial → completed). |
+| `src/app/home/page.tsx` | Roept bij laden `POST` aan (trigger), daarna `GET` (ophalen), en toont de Coach Call-banner als `pending_count > 0`. **Belangrijk:** de trigger draait dus alleen als de home-pagina geladen wordt. |
+| `src/app/coach-call/page.tsx` | De evaluatiepagina zelf waar de gebruiker rating/mood/notities invult. |
+| `src/app/activities/page.tsx` | Toont Strava/Garmin-activiteiten; bron van de data die `coach-calls/route.ts` filtert. |
+| `src/lib/strava-activity-processor.ts` | Verwerkt de ruwe Strava-sync naar `activity_sessions` (sporttype-mapping, metrics). Draait vóór de Coach Call-logica, niet erin. |
+
+**Statusmachine van een `coach_call`:**
+`pending` → (items deels beoordeeld) → `partial` → (alle items beoordeeld) → `completed`
+Een call die 24 uur oud is zonder voltooiing wordt automatisch `expired`.
+
+**Bekende fix (v2.4.3):** als er op een datum al een `completed`/`expired` call bestond en er kwam een nieuwe kwalificerende Strava-activiteit bij, bleef die call onzichtbaar (GET filtert op `pending`/`partial`). De `POST`-route heropent zo'n call nu automatisch. Zie changelog v2.4.3 voor detail.
+
+**Bekend gedrag (geen bug):** de `POST`-trigger draait alleen wanneer `home/page.tsx` geladen wordt. Na een Strava-sync moet de gebruiker dus naar de home-pagina navigeren voordat een nieuwe Coach Call verschijnt.
+
+---
+
+## Troubleshooting — bestanden per probleemtype
+
+Bij een bugmelding vraagt een nieuwe sessie STOP (punt 1, Kernregels) om het
+juiste bestand, in plaats van te gokken. Onderstaande lijst versnelt dat:
+plak het genoemde kopy-blok zodra het probleemtype herkenbaar is.
+
+### "Genereer advies" / Coach dagadvies werkt niet, hangt, of blijft spinnen
+```
+src/app/api/coach/route.ts
+src/hooks/useCoach.ts
+src/app/api/weather/route.ts
+```
+Bekend risico (opgelost in v2.4.4, maar relevant bij vergelijkbare klachten):
+externe fetches zonder timeout (Open-Meteo, ipapi.co, of andere derde
+partijen) kunnen de hele serverless function laten vastlopen tot de
+platform-timeout — dat verschijnt als een onafgevangen 500, ook al staat er
+een `.catch()` in de code. Vraag bij twijfel ook om de Vercel Logs-screenshot
+(rode 500-regels, tijdstip + volledig pad) en, indien beschikbaar, de
+uitgeklapte error-tekst.
+
+### Coach Call (Strava of bibliotheek-training) verschijnt niet
+```
+src/app/api/coach-calls/route.ts
+src/app/api/coach-calls/rate/route.ts
+src/hooks/useCoach.ts (niet van toepassing — zie useCoach vs coach-calls onderscheid hieronder)
+src/app/home/page.tsx
+src/lib/strava-activity-processor.ts
+```
+Let op onderscheid: `/api/coach` (enkelvoud) = dagelijks coach-advies.
+`/api/coach-calls` (meervoud) = evaluatie van trainingen/activiteiten. Dit
+zijn twee losse routes met eigen bugs — niet aannemen dat een fix in de één
+de ander raakt.
+
+### Exercise illustraties tonen niet in UitlegScherm
+```
+src/lib/kettlebell-exercises.ts (of de betreffende bibliotheek)
+```
+Check: staat `illustratie: '[bestandsnaam].png'` op de juiste entry, en staat
+het bestand daadwerkelijk in `public/exercises/`?
+
+### Training-sessie / Trainer AI kiest verkeerde of geen oefeningen
+```
+src/app/api/training/today/route.ts
+src/lib/[betreffende]-exercises.ts
+```
+
+### Progressie / exercise_records tonen niet correct
+```
+src/app/progressie/page.tsx
+src/app/api/training/complete/route.ts
+```
+
+### Algemeen (bij twijfel over welk bestand)
+Vraag altijd eerst om:
+1. Het Debug Panel (`/debug`) — zie punt 15, architectuurregel
+2. Vercel Logs (rode 500-regels, uitgeklapt voor volledig pad + error-tekst)
+3. Het exacte symptoom: hangt het, geeft het een foutmelding, of gebeurt er
+   zichtbaar niets?
+
+---
 
 ## Exercise Illustraties — Voortgang
 
@@ -92,16 +196,32 @@ Mannequin-stijl illustraties per oefening, gegenereerd via GPT, opgeslagen in
 `public/exercises/[id].png`. Gekoppeld via `illustratie` veld op de
 BibliotheekOefening interfaces. Eerste categorie: Kettlebell (102 oefeningen).
 
-| # | Oefening | Status |
-|---|----------|--------|
-| 1 | Kettlebell Swing | ✅ Live in app |
-| 2 | Kettlebell Deadlift | 🔄 Prompt klaar |
-| 3 | Goblet Squat | 🔄 Prompt klaar |
-| 4 | Kettlebell Clean | 🔄 Prompt klaar |
-| 5 | Kettlebell Press | 🔄 Prompt klaar |
-| 6 | Farmer Carry | 🔄 Prompt klaar |
+Volgorde: array-volgorde in `src/lib/kettlebell-exercises.ts`, met reeds
+voltooide oefeningen overgeslagen (niet chronologisch op array-index).
 
-**Volgende:** vraag "volgende" voor de prompt van de 2e kettlebell oefening.
+| Oefening | Status |
+|----------|--------|
+| Kettlebell Deadlift | ✅ Live |
+| Kettlebell Swing | ✅ Live |
+| Goblet Squat | ✅ Live |
+| Strict Press | ✅ Live |
+| Clean | ✅ Live |
+| Farmer Carry | ✅ Live |
+| Sumo Deadlift | 🔄 Prompt klaar |
+| Single Arm Deadlift | 🔄 Prompt klaar |
+| Romanian Deadlift | 🔄 Prompt klaar |
+| Staggered Stance Deadlift | 🔄 Prompt klaar |
+| Russian Swing | 🔄 Prompt klaar |
+| American Swing | 🔄 Prompt klaar |
+| One Arm Swing | 🔄 Prompt klaar |
+| Hand-to-Hand Swing | 🔄 Prompt klaar |
+| Double Swing | 🔄 Prompt klaar |
+| Alternating Swing | 🔄 Prompt klaar |
+| Front Squat | 🔄 Prompt klaar |
+| Double Front Squat | 🔄 Prompt klaar |
+
+**Volgende:** vraag "volgende" voor de eerstvolgende oefening zonder illustratie
+(array-volgorde in `kettlebell-exercises.ts`, reeds voltooide overgeslagen).
 Prompt-sjabloon (stijl, layout, kwaliteitseisen) blijft hetzelfde — alleen
 oefeningnaam en de 5 fasenamen wijzigen per oefening.
 
@@ -132,44 +252,26 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
-- v2.0.4 — Mobility bug fix (fallback neck_shoulders → full_body)
-- v2.1.0 — Mobility Bibliotheek (20 oefeningen)
-- v2.1.1 — Mobility filter in route
-- v2.1.2 — Alle mobility schemas in herstelbibliotheek
-- v2.2.0 — Recovery Bibliotheek (12 modules)
+- v2.4.3 — Fix: Strava Coach Call niet zichtbaar na voltooide call (zie sectie Coach Call Systeem + changelog)
+- v2.4.2 — Timer + countdown fix Archief losse-oefening flow
+- v2.4.1 — Archief standalone losse oefening flow
+- v2.4.0 — Exercise Illustraties + Archief
+- v2.3.6 — Weerbericht
+- v2.3.5 — Coach Rapport op aanvraag (Fase 3B)
+- v2.3.4 — Coach Trendanalyse Fase 3A
+- v2.3.3 — Progressie Fase 2
+- v2.3.2 — Persoonlijke Records
+- v2.3.1 — Exercise Records
+- v2.3.0 — Drill Libraries Running/Rowing/Cycling
+- v2.2.2 — Scroll en navigatie fixes
 - v2.2.1 — Relaxation pagina + categorische herstelbibliotheek
-- v2.2.2 — Scroll en navigatie fixes (terug → juiste categorie)
-- v2.3.0 — Drill Libraries Running/Rowing/Cycling (36 drills)
-- v2.3.1 — Exercise Records tabel + opslag bij voltooide training
-- v2.3.2 — Progressie pagina met Persoonlijke Records
-- v2.3.3 — Progressie Fase 2 (grafieken per oefening + volume per week)
-- v2.3.4 — Coach Trendanalyse Fase 3A (eerste→laatste, % verandering)
-- v2.3.5 — Coach Rapport op aanvraag Fase 3B (progress-analysis route)
+- v2.2.0 — Recovery Bibliotheek
+- v2.1.2 — Alle mobility schemas in herstelbibliotheek
+- v2.1.1 — Mobility filter in route
+- v2.1.0 — Mobility Bibliotheek
+- v2.0.4 — Mobility bug fix
 
-- v2.4.0: Exercise Illustraties + Archief.
-  illustratie veld toegevoegd aan BibliotheekOefening interfaces.
-  Kettlebell Swing eerste oefening met mannequin-stijl illustratie
-  (public/exercises/kettlebell-swing.png). UitlegScherm toont
-  illustratie boven Doelwaarden als beschikbaar.
-  Nieuw: /archief pagina — alle 354 oefeningen doorbladerbaar per
-  categorie, los van coach advies. Zoekfunctie, direct te starten,
-  evaluatie werkt via bestaande sessie-engine.
-
-- v2.4.1: Archief — standalone losse oefening flow, volledig zonder AI.
-  Nieuw: src/app/archief/oefening/[id]/page.tsx
-  Instelpaneel: sets/reps/duur/rust instelbaar, kettlebell gewicht
-  keuzemenu (14/16/20kg, uitbreidbaar tot 32kg). Toont vorige sessie
-  uit exercise_records als referentie. Geen Trainer AI call.
-  Eigen mini workout-engine (1 oefening, geen 2e/3e erbij).
-  training_source: library triggert bestaande Coach Call logica
-  zodat coach ziet dat er buiten advies om getraind is.
-  Niets aan bestaande flows gewijzigd — pure uitbreiding.
-
-- v2.4.2: Timer + countdown fix in Archief losse-oefening flow.
-  5 seconden countdown toegevoegd (cirkel-voortgang, skip-knop).
-  Reps omgezet naar tijdseenheid (3 sec/rep) zodat altijd een
-  aftellende timer zichtbaar is, ook bij rep-gebaseerde oefeningen.
-  Consistent met sessie-engine, mobility en relaxation pagina's.
+Volledige details per versie: zie [docs/changelog.md](docs/changelog.md)
 
 ## Coach-routes — geverifieerde architectuur
 Alle filters actief in `src/app/api/training/today/route.ts`:
@@ -258,5 +360,12 @@ Maak een spritesheet-afbeelding voor een trainingsapp die de oefening **[OEFENIN
 
 ---
 
-Bestandsnaam-conventie: `[oefening-id].png` in `/public/exercises/`
-Voorbeeld: Kettlebell Swing → `kettlebell-swing.png`
+Bestandsnaam-conventie: `[oefening-id].png` in `/public/exercises/`.
+Naamgeving: kebab-case van de oefeningnaam, **zonder** `kb-` prefix en zonder
+categorie-prefix (bijv. "Sumo Deadlift" → `sumo-deadlift.png`). De eerste vier
+bestanden (`kettlebell-deadlift.png`, `kettlebell-swing.png`,
+`kettlebell-press.png`, `kettlebell-clean.png`) zijn legacy-namen van vóór
+deze conventie — die blijven ongewijzigd.
+
+Voorbeeld: Kettlebell Swing → `kettlebell-swing.png` (legacy)
+Voorbeeld: Sumo Deadlift → `sumo-deadlift.png` (huidige conventie)

@@ -1,5 +1,23 @@
 # CoachOS — Changelog
 
+## v2.4.4 — Fix: "Genereer advies" hangt bij trage/onbereikbare Open-Meteo
+- Nieuw: `src/lib/fetch-with-timeout.ts` — gedeelde helper die `fetch` wrapt
+  met een `AbortController`-timeout. Voorkomt dat een trage externe API een
+  serverless function laat vastlopen tot de platform-timeout (die als
+  onafgevangen 500 naar buiten komt — een `.catch()` in de eigen code helpt
+  dan niet, want de hele function wordt door het platform afgebroken).
+- `src/app/api/weather/route.ts` — beide externe fetches (`ipapi.co` en
+  `api.open-meteo.com`) krijgen nu een timeout (3s / 4s).
+- `src/app/api/coach/route.ts` — de interne fetch naar `/api/weather` binnen
+  de `Promise.all` krijgt een timeout (3s) i.p.v. onbeperkt wachten.
+  Root cause: Vercel logs toonden `ConnectTimeoutError` naar
+  `api.open-meteo.com:443` (10s). Doordat deze fetch zonder timeout in een
+  `Promise.all` met 16 andere calls zat, liep de hele `/api/coach` POST vast
+  tot de Vercel function-timeout — zichtbaar als "spint, maar geeft niets"
+  op de "Genereer advies"-knop, en als POST 500 / GET 500 in de logs.
+  `useCoach.ts` toonde deze fout niet aan de gebruiker (silent catch) — dat
+  blijft een bekend aandachtspunt, zie README sectie Troubleshooting.
+
 ## v2.4.3 — Fix: Strava Coach Call niet zichtbaar na voltooide call
 - `src/app/api/coach-calls/route.ts` — POST heropent een bestaande `coach_call`
   (status `completed` of `expired`) wanneer er nieuwe kwalificerende Strava-
