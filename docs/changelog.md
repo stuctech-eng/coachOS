@@ -1,5 +1,44 @@
 # CoachOS — Changelog
 
+## v2.4.22 — REBUILD: Strava sync (timeout + duidelijke feedback) + v1.8.5 versienummer gefixt
+**Op verzoek herbouwd in plaats van opnieuw gepatcht, na een reeks
+symptomen (geen resultaatbericht meer, knop bleef "laden") die niet met
+gerichte fixes op te lossen bleken.**
+
+- `src/app/api/strava/sync/route.ts` — volledig herbouwd:
+  - **Eigen timeout (20 sec, `AbortController`)** op de fetch naar Strava's
+    API. Dit was de root cause: de aanroep had voorheen géén timeout, dus
+    bij een trage Strava-respons bleef de request oneindig hangen (of tot
+    een onduidelijke platform-timeout) zonder ooit een bericht naar de
+    gebruiker te sturen — precies het "blijft laden, geen resultaat meer"
+    -symptoom.
+  - Expliciete afhandeling van Strava-statuscodes: `401` (token ongeldig
+    ondanks refresh — vraagt om opnieuw te koppelen), `429` (rate limit),
+    overige non-200 statussen.
+  - Elke stap gelogd (`console.log`/`console.error` met `[strava/sync]`
+    prefix) — token-refresh, aantal opgehaalde activiteiten, per-activiteit
+    verwerkingsfouten, totale duur. Een volgend probleem is nu direct
+    zichtbaar in Vercel logs zonder eerst code te hoeven doorpluizen.
+  - Response bevat nu altijd `success`, `message`, en bij succes ook
+    `importedNames` (welke activiteiten precies) en eventuele
+    per-activiteit `errors` — nooit meer een stille, betekenisloze
+    "Sync klaar".
+- `src/app/settings/page.tsx` (`StravaSection`) — volledig herbouwd:
+  - Resultaatbericht **blijft zichtbaar** tot de volgende sync-poging
+    (was: kon verdwijnen/overschreven worden zonder duidelijke reden).
+  - Na **10 seconden zonder resultaat**: expliciete "dit duurt langer dan
+    gebruikelijk"-melding in plaats van een spinner die niets zegt.
+  - Toont bij succes de namen van geïmporteerde activiteiten; toont bij
+    fouten een duidelijke foutmelding in plaats van een generieke tekst.
+  - **Bonus, zelfde bestand:** het hardcoded `"v1.8.5"`-versienummer
+    (derde losstaande versie naast `package.json` en de al in v2.4.14
+    gefixte hoe-werkt-het-pagina) is nu ook dynamisch via `/api/version`.
+- **Nog te bevestigen:** of de eerder gemelde ontbrekende wandelactiviteit
+  nu wél verschijnt bij een nieuwe sync-poging — dat hangt af van of
+  Strava de activiteit inmiddels heeft verwerkt (buiten onze controle),
+  maar met deze rebuild krijgt de gebruiker in elk geval altijd een
+  duidelijk, waarheidsgetrouw resultaat te zien, ongeacht de uitkomst.
+
 ## v2.4.21 — Verfijning v2.4.20: Training blijft bovenaan vanuit Home, herstelt scroll vanuit Archief
 **Verduidelijking na terugkoppeling: de v2.4.20 scroll-herstel-fix in
 `AppShell` werkt technisch correct, maar het "probleem" bleek deels een
