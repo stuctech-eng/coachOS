@@ -181,7 +181,11 @@ export default function ArchiefOefeningPage() {
         }),
       })
       setFase('opgeslagen')
-      setTimeout(() => router.push('/archief'), 1500)
+      // v2.4.17 FIX: replace i.p.v. push — voorkomt dat de gebruiker via
+      // swipe-terug per ongeluk terugkomt op het net-afgeronde
+      // evaluatieformulier. Zie ook de terugknop-fix hieronder voor de
+      // achterliggende root cause (dubbele geschiedenis-entries).
+      setTimeout(() => router.replace('/archief'), 1500)
     } catch { /* */ }
     finally { setOpslaan(false) }
   }, [data, sets, reps, duurSec, gewicht, isTijdGebaseerd, rustSec, router])
@@ -241,6 +245,27 @@ export default function ArchiefOefeningPage() {
     }
   }
 
+  // v2.4.17 FIX — ROOT CAUSE van het navigatieprobleem: deze knop gebruikte
+  // voorheen `router.push('/archief')` in de 'instellen'-fase. Bij elke
+  // "oefening bekijken → terug → andere oefening bekijken"-cyclus voegde
+  // dat een NIEUWE duplicate '/archief'-entry toe aan de browserhistorie,
+  // in plaats van simpelweg terug te navigeren. Na een paar cycli bevatte
+  // de geschiedenis meerdere gestapelde duplicaten, waardoor swipe-terug
+  // (echte browser-navigatie, buiten React om) inconsistent gedrag gaf:
+  // soms meerdere stappen tegelijk, soms "hangen en terugspringen" naar
+  // een oudere, ongerelateerde pagina (zoals een eerdere kettlebell-sessie).
+  // Fix: router.back() navigeert altijd naar de daadwerkelijk vorige
+  // pagina in de bestaande geschiedenis, in plaats van een nieuwe kopie
+  // toe te voegen — dit houdt de stack schoon en synchroniseert de in-app
+  // knop met swipe-gedrag.
+  function handleTerug() {
+    if (fase === 'instellen') {
+      router.back()
+    } else {
+      setFase('instellen')
+    }
+  }
+
   if (laden) {
     return (
       <AppShell>
@@ -256,7 +281,7 @@ export default function ArchiefOefeningPage() {
       <AppShell>
         <div className="px-5 py-6 text-center">
           <p className="text-slate-400">Oefening niet gevonden.</p>
-          <button onClick={() => router.push('/archief')} className="mt-4 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm">
+          <button onClick={() => router.replace('/archief')} className="mt-4 px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm">
             Terug naar Archief
           </button>
         </div>
@@ -270,7 +295,7 @@ export default function ArchiefOefeningPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => fase === 'instellen' ? router.push('/archief') : setFase('instellen')}
+          <button onClick={handleTerug}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
           </button>

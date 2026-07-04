@@ -1037,8 +1037,14 @@ export default function SessionPage() {
     })
   }
 
+  // v2.4.18 FIX: alle "verlaat de sessie helemaal"-punten in deze functie
+  // gebruikten voorheen router.push('/training'), wat bij herhaald
+  // Trainingsbibliotheek-gebruik dezelfde dubbele-geschiedenis-opbouw gaf
+  // als in archief/oefening/[id] (v2.4.17) en archief/page.tsx (v2.4.18).
+  // router.back() navigeert naar de daadwerkelijk vorige pagina zonder een
+  // nieuwe duplicate toe te voegen.
   function handleHeaderBack() {
-    if (!session) { router.push('/training'); return }
+    if (!session) { router.back(); return }
     if (session.status === 'workout' && session.workout_phase === 'uitleg') {
       if (session.uitleg_index === 0) {
         setSession(prev => prev ? { ...prev, status: 'schema', workout_phase: 'active', current_set: 1, rest_seconds: 0, elapsed_seconds: 0 } : prev)
@@ -1056,7 +1062,7 @@ export default function SessionPage() {
       updateStatus('schema')
     } else {
       clearSession()
-      router.push('/training')
+      router.back()
     }
   }
 
@@ -1085,7 +1091,10 @@ export default function SessionPage() {
       })
       clearSession()
       setSession(prev => prev ? { ...prev, status: 'completed' } : prev)
-      setTimeout(() => router.push('/training'), 1500)
+      // v2.4.18 FIX: replace i.p.v. push — zelfde redenering als v2.4.17
+      // (archief/oefening/[id]): voorkomt dat swipe-terug de gebruiker
+      // terugbrengt naar een net-voltooide, niet meer relevante sessie.
+      setTimeout(() => router.replace('/training'), 1500)
     } catch { /* */ }
     finally { setSaving(false) }
   }
@@ -1110,7 +1119,7 @@ export default function SessionPage() {
             className="px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm mb-3 block mx-auto">
             Opnieuw proberen
           </button>
-          <button onClick={() => router.push('/training')}
+          <button onClick={() => router.back()}
             className="px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm block mx-auto">
             Terug
           </button>
@@ -1199,7 +1208,7 @@ export default function SessionPage() {
             {session.status === 'evaluation' && (
               <EvaluatieLayer actualDuration={Math.round(session.elapsed_seconds / 60)}
                 isRowing={module === 'rowing'} isRunning={module === 'running'} isCycling={module === 'cycling'}
-                onSave={handleSave} onSkip={() => { clearSession(); router.push('/training') }} saving={saving} />
+                onSave={handleSave} onSkip={() => { clearSession(); router.back() }} saving={saving} />
             )}
 
             {session.status === 'completed' && (
@@ -1235,7 +1244,7 @@ export default function SessionPage() {
               <p className="text-white font-semibold text-center mb-2">Weet je zeker dat je wilt stoppen?</p>
               <p className="text-slate-400 text-sm text-center mb-6">Je voortgang wordt niet opgeslagen.</p>
               <div className="flex gap-3">
-                <button onClick={() => { setShowStopConfirm(false); clearSession(); router.push('/training') }}
+                <button onClick={() => { setShowStopConfirm(false); clearSession(); router.back() }}
                   className="flex-1 py-3 bg-red-500/20 text-red-400 rounded-xl font-semibold active:bg-red-500/30">
                   Ja, stop
                 </button>

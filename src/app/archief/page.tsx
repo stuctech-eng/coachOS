@@ -146,7 +146,12 @@ export default function ArchiefPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
         <div className="flex items-center gap-3 mb-2">
-          <button onClick={() => router.push('/training')}
+          {/* v2.4.18 FIX: router.back() i.p.v. router.push('/training').
+              Zelfde root cause als v2.4.17 (archief/oefening/[id]) — push
+              voegt bij elk gebruik een nieuwe geschiedenis-entry toe, wat
+              bij herhaald Archief-bezoek dubbele entries opstapelt en
+              swipe-navigatie laat afwijken van de in-app knop. */}
+          <button onClick={() => router.back()}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
           </button>
