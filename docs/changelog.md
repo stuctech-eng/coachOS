@@ -1,5 +1,68 @@
 # CoachOS — Changelog
 
+## v2.4.23 — NIEUW: Garmin-activiteit-import (alternatief voor Strava)
+**Context: Strava heeft per 30 juni 2026 API-toegang voor bestaande
+Standard-tier ontwikkelaars afhankelijk gemaakt van een betaald abonnement
+(zie sectie "Strava API-toegang" hieronder). Dit is een externe
+beleidswijziging van Strava, geen bug in CoachOS. Deze nieuwe feature is
+een parallel, handmatig alternatief — geen vervanging van Strava-sync zelf.**
+
+**⚠️ VEREIST VÓÓR DEPLOY — nieuwe tabel in Supabase SQL Editor:**
+```sql
+create table garmin_activity_imports (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id),
+  activity_session_id uuid references activity_sessions(id),
+  raw_vision_response jsonb,
+  parsed_data jsonb,
+  validation_flags jsonb,
+  confidence_score int,
+  status text default 'pending',
+  created_at timestamptz default now()
+);
+
+alter table garmin_activity_imports enable row level security;
+
+create policy "Users manage own garmin_activity_imports"
+  on garmin_activity_imports for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+```
+Zonder deze tabel geeft `/api/health/garmin-activity-vision` een 500-fout
+bij elke poging.
+
+**Nieuwe bestanden:**
+- `src/app/api/health/garmin-activity-vision/route.ts` — leest het
+  "Statistieken"-tabblad van een Garmin-activiteit uit via Claude Vision
+  (zelfde patroon als de bestaande dagelijkse Garmin-import:
+  `sharp`-compressie, `claude-opus-4-5`, extract → preview → confirm-flow).
+  Bij bevestigen: slaat op in `activity_sessions` (`source: 'garmin_manual'`
+  — dezelfde tabel als Strava, dus telt automatisch mee in bestaande
+  trainingsbelasting-berekeningen) én maakt **altijd** een Coach Call aan.
+- `src/app/settings/garmin-activity-import/page.tsx` — UI voor upload/
+  preview/bevestigen, zelfde stijl als `garmin-import/page.tsx`.
+- `src/app/settings/page.tsx` — nieuwe kaart "Garmin Activiteit" toegevoegd
+  naast de bestaande "Garmin Import"-kaart.
+
+**Belangrijk architectuurbesluit — waarom GEEN drempel zoals Strava:**
+Strava-activiteiten triggeren een Coach Call alleen bij een kwalificerende
+duur/afstand (OR-drempel, v2.4.6), omdat dat een **automatische bulk-sync**
+is met mogelijk veel triviale activiteiten. Een Garmin-screenshot-upload is
+daarentegen een **bewuste, eenmalige handeling** — vergelijkbaar met het
+starten van een Trainingsbibliotheek-sessie (die ook altijd triggert, zie
+v2.4.6). Daarom triggert deze route altijd een Coach Call, ongeacht duur.
+Bevat ook de v2.4.8/v2.4.12-heropen-logica voor een reeds
+completed/expired call van diezelfde dag.
+
+**Wat nog niet is gedaan:**
+- Geen retry-logica (v2.4.9/v2.4.11) toegevoegd aan de Coach Call-insert in
+  deze nieuwe route — dat kan bij gelegenheid alsnog toegevoegd worden als
+  hier ooit hetzelfde stille-faal-patroon optreedt als bij
+  `training/complete/route.ts`.
+- Sportnaam-mapping (`ACTIVITY_LABEL_MAP`) dekt de meest voorkomende
+  activiteiten maar is niet zo uitgebreid als Strava's `SPORT_TYPE_MAP` —
+  uit te breiden indien nodig.
+
 ## v2.4.22 — REBUILD: Strava sync (timeout + duidelijke feedback) + v1.8.5 versienummer gefixt
 **Op verzoek herbouwd in plaats van opnieuw gepatcht, na een reeks
 symptomen (geen resultaatbericht meer, knop bleef "laden") die niet met

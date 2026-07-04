@@ -191,6 +191,22 @@ export default function SettingsPage() {
 
         <Card className="p-4">
           <button
+            onClick={() => router.push('/settings/garmin-activity-import')}
+            className="flex items-center gap-3 w-full"
+          >
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <Camera size={20} className="text-blue-400" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-white font-semibold text-sm">Garmin Activiteit</p>
+              <p className="text-slate-400 text-xs">Losse training/wandeling toevoegen via screenshot</p>
+            </div>
+            <ChevronRight size={16} className="text-slate-600" />
+          </button>
+        </Card>
+
+        <Card className="p-4">
+          <button
             onClick={() => router.push('/settings/equipment')}
             className="flex items-center gap-3 w-full"
           >

@@ -212,7 +212,8 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.22 | 🟡 |
+| **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.23 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 24/102 live (18 PNG + 6 WebP), #22 Forward Lunge volgende | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
@@ -225,7 +226,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.22
+- Versie: 2.4.23
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -241,16 +242,48 @@ vervangen).
 
 ---
 
+## Strava API-toegang — externe beleidswijziging (juli 2026)
+
+**Dit is geen CoachOS-bug — vastgelegd zodat een volgende sessie hier geen
+tijd aan verspilt met code-fixes.**
+
+Strava heeft aangekondigd dat **Standard-tier API-ontwikkelaars** (waar
+CoachOS onder valt) per **30 juni 2026** een actief, betaald
+Strava-abonnement (~€/$11,99/maand) nodig hebben op het account waarmee de
+API-applicatie geregistreerd staat, om de API te mogen blijven gebruiken.
+Reden volgens Strava: misbruik door AI-bedrijven die de API/website
+scrapen voor trainingsdata.
+
+**Symptoom:** `403`-fout bij elke Strava-sync-poging, **ondanks** een
+volledig verse, correcte OAuth-autorisatie met de juiste scope
+(`activity:read_all`). Dit onderscheidt het van een normaal token-probleem
+— een 403 na een geldige herautorisatie wijst op dit account-niveau-slot,
+niet op een scope- of tokenfout.
+
+**Oplossingsrichtingen (geen van beide een code-fix):**
+1. Een Strava-abonnement afsluiten op het account achter de API-registratie
+2. Overstappen op de nieuwe Garmin-activiteit-import (v2.4.23, zie
+   Coach Call Systeem-tabel) als (deels) alternatief — vereist wel een
+   handmatige screenshot per activiteit, geen automatische sync
+
+**Zie ook:** `strava.com/settings/api` toont de huidige scope/status van
+het *developer-testtoken* — dat is **niet** hetzelfde token als wat
+gebruikers via de OAuth-flow krijgen (die staan in `strava_tokens` in onze
+eigen database). Verwar deze twee niet bij toekomstig troubleshooten.
+
+---
+
 ## Coach Call Systeem
 
 **Wat het is:**
-De Coach Call is de evaluatiestap in de Coaching Cirkel (zie `docs/architecture.md` §4). Coach AI wil altijd weten wanneer er getraind is — via Strava, Archief of Trainingsbibliotheek — zodat dit meeweegt in het herstel-/belastingadvies van de volgende dag (zie `coachCallContext` in `src/app/api/coach/route.ts`).
+De Coach Call is de evaluatiestap in de Coaching Cirkel (zie `docs/architecture.md` §4). Coach AI wil altijd weten wanneer er getraind is — via Strava, Garmin-activiteit-import, Archief of Trainingsbibliotheek — zodat dit meeweegt in het herstel-/belastingadvies van de volgende dag (zie `coachCallContext` in `src/app/api/coach/route.ts`).
 
-Er zijn twee bronnen die een Coach Call kunnen triggeren, met elk een andere reden (zie tabel):
+Er zijn drie bronnen die een Coach Call kunnen triggeren, met elk een andere reden (zie tabel):
 
 | Bron | Reden voor Coach Call | Wanneer triggert het? |
 |---|---|---|
-| **Strava-activiteit** | Enige manier om evaluatiedata (RPE/mood) binnen te krijgen — een Strava-rit heeft zelf geen evaluatiescherm en de belasting telt zonder Coach Call niet mee in de herstel-berekening | Alleen als een drempelwaarde gehaald wordt (zie hieronder) |
+| **Strava-activiteit** | Enige manier om evaluatiedata (RPE/mood) binnen te krijgen — een Strava-rit heeft zelf geen evaluatiescherm en de belasting telt zonder Coach Call niet mee in de herstel-berekening | Alleen als een drempelwaarde gehaald wordt (zie hieronder). **Sinds 30 juni 2026 vereist Strava-sync een betaald Strava-abonnement op het API-account, zie sectie hieronder.** |
+| **Garmin-activiteit-import** (`source: garmin_manual`, sinds v2.4.23) | Bewuste, eenmalige handmatige upload — vergelijkbaar met een Trainingsbibliotheek-sessie starten, geen automatische bulk-sync | **Altijd**, ongeacht duur/afstand — zelfde redenering als Archief/Trainingsbibliotheek |
 | **Archief / Trainingsbibliotheek** (`training_source: library`) | De evaluatie (RPE, energie, techniek) zit al in de sessie zelf vóór opslag — de Coach Call meldt hier dát er buiten het coach-advies om getraind is | **Altijd**, ongeacht welk advies die dag gold of zelfs als er geen advies was (sinds v2.4.6) |
 
 **Strava-drempelwaarden (hardcoded in `route.ts`, sinds v2.4.6):**
@@ -486,6 +519,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.23 — NIEUW: Garmin-activiteit-import als alternatief voor Strava (vereist nieuwe tabel, zie changelog)
 - v2.4.22 — REBUILD: Strava sync timeout + duidelijke feedback, v1.8.5 versienummer gefixt
 - v2.4.21 — Verfijning: Training blijft bovenaan vanuit Home, herstelt scroll vanuit Archief
 - v2.4.20 — DEFINITIEVE FIX: scrollpositie-herstel in AppShell zelf (v2.4.19 loste het verkeerde probleem op)
