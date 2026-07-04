@@ -213,7 +213,11 @@ export async function POST(req: NextRequest) {
           date: today,
           duration: durationMin,
           metrics,
-          source: 'garmin_manual',
+          source: 'garmin', // v2.4.24 FIX: was 'garmin_manual' — bestond niet in de
+          // check constraint activity_sessions_source_check (toegestaan:
+          // manual/garmin/apple_health/strava). Onderscheid met de
+          // dagelijkse-import blijft behouden via de notes-prefix hieronder
+          // ('garmin_activity_import:') i.p.v. via een eigen source-waarde.
           notes: 'garmin_activity_import:' + confirmId,
         })
         .select('id')

@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.24 — Fix: Garmin-activiteit-import faalde op check constraint (source)
+- `src/app/api/health/garmin-activity-vision/route.ts` — `source`-waarde
+  bij de insert in `activity_sessions` gecorrigeerd van `'garmin_manual'`
+  naar **`'garmin'`**.
+- **Root cause:** `activity_sessions` heeft een check constraint
+  (`activity_sessions_source_check`) die `source` beperkt tot
+  `manual`/`garmin`/`apple_health`/`strava`. `'garmin_manual'` (verzonnen
+  bij het bouwen van v2.4.23, niet geverifieerd tegen het bestaande schema)
+  bestond niet in die lijst — Postgres-foutcode `23514`, direct zichtbaar
+  via de `console.error('[garmin-activity-vision]', err)`-log.
+  **Les:** bij een nieuwe insert in een bestaande tabel altijd eerst de
+  check constraints verifiëren (`select conname, pg_get_constraintdef(oid)
+  from pg_constraint where conname = '...'`), niet aannemen welke waarden
+  zijn toegestaan — exact de fout die v2.4.12 (NOT NULL constraint) ook al
+  had blootgelegd, hier herhaald bij een nieuwe feature.
+- Onderscheid tussen de dagelijkse Garmin-import en deze nieuwe
+  activiteit-import blijft behouden via de `notes`-prefix
+  (`garmin_activity_import:[id]`) in plaats van via een eigen
+  `source`-waarde — functioneel gelijk, past binnen het bestaande schema.
+- README-tabel (Coach Call Systeem) bijgewerkt met de gecorrigeerde waarde.
+
 ## v2.4.23 — NIEUW: Garmin-activiteit-import (alternatief voor Strava)
 **Context: Strava heeft per 30 juni 2026 API-toegang voor bestaande
 Standard-tier ontwikkelaars afhankelijk gemaakt van een betaald abonnement
