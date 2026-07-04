@@ -212,10 +212,9 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| Coach-geheugen: eenmalig `/api/memory` triggeren per gebruiker om historische achterstand in te halen (zie v2.4.15) | 🟡 |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.15 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.16 | 🟡 |
 | Life-events pagina testen | 🟡 |
-| Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
+| Kettlebell illustraties: 24/102 live (18 PNG + 6 WebP), #22 Forward Lunge volgende | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
 | Exercise records vullen na eerste training | 🔄 automatisch |
@@ -226,7 +225,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.15
+- Versie: 2.4.16
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -411,7 +410,13 @@ Zie sectie "Illustratie Workflow" voor de PNG→WebP-knip vanaf #16.
 | Strict Press | ✅ Live (PNG) |
 | Clean | ✅ Live (PNG) |
 | Farmer Carry | ✅ Live (PNG) |
-| Box Squat | 🔄 Prompt klaar (WebP) |
+| Box Squat | ✅ Live (WebP) |
+| Tempo Goblet Squat | ✅ Live (WebP) |
+| Pause Squat | ✅ Live (WebP) |
+| Split Squat | ✅ Live (WebP) |
+| Bulgaarse Split Squat | ✅ Live (WebP) |
+| Reverse Lunge | ✅ Live (WebP) |
+| Forward Lunge | 🔄 Volgende (WebP) |
 
 **Volgende:** vraag "volgende" voor de eerstvolgende oefening zonder illustratie
 (array-volgorde in `kettlebell-exercises.ts`, reeds voltooide overgeslagen).
@@ -446,6 +451,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.16 — Illustratie-koppeling: 6 nieuwe WebP-oefeningen (#16-21), totaal 24/102
 - v2.4.15 — Fix: coach-geheugen/patroonherkenning werkte nooit (userId nu meegegeven aan /api/memory)
 - v2.4.14 — Eén versienummer (package.json leidend) + automatische update-detectie met lichte gezondheidscheck op Home
 - v2.4.13 — Debug Panel uitgebreid tot volledige gezondheidscheck (29 tabellen, 17 routes, schrijftest)

@@ -1,5 +1,15 @@
 # CoachOS — Changelog
 
+## v2.4.16 — Illustratie-koppeling: 6 nieuwe WebP-oefeningen (#16-21)
+- `src/lib/kettlebell-exercises.ts` — `illustratie`-veld toegevoegd aan 6
+  entries: kb-box-squat, kb-tempo-goblet-squat, kb-pause-squat,
+  kb-split-squat, kb-bulgarian-split-squat, kb-reverse-lunge.
+  Eerste WebP-illustraties sinds de workflow-herziening in v2.4.5 (PNG
+  t/m #15, WebP vanaf #16) — bevestigt dat de eerder vastgestelde
+  formaat-knip in de praktijk werkt zonder verdere codewijziging nodig.
+  Totaal nu 24/102 kettlebell-oefeningen met live illustratie (18 PNG
+  legacy + 6 WebP nieuw).
+
 ## v2.4.15 — Fix: coach-geheugen/patroonherkenning heeft nooit gewerkt
 **Gevonden via de nieuwe gezondheidscheck (v2.4.14): een 401-fout op
 `POST /api/memory` met `User Agent: node`, dus een server-naar-server
@@ -27,11 +37,9 @@ aanroep — geen gebruikersactie.**
   begint hij patronen te herkennen") — heeft dus **nog nooit gedraaid**
   sinds de eerste implementatie. `coach_memory` bevatte hierdoor nooit
   automatisch gegenereerde patronen.
-  **Nog te doen:** bestaande gebruikers hebben nu mogelijk maanden aan
-  data waarvoor met terugwerkende kracht nog geen patronen zijn
-  gedetecteerd. Overweeg een eenmalige handmatige trigger van
-  `/api/memory` (met `userId`) na deze deploy, om de achterstand in te
-  halen — dit gebeurt niet vanzelf met terugwerkende kracht.
+  **Besluit:** geen eenmalige achterstand-inhaaltrigger. Vanaf nu bouwt de
+  patroonherkenning organisch op bij elke nieuwe coach-advies-generatie —
+  rustig, zonder een geforceerde eenmalige analyse over oude data.
 
 ## v2.4.14 — Eén versienummer: package.json leidend, automatische update-detectie
 **Definitieve oplossing voor drie los van elkaar lopende versienummers

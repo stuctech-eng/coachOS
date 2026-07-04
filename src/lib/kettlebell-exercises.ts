@@ -336,6 +336,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-box-squat',
     naam: 'Box Squat',
+    illustratie: 'box-squat.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht', 'warmup'],
@@ -353,6 +354,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-tempo-goblet-squat',
     naam: 'Tempo Goblet Squat',
+    illustratie: 'tempo-goblet-squat.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht', 'mobiliteit', 'herstel'],
@@ -370,6 +372,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-pause-squat',
     naam: 'Pause Squat',
+    illustratie: 'pause-squat.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht'],
@@ -387,6 +390,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-split-squat',
     naam: 'Split Squat',
+    illustratie: 'split-squat.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht'],
@@ -404,6 +408,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-bulgarian-split-squat',
     naam: 'Bulgaarse Split Squat',
+    illustratie: 'bulgaarse-split-squat.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht'],
@@ -421,6 +426,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-reverse-lunge',
     naam: 'Reverse Lunge',
+    illustratie: 'reverse-lunge.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht', 'warmup'],
