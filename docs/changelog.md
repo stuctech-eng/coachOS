@@ -1,75 +1,5 @@
 # CoachOS — Changelog
 
-## v2.4.18 — Navigatie-fix uitgebreid: Archief-overzicht + Trainingsbibliotheek-sessie
-**Vervolg op v2.4.17 — dezelfde root cause bleek breder aanwezig dan alleen
-de losse Archief-oefeningpagina.**
-
-- `src/app/archief/page.tsx` — terugknop gebruikte `router.push('/training')`,
-  nu `router.back()`.
-- `src/app/training/session/[module]/page.tsx` — drie plekken gefixt:
-  1. `handleHeaderBack()`, fallback zonder actieve sessie:
-     `router.push('/training')` → `router.back()`
-  2. `handleHeaderBack()`, laatste "verlaat sessie helemaal"-tak:
-     `router.push('/training')` → `router.back()`
-  3. `handleSave()`, redirect na voltooide evaluatie:
-     `router.push('/training')` → `router.replace('/training')`
-- **Root cause (zelfde als v2.4.17):** `router.push()` voegt bij elk gebruik
-  een NIEUWE entry toe aan de browsergeschiedenis. Bij herhaald gebruik van
-  Archief of Trainingsbibliotheek (oefening bekijken → terug → andere
-  oefening bekijken, of training starten → afbreken → opnieuw starten)
-  stapelen duplicaten zich op. Swipe-terug (systeem-navigatie, buiten
-  React's routing) volgt die vervuilde geschiedenis, wat zich uit als
-  meerdere stappen tegelijk terug, "hangen en terugspringen", of
-  terechtkomen op een oude, ongerelateerde pagina.
-- **Waarom dit gevonden werd:** gebruiker meldde dat swipe-terug vanuit een
-  Archief-oefeningpagina uitkwam op een kettlebell-trainingssessie van
-  eerder die dag. Doorvragen naar het exacte navigatiepad
-  (Archief → oefening → terug → andere oefening) bevestigde het patroon.
-  Vervolgvraag "geldt dit voor het hele Archief?" bracht de bredere scope
-  aan het licht — de fix in v2.4.17 dekte slechts één van de vier
-  betrokken plekken.
-- **Suggestie voor toekomstig onderzoek:** dit `push` vs. `back`/`replace`-
-  patroon kan mogelijk ook in andere delen van de app voorkomen die niet
-  deze sessie zijn gecontroleerd (bv. Coach Call-pagina, Checkin-pagina,
-  Settings-subpagina's). Zie README sectie Troubleshooting voor het
-  algemene fix-patroon, mocht een vergelijkbaar probleem zich elders
-  voordoen.
-
-## v2.4.17 — Fix: navigatie Archief-oefening bouwde dubbele geschiedenis op
-- `src/app/archief/oefening/[id]/page.tsx` — twee wijzigingen:
-  1. Terugknop gebruikt nu `router.back()` in plaats van
-     `router.push('/archief')` (alleen in de `instellen`-fase — andere
-     fases blijven state-only teruggaan via `setFase('instellen')`,
-     ongewijzigd).
-  2. De automatische redirect na een voltooide evaluatie gebruikt nu
-     `router.replace('/archief')` in plaats van `router.push()`.
-- **Root cause:** `router.push('/archief')` voegt bij elk gebruik een
-  NIEUWE entry toe aan de browsergeschiedenis, ook als je al eerder op
-  Archief was. Bij de flow "oefening bekijken → terug → andere oefening
-  bekijken → terug → ..." stapelden zich dubbele `/archief`-entries op.
-  De in-app terugknop leek daardoor te werken (het scherm zag er correct
-  uit), maar de browsergeschiedenis raakte vervuild. Swipe-terug (echte
-  browser-navigatie, buiten React's routing om) volgt die vervuilde
-  geschiedenis letterlijk, wat zich uitte als: soms 2 stappen tegelijk
-  terug, soms "hangen en terugspringen", en in het ergste geval
-  terechtkomen op een compleet ongerelateerde eerdere pagina (bijv. een
-  kettlebell-trainingssessie van eerder die dag).
-  Gevonden via reproductie: Archief → oefening bekijken → terug →
-  andere oefening bekijken → swipe-terug gedraagt zich inconsistent.
-- `router.back()` navigeert altijd naar de daadwerkelijk vorige pagina in
-  de bestaande stack, zonder duplicaten toe te voegen — dit synchroniseert
-  het gedrag van de in-app knop met swipe-navigatie.
-
-## v2.4.16 — Illustratie-koppeling: 6 nieuwe WebP-oefeningen (#16-21)
-- `src/lib/kettlebell-exercises.ts` — `illustratie`-veld toegevoegd aan 6
-  entries: kb-box-squat, kb-tempo-goblet-squat, kb-pause-squat,
-  kb-split-squat, kb-bulgarian-split-squat, kb-reverse-lunge.
-  Eerste WebP-illustraties sinds de workflow-herziening in v2.4.5 (PNG
-  t/m #15, WebP vanaf #16) — bevestigt dat de eerder vastgestelde
-  formaat-knip in de praktijk werkt zonder verdere codewijziging nodig.
-  Totaal nu 24/102 kettlebell-oefeningen met live illustratie (18 PNG
-  legacy + 6 WebP nieuw).
-
 ## v2.4.15 — Fix: coach-geheugen/patroonherkenning heeft nooit gewerkt
 **Gevonden via de nieuwe gezondheidscheck (v2.4.14): een 401-fout op
 `POST /api/memory` met `User Agent: node`, dus een server-naar-server
@@ -97,9 +27,11 @@ aanroep — geen gebruikersactie.**
   begint hij patronen te herkennen") — heeft dus **nog nooit gedraaid**
   sinds de eerste implementatie. `coach_memory` bevatte hierdoor nooit
   automatisch gegenereerde patronen.
-  **Besluit:** geen eenmalige achterstand-inhaaltrigger. Vanaf nu bouwt de
-  patroonherkenning organisch op bij elke nieuwe coach-advies-generatie —
-  rustig, zonder een geforceerde eenmalige analyse over oude data.
+  **Nog te doen:** bestaande gebruikers hebben nu mogelijk maanden aan
+  data waarvoor met terugwerkende kracht nog geen patronen zijn
+  gedetecteerd. Overweeg een eenmalige handmatige trigger van
+  `/api/memory` (met `userId`) na deze deploy, om de achterstand in te
+  halen — dit gebeurt niet vanzelf met terugwerkende kracht.
 
 ## v2.4.14 — Eén versienummer: package.json leidend, automatische update-detectie
 **Definitieve oplossing voor drie los van elkaar lopende versienummers
