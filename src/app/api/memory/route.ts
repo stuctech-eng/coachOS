@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
@@ -16,10 +16,33 @@ async function getUser() {
   return user
 }
 
-export async function POST() {
+// v2.4.15: FIX — deze route werd sinds implementatie altijd server-naar-server
+// aangeroepen vanuit coach/route.ts via een kale fetch() zonder cookies:
+//   fetch('https://coach-os-tau.vercel.app/api/memory', { method: 'POST' })
+// getUser() (cookie-gebaseerd) vond daardoor NOOIT een gebruiker — de route
+// gaf altijd 401 terug (.catch(() => {}) in de aanroeper verborg dit stil).
+// Resultaat: de coach-geheugen/patroonherkenning-feature heeft nooit
+// gedraaid sinds de eerste implementatie.
+// Fix: accepteer optioneel een userId direct in de POST-body (meegegeven
+// door coach/route.ts, die de user toch al heeft opgehaald). Cookie-auth
+// blijft de terugval voor het geval deze route ooit rechtstreeks vanuit de
+// client wordt aangeroepen (bv. een toekomstige "Analyseer nu"-knop).
+export async function POST(req: NextRequest) {
   try {
-    const user = await getUser()
-    if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+    let userId: string | undefined
+
+    try {
+      const body = await req.json()
+      userId = body?.userId
+    } catch {
+      // Geen of ongeldige body — dat is prima, val terug op cookie-auth
+    }
+
+    if (!userId) {
+      const user = await getUser()
+      if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+      userId = user.id
+    }
 
     const supabase = createAdminClient()
 
@@ -28,14 +51,14 @@ export async function POST() {
     const vanDatum = dertig.toISOString().split('T')[0]
 
     const [checkinsRes, metricsRes, activiteitenRes, statusRes, garminRes, trainingsRes, blessuresRes, lifeEventsRes] = await Promise.all([
-      supabase.from('daily_checkins').select('*').eq('user_id', user.id).gte('date', vanDatum).order('date'),
-      supabase.from('health_metrics').select('date, hrv, resting_hr, sleep_duration, steps').eq('user_id', user.id).gte('date', vanDatum).order('date'),
-      supabase.from('activity_sessions').select('date, duration, activities(name)').eq('user_id', user.id).gte('date', vanDatum).order('date'),
-      supabase.from('daily_status').select('date, coach_score, recovery_score, training_score, risk_flags').eq('user_id', user.id).gte('date', vanDatum).order('date'),
-      supabase.from('garmin_imports').select('parsed_data, date').eq('user_id', user.id).eq('status', 'confirmed').gte('date', vanDatum).order('date', { ascending: false }),
-      supabase.from('training_results').select('rating, actual_duration, completed_at, notes').eq('user_id', user.id).eq('completed', true).gte('completed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()).order('completed_at', { ascending: false }),
-      supabase.from('injuries').select('body_part, pain_score, notes').eq('user_id', user.id).eq('active', true),
-      supabase.from('life_events').select('type, start_hour, end_hour, recurrence, notes').eq('user_id', user.id).not('recurrence', 'is', null),
+      supabase.from('daily_checkins').select('*').eq('user_id', userId).gte('date', vanDatum).order('date'),
+      supabase.from('health_metrics').select('date, hrv, resting_hr, sleep_duration, steps').eq('user_id', userId).gte('date', vanDatum).order('date'),
+      supabase.from('activity_sessions').select('date, duration, activities(name)').eq('user_id', userId).gte('date', vanDatum).order('date'),
+      supabase.from('daily_status').select('date, coach_score, recovery_score, training_score, risk_flags').eq('user_id', userId).gte('date', vanDatum).order('date'),
+      supabase.from('garmin_imports').select('parsed_data, date').eq('user_id', userId).eq('status', 'confirmed').gte('date', vanDatum).order('date', { ascending: false }),
+      supabase.from('training_results').select('rating, actual_duration, completed_at, notes').eq('user_id', userId).eq('completed', true).gte('completed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()).order('completed_at', { ascending: false }),
+      supabase.from('injuries').select('body_part, pain_score, notes').eq('user_id', userId).eq('active', true),
+      supabase.from('life_events').select('type, start_hour, end_hour, recurrence, notes').eq('user_id', userId).not('recurrence', 'is', null),
     ])
 
     const checkins = checkinsRes.data || []
@@ -132,12 +155,12 @@ Confidence: 0-100`
     }
 
     // Verwijder alle bestaande patronen van deze gebruiker
-    await supabase.from('coach_memory').delete().eq('user_id', user.id)
+    await supabase.from('coach_memory').delete().eq('user_id', userId)
 
     // Sla nieuwe patronen op
     await supabase.from('coach_memory').insert(
       insights.map(insight => ({
-        user_id: user.id,
+        user_id: userId,
         memory_type: insight.type || 'pattern',
         content: insight.content,
         confidence: insight.confidence,

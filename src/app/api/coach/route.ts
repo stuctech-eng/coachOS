@@ -491,7 +491,16 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       user_id: user.id, role: 'assistant', message: recommendation,
     })
 
-    fetch('https://coach-os-tau.vercel.app/api/memory', { method: 'POST' }).catch(() => {})
+    // v2.4.15 FIX: userId nu meegegeven in de body. Deze server-naar-server
+    // fetch stuurt geen cookies mee, dus /api/memory kon de gebruiker nooit
+    // identificeren via cookie-auth — resulteerde sinds implementatie altijd
+    // in een stille 401 (verborgen door .catch(() => {})). De coach-geheugen/
+    // patroonherkenning-feature heeft hierdoor nog nooit gedraaid.
+    fetch('https://coach-os-tau.vercel.app/api/memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    }).catch(() => {})
 
     return NextResponse.json(saved)
   } catch (error) {

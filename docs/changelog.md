@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.15 — Fix: coach-geheugen/patroonherkenning heeft nooit gewerkt
+**Gevonden via de nieuwe gezondheidscheck (v2.4.14): een 401-fout op
+`POST /api/memory` met `User Agent: node`, dus een server-naar-server
+aanroep — geen gebruikersactie.**
+
+- `src/app/api/coach/route.ts` — de fire-and-forget call naar `/api/memory`
+  aan het einde van de POST geeft nu `userId` mee in de request-body:
+  ```js
+  fetch('https://coach-os-tau.vercel.app/api/memory', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: user.id }),
+  }).catch(() => {})
+  ```
+- `src/app/api/memory/route.ts` — `POST` accepteert nu optioneel een
+  `userId` in de body; valt terug op cookie-gebaseerde `getUser()` als die
+  ontbreekt (voor eventuele toekomstige directe client-aanroepen).
+- **Root cause:** deze server-naar-server fetch stuurde nooit cookies mee.
+  `getUser()` (cookie-gebaseerd) kon de gebruiker daardoor nooit
+  identificeren, en de route gaf sinds de eerste implementatie altijd 401
+  terug. De aanroeper ving dit stil af met `.catch(() => {})`, dus dit was
+  nooit zichtbaar in normaal gebruik.
+- **Impact:** de coach-geheugen/patroonherkenning-feature — beschreven in
+  `hoe-werkt-het/page.tsx` ("Coach AI heeft een geheugen... na een week
+  begint hij patronen te herkennen") — heeft dus **nog nooit gedraaid**
+  sinds de eerste implementatie. `coach_memory` bevatte hierdoor nooit
+  automatisch gegenereerde patronen.
+  **Nog te doen:** bestaande gebruikers hebben nu mogelijk maanden aan
+  data waarvoor met terugwerkende kracht nog geen patronen zijn
+  gedetecteerd. Overweeg een eenmalige handmatige trigger van
+  `/api/memory` (met `userId`) na deze deploy, om de achterstand in te
+  halen — dit gebeurt niet vanzelf met terugwerkende kracht.
+
 ## v2.4.14 — Eén versienummer: package.json leidend, automatische update-detectie
 **Definitieve oplossing voor drie los van elkaar lopende versienummers
 (package.json 1.8.0, hoe-werkt-het-pagina "v1.8.6" hardcoded, README
