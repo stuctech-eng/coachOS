@@ -1,6 +1,67 @@
 # CoachOS — Changelog
 
-## v2.4.19 — Fix: scroll-positie reset bij terugkeer naar Training (andere oorzaak dan v2.4.17/18)
+## v2.4.21 — Verfijning v2.4.20: Training blijft bovenaan vanuit Home, herstelt scroll vanuit Archief
+**Verduidelijking na terugkoppeling: de v2.4.20 scroll-herstel-fix in
+`AppShell` werkt technisch correct, maar het "probleem" bleek deels een
+bewuste keuze te zijn — Training-pagina opent bewust bovenaan bij
+`Start Training`/`Start Herstel` vanuit Home. Deze wijziging maakt het
+onderscheid expliciet in plaats van dat beide paden hetzelfde
+scroll-herstel-gedrag delen.**
+
+- `src/app/home/page.tsx` — de `Start Training`/`Start Herstel`-knop wist nu
+  expliciet de opgeslagen scrollpositie voor `/training`
+  (`sessionStorage` key `coachos_scroll_/training`, uit v2.4.20) vlak vóór
+  het navigeren.
+- **Resultaat:**
+  - Vanuit **Home** → Start Training/Herstel → Training opent **bovenaan**
+    (ongewijzigd t.o.v. voor deze hele fix-reeks — dit was en blijft
+    gewenst gedrag).
+  - Vanuit **Archief** → terug (via `router.back()`, v2.4.17/18) → Training
+    **herstelt de scrollpositie** van vóór het bezoek aan Archief (via
+    v2.4.20's `AppShell`-logica, die hier niet gewist wordt).
+- **Geen wijziging nodig in `AppShell` zelf** — de v2.4.20-logica was
+  inhoudelijk correct, alleen ontbrak er een manier om "vergeet de vorige
+  positie, dit is een verse start" aan te geven voor het Home-pad. Dat is
+  wat deze wijziging toevoegt.
+
+## v2.4.20 — DEFINITIEVE FIX: scrollpositie-herstel in AppShell (v2.4.19 was onjuist)
+**Correctie: de analyse in v2.4.19 was fout. Dit lost het daadwerkelijke
+probleem op, in het juiste bestand.**
+
+- `src/components/layout/index.tsx` (`AppShell`) — scrollpositie van het
+  binnenste `<main>`-element wordt nu bijgehouden in `sessionStorage`, per
+  pathname, en hersteld bij het opnieuw mounten van diezelfde route.
+- **De echte root cause, gemist in v2.4.17-v2.4.19:** `AppShell` rendert een
+  buitenste `<div className="h-screen ... overflow-hidden">` met daarbinnen
+  een `<main className="flex-1 scroll-area ...">`. **Het binnenste `<main>`
+  scrolt, niet `window`.** Browser-native scrollherstel en Next.js'
+  ingebouwde scroll-restoration werken uitsluitend op `window.scrollTo` —
+  die hebben dus **nooit** invloed gehad op dit element, ongeacht of de
+  navigatie via `router.push()`, `router.back()` of `router.replace()`
+  gebeurde, en ongeacht of data synchroon of asynchroon geladen werd. Bij
+  elke hermount van een route begint dit `<main>`-element simpelweg weer op
+  `scrollTop: 0` — dat is standaard DOM-gedrag, geen bug in onze routing.
+- **Waarom v2.4.17/v2.4.18 gedeeltelijk hielpen, maar niet genoeg:** die
+  fixes losten een écht apart probleem op (dubbele geschiedenis-entries die
+  naar de verkeerde PAGINA navigeerden). Dat probleem bestond naast dit
+  scrollprobleem, met een deels overlappend symptoom ("terug gaat niet
+  goed"). Beide moesten apart gefixt worden.
+- **Waarom v2.4.19 niet hielp:** de analyse ging uit van een layout-shift
+  die *window*-scrollherstel zou breken — maar er was helemaal geen
+  window-scrollherstel actief om te breken, dus die fix raakte de
+  daadwerkelijke oorzaak nooit. Nuttige les: verifieer welk element
+  daadwerkelijk scrolt (`window` vs. een inner container met
+  `overflow-y`) vóórdat je scroll-herstel-gedrag probeert te fixen.
+- **Waarom deze fix wél moet werken:** hij grijpt rechtstreeks in op het
+  element dat daadwerkelijk scrolt (`mainRef.current.scrollTop`), volledig
+  onafhankelijk van hoe Next.js of de browser navigatie/scroll intern
+  afhandelen. Zit in `AppShell` — werkt hierdoor voor élke pagina in de
+  app, niet alleen Training/Archief.
+- **Dubbele herstelpoging** (direct bij mount + na 150ms) omdat sommige
+  pagina's (zoals Training, met de v2.4.19 cache-fix) een fractie van een
+  seconde na mount nog van hoogte kunnen veranderen.
+
+## v2.4.19 — Fix: scroll-positie reset bij terugkeer naar Training (INCORRECTE ANALYSE, zie v2.4.20)
 **Belangrijk: dit is een ANDER probleem dan de dubbele-geschiedenis-bug uit
 v2.4.17/v2.4.18, ook al leek het symptoom in eerste instantie identiek
 ("terugknop gaat verkeerd").**

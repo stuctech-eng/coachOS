@@ -520,8 +520,20 @@ export default function HomePage() {
                   herstel: { label: 'Start Herstel', kleur: 'bg-blue-500 active:bg-blue-600', route: '/training' },
                   rust: { label: 'Rust vandaag', kleur: 'bg-slate-600 active:bg-slate-700', route: null },
                 }[actie] || { label: 'Start', kleur: 'bg-primary-500', route: '/training' }
+                // v2.4.21 FIX: wis de opgeslagen scrollpositie voor /training
+                // (uit v2.4.20's AppShell scroll-herstel) vlak vóór een verse
+                // navigatie vanuit Home. Zo blijft dit pad ongewijzigd
+                // (Training opent bovenaan, zoals bewust gewenst), terwijl
+                // terugkeer vanuit Archief via router.back() wél de
+                // scrollpositie herstelt — die cache wordt daar niet gewist.
+                const handleStartClick = () => {
+                  if (config.route) {
+                    try { sessionStorage.removeItem('coachos_scroll_' + config.route) } catch { /* */ }
+                    router.push(config.route)
+                  }
+                }
                 return config.route ? (
-                  <button onClick={() => router.push(config.route!)}
+                  <button onClick={handleStartClick}
                     className={`w-full py-3 rounded-xl text-sm font-semibold text-white mb-3 ${config.kleur}`}>
                     {config.label}
                   </button>

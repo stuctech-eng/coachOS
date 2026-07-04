@@ -212,7 +212,7 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| GitHub tags aanmaken v2.0.4 t/m v2.4.19 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.21 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 24/102 live (18 PNG + 6 WebP), #22 Forward Lunge volgende | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
@@ -225,7 +225,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.19
+- Versie: 2.4.21
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -389,21 +389,21 @@ stap terug" moeten doen, en `router.replace()` (niet `push()`) voor
 automatische redirects na het voltooien van een flow (voorkomt dat de
 gebruiker per ongeluk terugkomt op een net-afgeronde actie).
 
-**Let op — ander probleem met hetzelfde symptoom (v2.4.19):** "terugknop
-gaat niet goed" kan ook betekenen dat de navigatie zelf correct is (juiste
-pagina), maar de **scrollpositie** reset naar boven. Dat wijst niet op een
-`push`/`back`-probleem, maar op een **layout-shift**: als een pagina bij
-het laden eerst een skeleton/loading-state toont met een andere hoogte dan
-de uiteindelijke content, en die content pas ná de eerste render uit
-`localStorage` of een API-call komt (via `useEffect`), dan probeert de
-browser de scrollpositie te herstellen op het verkeerde (te korte) moment.
-**Vraag daarom altijd expliciet door:** komt de gebruiker op de verkeerde
-pagina terecht (→ push/back-probleem), of op de juiste pagina maar
-bovenaan in plaats van waar hij was (→ layout-shift-probleem)? Screenshots
-van de exacte schermen vóór/na helpen dit snel te onderscheiden.
-**Fix-patroon:** lees gecachte data synchroon in via een lazy
-`useState(() => ...)`-initializer in plaats van pas in een `useEffect`, zodat
-de pagina meteen bij de eerste render de juiste (volledige) hoogte heeft.
+**Let op — ander probleem met hetzelfde symptoom, definitief opgelost in
+v2.4.20:** "terugknop gaat niet goed" kan ook betekenen dat de navigatie
+zelf correct is (juiste pagina), maar de **scrollpositie** reset naar
+boven. **Controleer eerst welk element daadwerkelijk scrolt** — in
+CoachOS is dat het `<main>`-element binnen `AppShell`
+(`src/components/layout/index.tsx`, class `scroll-area`), NIET `window`
+(de buitenste wrapper heeft `overflow-hidden`). Browser- en Next.js-
+scrollherstel werken alleen op `window.scrollTo` en hebben dus **geen**
+effect op dit soort binnenste scroll-containers, ongeacht `push`/`back`/
+`replace` of synchrone/asynchrone data-loading.
+**Fix-patroon (al geïmplementeerd sinds v2.4.20):** `AppShell` bewaart de
+`scrollTop` van het `<main>`-element in `sessionStorage`, per pathname, en
+herstelt die bij hermount. Dit werkt app-breed. Als een scroll-probleem
+zich toch weer voordoet, check eerst of deze `AppShell`-logica nog intact
+is vóór je een nieuwe fix bouwt.
 
 ### Algemeen (bij twijfel over welk bestand)
 Vraag altijd eerst om:
@@ -486,7 +486,9 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
-- v2.4.19 — Fix: scroll-positie reset bij terugkeer naar Training (layout-shift, andere oorzaak dan v2.4.17/18)
+- v2.4.21 — Verfijning: Training blijft bovenaan vanuit Home, herstelt scroll vanuit Archief
+- v2.4.20 — DEFINITIEVE FIX: scrollpositie-herstel in AppShell zelf (v2.4.19 loste het verkeerde probleem op)
+- v2.4.19 — Fix: scroll-positie reset bij terugkeer naar Training (INCORRECTE analyse, zie v2.4.20)
 - v2.4.18 — Navigatie-fix uitgebreid: Archief-overzicht + Trainingsbibliotheek-sessie (3 extra plekken)
 - v2.4.17 — Fix: navigatie Archief-oefening bouwde dubbele geschiedenis op (router.back/replace i.p.v. push)
 - v2.4.16 — Illustratie-koppeling: 6 nieuwe WebP-oefeningen (#16-21), totaal 24/102
