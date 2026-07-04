@@ -190,6 +190,23 @@ const BIBLIOTHEEK_CATEGORIEEN: BibliotheekCategorie[] = [
 // Platte lijst voor backward compatibility
 const BIBLIOTHEEK: BibliotheekItem[] = BIBLIOTHEEK_CATEGORIEEN.flatMap(c => c.items)
 
+// v2.4.19 FIX: haalt de gecachte instructie synchroon op (buiten React om),
+// zodat de useState-initializers hieronder deze direct kunnen gebruiken bij
+// de allereerste render. Voorkomt de layout-shift (skeleton → volledige
+// content) die scroll-herstel bij terugkeer via router.back()/swipe brak.
+function leesGecachteInstructie(): TrainingInstruction | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const vandaag = new Date().toISOString().split('T')[0]
+    const cachedDatum = window.localStorage.getItem('training_instructie_datum')
+    const cachedData = window.localStorage.getItem('training_instructie_data')
+    if (cachedDatum === vandaag && cachedData) {
+      return JSON.parse(cachedData)
+    }
+  } catch { /* val terug op null, useEffect haalt dan opnieuw op */ }
+  return null
+}
+
 function TrainingSkeleton() {
   return (
     <div className="flex flex-col gap-5">
@@ -211,8 +228,12 @@ function TrainingSkeleton() {
 
 function TrainingContent() {
   const router = useRouter()
-  const [instruction, setInstruction] = useState<TrainingInstruction | null>(null)
-  const [laden, setLaden] = useState(true)
+  // v2.4.19 FIX: lazy useState-initializers lezen de cache synchroon uit,
+  // in plaats van pas in een useEffect na de eerste render. Zo toont de
+  // pagina bij terugkeer (back/swipe) meteen de juiste hoogte content,
+  // zonder tussentijdse skeleton-flits die scroll-herstel verstoorde.
+  const [instruction, setInstruction] = useState<TrainingInstruction | null>(() => leesGecachteInstructie())
+  const [laden, setLaden] = useState<boolean>(() => leesGecachteInstructie() === null)
   const [genereren, setGenereren] = useState(false)
   const searchParams = useSearchParams()
   const [showBibliotheek, setShowBibliotheek] = useState(false)
@@ -245,17 +266,10 @@ function TrainingContent() {
   }, [])
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cachedDatum = window.localStorage.getItem('training_instructie_datum')
-        const cachedData = window.localStorage.getItem('training_instructie_data')
-        if (cachedDatum === vandaag && cachedData) {
-          setInstruction(JSON.parse(cachedData))
-          setLaden(false)
-          return
-        }
-      } catch { /* */ }
-    }
+    // v2.4.19: alleen nog nodig als de synchrone cache-lezing hierboven
+    // niets opleverde (geen cache, of andere dag) — anders is instruction
+    // al gevuld en laden al false vóór de eerste render.
+    if (instruction !== null) return
     fetch('/api/training/today')
       .then(r => r.json())
       .then(data => {
@@ -269,6 +283,7 @@ function TrainingContent() {
       })
       .catch(() => {})
       .finally(() => setLaden(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function genereerPlan() {

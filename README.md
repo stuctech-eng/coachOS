@@ -212,10 +212,9 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
-| Coach-geheugen: eenmalig `/api/memory` triggeren per gebruiker om historische achterstand in te halen (zie v2.4.15) | 🟡 |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.15 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.19 | 🟡 |
 | Life-events pagina testen | 🟡 |
-| Kettlebell illustraties: 18/102 live (PNG), #16 Box Squat klaar (WebP) | 🔄 In progress |
+| Kettlebell illustraties: 24/102 live (18 PNG + 6 WebP), #22 Forward Lunge volgende | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
 | Exercise records vullen na eerste training | 🔄 automatisch |
@@ -226,7 +225,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.15
+- Versie: 2.4.19
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -371,6 +370,41 @@ src/app/progressie/page.tsx
 src/app/api/training/complete/route.ts
 ```
 
+### Navigatie/terugknop gedraagt zich vreemd (swipe-terug, verkeerde bestemming)
+```
+[betreffende page.tsx bestand]
+```
+**Bekend patroon (v2.4.17):** zoek naar `router.push('/...')` op plekken die
+bedoeld zijn als "terug"-navigatie (bijv. een terugknop, of een automatische
+redirect na het voltooien van een actie). `push` voegt altijd een NIEUWE
+entry toe aan de browsergeschiedenis — bij herhaald gebruik (bijv. meerdere
+keren een detail-pagina bekijken en terugkeren) stapelen zich duplicaten op.
+Dat is onzichtbaar in de UI zelf (de in-app knop lijkt te werken), maar
+swipe-terug (iOS systeem-navigatie, buiten React's routing om) volgt de
+werkelijke, vervuilde geschiedenis-stack — wat zich uit als: meerdere stappen
+tegelijk terug, "hangen en terugspringen", of uitkomen op een oude,
+ongerelateerde pagina.
+**Fix-patroon:** gebruik `router.back()` voor knoppen die simpelweg "één
+stap terug" moeten doen, en `router.replace()` (niet `push()`) voor
+automatische redirects na het voltooien van een flow (voorkomt dat de
+gebruiker per ongeluk terugkomt op een net-afgeronde actie).
+
+**Let op — ander probleem met hetzelfde symptoom (v2.4.19):** "terugknop
+gaat niet goed" kan ook betekenen dat de navigatie zelf correct is (juiste
+pagina), maar de **scrollpositie** reset naar boven. Dat wijst niet op een
+`push`/`back`-probleem, maar op een **layout-shift**: als een pagina bij
+het laden eerst een skeleton/loading-state toont met een andere hoogte dan
+de uiteindelijke content, en die content pas ná de eerste render uit
+`localStorage` of een API-call komt (via `useEffect`), dan probeert de
+browser de scrollpositie te herstellen op het verkeerde (te korte) moment.
+**Vraag daarom altijd expliciet door:** komt de gebruiker op de verkeerde
+pagina terecht (→ push/back-probleem), of op de juiste pagina maar
+bovenaan in plaats van waar hij was (→ layout-shift-probleem)? Screenshots
+van de exacte schermen vóór/na helpen dit snel te onderscheiden.
+**Fix-patroon:** lees gecachte data synchroon in via een lazy
+`useState(() => ...)`-initializer in plaats van pas in een `useEffect`, zodat
+de pagina meteen bij de eerste render de juiste (volledige) hoogte heeft.
+
 ### Algemeen (bij twijfel over welk bestand)
 Vraag altijd eerst om:
 1. Het Debug Panel (`/debug`) — zie punt 15, architectuurregel
@@ -411,7 +445,13 @@ Zie sectie "Illustratie Workflow" voor de PNG→WebP-knip vanaf #16.
 | Strict Press | ✅ Live (PNG) |
 | Clean | ✅ Live (PNG) |
 | Farmer Carry | ✅ Live (PNG) |
-| Box Squat | 🔄 Prompt klaar (WebP) |
+| Box Squat | ✅ Live (WebP) |
+| Tempo Goblet Squat | ✅ Live (WebP) |
+| Pause Squat | ✅ Live (WebP) |
+| Split Squat | ✅ Live (WebP) |
+| Bulgaarse Split Squat | ✅ Live (WebP) |
+| Reverse Lunge | ✅ Live (WebP) |
+| Forward Lunge | 🔄 Volgende (WebP) |
 
 **Volgende:** vraag "volgende" voor de eerstvolgende oefening zonder illustratie
 (array-volgorde in `kettlebell-exercises.ts`, reeds voltooide overgeslagen).
@@ -446,6 +486,10 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.19 — Fix: scroll-positie reset bij terugkeer naar Training (layout-shift, andere oorzaak dan v2.4.17/18)
+- v2.4.18 — Navigatie-fix uitgebreid: Archief-overzicht + Trainingsbibliotheek-sessie (3 extra plekken)
+- v2.4.17 — Fix: navigatie Archief-oefening bouwde dubbele geschiedenis op (router.back/replace i.p.v. push)
+- v2.4.16 — Illustratie-koppeling: 6 nieuwe WebP-oefeningen (#16-21), totaal 24/102
 - v2.4.15 — Fix: coach-geheugen/patroonherkenning werkte nooit (userId nu meegegeven aan /api/memory)
 - v2.4.14 — Eén versienummer (package.json leidend) + automatische update-detectie met lichte gezondheidscheck op Home
 - v2.4.13 — Debug Panel uitgebreid tot volledige gezondheidscheck (29 tabellen, 17 routes, schrijftest)
