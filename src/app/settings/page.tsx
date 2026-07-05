@@ -199,7 +199,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex-1 text-left">
               <p className="text-white font-semibold text-sm">Garmin Activiteit</p>
-              <p className="text-slate-400 text-xs">Losse training/wandeling toevoegen via screenshot</p>
+              <p className="text-slate-400 text-xs">Screenshot of TCX-bestand</p>
             </div>
             <ChevronRight size={16} className="text-slate-600" />
           </button>

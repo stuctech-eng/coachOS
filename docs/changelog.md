@@ -1,5 +1,49 @@
 # CoachOS — Changelog
 
+## v2.4.25 — NIEUW: TCX-import gecombineerd met screenshot-import (één pagina)
+**Gebouwd na onderzoek van 5 echte Garmin TCX-exports (Hardlopen, Wandelen,
+Fietsen buiten, Fietsen indoor, Roeien, Zwift) — het ontwerp is direct op
+bewijs gebaseerd, niet op aannames over hoe Garmin activiteiten labelt.**
+
+**Nieuwe dependency:** `fast-xml-parser` (^4.5.0) toegevoegd aan `package.json`.
+
+**Onderzoeksbevindingen (bepalend voor het ontwerp):**
+- `Sport="Running"` is 100% betrouwbaar → automatisch "Hardlopen"
+- `Sport="Biking"` geldt voor ZOWEL buiten als indoor fietsen — **Zwift
+  genereert zelfs nep-GPS-coördinaten die op een buitenrit lijken**, dus
+  GPS-aanwezigheid is geen betrouwbaar onderscheid
+- `Sport="Other"` dekt wandelen, roeien, kracht, kettlebell — geen enkel
+  TCX-veld onderscheidt deze onderling
+- Conclusie: alleen `Running` mag automatisch worden aangenomen; voor al het
+  overige toont de UI een keuzemenu met een voorgestelde default
+
+**Nieuwe bestanden:**
+- `src/app/api/health/garmin-activity-tcx/route.ts` — parseert TCX-XML met
+  `fast-xml-parser` (geen AI nodig, exacte cijfers). Let op een subtiele
+  parser-eigenaardigheid, gevonden door te testen tegen echte bestanden:
+  `fast-xml-parser` behoudt de `ns3:`-naamruimte-prefix OOK op
+  onderliggende veldnamen (bv. `Extensions['ns3:TPX']['ns3:Watts']`, niet
+  `Extensions.TPX.Watts`). Cadans staat top-level als `Cadence` bij fietsen,
+  maar als `ns3:RunCadence` binnen `ns3:TPX` bij hardlopen — beide worden
+  gecombineerd.
+- `src/app/settings/garmin-activity-import/page.tsx` — **volledig herbouwd**
+  als gecombineerde pagina met tabblad-keuze (Screenshot/TCX-bestand) in
+  plaats van een aparte derde knop in Instellingen. Bij TCX met
+  `keuze_nodig: true` toont de pagina een keuzemenu (Hardlopen, Fietsen
+  buiten, Indoor Fietsen, Wandelen, Roeien, Krachttraining, Kettlebell,
+  Anders), voorgevuld met een suggestie.
+- Hergebruikt de bestaande `garmin_activity_imports`-tabel (v2.4.23) —
+  geen nieuwe tabel nodig, `parsed_data` is generiek genoeg voor beide
+  brontypes.
+- Zelfde vervolgpad als v2.4.23/24: opslag in `activity_sessions`
+  (`source: 'garmin'`) + altijd een Coach Call, ongeacht duur/afstand.
+
+**Bewust ontbrekend bij TCX (eerlijk, geen verzonnen waarde):** Training
+Effect en Exercise Load staan niet in het ruwe TCX-bestand — dat is
+Garmin's eigen berekende duiding, alleen zichtbaar op het Statistieken-
+scherm. TCX-imports missen dit veld; screenshot-imports hebben het wel.
+Beide methodes blijven daarom naast elkaar bestaan, geen vervanging.
+
 ## v2.4.24 — Fix: Garmin-activiteit-import faalde op check constraint (source)
 - `src/app/api/health/garmin-activity-vision/route.ts` — `source`-waarde
   bij de insert in `activity_sessions` gecorrigeerd van `'garmin_manual'`
