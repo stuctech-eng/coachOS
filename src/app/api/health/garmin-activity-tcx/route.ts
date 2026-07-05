@@ -165,6 +165,29 @@ export async function POST(req: NextRequest) {
       const durationMin = parsed.duration_min ?? 0
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
+      // v2.4.28 FIX: idempotency-check, ontbrak eerder — hetzelfde TCX-
+      // bestand kon zonder enige waarschuwing meerdere keren bevestigd
+      // worden, wat telkens een nieuwe activity_sessions-rij + Coach Call
+      // opleverde (dubbele trainingsbelasting). Strava-sync had deze check
+      // al (via 'strava:ID' in notes), TCX-import miste 'm nog. De TCX
+      // `Id`-waarde (starttijd, bv. "2026-07-05T09:46:18.000Z") is uniek
+      // per activiteit en dient hier als herkenningssleutel.
+      if (parsed.start_date) {
+        const { data: bestaandeSessie } = await adminSupabase
+          .from('activity_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .ilike('notes', '%garmin_tcx_start:' + parsed.start_date + '%')
+          .single()
+
+        if (bestaandeSessie) {
+          return NextResponse.json({
+            error: 'Deze activiteit is al eerder geïmporteerd (zelfde TCX-bestand).',
+            already_imported: true,
+          }, { status: 409 })
+        }
+      }
+
       let { data: userActivity } = await adminSupabase
         .from('activities').select('id').eq('user_id', user.id).eq('name', activityLabel).single()
 
@@ -194,7 +217,7 @@ export async function POST(req: NextRequest) {
           duration: durationMin,
           metrics,
           source: 'garmin', // zelfde toegestane waarde als v2.4.24-fix
-          notes: 'garmin_tcx_import:' + confirmId,
+          notes: 'garmin_tcx_import:' + confirmId + (parsed.start_date ? ' garmin_tcx_start:' + parsed.start_date : ''),
         })
         .select('id').single()
 

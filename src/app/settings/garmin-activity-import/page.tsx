@@ -168,7 +168,13 @@ export default function GarminActivityImportPage() {
     formData.append('activity_type', gekozenType || tcxResult.suggestie)
     try {
       const res = await fetch('/api/health/garmin-activity-tcx', { method: 'POST', body: formData })
-      if (!res.ok) throw new Error()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        // v2.4.28: specifieke melding bij duplicaat i.p.v. generieke fout
+        setErrorMsg(data.already_imported ? data.error : 'Bevestigen mislukt. Probeer opnieuw.')
+        setFase('error')
+        return
+      }
       setFase('done')
     } catch {
       setErrorMsg('Bevestigen mislukt. Probeer opnieuw.')

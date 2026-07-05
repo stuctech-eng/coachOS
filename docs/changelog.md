@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.28 — Fix: geen duplicaatcheck bij TCX-import (idempotency ontbrak)
+
+**Mogelijk relevant vóór deploy — check of je al een duplicaat hebt
+aangemaakt:** als je hetzelfde TCX-bestand meerdere keren hebt bevestigd
+vóór deze fix, staan er nu waarschijnlijk dubbele `activity_sessions`-
+rijen (en dubbele Coach Call-items). Check met:
+```sql
+select id, date, duration, notes, created_at
+from activity_sessions
+where user_id = 'JOUW_USER_ID' and source = 'garmin'
+order by created_at desc;
+```
+Verwijder handmatig de duplicaat-rij(en) indien aanwezig (en het
+bijbehorende `coach_call_items`-record) — dit gebeurt niet automatisch.
+
+**Wat er is gefixt:**
+- `src/app/api/health/garmin-activity-tcx/route.ts` — vóór het opslaan
+  wordt nu gecontroleerd of er al een `activity_sessions`-rij bestaat met
+  dezelfde TCX-starttijd (`garmin_tcx_start:[Id]` in `notes`). Zo ja: de
+  confirm wordt geweigerd met status 409 en een duidelijke melding,
+  in plaats van een duplicaat aan te maken.
+- **Root cause:** deze idempotency-check bestond al voor Strava-sync (via
+  `strava:ID` in `notes`, zie `strava-activity-processor.ts`), maar was
+  niet meegenomen bij het bouwen van de TCX-route (v2.4.25) — een gemiste
+  parallel tussen twee vergelijkbare importwegen.
+- `src/app/settings/garmin-activity-import/page.tsx` — toont nu de
+  specifieke "al eerder geïmporteerd"-melding bij een 409-response, in
+  plaats van een generieke foutmelding.
+- **Bewuste keuze — screenshot-import (v2.4.23/24) heeft dit nog niet.**
+  Een screenshot heeft geen betrouwbaar uniek kenmerk zoals een TCX-
+  starttijd om op te dedupliceren; dat zou een aparte oplossing vergen
+  (bijv. datum + tijd + activiteitstype als samengestelde sleutel). Nog
+  niet gebouwd — laag risico, want een screenshot opnieuw uploaden is een
+  bewustere, minder toevallige handeling dan een TCX-bestand dat je
+  mogelijk per ongeluk twee keer aanklikt.
+
 ## v2.4.27 — Build-fix: ongeldige export in garmin-activity-tcx/route.ts
 - `src/app/api/health/garmin-activity-tcx/route.ts` — `export const
   ACTIVITEIT_OPTIES = [...]` gaf een Vercel build-fout: *"ACTIVITEIT_OPTIES
