@@ -52,12 +52,7 @@ function suggereerType(garminSport: string | null, hasGps: boolean): string {
   return hasGps ? 'Wandelen' : 'Roeien'
 }
 
-// v2.4.27 FIX: Next.js staat in route.ts-bestanden alleen specifieke
-// exports toe (GET, POST, dynamic, etc.) — een losse geëxporteerde
-// constante breekt de build ("not a valid Route export field"). Deze
-// constante wordt alleen intern in dit bestand gebruikt, dus geen export
-// nodig.
-const ACTIVITEIT_OPTIES = ['Hardlopen', 'Fietsen (buiten)', 'Indoor Fietsen', 'Wandelen', 'Roeien', 'Krachttraining', 'Kettlebell', 'Anders']
+export const ACTIVITEIT_OPTIES = ['Hardlopen', 'Fietsen (buiten)', 'Indoor Fietsen', 'Wandelen', 'Roeien', 'Krachttraining', 'Kettlebell', 'Anders']
 
 function parseTcx(xmlText: string): TcxParsed {
   const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' })

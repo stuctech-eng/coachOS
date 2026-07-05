@@ -1,49 +1,5 @@
 # CoachOS — Changelog
 
-## v2.4.27 — Build-fix: ongeldige export in garmin-activity-tcx/route.ts
-- `src/app/api/health/garmin-activity-tcx/route.ts` — `export const
-  ACTIVITEIT_OPTIES = [...]` gaf een Vercel build-fout: *"ACTIVITEIT_OPTIES
-  is not a valid Route export field"*.
-- **Root cause:** Next.js App Router staat in `route.ts`-bestanden
-  uitsluitend specifieke exports toe (`GET`, `POST`, `dynamic`,
-  `revalidate`, etc.) — een losse geëxporteerde constante wordt door
-  Next.js' eigen type-validatie geweigerd, ongeacht of hij ergens
-  daadwerkelijk wordt geïmporteerd. In dit geval werd de constante alleen
-  intern in hetzelfde bestand gebruikt, dus de `export` was sowieso
-  overbodig.
-- Fix: `export` weggehaald, functioneel geen enkele wijziging.
-  **Les:** in `route.ts`-bestanden nooit hulpconstantes/functies
-  exporteren tenzij écht nodig vanuit een ander bestand — anders eerst
-  overwegen of het naar een apart `lib/`-bestand hoort.
-
-## v2.4.26 — NIEUW: Blessures-archief met volledige historie
-
-**⚠️ VEREIST VÓÓR DEPLOY — nieuwe kolom in Supabase SQL Editor:**
-```sql
-alter table injuries add column ended_at timestamptz;
-```
-Zonder deze kolom slaagt de PATCH in `injuries/route.ts` niet meer bij het
-markeren van een blessure als hersteld (poging tot schrijven naar een
-niet-bestaande kolom).
-
-**Wat er is veranderd:**
-- `src/app/api/injuries/route.ts` — `PATCH` zet nu `ended_at` op het huidige
-  tijdstip zodra een blessure op `active: false` wordt gezet (hersteld), en
-  maakt het weer leeg als een blessure ooit heropend zou worden
-  (`active: true`). Nodig om duur en hersteldatum te kunnen tonen.
-- `src/app/injuries/page.tsx` — de kleine "Hersteld"-sectie onderaan
-  (toonde alleen de naam, doorgestreept, geen historie) is verwijderd.
-  Herstelde blessures verdwijnen nu uit dit scherm en verhuizen naar het
-  nieuwe archief. Een "Archief"-kaart onderaan linkt daarnaartoe.
-- **Nieuw:** `src/app/injuries/archief/page.tsx` — toont elke herstelde
-  blessure als uitklapbare kaart met lichaamsdeel, start-/hersteldatum,
-  berekende duur (dagen/weken/maanden, leesbaar geformatteerd), en bij het
-  uitklappen de **volledige pijnscore-historie** (hergebruikt de bestaande
-  `injury-updates`-data via `GET /api/injury-updates`, alleen-lezen).
-- Geen nieuwe API-route nodig voor het archief zelf — hergebruikt de
-  bestaande `GET /api/injuries` en filtert client-side op `!active`,
-  consistent met hoe de hoofdpagina dat al deed voor actieve blessures.
-
 ## v2.4.25 — NIEUW: TCX-import gecombineerd met screenshot-import (één pagina)
 **Gebouwd na onderzoek van 5 echte Garmin TCX-exports (Hardlopen, Wandelen,
 Fietsen buiten, Fietsen indoor, Roeien, Zwift) — het ontwerp is direct op
