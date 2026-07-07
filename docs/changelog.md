@@ -1,5 +1,62 @@
 # CoachOS — Changelog
 
+## v2.4.29 — Workout Engine REBUILD: Fase 1 (timer-engine) + Fase 2 (flow)
+**Volgens de CoachOS Workout Engine Master Architecture — bewust in deze
+volgorde gebouwd (eerst fundament, dan flow, geluid volgt in een latere
+stap als Fase 3).**
+
+- `src/app/training/session/[module]/page.tsx` — volledig herbouwd rond
+  één centrale timer-engine.
+
+**FASE 1 — Drift-vrije timer-engine:**
+- Elke getimede fase (`countdown`/`active`/`rest`/`last_rest`) krijgt een
+  vast `phase_end_at`-tijdstip (`Date.now() + duur`) in plaats van een los
+  aftellend getal (`countdown_seconds`/`active_seconds_left`/`rest_seconds`
+  zijn verwijderd uit de state).
+- Resterende tijd wordt **elke render herberekend** uit `phase_end_at` —
+  nooit opgeslagen als eigen state die kan gaan driften.
+- Eén centrale `setInterval(250ms)` + `visibilitychange`-listener in
+  `SessionPage` forceert herberekening, ook direct bij terugkeer uit de
+  achtergrond/lockscreen — lost het probleem op dat `setInterval` op iOS
+  vertraagt zodra het scherm uitgaat.
+- `WorkoutEngine` is nu **puur presentationeel** — geen eigen
+  `setInterval`-effecten meer (voorheen 3 aparte intervals voor
+  countdown/active/rest). Ontvangt `remaining` als prop.
+- Pauzeren bewaart de resterende tijd in `paused_remaining_ms` (ms);
+  hervatten berekent een nieuw `phase_end_at` vanaf dat punt — de
+  pauzeduur zelf telt niet mee.
+
+**FASE 2 — Vereenvoudigde flow:**
+- **Geen countdown meer tussen sets** van dezelfde oefening — na `rest`
+  gaat het direct door naar `active` (volgende set).
+- **5 sec countdown** alleen bij de allereerste oefening van de sessie
+  (`current_segment === 0 && completed_segments.length === 0`).
+- **3 sec countdown** bij elke overgang naar een nieuwe oefening (na
+  `last_rest`).
+- Nieuwe flow: `uitleg → countdown(5s, 1x) → active → rest → active →
+  rest → active → last_rest → [nieuwe oefening] → countdown(3s) → active
+  → ... → voltooid`.
+- De "Next"-knop (`handleNext`) forceert nu `phase_end_at = Date.now()` in
+  plaats van een eigen, aparte transitielogica te hebben — de centrale
+  ticking-loop pikt dit binnen 250ms op en roept dezelfde `advancePhase()`
+  aan die ook bij natuurlijk verlopen van de tijd gebruikt wordt. Voorkomt
+  dat er twee losse plekken zijn die weten hoe fase-overgangen werken.
+
+**Nog niet in deze versie (bewust, volgende stap):**
+- Fase 3 (geluid: Tick + Beep) — bouwen zodra deze timer-basis in de
+  praktijk bevestigd is als 100% betrouwbaar.
+- Fase 4 (instellingen geluid aan/uit).
+- Trillingen, Apple Watch, Live Activities, Dynamic Island — genoemd in
+  het architectuurdocument als toekomstige uitbreidingen, vandaar de keuze
+  voor één centrale state (`phase`, `phase_end_at`) waar dit later op kan
+  aanhaken zonder de kern opnieuw te hoeven bouwen.
+
+**Test-aandachtspunten voor deze release:** i) eerste oefening start met
+5 sec countdown, ii) geen countdown tussen sets binnen dezelfde oefening,
+iii) elke volgende oefening start met 3 sec countdown, iv) timer blijft
+correct na scherm-uit/achtergrond (val niet stil, geen drift), v) pauzeren
+en hervatten geeft geen verloren/extra seconden.
+
 ## v2.4.28 — Fix: geen duplicaatcheck bij TCX-import (idempotency ontbrak)
 
 **Mogelijk relevant vóór deploy — check of je al een duplicaat hebt

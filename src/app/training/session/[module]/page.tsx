@@ -14,20 +14,52 @@ import { BODYWEIGHT_OEFENINGEN } from '@/lib/bodyweight-exercises'
 import { STRENGTH_OEFENINGEN } from '@/lib/strength-exercises'
 import { KETTLEBELL_OEFENINGEN } from '@/lib/kettlebell-exercises'
 
+// v2.4.29 — TIMER ENGINE REBUILD (Fase 1 + Fase 2 van de Workout Engine
+// Master Architecture). Belangrijkste wijzigingen t.o.v. de vorige versie:
+//
+// FASE 1 — Eén centrale, drift-vrije timer-engine:
+// - Elke getimede fase heeft een vast `phase_end_at`-tijdstip (ms sinds
+//   epoch), berekend als Date.now() + duur bij het BEGIN van de fase.
+// - Resterende tijd wordt NOOIT los bijgehouden/afgeteld — hij wordt bij
+//   elke render herberekend uit phase_end_at. Dit voorkomt drift die kan
+//   ontstaan doordat setInterval() op iOS vertraagt zodra het scherm uitgaat
+//   of de app naar de achtergrond gaat.
+// - Eén `visibilitychange`-listener herberekent direct bij terugkeer naar
+//   de app, in plaats van te wachten tot de volgende "gewone" tick.
+// - WorkoutEngine (het presentatie-component) beheert zelf GEEN timers meer
+//   — hij ontvangt alleen `remainingSeconds` als prop en toont dat.
+//
+// FASE 2 — Vereenvoudigde flow (Workout Engine Master Architecture):
+// - Countdown TUSSEN sets van dezelfde oefening is verwijderd. Na rust
+//   gaat het direct door naar de volgende set (active), geen tussenstap.
+// - 5 sec countdown geldt alleen bij de allereerste oefening van de sessie.
+// - 3 sec countdown geldt bij elke overgang naar een NIEUWE oefening
+//   (na last_rest).
+//
+// Nieuwe flow: uitleg → countdown(5s, alleen 1e oefening) → active → rest
+// → active → rest → active → last_rest → [nieuwe oefening] → countdown(3s)
+// → active → ... → voltooid
+
 type WorkoutPhase = 'countdown' | 'active' | 'rest' | 'last_rest' | 'uitleg'
 
-const COUNTDOWN_DURATION = 5
+const EERSTE_COUNTDOWN_SEC = 5
+const NIEUWE_OEFENING_COUNTDOWN_SEC = 3
 
 interface ExtendedSessionState extends LiveSessionState {
   current_set: number
   workout_phase: WorkoutPhase
-  rest_seconds: number
-  active_seconds_left: number
   auto_running: boolean
   skipped_segments: number[]
   completed_sets: number
   uitleg_index: number
-  countdown_seconds: number
+  // v2.4.29: vervangt countdown_seconds/active_seconds_left/rest_seconds.
+  // Eén vast eindtijdstip (ms) voor de huidige getimede fase. null wanneer
+  // de fase geen timer heeft (uitleg) of tijdens pauze (zie paused_remaining_ms).
+  phase_end_at: number | null
+  // v2.4.29: bij pauzeren wordt de resterende tijd hierin bewaard (ms),
+  // zodat hervatten een nieuw phase_end_at kan berekenen vanaf exact waar
+  // gebleven was, zonder dat de gepauzeerde tijd meetelt.
+  paused_remaining_ms: number | null
 }
 
 function generateSessionId(): string {
@@ -228,6 +260,8 @@ function getActiveDuration(seg: KettlebellSegment | undefined): number {
   if (d.reps) return d.reps * TEMPO_SEC_PER_REP[getTempo(d.exercise)]
   return 30
 }
+
+// ─── Presentatie-componenten (grotendeels ongewijzigd qua uiterlijk) ─────────
 
 function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () => void }) {
   const intensiteitLabel = { light: 'Licht', medium: 'Gemiddeld', heavy: 'Zwaar' }
@@ -466,7 +500,7 @@ function UitlegScherm({
   )
 }
 
-function CountdownScherm({ seconds, exercise }: { seconds: number; exercise: string }) {
+function CountdownScherm({ seconds, totaal, exercise }: { seconds: number; totaal: number; exercise: string }) {
   return (
     <div className="flex flex-col gap-4 pb-4">
       <Card className="p-8 text-center bg-primary-500/10 border-primary-500/30">
@@ -478,7 +512,7 @@ function CountdownScherm({ seconds, exercise }: { seconds: number; exercise: str
             <circle cx="64" cy="64" r="58" fill="none"
               stroke="#818cf8" strokeWidth="6" strokeLinecap="round"
               strokeDasharray={`${2 * Math.PI * 58}`}
-              strokeDashoffset={`${2 * Math.PI * 58 * (1 - seconds / COUNTDOWN_DURATION)}`}
+              strokeDashoffset={`${2 * Math.PI * 58 * (1 - seconds / totaal)}`}
               style={{ transition: 'stroke-dashoffset 1s linear' }} />
           </svg>
           <p key={seconds} className="text-6xl font-bold text-white" style={{ animation: 'countdownPulse 1s ease-out' }}>
@@ -497,17 +531,15 @@ function CountdownScherm({ seconds, exercise }: { seconds: number; exercise: str
   )
 }
 
+// v2.4.29: WorkoutEngine is nu puur presentationeel — geen eigen
+// setInterval-effecten meer. Alle timing komt van de ouder (SessionPage)
+// via de `remaining`-prop, berekend uit het centrale phase_end_at.
 function WorkoutEngine({
-  session, onTick, onRestTick, onCountdownTick, onNextSet, onNextSegment,
-  onComplete, onBackOefening, onVolgendOefening, onNext, onPause, onTempoChange,
+  session, remaining, countdownTotaal, onBackOefening, onVolgendOefening, onNext, onPause, onTempoChange,
 }: {
   session: ExtendedSessionState
-  onTick: () => void
-  onRestTick: () => void
-  onCountdownTick: () => void
-  onNextSet: () => void
-  onNextSegment: () => void
-  onComplete: () => void
+  remaining: number
+  countdownTotaal: number
   onBackOefening: () => void
   onVolgendOefening: () => void
   onNext: () => void
@@ -521,47 +553,9 @@ function WorkoutEngine({
   const isCycling = seg.type === 'cycling'
   const totalSets = seg.sets || 1
   const isLastSegment = session.current_segment === segments.length - 1
-  const countdownRef = useRef<NodeJS.Timeout | null>(null)
-  const tickRef = useRef<NodeJS.Timeout | null>(null)
-  const restRef = useRef<NodeJS.Timeout | null>(null)
   const [currentTempo, setCurrentTempo] = useState<Tempo>(getTempo(seg.exercise))
 
   useEffect(() => { setCurrentTempo(getTempo(seg.exercise)) }, [seg.exercise])
-
-  useEffect(() => {
-    if (session.workout_phase === 'countdown' && session.auto_running) {
-      countdownRef.current = setInterval(() => {
-        if (session.countdown_seconds <= 1) {
-          clearInterval(countdownRef.current!)
-          onNextSet()
-        } else {
-          onCountdownTick()
-        }
-      }, 1000)
-    }
-    return () => { if (countdownRef.current) clearInterval(countdownRef.current) }
-  }, [session.workout_phase, session.auto_running, session.countdown_seconds, onCountdownTick, onNextSet])
-
-  useEffect(() => {
-    if (session.workout_phase === 'active' && session.auto_running) {
-      tickRef.current = setInterval(() => {
-        if (session.active_seconds_left <= 1) { onTick(); onNextSet() } else { onTick() }
-      }, 1000)
-    }
-    return () => { if (tickRef.current) clearInterval(tickRef.current) }
-  }, [session.workout_phase, session.auto_running, session.active_seconds_left, onTick, onNextSet])
-
-  useEffect(() => {
-    if ((session.workout_phase === 'rest' || session.workout_phase === 'last_rest') && session.auto_running && session.rest_seconds > 0) {
-      restRef.current = setInterval(() => {
-        if (session.rest_seconds <= 1) {
-          clearInterval(restRef.current!)
-          if (session.workout_phase === 'last_rest') { if (isLastSegment) onComplete(); else onNextSegment() } else { onNextSet() }
-        } else { onRestTick() }
-      }, 1000)
-    }
-    return () => { if (restRef.current) clearInterval(restRef.current) }
-  }, [session.workout_phase, session.auto_running, session.rest_seconds, isLastSegment, onComplete, onNextSegment, onNextSet, onRestTick])
 
   return (
     <div className="flex flex-col gap-4 pb-4">
@@ -583,7 +577,7 @@ function WorkoutEngine({
       </div>
 
       {session.workout_phase === 'countdown' && (
-        <CountdownScherm seconds={session.countdown_seconds} exercise={seg.exercise || 'Oefening'} />
+        <CountdownScherm seconds={remaining} totaal={countdownTotaal} exercise={seg.exercise || 'Oefening'} />
       )}
 
       {session.workout_phase === 'active' && (
@@ -619,7 +613,7 @@ function WorkoutEngine({
                 <p className="text-slate-400 text-sm">{seg.reps ? 'herhalingen' : 'seconden'}</p></>
               )}
             </div>
-            <p className={cn('text-3xl font-mono font-bold', session.active_seconds_left <= 3 ? 'text-red-400' : 'text-white')}>{session.active_seconds_left}s</p>
+            <p className={cn('text-3xl font-mono font-bold', remaining <= 3 ? 'text-red-400' : 'text-white')}>{remaining}s</p>
           </div>
           {seg.cue && <p className="text-sm text-slate-300 pt-3 mt-2 border-t border-coach-border">💡 {seg.cue}</p>}
           {!isRowing && !isRunning && !isCycling && seg.reps && !seg.duration_sec && (
@@ -639,8 +633,8 @@ function WorkoutEngine({
 
       {session.workout_phase === 'rest' && (
         <Card className="p-5 text-center bg-amber-500/10 border-amber-500/20">
-          <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">Rust · Set {session.current_set} volgt</p>
-          <p className={cn('text-6xl font-mono font-bold', session.rest_seconds <= 3 ? 'text-red-400' : 'text-amber-400')}>{session.rest_seconds}s</p>
+          <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">Rust · Set {session.current_set + 1} volgt</p>
+          <p className={cn('text-6xl font-mono font-bold', remaining <= 3 ? 'text-red-400' : 'text-amber-400')}>{remaining}s</p>
         </Card>
       )}
 
@@ -648,11 +642,11 @@ function WorkoutEngine({
         const nextSeg = segments[session.current_segment + 1]
         return nextSeg ? (
           <UitlegScherm segment={nextSeg} segmentIndex={session.current_segment + 1} totalSegments={segments.length}
-            elapsedSeconds={session.elapsed_seconds} restSeconds={session.rest_seconds} onReady={onNextSegment} showBack={false} moduleType={session.module} />
+            elapsedSeconds={session.elapsed_seconds} restSeconds={remaining} onReady={onNext} showBack={false} moduleType={session.module} />
         ) : (
           <Card className="p-5 text-center bg-amber-500/10 border-amber-500/20">
             <p className="text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">Laatste rust</p>
-            <p className="text-6xl font-mono font-bold text-amber-400">{session.rest_seconds}s</p>
+            <p className="text-6xl font-mono font-bold text-amber-400">{remaining}s</p>
           </Card>
         )
       })()}
@@ -816,6 +810,8 @@ function EvaluatieLayer({ actualDuration, isRowing, isRunning, isCycling, onSave
   )
 }
 
+// ─── Hoofd-component: bevat de centrale timer-engine ─────────────────────────
+
 export default function SessionPage() {
   const params = useParams()
   const router = useRouter()
@@ -830,6 +826,12 @@ export default function SessionPage() {
   const [showStopConfirm, setShowStopConfirm] = useState(false)
   const [showResumeDialog, setShowResumeDialog] = useState(false)
   const [pendingSession, setPendingSession] = useState<ExtendedSessionState | null>(null)
+
+  // v2.4.29: forceert een re-render elke 250ms zodat de afgeleide
+  // resterende tijd (uit phase_end_at) zichtbaar bijwerkt. Dit is de ENIGE
+  // interval in de hele engine.
+  const [, setTick] = useState(0)
+  const advancingRef = useRef(false) // voorkomt dubbele fase-overgangen
 
   useEffect(() => {
     const vandaagStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
@@ -919,14 +921,12 @@ export default function SessionPage() {
       segments,
       coach_message: (instruction.coach_message as string) || (instruction.reason as string) || '',
     }
-    const firstSeg = segments[0] as KettlebellSegment | undefined
     const newSession: ExtendedSessionState = {
       session_id: generateSessionId(), module, status: 'schema', schema,
       started_at: new Date().toISOString(), current_segment: 0, completed_segments: [],
-      elapsed_seconds: 0, current_set: 1, workout_phase: 'active', rest_seconds: 0,
-      active_seconds_left: getActiveDuration(firstSeg),
+      elapsed_seconds: 0, current_set: 1, workout_phase: 'active',
       auto_running: false, skipped_segments: [], completed_sets: 0, uitleg_index: 0,
-      countdown_seconds: COUNTDOWN_DURATION,
+      phase_end_at: null, paused_remaining_ms: null,
       training_source: source,
     }
     saveSession(newSession)
@@ -936,94 +936,120 @@ export default function SessionPage() {
 
   useEffect(() => { if (session) saveSession(session) }, [session])
 
-  const handleTick = useCallback(() => {
-    setSession(prev => prev && prev.auto_running ? {
-      ...prev, elapsed_seconds: prev.elapsed_seconds + 1,
-      active_seconds_left: Math.max(0, prev.active_seconds_left - 1),
-    } : prev)
+  // ─── Centrale ticking-loop + visibilitychange-herstel ─────────────────────
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 250)
+    const onVisible = () => { if (document.visibilityState === 'visible') setTick(t => t + 1) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
   }, [])
 
-  const handleRestTick = useCallback(() => {
-    setSession(prev => prev && prev.auto_running ? { ...prev, rest_seconds: Math.max(0, prev.rest_seconds - 1) } : prev)
+  // Resterende seconden voor de huidige getimede fase, afgeleid uit
+  // phase_end_at — NOOIT een losstaand afgeteld getal.
+  const remaining = session?.phase_end_at
+    ? Math.max(0, Math.ceil((session.phase_end_at - Date.now()) / 1000))
+    : 0
+
+  // Duur van de huidige countdown (voor de voortgangsring: 5 of 3 sec)
+  const countdownTotaal = session?.current_segment === 0 && session?.completed_segments.length === 0
+    ? EERSTE_COUNTDOWN_SEC : NIEUWE_OEFENING_COUNTDOWN_SEC
+
+  // Elapsed-seconds bijhouden (los van phase_end_at — dit is de totale
+  // sessieduur, geen aftellende fase-timer)
+  useEffect(() => {
+    if (!session || !session.auto_running) return
+    const int = setInterval(() => {
+      setSession(prev => prev && prev.auto_running ? { ...prev, elapsed_seconds: prev.elapsed_seconds + 1 } : prev)
+    }, 1000)
+    return () => clearInterval(int)
+  }, [session?.auto_running])
+
+  // ─── Fase-overgang: de kern van de vereenvoudigde flow ────────────────────
+  const advancePhase = useCallback(() => {
+    setSession(prev => {
+      if (!prev || !prev.auto_running) return prev
+      const seg = getSeg(prev.schema, prev.current_segment)
+      const totalSets = seg?.sets || 1
+      const restSec = seg?.rest_sec || 60
+      const segments = getSegments(prev.schema)
+      const isLastSegment = prev.current_segment === segments.length - 1
+
+      if (prev.workout_phase === 'countdown') {
+        // Countdown afgelopen → start de (eerste) set
+        return { ...prev, workout_phase: 'active', phase_end_at: Date.now() + getActiveDuration(seg) * 1000 }
+      }
+
+      if (prev.workout_phase === 'active') {
+        const isLastSet = prev.current_set >= totalSets
+        const nieuweFase = isLastSet ? 'last_rest' : 'rest'
+        return {
+          ...prev, workout_phase: nieuweFase,
+          phase_end_at: Date.now() + restSec * 1000,
+          completed_sets: prev.completed_sets + 1,
+        }
+      }
+
+      if (prev.workout_phase === 'rest') {
+        // v2.4.29 FASE 2: GEEN countdown meer tussen sets — direct door
+        // naar de volgende set (active).
+        return {
+          ...prev, workout_phase: 'active', current_set: prev.current_set + 1,
+          phase_end_at: Date.now() + getActiveDuration(seg) * 1000,
+        }
+      }
+
+      if (prev.workout_phase === 'last_rest') {
+        if (isLastSegment) {
+          return { ...prev, status: 'voltooid' as SessionStatus, auto_running: false, phase_end_at: null }
+        }
+        // v2.4.29 FASE 2: nieuwe oefening → 3 sec countdown
+        return {
+          ...prev, current_segment: prev.current_segment + 1,
+          completed_segments: [...prev.completed_segments, prev.current_segment],
+          current_set: 1, workout_phase: 'countdown',
+          phase_end_at: Date.now() + NIEUWE_OEFENING_COUNTDOWN_SEC * 1000,
+        }
+      }
+
+      return prev
+    })
   }, [])
 
-  const handleCountdownTick = useCallback(() => {
-    setSession(prev => prev && prev.auto_running ? { ...prev, countdown_seconds: Math.max(0, prev.countdown_seconds - 1) } : prev)
-  }, [])
+  // Trigger advancePhase() zodra remaining 0 bereikt — met guard tegen
+  // dubbele triggers binnen dezelfde 250ms-tick.
+  useEffect(() => {
+    if (!session || !session.auto_running || !session.phase_end_at) return
+    if (session.workout_phase !== 'countdown' && session.workout_phase !== 'active' &&
+        session.workout_phase !== 'rest' && session.workout_phase !== 'last_rest') return
+    if (remaining <= 0 && !advancingRef.current) {
+      advancingRef.current = true
+      advancePhase()
+      setTimeout(() => { advancingRef.current = false }, 300)
+    }
+  }, [remaining, session, advancePhase])
 
   function updateStatus(status: SessionStatus) {
     setSession(prev => prev ? { ...prev, status } : prev)
   }
 
-  function handleNextSet() {
-    setSession(prev => {
-      if (!prev) return prev
-
-      if (prev.workout_phase === 'countdown') {
-        const seg = getSeg(prev.schema, prev.current_segment)
-        return { ...prev, workout_phase: 'active', active_seconds_left: getActiveDuration(seg), countdown_seconds: COUNTDOWN_DURATION }
-      }
-
-      const seg = getSeg(prev.schema, prev.current_segment)
-      const totalSets = seg?.sets || 1
-      const restSec = seg?.rest_sec || 60
-      if (prev.workout_phase === 'active') {
-        const isLastSet = prev.current_set >= totalSets
-        return { ...prev, workout_phase: isLastSet ? 'last_rest' : 'rest', rest_seconds: restSec, completed_sets: prev.completed_sets + 1 }
-      } else {
-        return { ...prev, workout_phase: 'countdown', countdown_seconds: COUNTDOWN_DURATION, current_set: prev.current_set + 1, rest_seconds: 0 }
-      }
-    })
-  }
-
-  function handleNextSegment() {
-    setSession(prev => {
-      if (!prev) return prev
-      const next = prev.current_segment + 1
-      return { ...prev, current_segment: next, completed_segments: [...prev.completed_segments, prev.current_segment],
-        current_set: 1, workout_phase: 'countdown', countdown_seconds: COUNTDOWN_DURATION, rest_seconds: 0, auto_running: true }
-    })
-  }
-
-  function handleComplete() {
-    setSession(prev => prev ? { ...prev, status: 'voltooid' as SessionStatus, auto_running: false } : prev)
-  }
-
+  // "Next"-knop: forceert direct dezelfde overgang als advancePhase() zou
+  // doen bij natuurlijk verlopen van de tijd — hergebruikt dezelfde functie
+  // zodat er geen tweede, afwijkende transitie-logica ontstaat.
   function handleNext() {
-    setSession(prev => {
-      if (!prev) return prev
-      const segments = getSegments(prev.schema)
-      const isLastSegment = prev.current_segment === segments.length - 1
-
-      if (prev.workout_phase === 'countdown') {
-        const seg = getSeg(prev.schema, prev.current_segment)
-        return { ...prev, workout_phase: 'active', active_seconds_left: getActiveDuration(seg), countdown_seconds: COUNTDOWN_DURATION }
-      }
-
-      const seg = getSeg(prev.schema, prev.current_segment)
-      const totalSets = seg?.sets || 1
-      const restSec = seg?.rest_sec || 60
-      if (prev.workout_phase === 'active') {
-        const isLastSet = prev.current_set >= totalSets
-        return { ...prev, workout_phase: isLastSet ? 'last_rest' : 'rest', rest_seconds: restSec, completed_sets: prev.completed_sets + 1 }
-      } else if (prev.workout_phase === 'rest') {
-        return { ...prev, workout_phase: 'countdown', countdown_seconds: COUNTDOWN_DURATION, current_set: prev.current_set + 1, rest_seconds: 0 }
-      } else if (prev.workout_phase === 'last_rest') {
-        if (isLastSegment) return { ...prev, status: 'voltooid' as SessionStatus, auto_running: false }
-        return { ...prev, current_segment: prev.current_segment + 1, completed_segments: [...prev.completed_segments, prev.current_segment],
-          current_set: 1, workout_phase: 'countdown', countdown_seconds: COUNTDOWN_DURATION, rest_seconds: 0 }
-      }
-      return prev
-    })
+    if (session?.workout_phase === 'countdown' || session?.workout_phase === 'active' ||
+        session?.workout_phase === 'rest' || session?.workout_phase === 'last_rest') {
+      setSession(prev => prev ? { ...prev, phase_end_at: Date.now() } : prev)
+      // De ticking-loop pikt dit binnen 250ms op en triggert advancePhase()
+    }
   }
 
   function handleBackOefening() {
     setSession(prev => {
       if (!prev) return prev
-      const targetIndex = (prev.workout_phase === 'active' || prev.workout_phase === 'countdown') && prev.current_set === 1 && prev.current_segment > 0
+      const targetIndex = (prev.workout_phase === 'active') && prev.current_set === 1 && prev.current_segment > 0
         ? prev.current_segment - 1 : prev.current_segment
       return { ...prev, auto_running: false, workout_phase: 'uitleg', uitleg_index: targetIndex,
-        current_segment: targetIndex, current_set: 1, rest_seconds: 0, elapsed_seconds: 0, countdown_seconds: COUNTDOWN_DURATION }
+        current_segment: targetIndex, current_set: 1, phase_end_at: null }
     })
   }
 
@@ -1033,31 +1059,25 @@ export default function SessionPage() {
       const segments = getSegments(prev.schema)
       const next = Math.min(prev.current_segment + 1, Math.max(0, segments.length - 1))
       return { ...prev, auto_running: false, workout_phase: 'uitleg', uitleg_index: next,
-        current_segment: next, current_set: 1, rest_seconds: 0, elapsed_seconds: 0, countdown_seconds: COUNTDOWN_DURATION }
+        current_segment: next, current_set: 1, phase_end_at: null }
     })
   }
 
-  // v2.4.18 FIX: alle "verlaat de sessie helemaal"-punten in deze functie
-  // gebruikten voorheen router.push('/training'), wat bij herhaald
-  // Trainingsbibliotheek-gebruik dezelfde dubbele-geschiedenis-opbouw gaf
-  // als in archief/oefening/[id] (v2.4.17) en archief/page.tsx (v2.4.18).
-  // router.back() navigeert naar de daadwerkelijk vorige pagina zonder een
-  // nieuwe duplicate toe te voegen.
   function handleHeaderBack() {
     if (!session) { router.back(); return }
     if (session.status === 'workout' && session.workout_phase === 'uitleg') {
       if (session.uitleg_index === 0) {
-        setSession(prev => prev ? { ...prev, status: 'schema', workout_phase: 'active', current_set: 1, rest_seconds: 0, elapsed_seconds: 0 } : prev)
+        setSession(prev => prev ? { ...prev, status: 'schema', workout_phase: 'active', current_set: 1, phase_end_at: null } : prev)
       } else {
         setSession(prev => {
           if (!prev) return prev
           const vorigeIndex = prev.uitleg_index - 1
-          return { ...prev, uitleg_index: vorigeIndex, current_segment: vorigeIndex, current_set: 1, rest_seconds: 0, elapsed_seconds: 0 }
+          return { ...prev, uitleg_index: vorigeIndex, current_segment: vorigeIndex, current_set: 1, phase_end_at: null }
         })
       }
     } else if (session.status === 'workout') {
       setSession(prev => prev ? { ...prev, auto_running: false, workout_phase: 'uitleg', uitleg_index: prev.current_segment,
-        current_set: 1, rest_seconds: 0, elapsed_seconds: 0 } : prev)
+        current_set: 1, phase_end_at: null } : prev)
     } else if (session.status === 'learning') {
       updateStatus('schema')
     } else {
@@ -1066,11 +1086,19 @@ export default function SessionPage() {
     }
   }
 
+  // v2.4.29 FASE 2: 5 sec countdown alleen bij de allereerste oefening van
+  // de sessie (segment 0, nog geen enkele oefening voltooid). Bij elke
+  // andere Ready-druk (nieuwe oefening ná last_rest, of terugkeer vanuit
+  // handmatige back-navigatie) geldt 3 sec.
   function handleReadyFromUitleg() {
     setSession(prev => {
       if (!prev) return prev
-      return { ...prev, status: 'workout', workout_phase: 'countdown', auto_running: true,
-        current_set: 1, rest_seconds: 0, countdown_seconds: COUNTDOWN_DURATION }
+      const isEersteOefening = prev.current_segment === 0 && prev.completed_segments.length === 0
+      const duurSec = isEersteOefening ? EERSTE_COUNTDOWN_SEC : NIEUWE_OEFENING_COUNTDOWN_SEC
+      return {
+        ...prev, status: 'workout', workout_phase: 'countdown', auto_running: true,
+        current_set: 1, phase_end_at: Date.now() + duurSec * 1000,
+      }
     })
   }
 
@@ -1091,9 +1119,6 @@ export default function SessionPage() {
       })
       clearSession()
       setSession(prev => prev ? { ...prev, status: 'completed' } : prev)
-      // v2.4.18 FIX: replace i.p.v. push — zelfde redenering als v2.4.17
-      // (archief/oefening/[id]): voorkomt dat swipe-terug de gebruiker
-      // terugbrengt naar een net-voltooide, niet meer relevante sessie.
       setTimeout(() => router.replace('/training'), 1500)
     } catch { /* */ }
     finally { setSaving(false) }
@@ -1177,17 +1202,25 @@ export default function SessionPage() {
             )}
 
             {session.status === 'workout' && session.workout_phase !== 'uitleg' && (
-              <WorkoutEngine session={session} onTick={handleTick} onRestTick={handleRestTick} onCountdownTick={handleCountdownTick}
-                onNextSet={handleNextSet} onNextSegment={handleNextSegment} onComplete={handleComplete}
+              <WorkoutEngine session={session} remaining={remaining} countdownTotaal={countdownTotaal}
                 onBackOefening={handleBackOefening} onVolgendOefening={handleVolgendOefening} onNext={handleNext}
-                onPause={() => { setSession(prev => prev ? { ...prev, auto_running: false } : prev); setShowPause(true) }}
+                onPause={() => {
+                  // v2.4.29: pauzeren bewaart de resterende tijd (ms) i.p.v.
+                  // een los aftellend getal, zodat hervatten exact vanaf dat
+                  // punt verdergaat zonder tijd te verliezen of te winnen.
+                  setSession(prev => {
+                    if (!prev || !prev.phase_end_at) return prev ? { ...prev, auto_running: false } : prev
+                    return { ...prev, auto_running: false, paused_remaining_ms: prev.phase_end_at - Date.now() }
+                  })
+                  setShowPause(true)
+                }}
                 onTempoChange={(exercise, tempo) => {
                   setTempo(exercise, tempo)
                   setSession(prev => {
                     if (!prev) return prev
                     const seg = getSeg(prev.schema, prev.current_segment)
                     if (!seg || seg.exercise !== exercise || prev.workout_phase !== 'active') return prev
-                    return { ...prev, active_seconds_left: getActiveDuration(seg) }
+                    return { ...prev, phase_end_at: Date.now() + getActiveDuration(seg) * 1000 }
                   })
                 }} />
             )}
@@ -1226,7 +1259,19 @@ export default function SessionPage() {
               <p className="text-white text-xl font-bold mb-1">⏸ Training Gepauzeerd</p>
               <p className="text-slate-400 text-sm mb-1">{huidigeSegForPause?.exercise || 'Oefening'}</p>
               <p className="text-slate-500 text-xs mb-6">Set {session.current_set} · {formatTime(session.elapsed_seconds)}</p>
-              <button onClick={() => { setShowPause(false); setSession(prev => prev ? { ...prev, auto_running: true } : prev) }}
+              <button onClick={() => {
+                setShowPause(false)
+                // v2.4.29: hervatten berekent een NIEUW phase_end_at vanaf nu,
+                // op basis van de bewaarde resterende tijd — geen "verloren"
+                // of "extra" tijd door de pauze-duur zelf.
+                setSession(prev => {
+                  if (!prev) return prev
+                  const nieuwEindtijd = prev.paused_remaining_ms !== null
+                    ? Date.now() + prev.paused_remaining_ms
+                    : prev.phase_end_at
+                  return { ...prev, auto_running: true, phase_end_at: nieuwEindtijd, paused_remaining_ms: null }
+                })
+              }}
                 className="w-full py-3.5 bg-primary-500 text-white rounded-xl font-semibold active:bg-primary-600 mb-3 flex items-center justify-center gap-2">
                 <Play size={18} /> Hervatten
               </button>
