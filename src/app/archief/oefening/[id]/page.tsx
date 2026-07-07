@@ -15,7 +15,20 @@ import { MOBILITY_OEFENINGEN } from '@/lib/mobility-exercises'
 // Gewicht-stappen voor kettlebell — later uitbreidbaar tot 32kg in stappen van 4
 const KETTLEBELL_GEWICHTEN = [14, 16, 20]
 // Toekomstige uitbreiding: const KETTLEBELL_GEWICHTEN = [14, 16, 20, 24, 28, 32]
-const COUNTDOWN_DURATION = 5
+
+// v2.4.30 — TIMER ENGINE REBUILD voor Archief (zelfde techniek als
+// training/session/[module]/page.tsx v2.4.29, maar met eigen flowregels
+// omdat de gebruikssituatie anders is: één losse oefening met herhaalde
+// sets, geen opeenvolging van meerdere verschillende oefeningen.
+//
+// Archief-flow (bewust anders dan Coach AI-trainingen):
+// - 5 sec countdown ALLEEN vóór de allereerste set
+// - Bij elke volgende set: GEEN countdown — rust loopt af, dan direct door
+//   naar de volgende set. De rust zelf is de voorbereiding.
+// - Zelfde onderliggende engine: phase_end_at (vast tijdstip), geen los
+//   aftellend getal, drift-vrij bij lockscreen/achtergrond via
+//   visibilitychange-herstel.
+const EERSTE_SET_COUNTDOWN_SEC = 5
 
 interface OefeningData {
   id: string
@@ -92,9 +105,12 @@ export default function ArchiefOefeningPage() {
   // Workout state
   const [fase, setFase] = useState<'instellen' | 'countdown' | 'actief' | 'rust' | 'voltooid' | 'evaluatie' | 'opgeslagen'>('instellen')
   const [huidigeSet, setHuidigeSet] = useState(1)
-  const [tellerSec, setTellerSec] = useState(0)
   const [gepauzeerd, setGepauzeerd] = useState(false)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  // v2.4.30: vervangt tellerSec — vast eindtijdstip i.p.v. los aftellend getal
+  const [phaseEndAt, setPhaseEndAt] = useState<number | null>(null)
+  const [pausedRemainingMs, setPausedRemainingMs] = useState<number | null>(null)
+  const [, setTick] = useState(0)
+  const advancingRef = useRef(false)
 
   // Evaluatie state
   const [rating, setRating] = useState<number | null>(null)
@@ -143,7 +159,6 @@ export default function ArchiefOefeningPage() {
             duur_sec: records.duration_sec,
             datum: records.performed_at,
           })
-          // Vul defaults met vorige sessie waarden
           if (records.sets) setSets(records.sets)
           if (records.reps) setReps(records.reps)
           if (records.weight_kg) setGewicht(records.weight_kg)
@@ -173,7 +188,7 @@ export default function ArchiefOefeningPage() {
         body: JSON.stringify({
           module: data.module,
           training_type: data.module,
-          training_source: 'library', // triggert Coach Call check zoals bestaande logica
+          training_source: 'library',
           completed: true,
           rating: finalRating,
           actual_duration: Math.round((sets * (isTijdGebaseerd ? duurSec : reps * 3) + (sets - 1) * rustSec) / 60),
@@ -181,88 +196,98 @@ export default function ArchiefOefeningPage() {
         }),
       })
       setFase('opgeslagen')
-      // v2.4.17 FIX: replace i.p.v. push — voorkomt dat de gebruiker via
-      // swipe-terug per ongeluk terugkomt op het net-afgeronde
-      // evaluatieformulier. Zie ook de terugknop-fix hieronder voor de
-      // achterliggende root cause (dubbele geschiedenis-entries).
       setTimeout(() => router.replace('/archief'), 1500)
     } catch { /* */ }
     finally { setOpslaan(false) }
   }, [data, sets, reps, duurSec, gewicht, isTijdGebaseerd, rustSec, router])
 
-  // Workout timer — countdown vooraf, daarna altijd aftellende timer
-  // (reps worden via effectieveDuurSec omgezet naar seconden)
+  // v2.4.30: centrale ticking-loop — zelfde patroon als v2.4.29. Forceert
+  // een re-render elke 250ms zodat de afgeleide resterende tijd zichtbaar
+  // bijwerkt, en herstelt direct bij terugkeer uit de achtergrond.
   useEffect(() => {
-    if (fase !== 'countdown' && fase !== 'actief' && fase !== 'rust') return
+    const interval = setInterval(() => setTick(t => t + 1), 250)
+    const onVisible = () => { if (document.visibilityState === 'visible') setTick(t => t + 1) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
+  }, [])
+
+  const remaining = phaseEndAt ? Math.max(0, Math.ceil((phaseEndAt - Date.now()) / 1000)) : 0
+
+  // v2.4.30 FIX: fase-overgang volgens de Archief-eigen flowregels — GEEN
+  // countdown tussen sets (in tegenstelling tot vóór deze rebuild, waar
+  // elke set opnieuw een 5-sec countdown kreeg). Alleen de allereerste set
+  // krijgt een countdown; daarna gaat rust direct door naar de volgende set.
+  const advancePhase = useCallback(() => {
     if (gepauzeerd) return
+    if (fase === 'countdown') {
+      setFase('actief')
+      setPhaseEndAt(Date.now() + effectieveDuurSec * 1000)
+      return
+    }
+    if (fase === 'actief') {
+      if (huidigeSet >= sets) {
+        setFase('voltooid')
+        setPhaseEndAt(null)
+      } else {
+        setFase('rust')
+        setPhaseEndAt(Date.now() + rustSec * 1000)
+      }
+      return
+    }
+    if (fase === 'rust') {
+      // Direct door naar de volgende set — geen countdown-tussenstap
+      setHuidigeSet(s => s + 1)
+      setFase('actief')
+      setPhaseEndAt(Date.now() + effectieveDuurSec * 1000)
+      return
+    }
+  }, [fase, gepauzeerd, huidigeSet, sets, rustSec, effectieveDuurSec])
 
-    intervalRef.current = setInterval(() => {
-      setTellerSec(prev => {
-        if (fase === 'countdown') {
-          if (prev + 1 >= COUNTDOWN_DURATION) {
-            setFase('actief')
-            return 0
-          }
-          return prev + 1
-        }
-        if (fase === 'rust') {
-          if (prev + 1 >= rustSec) {
-            setFase('countdown')
-            return 0
-          }
-          return prev + 1
-        }
-        // fase === 'actief'
-        if (prev + 1 >= effectieveDuurSec) {
-          if (huidigeSet >= sets) {
-            setFase('voltooid')
-          } else {
-            setFase('rust')
-            setHuidigeSet(s => s + 1)
-          }
-          return 0
-        }
-        return prev + 1
-      })
-    }, 1000)
-
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [fase, gepauzeerd, effectieveDuurSec, rustSec, huidigeSet, sets])
+  useEffect(() => {
+    if (gepauzeerd) return
+    if (fase !== 'countdown' && fase !== 'actief' && fase !== 'rust') return
+    if (!phaseEndAt) return
+    if (remaining <= 0 && !advancingRef.current) {
+      advancingRef.current = true
+      advancePhase()
+      setTimeout(() => { advancingRef.current = false }, 300)
+    }
+  }, [remaining, fase, phaseEndAt, gepauzeerd, advancePhase])
 
   function startWorkout() {
     setFase('countdown')
     setHuidigeSet(1)
-    setTellerSec(0)
+    setPhaseEndAt(Date.now() + EERSTE_SET_COUNTDOWN_SEC * 1000)
   }
 
+  // "Volgende set"-knop (handmatig): forceert dezelfde overgang als
+  // advancePhase() zou doen — geen aparte, afwijkende logica.
   function volgendeSet() {
-    if (huidigeSet >= sets) {
-      setFase('voltooid')
+    setPhaseEndAt(Date.now())
+  }
+
+  function togglePauze() {
+    if (!gepauzeerd) {
+      // Pauzeren: bewaar resterende tijd, zodat hervatten geen tijd wint/verliest
+      if (phaseEndAt) setPausedRemainingMs(phaseEndAt - Date.now())
+      setGepauzeerd(true)
     } else {
-      setFase('rust')
-      setHuidigeSet(s => s + 1)
-      setTellerSec(0)
+      if (pausedRemainingMs !== null) setPhaseEndAt(Date.now() + pausedRemainingMs)
+      setPausedRemainingMs(null)
+      setGepauzeerd(false)
     }
   }
 
-  // v2.4.17 FIX — ROOT CAUSE van het navigatieprobleem: deze knop gebruikte
-  // voorheen `router.push('/archief')` in de 'instellen'-fase. Bij elke
-  // "oefening bekijken → terug → andere oefening bekijken"-cyclus voegde
-  // dat een NIEUWE duplicate '/archief'-entry toe aan de browserhistorie,
-  // in plaats van simpelweg terug te navigeren. Na een paar cycli bevatte
-  // de geschiedenis meerdere gestapelde duplicaten, waardoor swipe-terug
-  // (echte browser-navigatie, buiten React om) inconsistent gedrag gaf:
-  // soms meerdere stappen tegelijk, soms "hangen en terugspringen" naar
-  // een oudere, ongerelateerde pagina (zoals een eerdere kettlebell-sessie).
-  // Fix: router.back() navigeert altijd naar de daadwerkelijk vorige
-  // pagina in de bestaande geschiedenis, in plaats van een nieuwe kopie
-  // toe te voegen — dit houdt de stack schoon en synchroniseert de in-app
-  // knop met swipe-gedrag.
+  // v2.4.30: gebruikt router.back() i.p.v. router.push('/archief') —
+  // behoudt de v2.4.17-navigatiefix (voorkomt dubbele geschiedenis-entries)
   function handleTerug() {
     if (fase === 'instellen') {
       router.back()
     } else {
       setFase('instellen')
+      setPhaseEndAt(null)
+      setGepauzeerd(false)
+      setPausedRemainingMs(null)
     }
   }
 
@@ -347,7 +372,6 @@ export default function ArchiefOefeningPage() {
               </Card>
             )}
 
-            {/* Instelpaneel */}
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Instellingen</p>
               {vorigeSessie && (
@@ -358,7 +382,6 @@ export default function ArchiefOefeningPage() {
               )}
 
               <div className="flex flex-col gap-4 mt-2">
-                {/* Sets */}
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-slate-300">Sets</p>
                   <div className="flex items-center gap-3">
@@ -374,7 +397,6 @@ export default function ArchiefOefeningPage() {
                   </div>
                 </div>
 
-                {/* Reps of Duur */}
                 {isTijdGebaseerd ? (
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-slate-300">Duur per set</p>
@@ -407,7 +429,6 @@ export default function ArchiefOefeningPage() {
                   </div>
                 )}
 
-                {/* Rust */}
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-slate-300">Rust tussen sets</p>
                   <div className="flex items-center gap-3">
@@ -423,7 +444,6 @@ export default function ArchiefOefeningPage() {
                   </div>
                 </div>
 
-                {/* Gewicht — alleen voor kettlebell */}
                 {oefening.isKettlebell && (
                   <div>
                     <p className="text-sm text-slate-300 mb-2">Kettlebell gewicht</p>
@@ -466,12 +486,12 @@ export default function ArchiefOefeningPage() {
                 <circle cx="64" cy="64" r="58" fill="none"
                   stroke="#818cf8" strokeWidth="6" strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 58}`}
-                  strokeDashoffset={`${2 * Math.PI * 58 * (1 - tellerSec / COUNTDOWN_DURATION)}`}
+                  strokeDashoffset={`${2 * Math.PI * 58 * (1 - remaining / EERSTE_SET_COUNTDOWN_SEC)}`}
                   style={{ transition: 'stroke-dashoffset 1s linear' }} />
               </svg>
-              <p className="text-6xl font-bold text-white">{Math.max(COUNTDOWN_DURATION - tellerSec, 0)}</p>
+              <p className="text-6xl font-bold text-white">{remaining}</p>
             </div>
-            <button onClick={() => { setFase('actief'); setTellerSec(0) }}
+            <button onClick={() => setPhaseEndAt(Date.now())}
               className="mt-6 w-full py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold">
               Skip countdown
             </button>
@@ -482,7 +502,7 @@ export default function ArchiefOefeningPage() {
           <Card className="p-6 text-center">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Set {huidigeSet} van {sets}</p>
             <p className="text-5xl font-bold text-primary-400 mb-2">
-              {Math.max(effectieveDuurSec - tellerSec, 0)}s
+              {remaining}s
             </p>
             {!isTijdGebaseerd && (
               <p className="text-slate-500 text-xs mb-1">{reps} herhalingen op eigen tempo</p>
@@ -491,7 +511,7 @@ export default function ArchiefOefeningPage() {
               {oefening.naam}{gewicht ? ` · ${gewicht}kg` : ''}
             </p>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setGepauzeerd(p => !p)}
+              <button onClick={togglePauze}
                 className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold flex items-center justify-center gap-2">
                 {gepauzeerd ? <Play size={16} /> : <Pause size={16} />}
                 {gepauzeerd ? 'Hervat' : 'Pauze'}
@@ -507,9 +527,9 @@ export default function ArchiefOefeningPage() {
 
         {fase === 'rust' && (
           <Card className="p-6 text-center bg-amber-500/10 border-amber-500/20">
-            <p className="text-xs text-amber-400 uppercase tracking-wider mb-3">Rust · Set {huidigeSet} volgt</p>
-            <p className="text-6xl font-mono font-bold text-amber-400">{Math.max(rustSec - tellerSec, 0)}s</p>
-            <button onClick={() => { setFase('countdown'); setTellerSec(0) }}
+            <p className="text-xs text-amber-400 uppercase tracking-wider mb-3">Rust · Set {huidigeSet + 1} volgt</p>
+            <p className="text-6xl font-mono font-bold text-amber-400">{remaining}s</p>
+            <button onClick={() => setPhaseEndAt(Date.now())}
               className="mt-6 w-full py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold">
               Skip rust
             </button>

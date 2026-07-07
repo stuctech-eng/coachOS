@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.30 — Workout Engine REBUILD toegepast op Archief (eigen flowregels)
+**Vervolg op v2.4.29 — die herbouw raakte alleen Coach AI/Trainingsbibliotheek
+(`training/session/[module]/page.tsx`). Archief gebruikt een volledig los
+bestand met eigen timer-logica, die nog niet was meegenomen.**
+
+- `src/app/archief/oefening/[id]/page.tsx` — zelfde onderliggende
+  `phase_end_at`-engine als v2.4.29 (vast eindtijdstip i.p.v. los
+  `tellerSec`-getal, centrale 250ms-ticking-loop, `visibilitychange`-
+  herstel, drift-vrij), maar met **bewust andere flowregels** dan Coach
+  AI-trainingen — beargumenteerd door de gebruiker: Archief is één losse
+  oefening met herhaalde sets (ritme/herhaling gewenst), geen opeenvolging
+  van verschillende oefeningen (geen "omschakel-moment" nodig).
+
+**Archief-flow (nieuw, vervangt "elke set opnieuw 5 sec countdown"):**
+- 5 sec countdown **alleen vóór de allereerste set**
+- Bij elke volgende set: **geen countdown** — rust loopt af, dan direct
+  door naar de volgende set (de rust zelf is de voorbereiding)
+
+Ter vergelijking, Coach AI-trainingen (v2.4.29, ongewijzigd):
+- 5 sec bij de allereerste oefening van de hele sessie
+- 3 sec bij elke overgang naar een NIEUWE oefening (wél een
+  omschakel-moment, andere beweging/spiergroep)
+- Geen countdown tussen sets binnen dezelfde oefening
+
+- Pauzeren/hervatten volgt hetzelfde `paused_remaining_ms`-patroon als
+  v2.4.29 — geen verloren/gewonnen tijd door de pauzeduur.
+- De v2.4.17-navigatiefix (`router.back()` i.p.v. `router.push('/archief')`)
+  blijft behouden in deze herbouwde versie.
+- "Volgende set" / "Skip countdown" / "Skip rust"-knoppen forceren nu
+  `phase_end_at = Date.now()` in plaats van een eigen aparte
+  transitielogica — dezelfde aanpak als v2.4.29's `handleNext()`, voorkomt
+  twee losse plekken die weten hoe overgangen werken.
+
+**Nog steeds niet in deze versie:** geluid (Fase 3) — volgt voor beide
+systemen (Coach AI én Archief) tegelijk, zodra deze timer-basis in de
+praktijk bevestigd is.
+
 ## v2.4.29 — Workout Engine REBUILD: Fase 1 (timer-engine) + Fase 2 (flow)
 **Volgens de CoachOS Workout Engine Master Architecture — bewust in deze
 volgorde gebouwd (eerst fundament, dan flow, geluid volgt in een latere
