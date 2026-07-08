@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.52 — Fix: gewicht-advies-bug + coach geeft nu commentaar op afwijking
+
+**⚠️ VEREIST VÓÓR DEPLOY — nieuwe kolom in Supabase SQL Editor:**
+```sql
+alter table exercise_records add column advised_weight_kg integer;
+```
+Zonder deze kolom faalt de `exercise_records`-insert bij elke kettlebell-
+training (poging tot schrijven naar een niet-bestaande kolom).
+
+**Gevonden bug (bij het bouwen van deze koppeling, vóór uitlevering):**
+in v2.4.51 werd `actual_weight_kg` als NIEUW veld toegevoegd náást het
+bestaande `weight_kg`-veld op een segment — maar `exercise_records` (de
+tabel die de progressie-trends van de coach voedt) las nog steeds het
+oorspronkelijke `weight_kg` (= altijd het coach-ADVIES), nooit het
+daadwerkelijk gebruikte gewicht. Bij elke afwijking van het advies zou de
+progressie-tracking dus het verkeerde getal hebben vastgelegd.
+
+**Fixes en uitbreiding:**
+- `src/app/api/training/complete/route.ts` — `exercise_records`-insert
+  gebruikt nu `seg.actual_weight_kg` (met terugval op `seg.weight_kg` voor
+  niet-kettlebell-segmenten, ongewijzigd gedrag daar). Nieuwe kolom
+  `advised_weight_kg` wordt apart opgeslagen.
+- `src/app/api/coach/route.ts` — de bestaande progressie-analyse
+  (`exercise_records` → trend per oefening) leest nu ook
+  `advised_weight_kg`. Als het laatst geadviseerde gewicht afwijkt van het
+  laatst gebruikte, wordt dat expliciet in de prompt vermeld:
+  `[Trainer AI adviseerde Xkg, gebruiker deed Ykg]`, met een instructie aan
+  de coach om dit kort en niet-veroordelend te kunnen benoemen — alleen
+  bij een daadwerkelijke afwijking, geen ruis bij een exacte match.
+- Tempo wordt in deze stap **niet** meegenomen in de coach-vergelijking —
+  `exercise_records` heeft geen tempo-kolom, en dat zou een aparte
+  schema-uitbreiding vergen. Bewust uitgesteld; kan later alsnog als
+  gewenst.
+
 ## v2.4.51 — NIEUW: Coach adviseert kettlebell-gewicht + tempo, gebruiker kan afwijken
 **Bevestigd via `training/today/route.ts`: kettlebell-segmenten bevatten
 géén gewicht- of tempo-informatie, niet in de AI-prompt-instructie, niet

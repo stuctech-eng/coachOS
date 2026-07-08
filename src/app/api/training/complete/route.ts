@@ -21,13 +21,6 @@ async function getUser() {
   return user
 }
 
-// v2.4.11: Supabase-queries gooien standaard GEEN exception bij een
-// database-fout (RLS-blokkade, constraint-violation, etc.) — ze retourneren
-// { data, error }. De v2.4.9 retry-helper checkte dit .error-veld nergens,
-// waardoor een mislukte insert stil werd genegeerd: geen retry, geen log,
-// geen enkele indicatie. Deze helper checkt expliciet op .error en gooit
-// zelf een Error met de volledige Postgres-foutdetails (code/message/
-// details/hint), zodat zowel retry als logging daadwerkelijk werken.
 async function withRetry<F extends () => PromiseLike<{ data: unknown; error: unknown }>>(
   fn: F,
   label: string
@@ -162,6 +155,22 @@ export async function POST(req: NextRequest) {
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/^-|-$/g, '')
 
+            // v2.4.52 FIX: was seg.weight_kg (= altijd het COACH-ADVIES,
+            // ongewijzigd sinds v2.4.51 een apart actual_weight_kg-veld
+            // toevoegde náást het bestaande weight_kg-veld). Hierdoor
+            // registreerde de progressie-tracking van de coach altijd het
+            // geadviseerde gewicht, nooit wat de gebruiker daadwerkelijk
+            // gebruikte — ook niet bij een bewuste afwijking. Nu: gebruik
+            // actual_weight_kg als dat aanwezig is (kettlebell-segmenten
+            // sinds v2.4.51), val terug op het gewone weight_kg-veld voor
+            // alle andere gevallen (ongewijzigd gedrag daar).
+            const gebruiktGewicht = typeof seg.actual_weight_kg === 'number'
+              ? seg.actual_weight_kg
+              : (seg.weight_kg as number) || null
+            const geadviseerdGewicht = typeof seg.advised_weight_kg === 'number'
+              ? seg.advised_weight_kg
+              : null
+
             return {
               user_id: user.id,
               training_result_id: result.id,
@@ -169,7 +178,8 @@ export async function POST(req: NextRequest) {
               exercise_name: naam,
               exercise_type: (seg.type as string) || defaultExerciseType,
               module: moduleType,
-              weight_kg: (seg.weight_kg as number) || null,
+              weight_kg: gebruiktGewicht,
+              advised_weight_kg: geadviseerdGewicht,
               reps: typeof seg.reps === 'number' ? seg.reps : null,
               duration_sec: typeof seg.duration_sec === 'number' ? seg.duration_sec : null,
               distance_m: typeof seg.distance_m === 'number' ? seg.distance_m : null,
@@ -191,20 +201,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Stap 3: Coach Call aanmaken bij elke bibliotheek-training ───────────
-    // v2.4.6: Coach Call wordt ALTIJD aangemaakt bij training_source 'library'
-    // (Archief + Trainingsbibliotheek) — ongeacht welk coach-advies die dag
-    // was, of zelfs als er geen advies was gegenereerd.
-    // v2.4.8: heropent een bestaande completed/expired call.
-    // v2.4.9: retry op de coach_call_items insert.
-    // v2.4.11: withRetry checkt nu ook daadwerkelijk het .error-veld van
-    // elke Supabase-response (zie helper hierboven) — v2.4.9/v2.4.10 lieten
-    // een mislukte insert stil door, ondanks retry-logica, omdat Supabase
-    // geen exception gooit bij een DB-fout. Dit maakt de root cause van het
-    // "geen Coach Call na bibliotheek-training"-probleem eindelijk zichtbaar
-    // in Vercel logs onder '[training/complete] coach_call aanmaken mislukt'.
     if (training_source === 'library' && result?.id) {
       try {
-        // Zoek of er al een coach_call is voor vandaag — nu ook status ophalen
         const existingResult = await withRetry(
           () => supabase
             .from('coach_calls')
@@ -216,7 +214,6 @@ export async function POST(req: NextRequest) {
         )
         const existing = existingResult.data as { id: string; status: string; coach_call_items: { training_result_id: string }[] } | null
 
-        // Check of dit training_result_id al bestaat
         const alreadyAdded = (existing?.coach_call_items || [])
           .some(i => i.training_result_id === result.id)
 
@@ -255,9 +252,6 @@ export async function POST(req: NextRequest) {
               'coach_call_items insert'
             )
 
-            // FIX v2.4.8: als de bestaande call al completed/expired was,
-            // heropen hem — anders blijft hij onzichtbaar in GET
-            // (die filtert op status pending/partial)
             if (existing && (existing.status === 'completed' || existing.status === 'expired')) {
               await withRetry(
                 () => supabase.from('coach_calls')
@@ -269,10 +263,6 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (coachCallErr) {
-        // Coach Call aanmaken is niet kritisch voor de training zelf — log
-        // maar gooi geen error. Deze log bevat nu (v2.4.11) de volledige
-        // Postgres-foutdetails (code/message/details/hint) i.p.v. een
-        // generieke of lege fout.
         console.error('[training/complete] coach_call aanmaken mislukt (na retry):', coachCallErr)
       }
     }

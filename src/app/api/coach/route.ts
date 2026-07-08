@@ -113,14 +113,14 @@ export async function POST() {
         .order('created_at', { ascending: false })
         .limit(3),
       fetchTodaysLifeEvents(supabase, user.id, vandaagNummer, isWeekend),
-      // Progressie: exercise records laatste 30 dagen voor PR context
+      // v2.4.52: advised_weight_kg toegevoegd aan de select, nodig voor de
+      // advies-vs-gebruikt-vergelijking hieronder
       supabase.from('exercise_records')
-        .select('exercise_name, module, weight_kg, reps, duration_sec, performed_at')
+        .select('exercise_name, module, weight_kg, advised_weight_kg, reps, duration_sec, performed_at')
         .eq('user_id', user.id)
         .gte('performed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
         .order('performed_at', { ascending: false })
         .limit(100),
-      // Stap 3: Coach Call evaluaties laatste 3 dagen
       supabase.from('coach_calls')
         .select('date, coach_call_items(sport_type, duration_min, rating, mood, notes, status)')
         .eq('user_id', user.id)
@@ -128,8 +128,6 @@ export async function POST() {
         .in('status', ['pending', 'partial', 'completed'])
         .order('date', { ascending: false })
         .limit(3),
-      // FIX v2.4.4: timeout toegevoegd — voorkomt dat een hangende Open-Meteo
-      // verbinding de volledige coach-advies-generatie blokkeert (500 na platform-timeout)
       fetchWithTimeout('https://coach-os-tau.vercel.app/api/weather', {}, 3000)
         .then(r => r.ok ? r.json() : null)
         .catch(() => null),
@@ -290,7 +288,8 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
 
     if (exerciseRecords.length > 0) {
       // Groepeer per oefening — chronologisch gesorteerd (oudste eerst)
-      type ExRec = { exercise_name: string; module: string; weight_kg: number | null; reps: number | null; duration_sec: number | null; performed_at: string }
+      // v2.4.52: advised_weight_kg toegevoegd aan het record-type
+      type ExRec = { exercise_name: string; module: string; weight_kg: number | null; advised_weight_kg: number | null; reps: number | null; duration_sec: number | null; performed_at: string }
       const groepen = new Map<string, ExRec[]>()
       for (const rec of (exerciseRecords as ExRec[]).slice().reverse()) {
         if (!groepen.has(rec.exercise_name)) groepen.set(rec.exercise_name, [])
@@ -303,6 +302,8 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
         eerste_gewicht: number | null; laatste_gewicht: number | null
         eerste_reps: number | null; laatste_reps: number | null
         verandering_pct: number | null; trend: 'stijgend' | 'stabiel' | 'dalend'
+        // v2.4.52: laatst geadviseerde gewicht, voor advies-vs-gebruikt-vergelijking
+        laatste_advies_gewicht: number | null
       }
       const trends: Trend[] = []
 
@@ -315,6 +316,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
             eerste_gewicht: r.weight_kg, laatste_gewicht: r.weight_kg,
             eerste_reps: r.reps, laatste_reps: r.reps,
             verandering_pct: null, trend: 'stabiel',
+            laatste_advies_gewicht: r.advised_weight_kg,
           })
           continue
         }
@@ -342,6 +344,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
           eerste_gewicht: eerste.weight_kg, laatste_gewicht: laatste.weight_kg,
           eerste_reps: eerste.reps, laatste_reps: laatste.reps,
           verandering_pct, trend,
+          laatste_advies_gewicht: laatste.advised_weight_kg,
         })
       }
 
@@ -373,6 +376,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
 
       if (gesorteerd.length > 0) {
         const regels: string[] = [`\n\nProgressie analyse laatste 30 dagen:`]
+        let heeftAfwijking = false
 
         for (const t of gesorteerd) {
           let regel = `- ${t.naam} (${t.module}, ${t.uitvoeringen}×)`
@@ -388,6 +392,14 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
           } else if (t.laatste_reps) {
             regel += `: ${t.laatste_reps} reps`
           }
+
+          // v2.4.52: expliciete advies-vs-gebruikt-vermelding — alleen als
+          // er daadwerkelijk een afwijking is (geen ruis bij elke exacte match)
+          if (t.laatste_advies_gewicht !== null && t.laatste_gewicht !== null && t.laatste_advies_gewicht !== t.laatste_gewicht) {
+            regel += ` [Trainer AI adviseerde ${t.laatste_advies_gewicht}kg, gebruiker deed ${t.laatste_gewicht}kg]`
+            heeftAfwijking = true
+          }
+
           regels.push(regel)
         }
 
@@ -398,6 +410,9 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
         }
 
         regels.push('Gebruik deze trenddata in je advies. Benoem concrete progressie als die er is. Waarschuw bij stijgende belasting + hoge RPE. Stel progressie voor als trend stijgend is en RPE laag.')
+        if (heeftAfwijking) {
+          regels.push('Bij [Trainer AI adviseerde X, gebruiker deed Y]: dit betekent dat de gebruiker zelf een ander kettlebell-gewicht koos tijdens de training dan geadviseerd. Je mag dit kort en niet-veroordelend benoemen — bijvoorbeeld als het zwaarder was dan geadviseerd en de RPE ook hoog was, kun je vragen of dat goed voelde. Als het lichter was, kan dat een teken van een terechte eigen inschatting zijn. Overdrijf niet — één keer afwijken is normaal.')
+        }
         progressieContext = regels.join('\n')
       }
     }
@@ -491,11 +506,6 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       user_id: user.id, role: 'assistant', message: recommendation,
     })
 
-    // v2.4.15 FIX: userId nu meegegeven in de body. Deze server-naar-server
-    // fetch stuurt geen cookies mee, dus /api/memory kon de gebruiker nooit
-    // identificeren via cookie-auth — resulteerde sinds implementatie altijd
-    // in een stille 401 (verborgen door .catch(() => {})). De coach-geheugen/
-    // patroonherkenning-feature heeft hierdoor nog nooit gedraaid.
     fetch('https://coach-os-tau.vercel.app/api/memory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
