@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.46 — Professionele soundset (Polar/Garmin/Concept2-stijl) + nieuwe Finish Tone
+**Herontwerp op basis van gedetailleerde gebruikersspecificatie — geen
+schelle piepjes (irritant bij 30-60 min training), maar korte, relatief
+hoge tonen (~1-2 kHz) die door achtergrondmuziek heen blijven snijden.**
+
+**Belangrijke, niet-technisch-oplosbare kanttekening:** een website/PWA
+heeft geen toegang tot het systeem-audiokanaal van iOS en kan dus het
+volume van andere apps (Spotify, Apple Music) niet dempen ("ducking") —
+een bewuste iOS-beperking, niet iets wat met code te omzeilen is. De
+enige hefboom is dat onze eigen tonen duidelijk genoeg zijn.
+
+- `src/lib/workout-sound.ts` — volledig herontworpen:
+  - **Start Tone:** was één toon, nu een dubbele oplopende toon ("DI-DIT",
+    ±180ms) — energiek zonder agressief.
+  - **Tick:** frequentie verhoogd (880Hz → 1568Hz) voor beter doorsnijden
+    door muziek, blijft kort/droog, geen oplopend volume over de 3 tikken.
+  - **Rest Tone** (hernoemd vanuit "Eindsignaal", zelfde functienaam
+    `speelEindsignaal` behouden voor compatibiliteit): één zachte
+    bevestigingstoon i.p.v. een simpele lage toon.
+  - **Finish Tone (NIEUW):** `speelFinishToon()` — twee rustige oplopende
+    tonen ("DI—DING"), specifiek voor het einde van de VOLLEDIGE training,
+    niet per set/oefening. Bestond nog niet — er was voorheen geen enkel
+    geluid bij volledige trainingsafronding.
+  - Basisvolume verhoogd (0.15 → 0.28) voor betere hoorbaarheid naast
+    zachte achtergrondmuziek, met behoud van de zachte in/uit-fade
+    (voorkomt een schel/hard karakter).
+- `src/app/training/session/[module]/page.tsx` — nieuw `useEffect` dat
+  `session.status` volgt en `speelFinishToon()` afspeelt bij de overgang
+  naar `'voltooid'`. Apart van het bestaande fase-luister-effect (v2.4.45),
+  omdat `workout_phase` zelf niet verandert op het moment dat de volledige
+  training als voltooid wordt gemarkeerd — alleen `status` doet dat.
+- `src/app/archief/oefening/[id]/page.tsx` — volledige geluidskoppeling
+  toegevoegd (was nog nooit definitief uitgeleverd voor dit bestand — een
+  eerdere poging werd halverwege gestopt op verzoek). Inclusief tick-
+  effect voor de laatste 3 sec van countdown/rust, en `speelFinishToon()`
+  bij de laatste set in plaats van de gewone Rest Tone.
+
 ## v2.4.45 — Fix: eindsignaal ontbrak bij Trainer AI/Bibliotheek (actief → rust)
 **Gemeld: bij Archief werkte het eindsignaal (lage toon bij einde set)
 correct, bij Trainer AI/Bibliotheek niet — starttoon en tick werkten daar

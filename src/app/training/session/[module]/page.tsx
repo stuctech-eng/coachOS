@@ -13,7 +13,7 @@ import { SESSION_STORAGE_KEY } from '@/types/training-engine'
 import { BODYWEIGHT_OEFENINGEN } from '@/lib/bodyweight-exercises'
 import { STRENGTH_OEFENINGEN } from '@/lib/strength-exercises'
 import { KETTLEBELL_OEFENINGEN } from '@/lib/kettlebell-exercises'
-import { ontgrendelAudio, speelTick, speelEindsignaal, speelStarttoon } from '@/lib/workout-sound'
+import { ontgrendelAudio, speelTick, speelEindsignaal, speelStarttoon, speelFinishToon } from '@/lib/workout-sound'
 
 // v2.4.29 — TIMER ENGINE REBUILD (Fase 1 + Fase 2 van de Workout Engine
 // Master Architecture). Belangrijkste wijzigingen t.o.v. de vorige versie:
@@ -1077,6 +1077,21 @@ export default function SessionPage() {
 
     vorigeFaseRef.current = huidige
   }, [session?.workout_phase])
+
+  // v2.4.46: Finish Tone — nieuw, speelt bij het einde van de VOLLEDIGE
+  // training (alle oefeningen klaar), niet per set/oefening. Dit is een
+  // apart moment van workout_phase-overgangen: bij de laatste oefening
+  // verandert alleen `status` naar 'voltooid', workout_phase zelf blijft
+  // ongewijzigd staan op dat moment (zie advancePhase, laatste tak) —
+  // vandaar een eigen effect dat specifiek naar `status` luistert.
+  const vorigeStatusRef = useRef<SessionStatus | null>(null)
+  useEffect(() => {
+    if (!session) { vorigeStatusRef.current = null; return }
+    if (vorigeStatusRef.current !== null && vorigeStatusRef.current !== 'voltooid' && session.status === 'voltooid') {
+      speelFinishToon()
+    }
+    vorigeStatusRef.current = session.status
+  }, [session?.status])
 
   function updateStatus(status: SessionStatus) {
     setSession(prev => prev ? { ...prev, status } : prev)

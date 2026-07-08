@@ -2,11 +2,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Minus, Plus, Play, Pause, Check, ChevronRight } from 'lucide-react'
+import { ontgrendelAudio, speelTick, speelEindsignaal, speelStarttoon, speelFinishToon } from '@/lib/workout-sound'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
 import { createBrowserClient } from '@supabase/ssr'
-import { ontgrendelAudio, speelTick, speelEindsignaal, speelStarttoon } from '@/lib/workout-sound'
 
 import { KETTLEBELL_OEFENINGEN } from '@/lib/kettlebell-exercises'
 import { BODYWEIGHT_OEFENINGEN } from '@/lib/bodyweight-exercises'
@@ -237,6 +237,9 @@ export default function ArchiefOefeningPage() {
     }
     if (fase === 'actief') {
       if (huidigeSet >= sets) {
+        // v2.4.46: Finish Tone i.p.v. Rest Tone — dit is de LAATSTE set,
+        // de hele oefening is klaar, niet alleen deze set.
+        speelFinishToon()
         setFase('voltooid')
         setPhaseEndAt(null)
       } else {
@@ -256,6 +259,19 @@ export default function ArchiefOefeningPage() {
     }
   }, [fase, gepauzeerd, huidigeSet, sets, rustSec, effectieveDuurSec])
 
+  // v2.4.46: tick-geluid tijdens de laatste 3 sec van countdown/rust —
+  // eerder al ontworpen maar nooit definitief uitgeleverd voor Archief
+  // (een eerdere poging werd halverwege gestopt op verzoek).
+  const laatsteTickRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (gepauzeerd) { laatsteTickRef.current = null; return }
+    if (fase !== 'countdown' && fase !== 'rust') { laatsteTickRef.current = null; return }
+    if (remaining > 0 && remaining <= 3 && laatsteTickRef.current !== remaining) {
+      speelTick()
+      laatsteTickRef.current = remaining
+    }
+  }, [remaining, fase, gepauzeerd])
+
   useEffect(() => {
     if (gepauzeerd) return
     if (fase !== 'countdown' && fase !== 'actief' && fase !== 'rust') return
@@ -267,23 +283,8 @@ export default function ArchiefOefeningPage() {
     }
   }, [remaining, fase, phaseEndAt, gepauzeerd, advancePhase])
 
-  // v2.4.34: tick-geluid tijdens de laatste 3 sec van countdown/rust.
-  // Losse effect (niet in advancePhase, want dit triggert NIET op een
-  // fase-overgang maar op elke seconde-verandering binnen dezelfde fase).
-  // Guard via laatsteTickRef voorkomt herhaald afspelen binnen dezelfde
-  // seconde door de 250ms-ticking-loop.
-  const laatsteTickRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (gepauzeerd) { laatsteTickRef.current = null; return }
-    if (fase !== 'countdown' && fase !== 'rust') { laatsteTickRef.current = null; return }
-    if (remaining > 0 && remaining <= 3 && laatsteTickRef.current !== remaining) {
-      speelTick()
-      laatsteTickRef.current = remaining
-    }
-  }, [remaining, fase, gepauzeerd])
-
   function startWorkout() {
-    ontgrendelAudio() // v2.4.34: echte gebruikersactie — hier audio ontgrendelen, niet eerder
+    ontgrendelAudio() // v2.4.46: echte gebruikersactie — hier audio ontgrendelen
     setFase('countdown')
     setHuidigeSet(1)
     setPhaseEndAt(Date.now() + EERSTE_SET_COUNTDOWN_SEC * 1000)
