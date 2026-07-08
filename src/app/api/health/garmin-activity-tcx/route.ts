@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
-import { XMLParser } from 'fast-xml-parser'
+import { bepaalKeuzeNodig, suggereerType, ACTIVITEIT_OPTIES, type TcxParsed } from '@/lib/tcx-parser'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -17,139 +17,31 @@ async function getUser() {
   return user
 }
 
-interface TcxParsed {
-  garmin_sport: string | null
-  duration_min: number | null
-  distance_m: number | null
-  calories: number | null
-  avg_hr: number | null
-  max_hr: number | null
-  avg_cadence: number | null
-  avg_watts: number | null
-  has_gps: boolean
-  creator_device: string | null
-  start_date: string | null
-}
-
-// v2.4.25: sportherkenning uitsluitend gebaseerd op daadwerkelijk onderzoek
-// van 5 echte Garmin TCX-exports deze sessie (Running, Walk, Cycling
-// buiten, Cycling indoor, Rowing, Cycling Zwift). Bevindingen:
-// - Sport="Running" is 100% betrouwbaar → automatisch "Hardlopen"
-// - Sport="Biking" geldt voor ZOWEL buiten als indoor (incl. Zwift, die
-//   zelfs nep-GPS genereert die op buiten lijkt) → NIET automatisch te
-//   onderscheiden, altijd bevestigen
-// - Sport="Other" dekt wandelen, roeien, kracht, kettlebell etc. → altijd
-//   een keuze nodig, TCX bevat geen onderscheidend kenmerk hiervoor
-function bepaalKeuzeNodig(garminSport: string | null): boolean {
-  return garminSport !== 'Running'
-}
-
-function suggereerType(garminSport: string | null, hasGps: boolean): string {
-  if (garminSport === 'Running') return 'Hardlopen'
-  if (garminSport === 'Biking') return hasGps ? 'Fietsen (buiten)' : 'Indoor Fietsen'
-  // Other: GPS aanwezig is een zwakke aanwijzing voor wandelen (bewezen niet
-  // waterdicht, maar een redelijk startpunt dat de gebruiker kan corrigeren)
-  return hasGps ? 'Wandelen' : 'Roeien'
-}
-
-// v2.4.27 FIX: Next.js staat in route.ts-bestanden alleen specifieke
-// exports toe (GET, POST, dynamic, etc.) — een losse geëxporteerde
-// constante breekt de build ("not a valid Route export field"). Deze
-// constante wordt alleen intern in dit bestand gebruikt, dus geen export
-// nodig.
-const ACTIVITEIT_OPTIES = ['Hardlopen', 'Fietsen (buiten)', 'Indoor Fietsen', 'Wandelen', 'Roeien', 'Krachttraining', 'Kettlebell', 'Anders']
-
-function parseTcx(xmlText: string): TcxParsed {
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' })
-  const doc = parser.parse(xmlText)
-
-  const tcd = doc.TrainingCenterDatabase
-  const activityRaw = tcd?.Activities?.Activity
-  const activity = Array.isArray(activityRaw) ? activityRaw[0] : activityRaw
-
-  const garminSport: string | null = activity?.['@_Sport'] ?? null
-  const startDate: string | null = activity?.Id ?? null
-  const creatorDevice: string | null = activity?.Creator?.Name ?? null
-
-  const lapsRaw = activity?.Lap
-  const laps = Array.isArray(lapsRaw) ? lapsRaw : lapsRaw ? [lapsRaw] : []
-
-  let totaalTijdSec = 0
-  let totaalAfstand = 0
-  let totaalCalorieen = 0
-  let maxHr = 0
-  const avgHrPerLap: number[] = []
-
-  for (const lap of laps) {
-    totaalTijdSec += parseFloat(lap.TotalTimeSeconds || '0')
-    totaalAfstand += parseFloat(lap.DistanceMeters || '0')
-    totaalCalorieen += parseInt(lap.Calories || '0', 10)
-    const lapAvgHr = lap.AverageHeartRateBpm?.Value
-    const lapMaxHr = lap.MaximumHeartRateBpm?.Value
-    if (lapAvgHr) avgHrPerLap.push(parseInt(lapAvgHr, 10))
-    if (lapMaxHr) maxHr = Math.max(maxHr, parseInt(lapMaxHr, 10))
-  }
-
-  // Trackpoints doorlopen voor GPS-check, cadans en watts (gemiddelde van
-  // alle niet-nul waarden — TCX heeft geen kant-en-klaar lap-gemiddelde
-  // voor cadans/watts zoals het dat wel heeft voor hartslag)
-  let hasGps = false
-  const cadenceValues: number[] = []
-  const wattsValues: number[] = []
-
-  // v2.4.25 FIX (na test tegen echte bestanden): fast-xml-parser behoudt de
-  // ns3:-prefix OOK op onderliggende veldnamen, niet alleen op de
-  // ouder-tag. Watts zit dus onder Extensions['ns3:TPX']['ns3:Watts'], niet
-  // Extensions.TPX.Watts. Cadans voor fietsen staat top-level als
-  // tp.Cadence (geen prefix); voor hardlopen staat het als RunCadence
-  // binnen ns3:TPX — beide worden hier gecombineerd tot één cadans-waarde.
-  for (const lap of laps) {
-    const trackRaw = lap.Track
-    const tracks = Array.isArray(trackRaw) ? trackRaw : trackRaw ? [trackRaw] : []
-    for (const track of tracks) {
-      const tpRaw = track.Trackpoint
-      const trackpoints = Array.isArray(tpRaw) ? tpRaw : tpRaw ? [tpRaw] : []
-      for (const tp of trackpoints) {
-        if (tp.Position?.LatitudeDegrees !== undefined) hasGps = true
-        const tpx = tp.Extensions?.['ns3:TPX']
-        const cad = tp.Cadence ?? tpx?.['ns3:RunCadence']
-        const watts = tpx?.['ns3:Watts']
-        if (cad && parseInt(cad, 10) > 0) cadenceValues.push(parseInt(cad, 10))
-        if (watts && parseFloat(watts) > 0) wattsValues.push(parseFloat(watts))
-      }
-    }
-  }
-
-  const gemiddelde = (arr: number[]) => arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null
-
-  return {
-    garmin_sport: garminSport,
-    duration_min: totaalTijdSec > 0 ? Math.round(totaalTijdSec / 60) : null,
-    distance_m: totaalAfstand > 0 ? Math.round(totaalAfstand) : null,
-    calories: totaalCalorieen > 0 ? totaalCalorieen : null,
-    avg_hr: gemiddelde(avgHrPerLap),
-    max_hr: maxHr > 0 ? maxHr : null,
-    avg_cadence: gemiddelde(cadenceValues),
-    avg_watts: gemiddelde(wattsValues),
-    has_gps: hasGps,
-    creator_device: creatorDevice,
-    start_date: startDate,
-  }
-}
-
+// v2.4.35 FIX: het volledige TCX-bestand werd voorheen naar deze route
+// geüpload (multipart/form-data) om server-side te parsen. Bij lange
+// activiteiten (veel trackpoints) overschreed dat Vercel's payload-limiet
+// voor serverless functions (~4,5MB) — 413 FUNCTION_PAYLOAD_TOO_LARGE.
+// Het parsen gebeurt nu volledig in de browser (src/lib/tcx-parser.ts,
+// isomorf, hergebruikt hier alleen nog voor de type-definitie en de
+// suggestie-functies). Deze route ontvangt nu alleen het kleine,
+// al-samengevatte resultaat (JSON, een paar KB) — nooit meer het volledige
+// bestand. Lost het probleem op ongeacht hoe lang een activiteit duurt.
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 
     const adminSupabase = createAdminClient()
-    const formData = await req.formData()
-    const tcxFile = formData.get('tcx') as File | null
-    const confirmId = formData.get('confirm_id') as string | null
-    const gekozenType = formData.get('activity_type') as string | null
+    const contentType = req.headers.get('content-type') || ''
 
-    // ── Confirm flow ─────────────────────────────────────────────────────────
-    if (confirmId) {
+    // ── Confirm flow — blijft FormData (klein: alleen confirm_id + type) ──
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData()
+      const confirmId = formData.get('confirm_id') as string | null
+      const gekozenType = formData.get('activity_type') as string | null
+
+      if (!confirmId) return NextResponse.json({ error: 'confirm_id ontbreekt' }, { status: 400 })
+
       const { data: pendingImport } = await adminSupabase
         .from('garmin_activity_imports')
         .select('id, user_id, parsed_data, status')
@@ -165,13 +57,7 @@ export async function POST(req: NextRequest) {
       const durationMin = parsed.duration_min ?? 0
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
-      // v2.4.28 FIX: idempotency-check, ontbrak eerder — hetzelfde TCX-
-      // bestand kon zonder enige waarschuwing meerdere keren bevestigd
-      // worden, wat telkens een nieuwe activity_sessions-rij + Coach Call
-      // opleverde (dubbele trainingsbelasting). Strava-sync had deze check
-      // al (via 'strava:ID' in notes), TCX-import miste 'm nog. De TCX
-      // `Id`-waarde (starttijd, bv. "2026-07-05T09:46:18.000Z") is uniek
-      // per activiteit en dient hier als herkenningssleutel.
+      // Idempotency-check (v2.4.28) — ongewijzigd
       if (parsed.start_date) {
         const { data: bestaandeSessie } = await adminSupabase
           .from('activity_sessions')
@@ -216,14 +102,13 @@ export async function POST(req: NextRequest) {
           date: today,
           duration: durationMin,
           metrics,
-          source: 'garmin', // zelfde toegestane waarde als v2.4.24-fix
+          source: 'garmin',
           notes: 'garmin_tcx_import:' + confirmId + (parsed.start_date ? ' garmin_tcx_start:' + parsed.start_date : ''),
         })
         .select('id').single()
 
       if (sessionError) throw sessionError
 
-      // Coach Call altijd triggeren — zelfde redenering als v2.4.23/24
       try {
         const { data: existingCall } = await adminSupabase
           .from('coach_calls').select('id, status').eq('user_id', user.id).eq('date', today).single()
@@ -259,18 +144,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, confirmed: true, activity_session_id: session.id })
     }
 
-    // ── Extract flow ─────────────────────────────────────────────────────────
-    if (!tcxFile) return NextResponse.json({ error: 'Geen TCX-bestand meegestuurd' }, { status: 400 })
+    // ── Extract flow — v2.4.35: ontvangt nu JSON met het AL-GEPARSTE
+    // resultaat (berekend in de browser), niet meer het ruwe bestand ──────
+    const body = await req.json().catch(() => null)
+    const parsed = body?.parsed as TcxParsed | undefined
 
-    const xmlText = await tcxFile.text()
-    let parsed: TcxParsed
-    try {
-      parsed = parseTcx(xmlText)
-    } catch (parseErr) {
-      console.error('[garmin-activity-tcx] XML parse fout:', parseErr)
-      return NextResponse.json({ error: 'Kon het TCX-bestand niet lezen — is het een geldig Garmin-exportbestand?' }, { status: 422 })
+    if (!parsed) {
+      return NextResponse.json({ error: 'Geen geparste data meegestuurd' }, { status: 400 })
     }
-
     if (!parsed.duration_min && !parsed.distance_m) {
       return NextResponse.json({ error: 'Geen bruikbare data gevonden in dit bestand' }, { status: 422 })
     }

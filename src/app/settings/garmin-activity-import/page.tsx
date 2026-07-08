@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { parseTcx } from '@/lib/tcx-parser'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -138,24 +139,39 @@ export default function GarminActivityImportPage() {
   }
 
   // ── TCX flow ─────────────────────────────────────────────────────────────
+  // v2.4.35 FIX: parsen gebeurt nu volledig in de browser (parseTcx() uit
+  // de gedeelde lib), het volledige bestand wordt NIET meer naar de server
+  // geüpload — voorkomt 413 FUNCTION_PAYLOAD_TOO_LARGE bij lange
+  // activiteiten met veel trackpoints. Alleen het kleine, samengevatte
+  // resultaat (parsed) gaat als JSON naar de server.
   async function handleTcxSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setFase('uploading')
     setErrorMsg(null)
 
-    const formData = new FormData()
-    formData.append('tcx', file)
-
     try {
-      const res = await fetch('/api/health/garmin-activity-tcx', { method: 'POST', body: formData })
+      const xmlText = await file.text()
+      const parsed = parseTcx(xmlText)
+
+      if (!parsed.duration_min && !parsed.distance_m) {
+        setErrorMsg('Geen bruikbare data gevonden in dit bestand')
+        setFase('error')
+        return
+      }
+
+      const res = await fetch('/api/health/garmin-activity-tcx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parsed }),
+      })
       const data = await res.json()
       if (!res.ok) { setErrorMsg(data.error ?? 'Er ging iets mis.'); setFase('error'); return }
       setTcxResult(data)
       setGekozenType(data.suggestie)
       setFase('preview')
-    } catch {
-      setErrorMsg('Verbindingsfout. Probeer opnieuw.')
+    } catch (err) {
+      setErrorMsg('Kon het bestand niet lezen. Is het een geldig TCX-bestand? (' + (err as Error).message + ')')
       setFase('error')
     }
   }
@@ -168,13 +184,7 @@ export default function GarminActivityImportPage() {
     formData.append('activity_type', gekozenType || tcxResult.suggestie)
     try {
       const res = await fetch('/api/health/garmin-activity-tcx', { method: 'POST', body: formData })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        // v2.4.28: specifieke melding bij duplicaat i.p.v. generieke fout
-        setErrorMsg(data.already_imported ? data.error : 'Bevestigen mislukt. Probeer opnieuw.')
-        setFase('error')
-        return
-      }
+      if (!res.ok) throw new Error()
       setFase('done')
     } catch {
       setErrorMsg('Bevestigen mislukt. Probeer opnieuw.')

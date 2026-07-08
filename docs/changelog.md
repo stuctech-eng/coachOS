@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.35 — Fix: TCX-import gaf 413 (payload te groot) bij lange activiteiten
+- **Nieuw:** `src/lib/tcx-parser.ts` — de TCX-XML-parslogica (`parseTcx`,
+  `bepaalKeuzeNodig`, `suggereerType`, `ACTIVITEIT_OPTIES`) is verplaatst
+  naar een isomorfe, gedeelde module die zowel in de browser als
+  server-side werkt.
+- `src/app/settings/garmin-activity-import/page.tsx` — parseert het
+  TCX-bestand nu **in de browser** (`file.text()` + `parseTcx()`) in
+  plaats van het volledige bestand naar de server te uploaden. Alleen het
+  kleine, samengevatte resultaat (JSON, enkele KB) gaat naar de server.
+- `src/app/api/health/garmin-activity-tcx/route.ts` — de extract-flow
+  accepteert nu JSON (`{ parsed }`) in plaats van `multipart/form-data`
+  met het volledige bestand. Confirm-flow ongewijzigd (blijft FormData,
+  was toch al klein).
+- **Root cause:** Vercel serverless functions hebben een payload-limiet
+  van ~4,5MB. Langere activiteiten genereren TCX-bestanden met veel meer
+  trackpoints (per-seconde GPS/hartslag/cadans-data) — bij een lange
+  activiteit overschreed het bestand die limiet, wat resulteerde in
+  `413 FUNCTION_PAYLOAD_TOO_LARGE` vóórdat de request onze route-code
+  ooit bereikte (vandaar dat er geen `[garmin-activity-tcx]`-logregel
+  verscheen — Vercel blokkeerde het al op platformniveau).
+  **Waarom dit pas nu opviel:** de 5 testbestanden waarmee de TCX-import
+  in v2.4.25 gebouwd en getest is, waren allemaal relatief kort
+  (20-60 minuten) — geen van allen kwam in de buurt van de limiet.
+- **Waarom dit de definitieve fix is, niet een tijdelijke workaround:**
+  parsen in de browser heeft principieel geen bestandsgrootte-limiet zoals
+  een serverless function die heeft — dit lost het probleem op voor
+  activiteiten van elke lengte, niet alleen de iets grotere bestanden die
+  net onder een verhoogde limiet zouden passen.
+
 ## v2.4.34 — NIEUW: Audio (Fase 2) voor beide trainingssystemen
 **Gebouwd volgens de afgesproken architectuurregels: geluid is uitsluitend
 een luisterlaag, nooit sturend. Eén gedeelde module, tegelijk gekoppeld
