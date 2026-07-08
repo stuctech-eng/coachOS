@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { parseTcx } from '@/lib/tcx-parser'
+import { parseTcx, type TcxParsed } from '@/lib/tcx-parser'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,18 +24,6 @@ interface VisionParsed {
   avg_speed_kmh: number | null
   cadence_avg: number | null
   steps: number | null
-}
-
-interface TcxParsed {
-  garmin_sport: string | null
-  duration_min: number | null
-  distance_m: number | null
-  calories: number | null
-  avg_hr: number | null
-  max_hr: number | null
-  avg_cadence: number | null
-  avg_watts: number | null
-  has_gps: boolean
 }
 
 interface ValidationFlag {
@@ -322,7 +310,10 @@ export default function GarminActivityImportPage() {
               <DataRow label="Afstand" value={tcxResult.parsed.distance_m ? `${(tcxResult.parsed.distance_m / 1000).toFixed(2)} km` : '–'} />
               <DataRow label="Hartslag" value={tcxResult.parsed.avg_hr ? `${tcxResult.parsed.avg_hr} bpm gem.` : '–'} sub={tcxResult.parsed.max_hr ? `max ${tcxResult.parsed.max_hr}` : undefined} />
               <DataRow label="Calorieën" value={tcxResult.parsed.calories ? `${tcxResult.parsed.calories} kcal` : '–'} />
-              <DataRow label="Cadans / Watts" value={tcxResult.parsed.avg_cadence ? `${tcxResult.parsed.avg_cadence} spm` : '–'} sub={tcxResult.parsed.avg_watts ? `${tcxResult.parsed.avg_watts}W` : undefined} last />
+              <DataRow label="Cadans" value={tcxResult.parsed.avg_cadence ? `${tcxResult.parsed.avg_cadence} spm gem.` : '–'} sub={tcxResult.parsed.max_cadence ? `max ${tcxResult.parsed.max_cadence}` : undefined} />
+              <DataRow label="Watts" value={tcxResult.parsed.avg_watts ? `${tcxResult.parsed.avg_watts}W gem.` : '–'} sub={tcxResult.parsed.max_watts ? `max ${tcxResult.parsed.max_watts}W` : undefined} />
+              <DataRow label="Snelheid" value={tcxResult.parsed.avg_speed_kmh ? `${tcxResult.parsed.avg_speed_kmh} km/u gem.` : '–'} sub={tcxResult.parsed.max_speed_kmh ? `max ${tcxResult.parsed.max_speed_kmh} km/u` : undefined} />
+              <DataRow label="Hoogtemeters" value={tcxResult.parsed.elevation_gain_m ? `↑ ${tcxResult.parsed.elevation_gain_m}m` : '–'} sub={tcxResult.parsed.elevation_loss_m ? `↓ ${tcxResult.parsed.elevation_loss_m}m` : undefined} last />
             </div>
 
             {/* Keuzemenu — altijd tonen behalve bij zekere Running-herkenning */}

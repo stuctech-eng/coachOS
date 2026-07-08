@@ -17,7 +17,13 @@ export interface TcxParsed {
   avg_hr: number | null
   max_hr: number | null
   avg_cadence: number | null
+  max_cadence: number | null
   avg_watts: number | null
+  max_watts: number | null
+  avg_speed_kmh: number | null
+  max_speed_kmh: number | null
+  elevation_gain_m: number | null
+  elevation_loss_m: number | null
   has_gps: boolean
   creator_device: string | null
   start_date: string | null
@@ -69,12 +75,18 @@ export function parseTcx(xmlText: string): TcxParsed {
     if (lapMaxHr) maxHr = Math.max(maxHr, parseInt(lapMaxHr, 10))
   }
 
-  // Trackpoints doorlopen voor GPS-check, cadans en watts. Namespace-
-  // prefix (ns3:) blijft behouden op onderliggende veldnamen — gevonden
-  // door tegen echte bestanden te testen (zie v2.4.25).
+  // Trackpoints doorlopen voor GPS-check, cadans, watts, snelheid en
+  // hoogtemeters. Namespace-prefix (ns3:) blijft behouden op onderliggende
+  // veldnamen — gevonden door tegen echte bestanden te testen (v2.4.25).
+  // v2.4.37: uitgebreid met max-waarden en hoogtestijging/-daling — alles
+  // in dezelfde loop, geen aparte doorloop nodig (goedkoop om mee te nemen).
   let hasGps = false
   const cadenceValues: number[] = []
   const wattsValues: number[] = []
+  const speedValues: number[] = []
+  let vorigeHoogte: number | null = null
+  let totaalStijging = 0
+  let totaalDaling = 0
 
   for (const lap of laps) {
     const trackRaw = lap.Track
@@ -87,13 +99,32 @@ export function parseTcx(xmlText: string): TcxParsed {
         const tpx = tp.Extensions?.['ns3:TPX']
         const cad = tp.Cadence ?? tpx?.['ns3:RunCadence']
         const watts = tpx?.['ns3:Watts']
+        const speed = tpx?.['ns3:Speed']
         if (cad && parseInt(cad, 10) > 0) cadenceValues.push(parseInt(cad, 10))
         if (watts && parseFloat(watts) > 0) wattsValues.push(parseFloat(watts))
+        if (speed && parseFloat(speed) > 0) speedValues.push(parseFloat(speed))
+
+        // Hoogtestijging/-daling: som van positieve/negatieve verschillen
+        // tussen opeenvolgende trackpoints. Kleine ruis (GPS-hoogte is
+        // nooit perfect stabiel) wordt genegeerd onder 0.5m per stap om
+        // valse "trilling" niet als stijging/daling te tellen.
+        const hoogte = tp.AltitudeMeters !== undefined ? parseFloat(tp.AltitudeMeters) : null
+        if (hoogte !== null && !isNaN(hoogte)) {
+          if (vorigeHoogte !== null) {
+            const verschil = hoogte - vorigeHoogte
+            if (verschil > 0.5) totaalStijging += verschil
+            else if (verschil < -0.5) totaalDaling += Math.abs(verschil)
+          }
+          vorigeHoogte = hoogte
+        }
       }
     }
   }
 
   const gemiddelde = (arr: number[]) => arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null
+  const maximum = (arr: number[]) => arr.length > 0 ? Math.max(...arr) : null
+  // Speed in TCX staat in m/s — omrekenen naar km/u voor leesbaarheid
+  const naarKmu = (waarde: number | null) => waarde !== null ? Math.round(waarde * 3.6 * 10) / 10 : null
 
   return {
     garmin_sport: garminSport,
@@ -103,7 +134,13 @@ export function parseTcx(xmlText: string): TcxParsed {
     avg_hr: gemiddelde(avgHrPerLap),
     max_hr: maxHr > 0 ? maxHr : null,
     avg_cadence: gemiddelde(cadenceValues),
+    max_cadence: maximum(cadenceValues),
     avg_watts: gemiddelde(wattsValues),
+    max_watts: maximum(wattsValues),
+    avg_speed_kmh: naarKmu(gemiddelde(speedValues)),
+    max_speed_kmh: naarKmu(maximum(speedValues)),
+    elevation_gain_m: totaalStijging > 0 ? Math.round(totaalStijging) : null,
+    elevation_loss_m: totaalDaling > 0 ? Math.round(totaalDaling) : null,
     has_gps: hasGps,
     creator_device: creatorDevice,
     start_date: startDate,

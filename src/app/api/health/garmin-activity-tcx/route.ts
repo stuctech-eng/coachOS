@@ -92,7 +92,13 @@ export async function POST(req: NextRequest) {
       if (parsed.max_hr) metrics.max_hr = parsed.max_hr
       if (parsed.calories) metrics.calories = parsed.calories
       if (parsed.avg_cadence) metrics.avg_cadence = parsed.avg_cadence
+      if (parsed.max_cadence) metrics.max_cadence = parsed.max_cadence
       if (parsed.avg_watts) metrics.avg_watts = parsed.avg_watts
+      if (parsed.max_watts) metrics.max_watts = parsed.max_watts
+      if (parsed.avg_speed_kmh) metrics.avg_speed = parsed.avg_speed_kmh
+      if (parsed.max_speed_kmh) metrics.max_speed = parsed.max_speed_kmh
+      if (parsed.elevation_gain_m) metrics.elevation_gain = parsed.elevation_gain_m
+      if (parsed.elevation_loss_m) metrics.elevation_loss = parsed.elevation_loss_m
 
       const { data: session, error: sessionError } = await adminSupabase
         .from('activity_sessions')

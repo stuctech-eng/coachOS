@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.37 — TCX-import: extra velden voor rijkere coach-analyses
+**Op verzoek uitgebreid — deze data zat al in het TCX-bestand maar werd
+niet gebruikt. Alles berekend binnen de bestaande trackpoint-loop, geen
+nieuwe parsing-structuur nodig.**
+
+- `src/lib/tcx-parser.ts` — `TcxParsed` uitgebreid met:
+  - `max_cadence`, `max_watts`, `avg_speed_kmh`, `max_speed_kmh`
+  - `elevation_gain_m`, `elevation_loss_m` — berekend als de som van
+    positieve/negatieve hoogteverschillen tussen opeenvolgende
+    trackpoints (`AltitudeMeters`), met een ruisdrempel van 0,5m per stap
+    om GPS-hoogtetrilling niet als valse stijging/daling te tellen.
+  - Snelheid wordt omgerekend van m/s (TCX-eenheid) naar km/u.
+  - **Getest tegen alle 5 eerder gebruikte voorbeeldbestanden** — waarden
+    zijn plausibel (bv. wandeling: 30m stijging/29m daling; indoor
+    fietsen: geen hoogtedata, zoals verwacht).
+- `src/app/api/health/garmin-activity-tcx/route.ts` — `metrics`-object bij
+  het opslaan in `activity_sessions` uitgebreid met alle nieuwe velden.
+- `src/app/settings/garmin-activity-import/page.tsx` — preview toont nu
+  ook max-cadans, max-watts, snelheid (gem./max) en hoogtemeters
+  (stijging/daling). Lokale, verouderde `TcxParsed`-interface verwijderd
+  — gebruikt nu de gedeelde definitie uit `tcx-parser.ts` (voorkomt drift
+  tussen de twee).
+- **Bewust NIET toegevoegd:** Training Effect/Exercise Load-achtige
+  duiding voor deze extra cijfers (bv. "hoog voor jouw niveau") — dat zou
+  een aparte analyselaag vereisen die buiten de scope van deze
+  parser-uitbreiding valt. De ruwe cijfers zijn nu beschikbaar in
+  `activity_sessions.metrics`; interpretatie is aan Coach AI zelf, via de
+  bestaande promptlogica die deze tabel al leest.
+
 ## v2.4.36 — Fix: Garmin-activiteit-import-pagina kon niet scrollen
 - `src/app/settings/garmin-activity-import/page.tsx` — root-`<div>`
   gewijzigd van `min-h-screen` naar `h-screen overflow-y-auto`.
