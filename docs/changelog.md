@@ -1,5 +1,28 @@
 # CoachOS — Changelog
 
+## v2.4.33 — Kleurprincipe consistent: rood = "maak je klaar", niet "tijd loopt af"
+**Bevestigd principe (gebruiker): rood betekent uitsluitend "je moet zo
+beginnen" (rust/countdown), nooit "je huidige oefening loopt bijna af"
+(actief). Archief volgde dit al sinds v2.4.31/32; Trainer AI/Bibliotheek
+volgde het gedeeltelijk niet.**
+
+- `src/app/training/session/[module]/page.tsx` — twee wijzigingen in
+  `WorkoutEngine`/`CountdownScherm`:
+  1. **`actief`-fase:** cijfer is nu altijd wit, wordt niet meer rood bij
+     de laatste 3 seconden (was: `remaining <= 3 ? 'text-red-400' :
+     'text-white'`, nu: altijd `text-white`).
+  2. **`countdown`-fase** (bij elke nieuwe oefening, 3 of 5 sec): cijfer
+     wordt nu rood bij de laatste 3 seconden (was: altijd wit, geen
+     rood-signaal). Dit ontbrak nog volledig — een gemiste kans om het
+     principe consistent toe te passen, niet alleen "geen onterecht rood
+     weghalen" maar ook "terecht rood toevoegen".
+  3. **`rust`/`last_rest`-fase:** ongewijzigd — was al rood bij de laatste
+     3 seconden, en dat is precies correct volgens het principe.
+- **Resultaat:** Archief en Trainer AI/Bibliotheek volgen nu exact
+  hetzelfde kleurprincipe: rood verschijnt uitsluitend vlak vóór een
+  moment waarop de gebruiker in actie moet komen (rust-einde,
+  countdown-einde), nooit tijdens de uitvoering van een oefening zelf.
+
 ## v2.4.32 — Fix: pauze in Archief bevroor het cijfer niet (bug sinds v2.4.30)
 - `src/app/archief/oefening/[id]/page.tsx` — `remaining` komt tijdens
   pauze nu uit de bevroren `paused_remaining_ms`, niet meer uit een live

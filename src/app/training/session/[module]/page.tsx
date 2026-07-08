@@ -515,7 +515,7 @@ function CountdownScherm({ seconds, totaal, exercise }: { seconds: number; totaa
               strokeDashoffset={`${2 * Math.PI * 58 * (1 - seconds / totaal)}`}
               style={{ transition: 'stroke-dashoffset 1s linear' }} />
           </svg>
-          <p key={seconds} className="text-6xl font-bold text-white" style={{ animation: 'countdownPulse 1s ease-out' }}>
+          <p key={seconds} className={cn('text-6xl font-bold', seconds <= 3 ? 'text-red-400' : 'text-white')} style={{ animation: 'countdownPulse 1s ease-out' }}>
             {seconds}
           </p>
         </div>
@@ -613,7 +613,12 @@ function WorkoutEngine({
                 <p className="text-slate-400 text-sm">{seg.reps ? 'herhalingen' : 'seconden'}</p></>
               )}
             </div>
-            <p className={cn('text-3xl font-mono font-bold', remaining <= 3 ? 'text-red-400' : 'text-white')}>{remaining}s</p>
+            {/* v2.4.33 FIX: altijd wit tijdens actief, nooit rood — rood
+                betekent uitsluitend "maak je klaar om te beginnen"
+                (rust/countdown), niet "je huidige oefening loopt af".
+                Consistent met Archief (v2.4.31/32), waar actief ook nooit
+                rood wordt. */}
+            <p className="text-3xl font-mono font-bold text-white">{remaining}s</p>
           </div>
           {seg.cue && <p className="text-sm text-slate-300 pt-3 mt-2 border-t border-coach-border">💡 {seg.cue}</p>}
           {!isRowing && !isRunning && !isCycling && seg.reps && !seg.duration_sec && (
