@@ -386,7 +386,7 @@ REGELS:
 - Bij lage energie of herstel: lichtere intensiteit, recovery sessietype
 - duration = totale sessieduur in minuten
 
-KETTLEBELL: genereer 4-6 oefeningen. Elk segment: type:"kettlebell", exercise, sets, reps of duration_sec, rest_sec, level, instruction, cue, common_errors.
+KETTLEBELL: genereer 4-6 oefeningen. Elk segment: type:"kettlebell", exercise, sets, reps of duration_sec, rest_sec, level, instruction, cue, common_errors, weight_kg (geadviseerd gewicht — kies UITSLUITEND uit 14, 16, 20, 24, 28, 32, gebaseerd op oefening-zwaarte en niveau van de gebruiker), target_tempo (geadviseerd tempo — UITSLUITEND "slow", "normal" of "fast", gebaseerd op het type oefening: explosieve bewegingen zoals swings = "fast", gecontroleerde bewegingen zoals squats = "normal" of "slow").
 
 ROWING (Concept2): session_type kiezen (recovery/endurance/tempo/interval/sprint/test). Elk segment: type:"rowing", exercise, session_type, sets, reps:null, duration_sec, rest_sec, instruction, cue, common_errors, equipment_required:["concept2"]. Optioneel: distance_m, target_split, target_spm, target_hr_zone.
 
@@ -410,6 +410,9 @@ Reageer ALLEEN in dit JSON formaat:
 }`
 
     // Module-specifieke fallbacks — bij mislukte AI-call altijd het juiste type terug
+    // v2.4.51: kettlebellFallback-segmenten kregen weight_kg + target_tempo,
+    // consistent met de nieuwe prompt-instructie hierboven — anders zou
+    // een mislukte AI-call terugvallen op segmenten zonder advies.
     const kettlebellFallback: TrainingInstruction = {
       training_allowed: true,
       training_type: 'kettlebell',
@@ -418,11 +421,14 @@ Reageer ALLEEN in dit JSON formaat:
       duration: 30,
       segments: [
         { type: 'kettlebell', exercise: 'Two Hand Swing', sets: 4, reps: 15, duration_sec: null, rest_sec: 60, level: 1,
-          instruction: 'Hinge vanuit de heupen, drijf krachtig vooruit.', cue: 'Heupen drijven', common_errors: ['Rug rolt', 'Armen trekken'] },
+          instruction: 'Hinge vanuit de heupen, drijf krachtig vooruit.', cue: 'Heupen drijven', common_errors: ['Rug rolt', 'Armen trekken'],
+          weight_kg: 16, target_tempo: 'fast' },
         { type: 'kettlebell', exercise: 'Goblet Squat', sets: 3, reps: 12, duration_sec: null, rest_sec: 60, level: 1,
-          instruction: 'Houd de bell voor de borst, zak diep door de knieën.', cue: 'Borst omhoog', common_errors: ['Rug rolt voorover'] },
+          instruction: 'Houd de bell voor de borst, zak diep door de knieën.', cue: 'Borst omhoog', common_errors: ['Rug rolt voorover'],
+          weight_kg: 16, target_tempo: 'normal' },
         { type: 'kettlebell', exercise: 'Farmer Carry', sets: 3, reps: null, duration_sec: 40, rest_sec: 60, level: 1,
-          instruction: 'Loop rechtop met de kettlebell naast je lichaam.', cue: 'Schouders omlaag', common_errors: ['Romp kantelt'] },
+          instruction: 'Loop rechtop met de kettlebell naast je lichaam.', cue: 'Schouders omlaag', common_errors: ['Romp kantelt'],
+          weight_kg: 20, target_tempo: null },
       ] as unknown[],
       recovery_modules: [{ type: 'breathing', subtype: 'box_breathing', duration: 6, label: 'Box Breathing' }],
       reason: 'Standaard kettlebell sessie',

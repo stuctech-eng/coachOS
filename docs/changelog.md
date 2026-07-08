@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.51 — NIEUW: Coach adviseert kettlebell-gewicht + tempo, gebruiker kan afwijken
+**Bevestigd via `training/today/route.ts`: kettlebell-segmenten bevatten
+géén gewicht- of tempo-informatie, niet in de AI-prompt-instructie, niet
+in de fallback-data. Volledig gat, geen aanname.**
+
+**Besluit (overleg met gebruiker):** de coach geeft een advies (gewicht +
+tempo), de gebruiker kan er tijdens de training van afwijken via
+dezelfde soort keuzeknoppen, en bij opslaan gaat zowel het advies als de
+daadwerkelijk gebruikte waarde naar de coach — zodat die bij een
+volgende sessie kan reageren op eventuele afwijking. **Alleen van
+toepassing op kettlebell** (rowing/running/cycling hebben al eigen
+doelwaarden zoals `target_pace`/`target_power_w`).
+
+**`src/app/api/training/today/route.ts`:**
+- Prompt-instructie voor KETTLEBELL uitgebreid: elk segment krijgt nu ook
+  `weight_kg` (advies, uit 14/16/20/24/28/32) en `target_tempo`
+  (advies: `slow`/`normal`/`fast`, gebaseerd op het type beweging —
+  explosief zoals swings = fast, gecontroleerd zoals squats = normal/slow).
+- `kettlebellFallback`-segmenten kregen dezelfde velden, zodat een
+  mislukte AI-call ook advies bevat.
+
+**`src/app/training/session/[module]/page.tsx`:**
+- `DisplaySegment` uitgebreid met `weight_kg`/`target_tempo` (advies,
+  uitgelezen in `asDisplay()`).
+- `ExtendedSessionState` uitgebreid met `gebruikt_gewicht`/`gebruikt_tempo`
+  (`Record<number, ...>`, per segment-index) — legt de daadwerkelijk
+  gebruikte waarde vast, apart van het advies.
+- Nieuw `useEffect`: initialiseert deze op het coach-advies zodra een
+  kettlebell-segment voor het eerst actief wordt (dus ook als de
+  gebruiker nooit een knop aanraakt, staat het advies alsnog als
+  "gebruikte waarde" vast — correct, want dan volgde hij het advies).
+- Nieuwe gewicht-keuzeknoppen (6, 14-32kg) in `WorkoutEngine`'s actief-
+  scherm, alleen zichtbaar bij kettlebell mét advies. Bestaande tempo-
+  knoppen hergebruikt, nu ook gekoppeld aan `gebruikt_tempo` voor
+  kettlebell (naast de bestaande localStorage-koppeling die voor alle
+  rep-oefeningen blijft werken).
+- `handleSave`: voor kettlebell-segmenten worden nu **vier** velden
+  meegestuurd — `advised_weight_kg`, `advised_tempo`, `actual_weight_kg`,
+  `actual_tempo` — in plaats van alleen het generieke `tempo`-veld dat
+  v2.4.50 voor andere rep-oefeningen toevoegde.
+
+**Geen wijziging in Archief** — die heeft geen coach-gegenereerd advies
+om van af te wijken (gebruiker kiest daar zelf, buiten de coach om), dus
+het "advies vs. afwijking"-concept is daar niet van toepassing.
+
 ## v2.4.50 — Tempo (Slow/Normaal/Fast) nu zichtbaar voor de coach
 **Correctie op eerste poging: ik nam eerst ten onrechte aan dat Archief
 ook een tempo-concept had (met een `getTempo()`-aanroep die daar niet

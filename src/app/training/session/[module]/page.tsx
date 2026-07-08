@@ -61,6 +61,13 @@ interface ExtendedSessionState extends LiveSessionState {
   // zodat hervatten een nieuw phase_end_at kan berekenen vanaf exact waar
   // gebleven was, zonder dat de gepauzeerde tijd meetelt.
   paused_remaining_ms: number | null
+  // v2.4.51: daadwerkelijk gebruikt gewicht/tempo per segment-index —
+  // wordt bij het eerste tonen van een kettlebell-segment geïnitialiseerd
+  // op het coach-advies, en bijgewerkt zodra de gebruiker afwijkt. Bij
+  // opslaan wordt dit meegestuurd naast het originele advies, zodat de
+  // coach kan zien OF en HOE de gebruiker afweek.
+  gebruikt_gewicht: Record<number, number>
+  gebruikt_tempo: Record<number, Tempo>
 }
 
 function generateSessionId(): string {
@@ -205,6 +212,9 @@ interface DisplaySegment {
   target_speed_kmh?: number
   target_power_w?: number
   target_cadence_rpm?: number
+  // v2.4.51: coach-advies voor kettlebell — geadviseerd gewicht en tempo
+  weight_kg?: number | null
+  target_tempo?: 'slow' | 'normal' | 'fast' | null
 }
 
 function asDisplay(seg: TrainingSegment | undefined | null): DisplaySegment {
@@ -227,6 +237,8 @@ function asDisplay(seg: TrainingSegment | undefined | null): DisplaySegment {
     target_speed_kmh: typeof raw.target_speed_kmh === 'number' ? raw.target_speed_kmh : undefined,
     target_power_w: typeof raw.target_power_w === 'number' ? raw.target_power_w : undefined,
     target_cadence_rpm: typeof raw.target_cadence_rpm === 'number' ? raw.target_cadence_rpm : undefined,
+    weight_kg: typeof raw.weight_kg === 'number' ? raw.weight_kg : null,
+    target_tempo: (raw.target_tempo === 'slow' || raw.target_tempo === 'normal' || raw.target_tempo === 'fast') ? raw.target_tempo : null,
   }
 }
 
@@ -536,7 +548,7 @@ function CountdownScherm({ seconds, totaal, exercise }: { seconds: number; totaa
 // setInterval-effecten meer. Alle timing komt van de ouder (SessionPage)
 // via de `remaining`-prop, berekend uit het centrale phase_end_at.
 function WorkoutEngine({
-  session, remaining, countdownTotaal, onBackOefening, onVolgendOefening, onNext, onPause, onTempoChange,
+  session, remaining, countdownTotaal, onBackOefening, onVolgendOefening, onNext, onPause, onTempoChange, onKettlebellChoice,
 }: {
   session: ExtendedSessionState
   remaining: number
@@ -546,6 +558,7 @@ function WorkoutEngine({
   onNext: () => void
   onPause: () => void
   onTempoChange: (exercise: string, tempo: Tempo) => void
+  onKettlebellChoice: (updates: { weight_kg?: number; tempo?: Tempo }) => void
 }) {
   const segments = getSegments(session.schema)
   const seg = asDisplay(getSeg(session.schema, session.current_segment))
@@ -554,9 +567,16 @@ function WorkoutEngine({
   const isCycling = seg.type === 'cycling'
   const totalSets = seg.sets || 1
   const isLastSegment = session.current_segment === segments.length - 1
-  const [currentTempo, setCurrentTempo] = useState<Tempo>(getTempo(seg.exercise))
+  // v2.4.51: bij kettlebell mét coach-advies, begint het tempo op het
+  // advies i.p.v. de gewone persoonlijke localStorage-voorkeur.
+  const isKettlebellMetAdvies = seg.type === 'kettlebell' && (seg.weight_kg != null || seg.target_tempo != null)
+  const [currentTempo, setCurrentTempo] = useState<Tempo>(
+    isKettlebellMetAdvies && seg.target_tempo ? seg.target_tempo : getTempo(seg.exercise)
+  )
 
-  useEffect(() => { setCurrentTempo(getTempo(seg.exercise)) }, [seg.exercise])
+  useEffect(() => {
+    setCurrentTempo(isKettlebellMetAdvies && seg.target_tempo ? seg.target_tempo : getTempo(seg.exercise))
+  }, [seg.exercise])
 
   return (
     <div className="flex flex-col gap-4 pb-4">
@@ -625,13 +645,41 @@ function WorkoutEngine({
           {!isRowing && !isRunning && !isCycling && seg.reps && !seg.duration_sec && (
             <div className="flex gap-2 mt-3 pt-3 border-t border-coach-border">
               {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
-                <button key={t} onClick={() => { setCurrentTempo(t); onTempoChange(seg.exercise, t) }}
+                <button key={t} onClick={() => {
+                  setCurrentTempo(t)
+                  onTempoChange(seg.exercise, t)
+                  if (isKettlebellMetAdvies) onKettlebellChoice({ tempo: t })
+                }}
                   className={cn('flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-colors',
                     currentTempo === t ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
                   )}>
                   {t === 'slow' ? 'Slow' : t === 'normal' ? 'Normaal' : 'Fast'}
                 </button>
               ))}
+            </div>
+          )}
+          {/* v2.4.51: gewichtskeuze — alleen bij kettlebell mét coach-advies.
+              Voorgeselecteerd op session.gebruikt_gewicht (dat de effect
+              hierboven al op het advies initialiseerde), met seg.weight_kg
+              als terugvaloptie voor het allereerste render-moment. */}
+          {isKettlebellMetAdvies && seg.weight_kg != null && (
+            <div className="mt-3 pt-3 border-t border-coach-border">
+              <p className="text-xs text-slate-500 mb-2">
+                Gewicht {seg.weight_kg ? `(coach adviseert ${seg.weight_kg}kg)` : ''}
+              </p>
+              <div className="grid grid-cols-6 gap-1.5">
+                {[14, 16, 20, 24, 28, 32].map(g => {
+                  const huidigGewicht = session.gebruikt_gewicht[session.current_segment] ?? seg.weight_kg
+                  return (
+                    <button key={g} onClick={() => onKettlebellChoice({ weight_kg: g })}
+                      className={cn('py-2 rounded-lg text-xs font-semibold transition-colors',
+                        huidigGewicht === g ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
+                      )}>
+                      {g}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
         </Card>
@@ -933,6 +981,7 @@ export default function SessionPage() {
       elapsed_seconds: 0, current_set: 1, workout_phase: 'active',
       auto_running: false, skipped_segments: [], completed_sets: 0, uitleg_index: 0,
       phase_end_at: null, paused_remaining_ms: null,
+      gebruikt_gewicht: {}, gebruikt_tempo: {},
       training_source: source,
     }
     saveSession(newSession)
@@ -1094,6 +1143,29 @@ export default function SessionPage() {
     vorigeStatusRef.current = huidigeStatus
   }, [session?.status])
 
+  // v2.4.51: initialiseer gebruikt_gewicht/gebruikt_tempo op het
+  // coach-advies zodra een segment voor het eerst actief wordt — zo staat
+  // er altijd een "gebruikte waarde" klaar bij opslaan, ook als de
+  // gebruiker nooit zelf een knop aanraakt (dan is het advies = het
+  // gebruikte, wat correct is).
+  useEffect(() => {
+    if (!session) return
+    const idx = session.current_segment
+    const seg = asDisplay(getSeg(session.schema, idx))
+    if (seg.type !== 'kettlebell') return
+    const moetGewichtInit = seg.weight_kg != null && session.gebruikt_gewicht[idx] === undefined
+    const moetTempoInit = seg.target_tempo != null && session.gebruikt_tempo[idx] === undefined
+    if (!moetGewichtInit && !moetTempoInit) return
+    setSession(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        gebruikt_gewicht: moetGewichtInit ? { ...prev.gebruikt_gewicht, [idx]: seg.weight_kg! } : prev.gebruikt_gewicht,
+        gebruikt_tempo: moetTempoInit ? { ...prev.gebruikt_tempo, [idx]: seg.target_tempo! } : prev.gebruikt_tempo,
+      }
+    })
+  }, [session?.current_segment, session?.schema])
+
   function updateStatus(status: SessionStatus) {
     setSession(prev => prev ? { ...prev, status } : prev)
   }
@@ -1173,14 +1245,25 @@ export default function SessionPage() {
     if (!session) return
     setSaving(true)
     try {
-      // v2.4.50: tempo (Slow/Normaal/Fast) meesturen naar de coach — was
-      // voorheen puur lokale timer-kalibratie (localStorage), zichtbaar
-      // noch bruikbaar voor de coach-evaluatie. Alleen zinvol bij
-      // rep-gebaseerde segmenten (reps gezet, geen vaste duration_sec) —
-      // rowing/running/cycling-segmenten en tijd-gebaseerde oefeningen
-      // hebben geen tempo-concept.
-      const segmentenMetTempo = (session?.schema?.segments || []).map(seg => {
-        const s = seg as unknown as { reps?: number; duration_sec?: number; exercise?: string }
+      // v2.4.50: tempo (Slow/Normaal/Fast) meesturen naar de coach voor
+      // rep-gebaseerde segmenten in het algemeen (localStorage-voorkeur).
+      // v2.4.51: voor KETTLEBELL-segmenten specifiek wordt dit uitgebreid
+      // met het coach-ADVIES (weight_kg/target_tempo, al in het schema)
+      // plus de DAADWERKELIJK GEBRUIKTE waarde (session.gebruikt_gewicht/
+      // gebruikt_tempo) — zodat de coach kan zien OF en HOE is afgeweken,
+      // en daar bij de volgende sessie op kan reageren.
+      const segmentenMetTempo = (session?.schema?.segments || []).map((seg, idx) => {
+        const s = seg as unknown as { reps?: number; duration_sec?: number; exercise?: string; type?: string; weight_kg?: number; target_tempo?: Tempo }
+
+        if (s.type === 'kettlebell') {
+          return {
+            ...seg,
+            advised_weight_kg: s.weight_kg ?? null,
+            advised_tempo: s.target_tempo ?? null,
+            actual_weight_kg: session?.gebruikt_gewicht[idx] ?? s.weight_kg ?? null,
+            actual_tempo: session?.gebruikt_tempo[idx] ?? (s.reps && !s.duration_sec && s.exercise ? getTempo(s.exercise) : null),
+          }
+        }
         if (s.reps && !s.duration_sec && s.exercise) {
           return { ...seg, tempo: getTempo(s.exercise) }
         }
@@ -1302,6 +1385,24 @@ export default function SessionPage() {
                     const seg = getSeg(prev.schema, prev.current_segment)
                     if (!seg || seg.exercise !== exercise || prev.workout_phase !== 'active') return prev
                     return { ...prev, phase_end_at: Date.now() + getActiveDuration(seg) * 1000 }
+                  })
+                }}
+                onKettlebellChoice={(updates) => {
+                  // v2.4.51: legt de daadwerkelijk gekozen waarde vast per
+                  // segment-index, voor vergelijking met het coach-advies
+                  // bij opslaan.
+                  setSession(prev => {
+                    if (!prev) return prev
+                    const idx = prev.current_segment
+                    return {
+                      ...prev,
+                      gebruikt_gewicht: updates.weight_kg !== undefined
+                        ? { ...prev.gebruikt_gewicht, [idx]: updates.weight_kg }
+                        : prev.gebruikt_gewicht,
+                      gebruikt_tempo: updates.tempo !== undefined
+                        ? { ...prev.gebruikt_tempo, [idx]: updates.tempo }
+                        : prev.gebruikt_tempo,
+                    }
                   })
                 }} />
             )}
