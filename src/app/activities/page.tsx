@@ -10,8 +10,19 @@ interface ActivityMetrics {
   avg_hr?: number
   max_hr?: number
   elevation?: number
+  // v2.4.38: Garmin TCX-import (v2.4.37) slaat hoogtemeters op als
+  // elevation_gain/elevation_loss, niet als 'elevation' (dat is Strava's
+  // veldnaam). Beide worden hieronder ondersteund zodat hoogtemeters voor
+  // beide bronnen correct getoond worden.
+  elevation_gain?: number
+  elevation_loss?: number
   avg_speed?: number
+  max_speed?: number
   calories?: number
+  avg_cadence?: number
+  max_cadence?: number
+  avg_watts?: number
+  max_watts?: number
 }
 
 interface ActivitySession {
@@ -229,7 +240,12 @@ export default function ActiviteitenPage() {
             gefilterd.map(session => {
               const naam = session.activities?.name || 'Anders'
               const icoon = SPORT_ICONS[naam] || '🏅'
-              const { distance, avg_hr, calories, elevation } = session.metrics
+              const { distance, avg_hr, calories, avg_speed, max_speed, avg_cadence, max_cadence, avg_watts, max_watts } = session.metrics
+              // v2.4.38 FIX: elevation kan onder twee verschillende
+              // veldnamen staan afhankelijk van de bron — Strava gebruikt
+              // 'elevation', Garmin TCX-import (v2.4.37) gebruikt
+              // 'elevation_gain'. Beide worden hier ondersteund.
+              const elevationGain = session.metrics.elevation ?? session.metrics.elevation_gain
               const stravaId = session.source === 'strava' ? getStravaActivityId(session.notes) : null
 
               const kaartInhoud = (
@@ -282,10 +298,31 @@ export default function ActiviteitenPage() {
                         <p className="text-sm font-medium text-white">{calories} kcal</p>
                       </div>
                     )}
-                    {elevation && elevation > 0 && (
+                    {elevationGain && elevationGain > 0 && (
                       <div>
                         <p className="text-xs text-gray-500">Hoogte</p>
-                        <p className="text-sm font-medium text-white">+{elevation}m</p>
+                        <p className="text-sm font-medium text-white">+{elevationGain}m</p>
+                      </div>
+                    )}
+                    {avg_speed && avg_speed > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500">Snelheid</p>
+                        <p className="text-sm font-medium text-white">{avg_speed} km/u</p>
+                        {max_speed && <p className="text-xs text-gray-500">max {max_speed}</p>}
+                      </div>
+                    )}
+                    {avg_cadence && avg_cadence > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500">Cadans</p>
+                        <p className="text-sm font-medium text-white">{avg_cadence} spm</p>
+                        {max_cadence && <p className="text-xs text-gray-500">max {max_cadence}</p>}
+                      </div>
+                    )}
+                    {avg_watts && avg_watts > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500">Watts</p>
+                        <p className="text-sm font-medium text-white">{avg_watts}W</p>
+                        {max_watts && <p className="text-xs text-gray-500">max {max_watts}W</p>}
                       </div>
                     )}
                   </div>

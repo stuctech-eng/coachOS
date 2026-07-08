@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.39 — Snelheid, cadans en watts nu ook zichtbaar op Activiteiten-kaartjes
+- `src/app/activities/page.tsx` — drie nieuwe metric-blokken toegevoegd
+  aan elk activiteitenkaartje (naast de bestaande Duur/Afstand/Hartslag/
+  Calorieën/Hoogte): **Snelheid**, **Cadans**, **Watts** — elk met de
+  max-waarde als subtekst indien beschikbaar.
+- Werkt voor zowel Strava- als Garmin-activiteiten, aangezien beide
+  bronnen dezelfde veldnamen gebruiken in `metrics`
+  (`avg_speed`/`avg_cadence`/`avg_watts`, plus `max_*`-varianten sinds de
+  TCX-uitbreiding in v2.4.37). Strava levert doorgaans geen max-waarden
+  (alleen gemiddelden) — die subtekst verschijnt dan simpelweg niet, geen
+  probleem.
+- Elk blok verschijnt alleen als de betreffende data daadwerkelijk
+  aanwezig is (zelfde patroon als het bestaande hoogte-blok) — geen lege
+  "–"-velden die de kaartjes onnodig vol maken.
+
+## v2.4.38 — Garmin-activiteiten zichtbaar in Activiteiten-overzicht + hoogtemeters-fix
+**Bevestigd: Garmin-activiteiten (screenshot én TCX) verschenen al
+automatisch op `/activities` met een "Garmin"-badge — de pagina filtert
+nergens op `source: 'strava'`. Geen wijziging nodig om ze zichtbaar te
+maken. Wel twee kleine verbeteringen gevonden en gefixt.**
+
+- `src/app/settings/garmin-activity-import/page.tsx` — nieuwe **"Bekijk
+  activiteiten"**-knop op het bevestigingsscherm, naast "Naar Home".
+  Zelfde patroon als de bestaande knop bij Strava.
+- `src/app/activities/page.tsx` — **echte bug gefixt:** hoogtemeters
+  werden niet getoond voor Garmin-activiteiten. Root cause: deze pagina
+  las `session.metrics.elevation` (Strava's veldnaam), maar de
+  TCX-import (v2.4.37) slaat hoogtemeters op als `metrics.elevation_gain`
+  — een andere sleutelnaam, dus geen match. Nu leest de pagina beide
+  (`metrics.elevation ?? metrics.elevation_gain`), zodat hoogtemeters
+  correct tonen ongeacht de bron.
+- **Nog niet meegenomen:** de overige nieuwe TCX-velden (max cadans, max
+  watts, snelheid) worden nog niet getoond in de kaartjes op deze
+  lijstpagina — alleen duur, afstand, hartslag, calorieën en hoogte. Kan
+  bij gelegenheid uitgebreid worden als gewenst.
+
 ## v2.4.37 — TCX-import: extra velden voor rijkere coach-analyses
 **Op verzoek uitgebreid — deze data zat al in het TCX-bestand maar werd
 niet gebruikt. Alles berekend binnen de bestaande trackpoint-loop, geen
