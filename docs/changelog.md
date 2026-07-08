@@ -1,5 +1,16 @@
 # CoachOS — Changelog
 
+## v2.4.31 — Fix: Archief-timer werd niet rood bij laatste 3 seconden
+- `src/app/archief/oefening/[id]/page.tsx` — het cijfer tijdens `rust` en
+  `countdown` kleurt nu rood zodra `remaining <= 3`, consistent met hoe de
+  `actief`-fase dat al deed (`WorkoutEngine` in de Coach AI-trainingen had
+  dit gedrag ook al).
+- **Root cause:** bij de v2.4.30-timer-herbouw is dit visuele detail
+  gemist — het cijfer bleef altijd amber (`rust`) of wit (`countdown`),
+  ongeacht hoeveel seconden er nog over waren. Functioneel klopte de timer
+  zelf (telde correct af), maar het ontbrekende visuele signaal bij de
+  laatste 3 seconden viel op ten opzichte van de rest van de app.
+
 ## v2.4.30 — Workout Engine REBUILD toegepast op Archief (eigen flowregels)
 **Vervolg op v2.4.29 — die herbouw raakte alleen Coach AI/Trainingsbibliotheek
 (`training/session/[module]/page.tsx`). Archief gebruikt een volledig los

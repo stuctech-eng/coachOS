@@ -489,7 +489,7 @@ export default function ArchiefOefeningPage() {
                   strokeDashoffset={`${2 * Math.PI * 58 * (1 - remaining / EERSTE_SET_COUNTDOWN_SEC)}`}
                   style={{ transition: 'stroke-dashoffset 1s linear' }} />
               </svg>
-              <p className="text-6xl font-bold text-white">{remaining}</p>
+              <p className={cn('text-6xl font-bold', remaining <= 3 ? 'text-red-400' : 'text-white')}>{remaining}</p>
             </div>
             <button onClick={() => setPhaseEndAt(Date.now())}
               className="mt-6 w-full py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold">
@@ -528,7 +528,7 @@ export default function ArchiefOefeningPage() {
         {fase === 'rust' && (
           <Card className="p-6 text-center bg-amber-500/10 border-amber-500/20">
             <p className="text-xs text-amber-400 uppercase tracking-wider mb-3">Rust · Set {huidigeSet + 1} volgt</p>
-            <p className="text-6xl font-mono font-bold text-amber-400">{remaining}s</p>
+            <p className={cn('text-6xl font-mono font-bold', remaining <= 3 ? 'text-red-400' : 'text-amber-400')}>{remaining}s</p>
             <button onClick={() => setPhaseEndAt(Date.now())}
               className="mt-6 w-full py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold">
               Skip rust

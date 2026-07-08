@@ -216,7 +216,7 @@ vervangen).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.30 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.31 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 24/102 live (18 PNG + 6 WebP), #22 Forward Lunge volgende | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
@@ -229,7 +229,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.30
+- Versie: 2.4.31
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -522,6 +522,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.31 — Fix: Archief-timer werd niet rood bij laatste 3 seconden (rust/countdown)
 - v2.4.30 — Workout Engine REBUILD ook toegepast op Archief (eigen flowregels: 5s alleen 1e set, dan direct door)
 - v2.4.29 — Workout Engine REBUILD Fase 1+2: drift-vrije timer-engine + vereenvoudigde flow (geen sound nog)
 - v2.4.28 — Fix: idempotency-check toegevoegd aan TCX-import (voorkomt duplicaten)
