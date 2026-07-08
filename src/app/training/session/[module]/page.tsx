@@ -1173,6 +1173,20 @@ export default function SessionPage() {
     if (!session) return
     setSaving(true)
     try {
+      // v2.4.50: tempo (Slow/Normaal/Fast) meesturen naar de coach — was
+      // voorheen puur lokale timer-kalibratie (localStorage), zichtbaar
+      // noch bruikbaar voor de coach-evaluatie. Alleen zinvol bij
+      // rep-gebaseerde segmenten (reps gezet, geen vaste duration_sec) —
+      // rowing/running/cycling-segmenten en tijd-gebaseerde oefeningen
+      // hebben geen tempo-concept.
+      const segmentenMetTempo = (session?.schema?.segments || []).map(seg => {
+        const s = seg as unknown as { reps?: number; duration_sec?: number; exercise?: string }
+        if (s.reps && !s.duration_sec && s.exercise) {
+          return { ...seg, tempo: getTempo(s.exercise) }
+        }
+        return seg
+      })
+
       await fetch('/api/training/complete', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -1181,7 +1195,7 @@ export default function SessionPage() {
           ...result,
           training_type: module,
           training_source: session?.training_source || 'coach_plan',
-          segments: session?.schema?.segments || [],
+          segments: segmentenMetTempo,
         }),
       })
       clearSession()

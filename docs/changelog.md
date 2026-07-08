@@ -1,5 +1,24 @@
 # CoachOS — Changelog
 
+## v2.4.50 — Tempo (Slow/Normaal/Fast) nu zichtbaar voor de coach
+**Correctie op eerste poging: ik nam eerst ten onrechte aan dat Archief
+ook een tempo-concept had (met een `getTempo()`-aanroep die daar niet
+bestaat) — teruggedraaid vóór uitlevering. Tempo bestaat uitsluitend bij
+Trainer AI/Bibliotheek.**
+
+- `src/app/training/session/[module]/page.tsx` (`handleSave`) — elk
+  rep-gebaseerd segment (reps gezet, geen vaste `duration_sec`) krijgt nu
+  een `tempo`-veld (`slow`/`normal`/`fast`) toegevoegd vóór het opslaan
+  naar `/api/training/complete`.
+- **Root cause van het gemis:** het tempo werd al sinds de invoering van
+  de Slow/Normaal/Fast-knoppen alleen lokaal opgeslagen (`localStorage`,
+  puur voor timer-kalibratie) — nooit meegestuurd in de opslag-payload,
+  dus nooit zichtbaar voor Coach AI bij de evaluatie.
+- Segmenten zonder reps (tijd-gebaseerd) of zonder herkenbare
+  oefeningnaam blijven ongewijzigd — tempo is daar begripsmatig niet van
+  toepassing.
+- **Geen wijziging in Archief** — die heeft geen tempo-concept.
+
 ## v2.4.49 — Kettlebell-gewichten uitgebreid: 14-16-20 → 14-16-20-24-28-32
 - `src/app/archief/oefening/[id]/page.tsx` — `KETTLEBELL_GEWICHTEN`
   uitgebreid van `[14, 16, 20]` naar `[14, 16, 20, 24, 28, 32]`. Deze
