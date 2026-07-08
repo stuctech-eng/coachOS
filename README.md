@@ -212,6 +212,7 @@ vervangen).
 
 | Item | Prioriteit |
 |------|-----------|
+| **Testen: neemt de coach gewicht/tempo-afwijking (v2.4.51-53) daadwerkelijk mee in zijn geschreven advies?** De data komt gegarandeerd in de prompt terecht (code, geen AI-gok), maar of Sonnet het ook elke keer expliciet benoemt is niet gegarandeerd — instructie staat nu als "je mag dit benoemen" (optioneel), niet dwingend. Test door bewust af te wijken tijdens een kettlebell-training en het volgende coach-advies te checken. Reminder gezet voor 10 juli. Indien coach het niet consistent noemt: instructie in `coach/route.ts` aanscherpen naar een dwingender "je MOET dit noemen als relevant". | 🟡 |
 | **Controleer op bestaand duplicaat in `activity_sessions` vóór/na v2.4.28-deploy** (zie changelog) | 🟡 |
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
