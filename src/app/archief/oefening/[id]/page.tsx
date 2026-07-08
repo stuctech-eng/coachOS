@@ -14,8 +14,8 @@ import { STRENGTH_OEFENINGEN } from '@/lib/strength-exercises'
 import { MOBILITY_OEFENINGEN } from '@/lib/mobility-exercises'
 
 // Gewicht-stappen voor kettlebell — later uitbreidbaar tot 32kg in stappen van 4
-const KETTLEBELL_GEWICHTEN = [14, 16, 20]
-// Toekomstige uitbreiding: const KETTLEBELL_GEWICHTEN = [14, 16, 20, 24, 28, 32]
+// v2.4.49: uitgebreid van 14-16-20 naar 14-16-20-24-28-32 op verzoek
+const KETTLEBELL_GEWICHTEN = [14, 16, 20, 24, 28, 32]
 
 // v2.4.30 — TIMER ENGINE REBUILD voor Archief (zelfde techniek als
 // training/session/[module]/page.tsx v2.4.29, maar met eigen flowregels
@@ -477,10 +477,12 @@ export default function ArchiefOefeningPage() {
                 {oefening.isKettlebell && (
                   <div>
                     <p className="text-sm text-slate-300 mb-2">Kettlebell gewicht</p>
-                    <div className="flex gap-2">
+                    {/* v2.4.49: grid i.p.v. flex — met 6 gewichten (was 3)
+                        zou een enkele flex-rij te smalle knoppen geven */}
+                    <div className="grid grid-cols-3 gap-2">
                       {KETTLEBELL_GEWICHTEN.map(g => (
                         <button key={g} onClick={() => setGewicht(g)}
-                          className={cn('flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors',
+                          className={cn('py-2.5 rounded-xl text-sm font-semibold transition-colors',
                             gewicht === g ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
                           )}>
                           {g}kg

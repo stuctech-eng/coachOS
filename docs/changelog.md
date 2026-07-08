@@ -1,5 +1,17 @@
 # CoachOS — Changelog
 
+## v2.4.49 — Kettlebell-gewichten uitgebreid: 14-16-20 → 14-16-20-24-28-32
+- `src/app/archief/oefening/[id]/page.tsx` — `KETTLEBELL_GEWICHTEN`
+  uitgebreid van `[14, 16, 20]` naar `[14, 16, 20, 24, 28, 32]`. Deze
+  uitbreiding stond al voorbereid als uitgecommentarieerde regel sinds
+  het begin van de sessie — nu geactiveerd.
+- Weergave omgezet van een enkele flex-rij naar een **3-koloms grid**
+  (2 rijen van 3 knoppen) — met 6 gewichten zou een enkele rij te smalle
+  knoppen hebben gegeven op een telefoonscherm.
+- Alleen Archief heeft een gewichtselectie — Trainer AI/Bibliotheek
+  (`training/session/[module]/page.tsx`) heeft geen vergelijkbare UI,
+  daar hoefde dus niets aangepast te worden.
+
 ## v2.4.48 — Fix: Slow/Normaal/Fast-tempoknoppen leken niet te reageren
 - `src/app/training/session/[module]/page.tsx` (`WorkoutEngine`) —
   tempo-knop-`onClick` werkt lokale `currentTempo`-state nu direct bij,

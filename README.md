@@ -216,10 +216,9 @@ vervangen).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.48 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.49 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 24/102 live (18 PNG + 6 WebP), #22 Forward Lunge volgende | 🔄 In progress |
-| Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
 | Exercise records vullen na eerste training | 🔄 automatisch |
 
@@ -229,7 +228,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.48
+- Versie: 2.4.49
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -522,6 +521,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.49 — Kettlebell-gewichten uitgebreid: 14-16-20 → 14-16-20-24-28-32 (3-koloms grid)
 - v2.4.48 — Fix: Slow/Normaal/Fast-tempoknoppen leken niet te reageren (visuele highlight-bug)
 - v2.4.47 — Build-fix: SessionStatus-type-fout in Finish Tone-effect
 - v2.4.46 — Professionele soundset (Polar/Garmin-stijl) + nieuwe Finish Tone bij volledige training-afronding
