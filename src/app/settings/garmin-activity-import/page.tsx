@@ -64,7 +64,7 @@ export default function GarminActivityImportPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const tcxFileRef = useRef<HTMLInputElement>(null)
 
-  const [methode, setMethode] = useState<Methode>('screenshot')
+  const [methode, setMethode] = useState<Methode>('tcx')
   const [fase, setFase] = useState<Fase>('idle')
   const [visionResult, setVisionResult] = useState<VisionResult | null>(null)
   const [tcxResult, setTcxResult] = useState<TcxResult | null>(null)
@@ -213,16 +213,18 @@ export default function GarminActivityImportPage() {
 
       <div className="px-4 space-y-4 pb-10">
 
-        {/* Tabblad-keuze — alleen zichtbaar in idle-fase */}
+        {/* Tabblad-keuze — alleen zichtbaar in idle-fase.
+            v2.4.44: volgorde omgedraaid (TCX links, standaard geselecteerd
+            — voorkeur van gebruiker, Garmin/TCX wordt vaker gebruikt) */}
         {fase === 'idle' && (
           <div className="flex rounded-2xl bg-white/5 border border-white/8 p-1">
-            <button onClick={() => wisselMethode('screenshot')}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${methode === 'screenshot' ? 'bg-blue-500 text-white' : 'text-white/50'}`}>
-              Screenshot
-            </button>
             <button onClick={() => wisselMethode('tcx')}
               className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${methode === 'tcx' ? 'bg-blue-500 text-white' : 'text-white/50'}`}>
               TCX-bestand
+            </button>
+            <button onClick={() => wisselMethode('screenshot')}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${methode === 'screenshot' ? 'bg-blue-500 text-white' : 'text-white/50'}`}>
+              Screenshot
             </button>
           </div>
         )}

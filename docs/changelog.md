@@ -1,5 +1,12 @@
 # CoachOS — Changelog
 
+## v2.4.44 — TCX-bestand nu links en standaard geselecteerd (was Screenshot)
+- `src/app/settings/garmin-activity-import/page.tsx` — tabblad-volgorde
+  omgedraaid (TCX-bestand links, Screenshot rechts) en de standaard
+  geselecteerde methode gewijzigd van `'screenshot'` naar `'tcx'`.
+- Reden: gebruiker geeft aan Garmin/TCX vaker te gebruiken dan de
+  screenshot-methode — dit bespaart een extra tik bij elke import.
+
 ## v2.4.43 — Activiteiten in bottom-nav + Strava-consolidatie (zelfde principe als v2.4.40)
 **Vervolg op v2.4.40 (Garmin-consolidatie) — nu Strava's "Synchroniseren"
 en "Bekijk activiteiten" ook verplaatst naar `/activities`. Ontdekking
