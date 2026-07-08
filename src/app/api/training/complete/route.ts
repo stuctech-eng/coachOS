@@ -170,6 +170,13 @@ export async function POST(req: NextRequest) {
             const geadviseerdGewicht = typeof seg.advised_weight_kg === 'number'
               ? seg.advised_weight_kg
               : null
+            // v2.4.53: tempo, exact hetzelfde patroon als gewicht hierboven
+            const gebruiktTempo = typeof seg.actual_tempo === 'string'
+              ? seg.actual_tempo
+              : (typeof seg.tempo === 'string' ? seg.tempo : null)
+            const geadviseerdTempo = typeof seg.advised_tempo === 'string'
+              ? seg.advised_tempo
+              : null
 
             return {
               user_id: user.id,
@@ -180,6 +187,8 @@ export async function POST(req: NextRequest) {
               module: moduleType,
               weight_kg: gebruiktGewicht,
               advised_weight_kg: geadviseerdGewicht,
+              tempo: gebruiktTempo,
+              advised_tempo: geadviseerdTempo,
               reps: typeof seg.reps === 'number' ? seg.reps : null,
               duration_sec: typeof seg.duration_sec === 'number' ? seg.duration_sec : null,
               distance_m: typeof seg.distance_m === 'number' ? seg.distance_m : null,

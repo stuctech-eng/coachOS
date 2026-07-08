@@ -113,10 +113,10 @@ export async function POST() {
         .order('created_at', { ascending: false })
         .limit(3),
       fetchTodaysLifeEvents(supabase, user.id, vandaagNummer, isWeekend),
-      // v2.4.52: advised_weight_kg toegevoegd aan de select, nodig voor de
-      // advies-vs-gebruikt-vergelijking hieronder
+      // v2.4.52/53: advised_weight_kg + tempo/advised_tempo toegevoegd aan
+      // de select, nodig voor de advies-vs-gebruikt-vergelijking hieronder
       supabase.from('exercise_records')
-        .select('exercise_name, module, weight_kg, advised_weight_kg, reps, duration_sec, performed_at')
+        .select('exercise_name, module, weight_kg, advised_weight_kg, tempo, advised_tempo, reps, duration_sec, performed_at')
         .eq('user_id', user.id)
         .gte('performed_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
         .order('performed_at', { ascending: false })
@@ -288,8 +288,8 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
 
     if (exerciseRecords.length > 0) {
       // Groepeer per oefening — chronologisch gesorteerd (oudste eerst)
-      // v2.4.52: advised_weight_kg toegevoegd aan het record-type
-      type ExRec = { exercise_name: string; module: string; weight_kg: number | null; advised_weight_kg: number | null; reps: number | null; duration_sec: number | null; performed_at: string }
+      // v2.4.52/53: advised_weight_kg + tempo/advised_tempo toegevoegd aan het record-type
+      type ExRec = { exercise_name: string; module: string; weight_kg: number | null; advised_weight_kg: number | null; tempo: string | null; advised_tempo: string | null; reps: number | null; duration_sec: number | null; performed_at: string }
       const groepen = new Map<string, ExRec[]>()
       for (const rec of (exerciseRecords as ExRec[]).slice().reverse()) {
         if (!groepen.has(rec.exercise_name)) groepen.set(rec.exercise_name, [])
@@ -304,6 +304,9 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
         verandering_pct: number | null; trend: 'stijgend' | 'stabiel' | 'dalend'
         // v2.4.52: laatst geadviseerde gewicht, voor advies-vs-gebruikt-vergelijking
         laatste_advies_gewicht: number | null
+        // v2.4.53: zelfde voor tempo
+        laatste_gebruikt_tempo: string | null
+        laatste_advies_tempo: string | null
       }
       const trends: Trend[] = []
 
@@ -317,6 +320,8 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
             eerste_reps: r.reps, laatste_reps: r.reps,
             verandering_pct: null, trend: 'stabiel',
             laatste_advies_gewicht: r.advised_weight_kg,
+            laatste_gebruikt_tempo: r.tempo,
+            laatste_advies_tempo: r.advised_tempo,
           })
           continue
         }
@@ -345,6 +350,8 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
           eerste_reps: eerste.reps, laatste_reps: laatste.reps,
           verandering_pct, trend,
           laatste_advies_gewicht: laatste.advised_weight_kg,
+          laatste_gebruikt_tempo: laatste.tempo,
+          laatste_advies_tempo: laatste.advised_tempo,
         })
       }
 
@@ -377,6 +384,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       if (gesorteerd.length > 0) {
         const regels: string[] = [`\n\nProgressie analyse laatste 30 dagen:`]
         let heeftAfwijking = false
+        let heeftTempoAfwijking = false
 
         for (const t of gesorteerd) {
           let regel = `- ${t.naam} (${t.module}, ${t.uitvoeringen}×)`
@@ -399,6 +407,11 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
             regel += ` [Trainer AI adviseerde ${t.laatste_advies_gewicht}kg, gebruiker deed ${t.laatste_gewicht}kg]`
             heeftAfwijking = true
           }
+          // v2.4.53: zelfde principe voor tempo
+          if (t.laatste_advies_tempo !== null && t.laatste_gebruikt_tempo !== null && t.laatste_advies_tempo !== t.laatste_gebruikt_tempo) {
+            regel += ` [tempo-advies: ${t.laatste_advies_tempo}, gebruiker deed: ${t.laatste_gebruikt_tempo}]`
+            heeftTempoAfwijking = true
+          }
 
           regels.push(regel)
         }
@@ -412,6 +425,9 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
         regels.push('Gebruik deze trenddata in je advies. Benoem concrete progressie als die er is. Waarschuw bij stijgende belasting + hoge RPE. Stel progressie voor als trend stijgend is en RPE laag.')
         if (heeftAfwijking) {
           regels.push('Bij [Trainer AI adviseerde X, gebruiker deed Y]: dit betekent dat de gebruiker zelf een ander kettlebell-gewicht koos tijdens de training dan geadviseerd. Je mag dit kort en niet-veroordelend benoemen — bijvoorbeeld als het zwaarder was dan geadviseerd en de RPE ook hoog was, kun je vragen of dat goed voelde. Als het lichter was, kan dat een teken van een terechte eigen inschatting zijn. Overdrijf niet — één keer afwijken is normaal.')
+        }
+        if (heeftTempoAfwijking) {
+          regels.push('Bij [tempo-advies: X, gebruiker deed: Y]: de gebruiker koos een ander uitvoeringstempo dan geadviseerd (slow/normal/fast). Dit mag je ook kort benoemen indien relevant — bijvoorbeeld als een langzamer tempo bij een explosieve oefening (zoals swings) juist bewust voor meer controle kan zijn, of als een sneller tempo bij een gecontroleerde oefening (zoals squats) op vermoeidheid of haast kan wijzen. Niet elke afwijking is een probleem — alleen benoemen als het echt relevant is.')
         }
         progressieContext = regels.join('\n')
       }

@@ -1,5 +1,37 @@
 # CoachOS — Changelog
 
+## v2.4.53 — Tempo-afwijking nu ook zichtbaar voor de coach (naast gewicht)
+
+**⚠️ VEREIST VÓÓR DEPLOY — nieuwe kolommen in Supabase SQL Editor:**
+```sql
+alter table exercise_records add column tempo text;
+alter table exercise_records add column advised_tempo text;
+```
+
+**Bonus-fix, ontdekt tijdens het bouwen:** het generieke `tempo`-veld dat
+v2.4.50 al meestuurde voor rep-gebaseerde niet-kettlebell-oefeningen
+(bodyweight/strength) werd tot nu toe **nergens opgeslagen** —
+`training/complete/route.ts` las dat veld nooit uit bij het samenstellen
+van `exercise_records`. Sinds deze versie wordt het wél vastgelegd (in de
+nieuwe `tempo`-kolom), voor alle rep-gebaseerde oefeningen, niet alleen
+kettlebell.
+
+**Wijzigingen, exact hetzelfde patroon als v2.4.52 (gewicht):**
+- `src/app/api/training/complete/route.ts` — `exercise_records`-insert
+  slaat nu ook `tempo` (gebruikt) en `advised_tempo` (coach-advies, alleen
+  bij kettlebell) op.
+- `src/app/api/coach/route.ts` — progressie-analyse uitgebreid: als het
+  laatst geadviseerde tempo afwijkt van het laatst gebruikte, wordt dat
+  vermeld: `[tempo-advies: normal, gebruiker deed: slow]`, met een eigen
+  instructie aan de coach (niet elke afwijking is een probleem — een
+  bewust langzamer tempo bij een explosieve oefening kan juist positief
+  zijn; een sneller tempo bij een gecontroleerde oefening kan op haast/
+  vermoeidheid wijzen).
+
+**Resultaat:** de coach ziet nu zowel gewicht- als tempo-afwijkingen bij
+kettlebell-training, en tempo-tracking voor alle rep-oefeningen in het
+algemeen (niet eerder het geval, ook niet vóór v2.4.51).
+
 ## v2.4.52 — Fix: gewicht-advies-bug + coach geeft nu commentaar op afwijking
 
 **⚠️ VEREIST VÓÓR DEPLOY — nieuwe kolom in Supabase SQL Editor:**
