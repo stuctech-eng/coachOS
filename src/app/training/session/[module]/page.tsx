@@ -13,6 +13,7 @@ import { SESSION_STORAGE_KEY } from '@/types/training-engine'
 import { BODYWEIGHT_OEFENINGEN } from '@/lib/bodyweight-exercises'
 import { STRENGTH_OEFENINGEN } from '@/lib/strength-exercises'
 import { KETTLEBELL_OEFENINGEN } from '@/lib/kettlebell-exercises'
+import { ontgrendelAudio, speelTick, speelEindsignaal, speelStarttoon } from '@/lib/workout-sound'
 
 // v2.4.29 — TIMER ENGINE REBUILD (Fase 1 + Fase 2 van de Workout Engine
 // Master Architecture). Belangrijkste wijzigingen t.o.v. de vorige versie:
@@ -981,12 +982,14 @@ export default function SessionPage() {
 
       if (prev.workout_phase === 'countdown') {
         // Countdown afgelopen → start de (eerste) set
+        speelStarttoon()
         return { ...prev, workout_phase: 'active', phase_end_at: Date.now() + getActiveDuration(seg) * 1000 }
       }
 
       if (prev.workout_phase === 'active') {
         const isLastSet = prev.current_set >= totalSets
         const nieuweFase = isLastSet ? 'last_rest' : 'rest'
+        speelEindsignaal()
         return {
           ...prev, workout_phase: nieuweFase,
           phase_end_at: Date.now() + restSec * 1000,
@@ -997,6 +1000,7 @@ export default function SessionPage() {
       if (prev.workout_phase === 'rest') {
         // v2.4.29 FASE 2: GEEN countdown meer tussen sets — direct door
         // naar de volgende set (active).
+        speelStarttoon()
         return {
           ...prev, workout_phase: 'active', current_set: prev.current_set + 1,
           phase_end_at: Date.now() + getActiveDuration(seg) * 1000,
@@ -1007,7 +1011,8 @@ export default function SessionPage() {
         if (isLastSegment) {
           return { ...prev, status: 'voltooid' as SessionStatus, auto_running: false, phase_end_at: null }
         }
-        // v2.4.29 FASE 2: nieuwe oefening → 3 sec countdown
+        // v2.4.29 FASE 2: nieuwe oefening → 3 sec countdown (het
+        // starttoon-geluid volgt hierna bij countdown → active, niet hier)
         return {
           ...prev, current_segment: prev.current_segment + 1,
           completed_segments: [...prev.completed_segments, prev.current_segment],
@@ -1032,6 +1037,22 @@ export default function SessionPage() {
       setTimeout(() => { advancingRef.current = false }, 300)
     }
   }, [remaining, session, advancePhase])
+
+  // v2.4.34: tick-geluid tijdens de laatste 3 sec van countdown/rest/
+  // last_rest. Losse effect — triggert op elke seconde-verandering binnen
+  // dezelfde fase, niet op een fase-overgang zelf.
+  const laatsteTickRef = useRef<number | null>(null)
+  useEffect(() => {
+    const tickFasen = ['countdown', 'rest', 'last_rest']
+    if (!session || !session.auto_running || !tickFasen.includes(session.workout_phase)) {
+      laatsteTickRef.current = null
+      return
+    }
+    if (remaining > 0 && remaining <= 3 && laatsteTickRef.current !== remaining) {
+      speelTick()
+      laatsteTickRef.current = remaining
+    }
+  }, [remaining, session])
 
   function updateStatus(status: SessionStatus) {
     setSession(prev => prev ? { ...prev, status } : prev)
@@ -1096,6 +1117,7 @@ export default function SessionPage() {
   // andere Ready-druk (nieuwe oefening ná last_rest, of terugkeer vanuit
   // handmatige back-navigatie) geldt 3 sec.
   function handleReadyFromUitleg() {
+    ontgrendelAudio() // v2.4.34: echte gebruikersactie — hier audio ontgrendelen
     setSession(prev => {
       if (!prev) return prev
       const isEersteOefening = prev.current_segment === 0 && prev.completed_segments.length === 0

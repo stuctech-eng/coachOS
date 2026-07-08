@@ -1,5 +1,52 @@
 # CoachOS — Changelog
 
+## v2.4.34 — NIEUW: Audio (Fase 2) voor beide trainingssystemen
+**Gebouwd volgens de afgesproken architectuurregels: geluid is uitsluitend
+een luisterlaag, nooit sturend. Eén gedeelde module, tegelijk gekoppeld
+aan Archief én Trainer AI/Bibliotheek om divergentie tussen de twee
+systemen te voorkomen.**
+
+**Nieuw bestand:**
+- `src/lib/workout-sound.ts` — gedeelde audio-module, geïmporteerd door
+  beide `page.tsx`-bestanden. Bevat:
+  - `ontgrendelAudio()` — ontgrendelt de gedeelde `AudioContext` voor de
+    rest van de sessie. Moet aangeroepen worden vanuit een ECHTE
+    gebruikersinteractie (iOS Safari-vereiste); nooit automatisch.
+  - `speelTick()` — kort/droog/hoog, laatste 3 sec van countdown/rust.
+  - `speelEindsignaal()` — lager/langer, einde van een actieve set.
+  - `speelStarttoon()` — hoger/helder, start van een nieuwe set/oefening.
+  - Synthetische tonen via Web Audio API (`OscillatorNode` +
+    `GainNode`-envelope) — geen externe geluidsbestanden, laadt niets.
+  - Elke functie faalt volledig stil (try/catch) — een geblokkeerde of
+    falende `AudioContext` kan de workout nooit onderbreken.
+
+**Koppeling — Archief (`archief/oefening/[id]/page.tsx`):**
+- `ontgrendelAudio()` in `startWorkout()` (de "Start oefening"-knop)
+- `speelStarttoon()`: countdown→actief (1e set), rust→actief (vervolgset)
+- `speelEindsignaal()`: actief→rust (einde set)
+- `speelTick()`: losse `useEffect`, laatste 3 sec van countdown/rust
+
+**Koppeling — Trainer AI/Bibliotheek (`training/session/[module]/page.tsx`):**
+- `ontgrendelAudio()` in `handleReadyFromUitleg()` (de "Ready"-knop die de
+  eerste countdown start)
+- `speelStarttoon()`: countdown→active (elke set/oefening-start),
+  rest→active (vervolgset zonder countdown)
+- `speelEindsignaal()`: active→rest/last_rest (einde set)
+- `speelTick()`: losse `useEffect`, laatste 3 sec van countdown/rest/last_rest
+
+**Bewust nog niet in deze versie:**
+- Geen aan/uit-instelling — geluid staat standaard aan, toggle volgt in
+  Fase 3.
+- Trilfunctie/vibratie — niet gevraagd voor deze fase.
+
+**Test-aandachtspunten:** i) eerste start (audio moet daadwerkelijk
+hoorbaar zijn, niet stilzwijgend geblokkeerd door iOS), ii) einde van een
+set, iii) laatste 3 sec van rust (3 losse ticks), iv) countdown bij nieuwe
+oefening (Trainer AI/Bibliotheek), v) pauzeren/hervatten (geen geluid
+tijdens pauze, geen dubbel geluid bij hervatten), vi) lockscreen/
+achtergrond-herstel (geluid moet niet "inhalen" met meerdere gemiste
+ticks tegelijk).
+
 ## v2.4.33 — Kleurprincipe consistent: rood = "maak je klaar", niet "tijd loopt af"
 **Bevestigd principe (gebruiker): rood betekent uitsluitend "je moet zo
 beginnen" (rust/countdown), nooit "je huidige oefening loopt bijna af"

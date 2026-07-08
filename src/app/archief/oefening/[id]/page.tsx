@@ -6,6 +6,7 @@ import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
 import { createBrowserClient } from '@supabase/ssr'
+import { ontgrendelAudio, speelTick, speelEindsignaal, speelStarttoon } from '@/lib/workout-sound'
 
 import { KETTLEBELL_OEFENINGEN } from '@/lib/kettlebell-exercises'
 import { BODYWEIGHT_OEFENINGEN } from '@/lib/bodyweight-exercises'
@@ -229,6 +230,7 @@ export default function ArchiefOefeningPage() {
   const advancePhase = useCallback(() => {
     if (gepauzeerd) return
     if (fase === 'countdown') {
+      speelStarttoon()
       setFase('actief')
       setPhaseEndAt(Date.now() + effectieveDuurSec * 1000)
       return
@@ -238,6 +240,7 @@ export default function ArchiefOefeningPage() {
         setFase('voltooid')
         setPhaseEndAt(null)
       } else {
+        speelEindsignaal()
         setFase('rust')
         setPhaseEndAt(Date.now() + rustSec * 1000)
       }
@@ -245,6 +248,7 @@ export default function ArchiefOefeningPage() {
     }
     if (fase === 'rust') {
       // Direct door naar de volgende set — geen countdown-tussenstap
+      speelStarttoon()
       setHuidigeSet(s => s + 1)
       setFase('actief')
       setPhaseEndAt(Date.now() + effectieveDuurSec * 1000)
@@ -263,7 +267,23 @@ export default function ArchiefOefeningPage() {
     }
   }, [remaining, fase, phaseEndAt, gepauzeerd, advancePhase])
 
+  // v2.4.34: tick-geluid tijdens de laatste 3 sec van countdown/rust.
+  // Losse effect (niet in advancePhase, want dit triggert NIET op een
+  // fase-overgang maar op elke seconde-verandering binnen dezelfde fase).
+  // Guard via laatsteTickRef voorkomt herhaald afspelen binnen dezelfde
+  // seconde door de 250ms-ticking-loop.
+  const laatsteTickRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (gepauzeerd) { laatsteTickRef.current = null; return }
+    if (fase !== 'countdown' && fase !== 'rust') { laatsteTickRef.current = null; return }
+    if (remaining > 0 && remaining <= 3 && laatsteTickRef.current !== remaining) {
+      speelTick()
+      laatsteTickRef.current = remaining
+    }
+  }, [remaining, fase, gepauzeerd])
+
   function startWorkout() {
+    ontgrendelAudio() // v2.4.34: echte gebruikersactie — hier audio ontgrendelen, niet eerder
     setFase('countdown')
     setHuidigeSet(1)
     setPhaseEndAt(Date.now() + EERSTE_SET_COUNTDOWN_SEC * 1000)
