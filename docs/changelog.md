@@ -1,5 +1,30 @@
 # CoachOS — Changelog
 
+## v2.4.54 — Gewicht + tempo nu ook instelbaar in het trainingsoverzicht
+**Besluit (overleg): gewicht is een eenmalige, vooraf-te-bepalen keuze per
+oefening (hoort in het overzicht) — tempo is bedoeld om ook TIJDENS het
+sporten bij te stellen (blijft daarom op beide plekken: overzicht én
+actieve set).**
+
+- `src/app/training/session/[module]/page.tsx` (`SchemaLayer`, het scherm
+  vóór "Training Starten") — elke kettlebell-oefening met coach-advies
+  toont nu compacte gewicht- (6 knoppen, 14-32kg) en tempo-knoppen
+  (Slow/Normaal/Fast), voorgeselecteerd op het advies, aanpasbaar vóór je
+  start.
+- Bij "Training Starten" worden deze keuzes vastgelegd in
+  `session.gebruikt_gewicht`/`gebruikt_tempo` (per segment-index) — het
+  originele advies in het schema zelf blijft ongewijzigd, nodig voor de
+  advies-vs-gebruikt-vergelijking die de coach ziet (v2.4.52/53).
+- De bestaande per-segment-initialisatie (v2.4.51) ziet deze waarden dan
+  al ingevuld staan en overschrijft ze niet opnieuw met het kale advies —
+  de overzicht-keuze blijft dus behouden tot in de actieve set.
+- **Consistentie-bug gevonden en gefixt tijdens het bouwen:** de tempo-
+  knop-highlight in de actieve set las nog steeds alleen het ruwe advies
+  (`seg.target_tempo`), niet een eventuele overzicht-aanpassing — de
+  highlight zou dus de verkeerde knop hebben getoond ondanks dat de
+  juiste waarde intern al correct was vastgelegd. Nu leest de highlight
+  eerst `session.gebruikt_tempo`, dan pas het advies.
+
 ## v2.4.53 — Tempo-afwijking nu ook zichtbaar voor de coach (naast gewicht)
 
 **⚠️ VEREIST VÓÓR DEPLOY — nieuwe kolommen in Supabase SQL Editor:**

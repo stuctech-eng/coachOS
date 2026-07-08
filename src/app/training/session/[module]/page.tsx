@@ -276,9 +276,34 @@ function getActiveDuration(seg: KettlebellSegment | undefined): number {
 
 // ─── Presentatie-componenten (grotendeels ongewijzigd qua uiterlijk) ─────────
 
-function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () => void }) {
+function SchemaLayer({ schema, onStart }: {
+  schema: TrainingSchema
+  onStart: (overrides: { gewicht: Record<number, number>; tempo: Record<number, Tempo> }) => void
+}) {
   const intensiteitLabel = { light: 'Licht', medium: 'Gemiddeld', heavy: 'Zwaar' }
   const segments = getSegments(schema)
+
+  // v2.4.54: gewicht/tempo vooraf overzien en bijstellen — zelfde
+  // architectuur als in de actieve set (advies blijft ongewijzigd in het
+  // schema voor de coach-vergelijking, alleen de "gebruikte" waarde wordt
+  // hier vastgelegd, per segment-index).
+  const [gewichtOverrides, setGewichtOverrides] = useState<Record<number, number>>(() => {
+    const init: Record<number, number> = {}
+    segments.forEach((seg, i) => {
+      const kb = asDisplay(seg)
+      if (kb.type === 'kettlebell' && kb.weight_kg != null) init[i] = kb.weight_kg
+    })
+    return init
+  })
+  const [tempoOverrides, setTempoOverrides] = useState<Record<number, Tempo>>(() => {
+    const init: Record<number, Tempo> = {}
+    segments.forEach((seg, i) => {
+      const kb = asDisplay(seg)
+      if (kb.type === 'kettlebell' && kb.target_tempo) init[i] = kb.target_tempo
+    })
+    return init
+  })
+
   return (
     <div className="flex flex-col gap-4 pb-4">
       <Card className="p-5">
@@ -302,6 +327,7 @@ function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () 
           const isRowing = kb.type === 'rowing'
           const isRunning = kb.type === 'running'
           const isCycling = kb.type === 'cycling'
+          const isKettlebellMetAdvies = kb.type === 'kettlebell' && (kb.weight_kg != null || kb.target_tempo != null)
           return (
             <Card key={i} className="px-4 py-3">
               <div className="flex items-center justify-between">
@@ -327,11 +353,49 @@ function SchemaLayer({ schema, onStart }: { schema: TrainingSchema; onStart: () 
                 </div>
                 <span className="text-xs text-slate-600 font-mono">#{i + 1}</span>
               </div>
+
+              {/* v2.4.54: gewicht + tempo vooraf instelbaar, alleen bij
+                  kettlebell mét coach-advies. Compacte weergave, past bij
+                  het overzichtskarakter van dit scherm. */}
+              {isKettlebellMetAdvies && (
+                <div className="mt-3 pt-3 border-t border-coach-border/50 flex flex-col gap-2">
+                  {kb.weight_kg != null && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 w-14 flex-shrink-0">Gewicht</span>
+                      <div className="grid grid-cols-6 gap-1 flex-1">
+                        {[14, 16, 20, 24, 28, 32].map(g => (
+                          <button key={g} onClick={() => setGewichtOverrides(prev => ({ ...prev, [i]: g }))}
+                            className={cn('py-1.5 rounded-md text-[11px] font-semibold transition-colors',
+                              gewichtOverrides[i] === g ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
+                            )}>
+                            {g}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {kb.target_tempo != null && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 w-14 flex-shrink-0">Tempo</span>
+                      <div className="grid grid-cols-3 gap-1 flex-1">
+                        {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
+                          <button key={t} onClick={() => setTempoOverrides(prev => ({ ...prev, [i]: t }))}
+                            className={cn('py-1.5 rounded-md text-[11px] font-semibold capitalize transition-colors',
+                              tempoOverrides[i] === t ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
+                            )}>
+                            {t === 'slow' ? 'Slow' : t === 'normal' ? 'Normaal' : 'Fast'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
           )
         })}
       </div>
-      <button onClick={onStart} disabled={segments.length === 0}
+      <button onClick={() => onStart({ gewicht: gewichtOverrides, tempo: tempoOverrides })} disabled={segments.length === 0}
         className="w-full py-4 bg-primary-500 text-white rounded-xl font-semibold text-base active:bg-primary-600 disabled:opacity-40">
         Training Starten →
       </button>
@@ -567,15 +631,20 @@ function WorkoutEngine({
   const isCycling = seg.type === 'cycling'
   const totalSets = seg.sets || 1
   const isLastSegment = session.current_segment === segments.length - 1
-  // v2.4.51: bij kettlebell mét coach-advies, begint het tempo op het
-  // advies i.p.v. de gewone persoonlijke localStorage-voorkeur.
+  // v2.4.51/54: bij kettlebell mét coach-advies, begint het tempo op de al
+  // vastgelegde "gebruikte" waarde (session.gebruikt_tempo — kan uit het
+  // overzichtsscherm komen, v2.4.54) of anders het kale advies. Dit houdt
+  // de knop-highlight consistent met wat er bij opslaan daadwerkelijk
+  // wordt meegestuurd.
   const isKettlebellMetAdvies = seg.type === 'kettlebell' && (seg.weight_kg != null || seg.target_tempo != null)
-  const [currentTempo, setCurrentTempo] = useState<Tempo>(
-    isKettlebellMetAdvies && seg.target_tempo ? seg.target_tempo : getTempo(seg.exercise)
-  )
+  const bepaalStartTempo = () =>
+    isKettlebellMetAdvies
+      ? (session.gebruikt_tempo[session.current_segment] ?? seg.target_tempo ?? getTempo(seg.exercise))
+      : getTempo(seg.exercise)
+  const [currentTempo, setCurrentTempo] = useState<Tempo>(bepaalStartTempo())
 
   useEffect(() => {
-    setCurrentTempo(isKettlebellMetAdvies && seg.target_tempo ? seg.target_tempo : getTempo(seg.exercise))
+    setCurrentTempo(bepaalStartTempo())
   }, [seg.exercise])
 
   return (
@@ -1358,7 +1427,23 @@ export default function SessionPage() {
 
         {session && !showResumeDialog && (
           <>
-            {session.status === 'schema' && <SchemaLayer schema={session.schema} onStart={() => updateStatus('learning')} />}
+            {session.status === 'schema' && (
+              <SchemaLayer schema={session.schema} onStart={(overrides) => {
+                // v2.4.54: overzicht-keuzes worden hier vastgelegd als de
+                // "gebruikte" waarde per segment — het schema/advies zelf
+                // (seg.weight_kg/target_tempo) blijft ongewijzigd, nodig
+                // voor de coach-vergelijking bij opslaan. De bestaande
+                // per-segment-initialisatie-effect (v2.4.51) ziet deze
+                // waarden al ingevuld staan en initialiseert dan niet
+                // opnieuw op het kale advies.
+                setSession(prev => prev ? {
+                  ...prev,
+                  gebruikt_gewicht: { ...prev.gebruikt_gewicht, ...overrides.gewicht },
+                  gebruikt_tempo: { ...prev.gebruikt_tempo, ...overrides.tempo },
+                  status: 'learning',
+                } : prev)
+              }} />
+            )}
 
             {session.status === 'learning' && (
               <UitlegScherm segment={segments[0]} segmentIndex={0} totalSegments={segments.length}
