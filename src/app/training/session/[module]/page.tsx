@@ -625,7 +625,7 @@ function WorkoutEngine({
           {!isRowing && !isRunning && !isCycling && seg.reps && !seg.duration_sec && (
             <div className="flex gap-2 mt-3 pt-3 border-t border-coach-border">
               {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
-                <button key={t} onClick={() => onTempoChange(seg.exercise, t)}
+                <button key={t} onClick={() => { setCurrentTempo(t); onTempoChange(seg.exercise, t) }}
                   className={cn('flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-colors',
                     currentTempo === t ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
                   )}>

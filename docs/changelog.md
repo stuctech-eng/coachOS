@@ -1,5 +1,21 @@
 # CoachOS — Changelog
 
+## v2.4.48 — Fix: Slow/Normaal/Fast-tempoknoppen leken niet te reageren
+- `src/app/training/session/[module]/page.tsx` (`WorkoutEngine`) —
+  tempo-knop-`onClick` werkt lokale `currentTempo`-state nu direct bij,
+  naast de bestaande `onTempoChange()`-aanroep naar de ouder.
+- **Root cause:** de gekozen tempo werd wél correct opgeslagen
+  (`localStorage` via `setTempo()`) en de timer werd wél correct
+  aangepast (`phase_end_at` in de ouder-component) — maar de visuele
+  highlight van welke knop actief is (`currentTempo`) ververste alleen via
+  een `useEffect` die op `seg.exercise` reageert. Omdat het tikken op een
+  andere tempo-knop de oefening zelf niet verandert, vuurde die `useEffect`
+  niet af, en bleef de knop-highlight op de oude waarde staan — het leek
+  daardoor alsof de knoppen niet reageerden, terwijl de onderliggende
+  functionaliteit wél werkte.
+- Gemeld door gebruiker: "Ik kan ze niet veranderen" — bevestigt het
+  visuele, niet-functionele karakter van dit probleem.
+
 ## v2.4.47 — Build-fix: SessionStatus-type-fout in Finish Tone-effect
 - `src/app/training/session/[module]/page.tsx` — build-fout: *"This
   comparison appears to be unintentional because the types 'SessionStatus'
