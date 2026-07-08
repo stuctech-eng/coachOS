@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.40 — Consolidatie: één importweg voor losse activiteiten (was 3)
+**Gebruiker merkte op dat de "Importeer"-knop op `/activities` een ouder,
+apart systeem gebruikte naast de nieuwe Garmin-activiteit-import. Bij
+onderzoek bleek dit oude systeem daadwerkelijk kapot te zijn.**
+
+**Gevonden bugs in de verwijderde route (`POST /api/activities`):**
+- **Lap-bug:** regex `content.match(/<TotalTimeSeconds>.../)` pakte alleen
+  de EERSTE match in het bestand — bij een TCX met meerdere laps (bijna
+  elk bestand, zie v2.4.25-onderzoek) werd dus alleen lap 1 gebruikt in
+  plaats van het totaal. Een activiteit van 1u44m/54,74km zou hierdoor een
+  veel te lage waarde hebben opgeleverd.
+- **Geen Coach Call-trigger:** activiteiten via deze route telden nooit
+  mee in de herstelberekening — stil, onopgemerkt gemis.
+- **Zwakke duplicaatcheck:** alleen op datum + afgeronde duur (geen
+  starttijd-ID zoals v2.4.28's fix).
+- Zelfde 413-payload-risico dat v2.4.35 al oploste voor de nieuwe route
+  (uploadde het volledige bestand naar de server).
+
+**Wijzigingen:**
+- `src/app/api/activities/route.ts` — `POST` volledig verwijderd. `GET`
+  (activiteitenlijst laden) blijft ongewijzigd.
+- `src/app/activities/page.tsx` — de kapotte "Garmin importeren"-upload-
+  kaart vervangen door één simpele knop **"Activiteit toevoegen"**, die
+  naar `/settings/garmin-activity-import` linkt (de geteste flow met
+  screenshot + TCX-keuze, v2.4.23-39). Overbodige state
+  (`importing`/`importResult`/`fileInputRef`) en de oude
+  `importeerGarmin()`-functie verwijderd.
+- `src/app/settings/page.tsx` — de losse "Garmin Activiteit"-kaart
+  verwijderd (was dubbelop met de nieuwe knop op `/activities`, beide
+  linkten naar dezelfde pagina).
+
+**Resultaat: van 3 knoppen/systemen naar 1.**
+- ~~Instellingen → "Garmin Activiteit"~~ (verwijderd, was duplicaat)
+- ~~/activities → "Importeer" (.gpx/.tcx upload)~~ (verwijderd, was kapot)
+- **/activities → "Activiteit toevoegen"** (nieuw, enige overgebleven weg,
+  linkt naar de geteste screenshot+TCX-pagina)
+
+De dagelijkse "Garmin Import" (Body Battery/slaap) in Instellingen blijft
+ongewijzigd — dat is een apart, dagelijks terugkerend proces.
+
+**Bekend gat, niet in scope van deze consolidatie:** GPX-ondersteuning
+ging verloren met de verwijderde route (de nieuwe flow ondersteunt alleen
+TCX). Kan bij gelegenheid apart toegevoegd worden aan de nieuwe flow als
+gewenst.
+
 ## v2.4.39 — Snelheid, cadans en watts nu ook zichtbaar op Activiteiten-kaartjes
 - `src/app/activities/page.tsx` — drie nieuwe metric-blokken toegevoegd
   aan elk activiteitenkaartje (naast de bestaande Duur/Afstand/Hartslag/

@@ -189,21 +189,10 @@ export default function SettingsPage() {
           </button>
         </Card>
 
-        <Card className="p-4">
-          <button
-            onClick={() => router.push('/settings/garmin-activity-import')}
-            className="flex items-center gap-3 w-full"
-          >
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-              <Camera size={20} className="text-blue-400" />
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-white font-semibold text-sm">Garmin Activiteit</p>
-              <p className="text-slate-400 text-xs">Screenshot of TCX-bestand</p>
-            </div>
-            <ChevronRight size={16} className="text-slate-600" />
-          </button>
-        </Card>
+        {/* v2.4.40: "Garmin Activiteit"-kaart verwijderd — was dubbelop
+            met de nieuwe knop op /activities ("Activiteit toevoegen"),
+            die naar dezelfde /settings/garmin-activity-import-pagina
+            linkt. Eén duidelijke toegangsweg in plaats van twee. */}
 
         <Card className="p-4">
           <button

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Plus } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 
 interface ActivityMetrics {
@@ -76,10 +76,7 @@ export default function ActiviteitenPage() {
   const router = useRouter()
   const [sessions, setSessions] = useState<ActivitySession[]>([])
   const [loading, setLoading] = useState(true)
-  const [importing, setImporting] = useState(false)
-  const [importResult, setImportResult] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('alle')
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     laadActiviteiten()
@@ -98,26 +95,11 @@ export default function ActiviteitenPage() {
     }
   }
 
-  async function importeerGarmin(file: File) {
-    setImporting(true)
-    setImportResult(null)
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      const res = await fetch('/api/activities', { method: 'POST', body: form })
-      const data = await res.json()
-      if (data.error) {
-        setImportResult('❌ ' + data.error)
-      } else {
-        setImportResult('✅ ' + data.message)
-        await laadActiviteiten()
-      }
-    } catch {
-      setImportResult('❌ Import mislukt')
-    } finally {
-      setImporting(false)
-    }
-  }
+  // v2.4.40: importeerGarmin() en /api/activities POST verwijderd —
+  // kapotte, oudere importweg (regex-based TCX-parsing die alleen de
+  // eerste lap las, geen Coach Call-trigger, zwakke duplicaatcheck).
+  // Vervangen door één link naar de geteste /settings/garmin-activity-import
+  // flow (screenshot + TCX, zie hieronder).
 
   // Unieke sporttypes voor filter
   const sporttypes = ['alle', ...Array.from(new Set(sessions.map(s => s.activities?.name || 'Anders')))]
@@ -161,37 +143,21 @@ export default function ActiviteitenPage() {
           </div>
         </div>
 
-        {/* Garmin import */}
+        {/* v2.4.40: één duidelijke knop naar de geteste import-flow
+            (screenshot + TCX, zie /settings/garmin-activity-import),
+            vervangt de kapotte oude upload-kaart hierboven */}
         <div className="px-4 mb-4">
-          <div className="bg-[#1c2128] rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-semibold text-white">Garmin importeren</p>
-                <p className="text-xs text-gray-400">.gpx of .tcx bestand</p>
-              </div>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={importing}
-                className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
-              >
-                {importing ? '...' : 'Importeer'}
-              </button>
+          <button onClick={() => router.push('/settings/garmin-activity-import')}
+            className="w-full bg-[#1c2128] rounded-2xl p-4 flex items-center gap-3 active:bg-[#22272e] transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <Plus size={20} className="text-blue-400" />
             </div>
-            {importResult && (
-              <p className="text-xs text-gray-300 bg-[#0d1117] rounded-xl px-3 py-2">{importResult}</p>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".gpx,.tcx"
-              className="hidden"
-              onChange={e => {
-                const f = e.target.files?.[0]
-                if (f) importeerGarmin(f)
-                e.target.value = ''
-              }}
-            />
-          </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-semibold text-white">Activiteit toevoegen</p>
+              <p className="text-xs text-gray-400">Via Garmin screenshot of TCX-bestand</p>
+            </div>
+            <ChevronRight size={18} className="text-gray-600 flex-shrink-0" />
+          </button>
         </div>
 
         {/* Filter tabs */}
