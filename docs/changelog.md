@@ -1,5 +1,23 @@
 # CoachOS — Changelog
 
+## v2.4.32 — Fix: pauze in Archief bevroor het cijfer niet (bug sinds v2.4.30)
+- `src/app/archief/oefening/[id]/page.tsx` — `remaining` komt tijdens
+  pauze nu uit de bevroren `paused_remaining_ms`, niet meer uit een live
+  herberekening op basis van `phase_end_at`.
+- **Root cause:** `phase_end_at` verandert bewust niet tijdens pauze (dat
+  was al correct — nodig om de fase-overgang tegen te houden via de
+  `gepauzeerd`-guard in de ticking-`useEffect`). Maar `remaining` werd bij
+  elke render nog steeds live herberekend als
+  `phase_end_at - Date.now()`, en `Date.now()` loopt gewoon door tijdens
+  pauze — dus het GETOONDE cijfer bleef doortellen naar 0 en bleef daar
+  hangen, ook al werd de daadwerkelijke fase-overgang terecht
+  tegengehouden. Dit zag eruit als "pauze doet niets", terwijl de
+  onderliggende logica (geen ongewenste fase-overgang) wel klopte —
+  een zuiver weergave-probleem, geen logica-probleem.
+- Aanwezig sinds v2.4.30 (de Archief-timer-herbouw), pas nu opgemerkt
+  omdat v2.4.31 (kleur-fix) toevallig de aandacht op het rust-scherm
+  vestigde.
+
 ## v2.4.31 — Fix: Archief-timer werd niet rood bij laatste 3 seconden
 - `src/app/archief/oefening/[id]/page.tsx` — het cijfer tijdens `rust` en
   `countdown` kleurt nu rood zodra `remaining <= 3`, consistent met hoe de

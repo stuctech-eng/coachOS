@@ -211,7 +211,16 @@ export default function ArchiefOefeningPage() {
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
   }, [])
 
-  const remaining = phaseEndAt ? Math.max(0, Math.ceil((phaseEndAt - Date.now()) / 1000)) : 0
+  // v2.4.32 FIX: tijdens pauze moet het getoonde cijfer BEVRIEZEN, niet
+  // doortellen. phase_end_at verandert bewust niet tijdens pauze (dat was
+  // correct, voor de fase-overgang-guard), maar Date.now() loopt gewoon
+  // door — dus remaining bleef live doortellen naar 0 en bleef daar
+  // hangen, ook al vuurde advancePhase() terecht niet af. Zag eruit als
+  // "pauze doet niets". Nu: tijdens pauze komt remaining uit de bevroren
+  // paused_remaining_ms, niet meer uit phase_end_at.
+  const remaining = gepauzeerd
+    ? (pausedRemainingMs !== null ? Math.max(0, Math.ceil(pausedRemainingMs / 1000)) : 0)
+    : (phaseEndAt ? Math.max(0, Math.ceil((phaseEndAt - Date.now()) / 1000)) : 0)
 
   // v2.4.30 FIX: fase-overgang volgens de Archief-eigen flowregels — GEEN
   // countdown tussen sets (in tegenstelling tot vóór deze rebuild, waar
