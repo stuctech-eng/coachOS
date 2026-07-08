@@ -193,7 +193,17 @@ export default function GarminActivityImportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="h-screen overflow-y-auto bg-[#0a0a0a] text-white">
+      {/* v2.4.36 FIX: was min-h-screen zonder eigen scroll-container. Deze
+          pagina gebruikt geen AppShell (bewust, geen bottom-nav gewenst
+          tijdens de import-flow) — maar de globale app-stijl schakelt
+          scrollen op body/html doorgaans uit (voor AppShell's eigen
+          scroll-area, zie v2.4.20). Zonder AppShell had deze pagina dus
+          NERGENS een scrollbare container: bij content die de hoogte van
+          het scherm overschrijdt (zoals een lange TCX-preview met 8
+          keuzeknoppen) kon je niet bij de knoppen onderaan komen.
+          h-screen + overflow-y-auto geeft deze pagina zijn eigen,
+          onafhankelijke scroll-context. */}
       <div className="flex items-center gap-3 px-4 pt-14 pb-6">
         <button onClick={() => router.push('/settings')}
           className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors">

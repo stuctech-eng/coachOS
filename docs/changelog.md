@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.36 — Fix: Garmin-activiteit-import-pagina kon niet scrollen
+- `src/app/settings/garmin-activity-import/page.tsx` — root-`<div>`
+  gewijzigd van `min-h-screen` naar `h-screen overflow-y-auto`.
+- **Root cause:** deze pagina gebruikt bewust geen `AppShell` (geen
+  bottom-navigatie gewenst tijdens de import-flow), maar de globale
+  app-stijl schakelt scrollen op `body`/`html` doorgaans uit — een
+  aanname die klopt zolang een pagina `AppShell`'s eigen `scroll-area`
+  gebruikt (zie v2.4.20), maar niet als een pagina daar bewust buiten
+  valt. Deze pagina had dus **nergens** een scrollbare container.
+  Bij content die de schermhoogte overschreed (bijvoorbeeld een lange
+  TCX-preview met alle datavelden + 8 keuzeknoppen + melding + knop,
+  zoals bij een fietsactiviteit van 54km/1u44m) kon de gebruiker niet bij
+  de knoppen onderaan komen — leek op "niet kunnen opslaan", maar was
+  eigenlijk "niet kunnen scrollen om bij de knop te komen".
+  `h-screen` + `overflow-y-auto` geeft de pagina een eigen, onafhankelijke
+  scroll-context, los van het AppShell-mechanisme.
+- **Vergelijkbaar risico elders:** dit is de enige pagina in het project
+  die bewust buiten `AppShell` valt (voor zover deze sessie onderzocht) —
+  mocht een toekomstige pagina ook `AppShell` overslaan, geef die dan
+  vanaf het begin een eigen `overflow-y-auto`-container.
+
 ## v2.4.35 — Fix: TCX-import gaf 413 (payload te groot) bij lange activiteiten
 - **Nieuw:** `src/lib/tcx-parser.ts` — de TCX-XML-parslogica (`parseTcx`,
   `bepaalKeuzeNodig`, `suggereerType`, `ACTIVITEIT_OPTIES`) is verplaatst
