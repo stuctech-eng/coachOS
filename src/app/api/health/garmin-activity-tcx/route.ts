@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
       if (parsed.max_speed_kmh) metrics.max_speed = parsed.max_speed_kmh
       if (parsed.elevation_gain_m) metrics.elevation_gain = parsed.elevation_gain_m
       if (parsed.elevation_loss_m) metrics.elevation_loss = parsed.elevation_loss_m
+      if (parsed.route && parsed.route.length > 0) metrics.route = parsed.route
 
       const { data: session, error: sessionError } = await adminSupabase
         .from('activity_sessions')

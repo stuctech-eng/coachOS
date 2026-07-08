@@ -309,10 +309,13 @@ export default function ActiviteitenPage() {
                 )
               }
 
+              // v2.4.41: klikbaar naar de nieuwe detailpagina (route-kaart +
+              // volledige metrics), voor alle niet-Strava-activiteiten
               return (
-                <div key={session.id} className="bg-[#1c2128] rounded-2xl p-4">
+                <button key={session.id} onClick={() => router.push(`/activities/${session.id}`)}
+                  className="block w-full text-left bg-[#1c2128] rounded-2xl p-4 active:bg-[#22272e] transition-colors">
                   {kaartInhoud}
-                </div>
+                </button>
               )
             })
           )}

@@ -24,6 +24,7 @@ export interface TcxParsed {
   max_speed_kmh: number | null
   elevation_gain_m: number | null
   elevation_loss_m: number | null
+  route: { lat: number; lng: number }[] | null
   has_gps: boolean
   creator_device: string | null
   start_date: string | null
@@ -87,6 +88,12 @@ export function parseTcx(xmlText: string): TcxParsed {
   let vorigeHoogte: number | null = null
   let totaalStijging = 0
   let totaalDaling = 0
+  // v2.4.41: alle GPS-punten verzamelen voor de route-kaart. Ruwe
+  // coördinaten worden pas ná de volledige loop gedownsampled (zie
+  // downsampleRoute hieronder) — zo blijft de opslag compact ongeacht hoe
+  // lang de activiteit duurde, zonder dat we tijdens het verzamelen al
+  // hoeven te weten hoeveel punten er in totaal komen.
+  const ruweRoute: { lat: number; lng: number }[] = []
 
   for (const lap of laps) {
     const trackRaw = lap.Track
@@ -95,7 +102,12 @@ export function parseTcx(xmlText: string): TcxParsed {
       const tpRaw = track.Trackpoint
       const trackpoints = Array.isArray(tpRaw) ? tpRaw : tpRaw ? [tpRaw] : []
       for (const tp of trackpoints) {
-        if (tp.Position?.LatitudeDegrees !== undefined) hasGps = true
+        if (tp.Position?.LatitudeDegrees !== undefined) {
+          hasGps = true
+          const lat = parseFloat(tp.Position.LatitudeDegrees)
+          const lng = parseFloat(tp.Position.LongitudeDegrees)
+          if (!isNaN(lat) && !isNaN(lng)) ruweRoute.push({ lat, lng })
+        }
         const tpx = tp.Extensions?.['ns3:TPX']
         const cad = tp.Cadence ?? tpx?.['ns3:RunCadence']
         const watts = tpx?.['ns3:Watts']
@@ -126,6 +138,14 @@ export function parseTcx(xmlText: string): TcxParsed {
   // Speed in TCX staat in m/s — omrekenen naar km/u voor leesbaarheid
   const naarKmu = (waarde: number | null) => waarde !== null ? Math.round(waarde * 3.6 * 10) / 10 : null
 
+  // v2.4.41: downsamplen naar max ~300 punten — ruim voldoende voor een
+  // vloeiende route op een kaart, houdt de opslag klein ongeacht of de
+  // activiteit 20 minuten of 3 uur duurde.
+  const MAX_ROUTE_PUNTEN = 300
+  const route = ruweRoute.length === 0 ? null
+    : ruweRoute.length <= MAX_ROUTE_PUNTEN ? ruweRoute
+    : ruweRoute.filter((_, i) => i % Math.ceil(ruweRoute.length / MAX_ROUTE_PUNTEN) === 0)
+
   return {
     garmin_sport: garminSport,
     duration_min: totaalTijdSec > 0 ? Math.round(totaalTijdSec / 60) : null,
@@ -141,6 +161,7 @@ export function parseTcx(xmlText: string): TcxParsed {
     max_speed_kmh: naarKmu(maximum(speedValues)),
     elevation_gain_m: totaalStijging > 0 ? Math.round(totaalStijging) : null,
     elevation_loss_m: totaalDaling > 0 ? Math.round(totaalDaling) : null,
+    route,
     has_gps: hasGps,
     creator_device: creatorDevice,
     start_date: startDate,

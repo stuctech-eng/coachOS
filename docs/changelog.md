@@ -1,5 +1,45 @@
 # CoachOS — Changelog
 
+## v2.4.41 — NIEUW: Route-kaart bij activiteiten (Leaflet + OpenStreetMap)
+**Ontdekking: TCX-bestanden bevatten al de volledige GPS-route (lat/lon per
+trackpoint) — we gebruikten dat tot nu toe alleen om `has_gps` te bepalen
+en gooiden de coördinaten daarna weg. Geen Garmin API nodig, puur gebruik
+van data die al binnenkomt.**
+
+**Nieuwe dependency:** `leaflet` (^1.9.4) + `@types/leaflet` (^1.9.12).
+Gratis kaarttegels via OpenStreetMap, geen API-key nodig.
+
+**Nieuwe bestanden:**
+- `src/components/ActivityRouteMap.tsx` — kaart-component. Puur
+  client-side (Leaflet gebruikt `window`, kan niet server-side gerenderd
+  worden) — altijd via `next/dynamic` met `ssr: false` laden. Tekent de
+  route als lijn, met start/eind-markers, kaart past zich automatisch aan
+  op de route (`fitBounds`).
+- `src/app/api/activities/[id]/route.ts` — nieuwe route om één activiteit
+  op te halen (nodig voor de detailpagina, i.p.v. de hele lijst van max.
+  100 activiteiten opnieuw te laden).
+- `src/app/activities/[id]/page.tsx` — nieuwe detailpagina: route-kaart
+  bovenaan, daaronder alle metrics als stat-blokken (duur, afstand,
+  hartslag, calorieën, snelheid, cadans, watts, hoogtemeters).
+
+**Gewijzigde bestanden:**
+- `src/lib/tcx-parser.ts` — `TcxParsed` uitgebreid met `route: {lat, lng}[]
+  | null`. GPS-coördinaten worden nu verzameld tijdens de bestaande
+  trackpoint-loop (geen aparte doorloop) en **gedownsampled naar max ~300
+  punten** — ruim voldoende voor een vloeiende lijn op een kaart, houdt de
+  opslag klein ongeacht activiteitsduur (getest: 1250 ruwe punten → 250,
+  ~12,5KB JSON).
+- `src/app/api/health/garmin-activity-tcx/route.ts` — `route` toegevoegd
+  aan de opgeslagen `metrics`.
+- `src/app/activities/page.tsx` — niet-Strava-activiteitenkaartjes zijn nu
+  klikbaar, linken naar de nieuwe detailpagina. Strava-kaartjes
+  ongewijzigd (blijven extern linken naar strava.com).
+
+**Bewust niet meegenomen:** screenshot-geïmporteerde activiteiten hebben
+geen route (een foto bevat geen GPS-data) — voor die activiteiten toont de
+detailpagina een duidelijke melding ("Geen GPS-route beschikbaar") in
+plaats van een lege/kapotte kaart.
+
 ## v2.4.40 — Consolidatie: één importweg voor losse activiteiten (was 3)
 **Gebruiker merkte op dat de "Importeer"-knop op `/activities` een ouder,
 apart systeem gebruikte naast de nieuwe Garmin-activiteit-import. Bij
