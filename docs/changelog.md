@@ -1,5 +1,20 @@
 # CoachOS — Changelog
 
+## v2.4.47 — Build-fix: SessionStatus-type-fout in Finish Tone-effect
+- `src/app/training/session/[module]/page.tsx` — build-fout: *"This
+  comparison appears to be unintentional because the types 'SessionStatus'
+  and '\"voltooid\"' have no overlap"*.
+- **Root cause:** `'voltooid'` zit niet in de officiële `SessionStatus`-
+  type-definitie (`@/types/training-engine`) — de rest van het bestand
+  gebruikt hiervoor consequent een expliciete cast
+  (`(session.status as string) === 'voltooid'`, zie bestaande code rond
+  regel 1303), maar dat patroon was niet toegepast in het nieuwe
+  Finish Tone-effect (v2.4.46).
+- Fix: `vorigeStatusRef` getypeerd als `string | null` in plaats van
+  `SessionStatus | null`, en `session.status` gecast naar `string` vóór
+  vergelijking — consistent met de bestaande stijl in dit bestand.
+  Functioneel geen wijziging.
+
 ## v2.4.46 — Professionele soundset (Polar/Garmin/Concept2-stijl) + nieuwe Finish Tone
 **Herontwerp op basis van gedetailleerde gebruikersspecificatie — geen
 schelle piepjes (irritant bij 30-60 min training), maar korte, relatief

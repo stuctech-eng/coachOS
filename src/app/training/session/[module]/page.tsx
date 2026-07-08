@@ -1084,13 +1084,14 @@ export default function SessionPage() {
   // verandert alleen `status` naar 'voltooid', workout_phase zelf blijft
   // ongewijzigd staan op dat moment (zie advancePhase, laatste tak) —
   // vandaar een eigen effect dat specifiek naar `status` luistert.
-  const vorigeStatusRef = useRef<SessionStatus | null>(null)
+  const vorigeStatusRef = useRef<string | null>(null)
   useEffect(() => {
     if (!session) { vorigeStatusRef.current = null; return }
-    if (vorigeStatusRef.current !== null && vorigeStatusRef.current !== 'voltooid' && session.status === 'voltooid') {
+    const huidigeStatus = session.status as string
+    if (vorigeStatusRef.current !== null && vorigeStatusRef.current !== 'voltooid' && huidigeStatus === 'voltooid') {
       speelFinishToon()
     }
-    vorigeStatusRef.current = session.status
+    vorigeStatusRef.current = huidigeStatus
   }, [session?.status])
 
   function updateStatus(status: SessionStatus) {
