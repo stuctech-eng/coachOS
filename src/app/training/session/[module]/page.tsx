@@ -982,14 +982,12 @@ export default function SessionPage() {
 
       if (prev.workout_phase === 'countdown') {
         // Countdown afgelopen → start de (eerste) set
-        speelStarttoon()
         return { ...prev, workout_phase: 'active', phase_end_at: Date.now() + getActiveDuration(seg) * 1000 }
       }
 
       if (prev.workout_phase === 'active') {
         const isLastSet = prev.current_set >= totalSets
         const nieuweFase = isLastSet ? 'last_rest' : 'rest'
-        speelEindsignaal()
         return {
           ...prev, workout_phase: nieuweFase,
           phase_end_at: Date.now() + restSec * 1000,
@@ -1000,7 +998,6 @@ export default function SessionPage() {
       if (prev.workout_phase === 'rest') {
         // v2.4.29 FASE 2: GEEN countdown meer tussen sets — direct door
         // naar de volgende set (active).
-        speelStarttoon()
         return {
           ...prev, workout_phase: 'active', current_set: prev.current_set + 1,
           phase_end_at: Date.now() + getActiveDuration(seg) * 1000,
@@ -1053,6 +1050,33 @@ export default function SessionPage() {
       laatsteTickRef.current = remaining
     }
   }, [remaining, session])
+
+  // v2.4.45 FIX: starttoon/eindsignaal stonden voorheen als directe
+  // aanroepen IN de setSession-functionele-updater (advancePhase). Dat is
+  // geen zuivere state-berekening — React-state-updaters horen vrij te
+  // zijn van side effects, en zo'n aanroep kan in bepaalde situaties
+  // onbetrouwbaar worden uitgevoerd. Gemeld symptoom: eindsignaal (actief
+  // → rust) werd gemist, terwijl starttoon/tick wel klonken.
+  // Nu: een losse useEffect die reageert op de DAADWERKELIJK gecommitte
+  // workout_phase-verandering (vergelijkbaar met het tick-effect
+  // hierboven) — puur "luisteren", nooit onderdeel van de state-berekening
+  // zelf. Dit is ook preciezer in lijn met de architectuurregel "geluid
+  // luistert alleen naar de timer, bestuurt nooit de workout".
+  const vorigeFaseRef = useRef<WorkoutPhase | null>(null)
+  useEffect(() => {
+    if (!session) { vorigeFaseRef.current = null; return }
+    const vorige = vorigeFaseRef.current
+    const huidige = session.workout_phase
+
+    if (vorige !== null && vorige !== huidige) {
+      if (vorige === 'countdown' && huidige === 'active') speelStarttoon()
+      else if (vorige === 'active' && (huidige === 'rest' || huidige === 'last_rest')) speelEindsignaal()
+      else if (vorige === 'rest' && huidige === 'active') speelStarttoon()
+      // last_rest → countdown: bewust stil, zoals in v2.4.29 al vastgelegd
+    }
+
+    vorigeFaseRef.current = huidige
+  }, [session?.workout_phase])
 
   function updateStatus(status: SessionStatus) {
     setSession(prev => prev ? { ...prev, status } : prev)

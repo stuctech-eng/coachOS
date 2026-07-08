@@ -1,5 +1,30 @@
 # CoachOS — Changelog
 
+## v2.4.45 — Fix: eindsignaal ontbrak bij Trainer AI/Bibliotheek (actief → rust)
+**Gemeld: bij Archief werkte het eindsignaal (lage toon bij einde set)
+correct, bij Trainer AI/Bibliotheek niet — starttoon en tick werkten daar
+wel.**
+
+- `src/app/training/session/[module]/page.tsx` — `speelStarttoon()`/
+  `speelEindsignaal()` stonden als directe aanroepen **binnen** de
+  `setSession()`-functionele-updater (`advancePhase()`). Dat is geen
+  zuivere state-berekening — React state-updaters horen vrij te zijn van
+  side effects zoals geluid afspelen, en zo'n aanroep kan in bepaalde
+  situaties onbetrouwbaar worden uitgevoerd (bijv. als React de updater
+  aanroept voor een berekening die uiteindelijk niet gecommit wordt).
+- **Fix:** geluidsaanroepen volledig verwijderd uit `advancePhase()`. In
+  plaats daarvan een nieuwe, losse `useEffect` die reageert op de
+  daadwerkelijk gecommitte `session.workout_phase`-verandering (bewaart de
+  vorige fase in een ref, vergelijkt bij elke wijziging) — exact hetzelfde
+  betrouwbare patroon dat het tick-geluid al gebruikte sinds v2.4.34.
+- **Bijkomend voordeel:** dit is preciezer in lijn met de architectuurregel
+  "geluid luistert alleen naar de timer, bestuurt nooit de workout" — de
+  geluidslogica zat voorheen inhoudelijk verweven in de state-berekening
+  zelf, nu is het een pure, losstaande "luisteraar".
+- Archief (`archief/oefening/[id]/page.tsx`) had dit probleem niet — daar
+  stonden de geluidsaanroepen al buiten de `setFase`-aanroepen, in gewone
+  functie-body's, niet in een React state-updater.
+
 ## v2.4.44 — TCX-bestand nu links en standaard geselecteerd (was Screenshot)
 - `src/app/settings/garmin-activity-import/page.tsx` — tabblad-volgorde
   omgedraaid (TCX-bestand links, Screenshot rechts) en de standaard
