@@ -71,6 +71,7 @@ export default function GarminActivityImportPage() {
   const [gekozenType, setGekozenType] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  const [wasOverwritten, setWasOverwritten] = useState(false)
 
   function resetAlles() {
     setFase('idle')
@@ -172,7 +173,12 @@ export default function GarminActivityImportPage() {
     formData.append('activity_type', gekozenType || tcxResult.suggestie)
     try {
       const res = await fetch('/api/health/garmin-activity-tcx', { method: 'POST', body: formData })
-      if (!res.ok) throw new Error()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setErrorMsg(data.error ?? 'Bevestigen mislukt. Probeer opnieuw.'); setFase('error'); return }
+      // v2.4.42: bij hetzelfde TCX-bestand wordt de bestaande activiteit nu
+      // overschreven i.p.v. geweigerd — aparte melding in plaats van
+      // "Opgeslagen", zodat duidelijk is dat het geen nieuwe activiteit is.
+      setWasOverwritten(!!data.overwritten)
       setFase('done')
     } catch {
       setErrorMsg('Bevestigen mislukt. Probeer opnieuw.')
@@ -361,12 +367,21 @@ export default function GarminActivityImportPage() {
               </svg>
             </div>
             <div>
-              <p className="font-semibold">Opgeslagen</p>
-              <p className="text-sm text-white/50 mt-1">Ga naar Home om de evaluatie (Coach Call) in te vullen.</p>
+              <p className="font-semibold">{wasOverwritten ? 'Bijgewerkt' : 'Opgeslagen'}</p>
+              <p className="text-sm text-white/50 mt-1">
+                {wasOverwritten
+                  ? 'Deze activiteit bestond al — de gegevens zijn ververst met de nieuwste data.'
+                  : 'Ga naar Home om de evaluatie (Coach Call) in te vullen.'}
+              </p>
             </div>
-            <button onClick={() => router.push('/home')} className="mt-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
-              Naar Home
-            </button>
+            <div className="flex gap-2 mt-2 w-full">
+              <button onClick={() => router.push('/activities')} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
+                Bekijk activiteiten
+              </button>
+              <button onClick={() => router.push('/home')} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
+                Naar Home
+              </button>
+            </div>
           </div>
         )}
 

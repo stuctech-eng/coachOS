@@ -1,5 +1,31 @@
 # CoachOS — Changelog
 
+## v2.4.42 — TCX-import overschrijft nu i.p.v. te weigeren bij duplicaat
+**Directe aanleiding: route-data (v2.4.41) ontbrak bij al eerder
+geïmporteerde activiteiten (geüpload vóór die functie bestond). Opnieuw
+uploaden werd geblokkeerd door de idempotency-check (v2.4.28) — nu wordt
+de bestaande activiteit ververst in plaats van geweigerd.**
+
+- `src/app/api/health/garmin-activity-tcx/route.ts` — bij een duplicaat
+  (zelfde TCX-starttijd) wordt de bestaande `activity_sessions`-rij nu
+  **overschreven** met de opnieuw geparste `metrics` (inclusief route,
+  en eventuele andere velden die sindsdien zijn toegevoegd aan de
+  parser) — in plaats van een 409-foutmelding te geven.
+- **Bewust GEEN nieuwe Coach Call** bij overschrijven — dat zou een
+  mogelijk al-geëvalueerde training opnieuw om RPE/mood vragen, verwarrend
+  voor wat feitelijk dezelfde training is. Wel wordt
+  `coach_call_items.duration_min` bijgewerkt als de duur is veranderd
+  (bijv. door een verbeterde parser), zodat een nog-niet-ingevulde
+  evaluatie de juiste duur toont.
+- `src/app/settings/garmin-activity-import/page.tsx` — toont nu
+  **"Bijgewerkt"** met een duidelijke uitleg in plaats van "Opgeslagen"
+  wanneer het om een overschrijving ging, zodat de gebruiker weet dat het
+  geen nieuwe activiteit betreft.
+- **Praktisch gebruik:** activiteiten die vóór v2.4.41 zijn geïmporteerd
+  (dus zonder route) kunnen nu alsnog van een route worden voorzien door
+  hetzelfde TCX-bestand simpelweg opnieuw te uploaden — geen handmatige
+  database-opschoning nodig.
+
 ## v2.4.41 — NIEUW: Route-kaart bij activiteiten (Leaflet + OpenStreetMap)
 **Ontdekking: TCX-bestanden bevatten al de volledige GPS-route (lat/lon per
 trackpoint) — we gebruikten dat tot nu toe alleen om `has_gps` te bepalen

@@ -57,35 +57,6 @@ export async function POST(req: NextRequest) {
       const durationMin = parsed.duration_min ?? 0
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
-      // Idempotency-check (v2.4.28) — ongewijzigd
-      if (parsed.start_date) {
-        const { data: bestaandeSessie } = await adminSupabase
-          .from('activity_sessions')
-          .select('id')
-          .eq('user_id', user.id)
-          .ilike('notes', '%garmin_tcx_start:' + parsed.start_date + '%')
-          .single()
-
-        if (bestaandeSessie) {
-          return NextResponse.json({
-            error: 'Deze activiteit is al eerder geïmporteerd (zelfde TCX-bestand).',
-            already_imported: true,
-          }, { status: 409 })
-        }
-      }
-
-      let { data: userActivity } = await adminSupabase
-        .from('activities').select('id').eq('user_id', user.id).eq('name', activityLabel).single()
-
-      if (!userActivity) {
-        const { data: template } = await adminSupabase
-          .from('activity_templates').select('id').eq('name', activityLabel).single()
-        const { data: newActivity } = await adminSupabase
-          .from('activities').insert({ user_id: user.id, template_id: template?.id || null, name: activityLabel })
-          .select().single()
-        userActivity = newActivity
-      }
-
       const metrics: Record<string, unknown> = {}
       if (parsed.distance_m) metrics.distance = parsed.distance_m
       if (parsed.avg_hr) metrics.avg_hr = parsed.avg_hr
@@ -100,6 +71,61 @@ export async function POST(req: NextRequest) {
       if (parsed.elevation_gain_m) metrics.elevation_gain = parsed.elevation_gain_m
       if (parsed.elevation_loss_m) metrics.elevation_loss = parsed.elevation_loss_m
       if (parsed.route && parsed.route.length > 0) metrics.route = parsed.route
+
+      // v2.4.42 FIX: was een harde 409-blokkade bij hetzelfde TCX-bestand.
+      // Nu: OVERSCHRIJVEN in plaats van weigeren — verst de metrics op de
+      // bestaande rij (bijv. route die er bij de eerste import nog niet
+      // was, vóór v2.4.41). Bewust GEEN nieuwe Coach Call — dat zou een
+      // al-geëvalueerde training opnieuw om RPE/mood vragen, verwarrend
+      // voor iets wat feitelijk dezelfde training is. Wel het bestaande
+      // coach_call_item.duration_min bijwerken als de duur is veranderd
+      // (bv. door een verbeterde parser), zodat een nog-niet-ingevulde
+      // evaluatie de juiste duur toont.
+      if (parsed.start_date) {
+        const { data: bestaandeSessie } = await adminSupabase
+          .from('activity_sessions')
+          .select('id, duration')
+          .eq('user_id', user.id)
+          .ilike('notes', '%garmin_tcx_start:' + parsed.start_date + '%')
+          .single()
+
+        if (bestaandeSessie) {
+          const { error: updateError } = await adminSupabase
+            .from('activity_sessions')
+            .update({ metrics, duration: durationMin })
+            .eq('id', bestaandeSessie.id)
+
+          if (updateError) throw updateError
+
+          if (bestaandeSessie.duration !== durationMin) {
+            await adminSupabase
+              .from('coach_call_items')
+              .update({ duration_min: durationMin })
+              .eq('activity_session_id', bestaandeSessie.id)
+          }
+
+          await adminSupabase.from('garmin_activity_imports')
+            .update({ status: 'confirmed', activity_session_id: bestaandeSessie.id })
+            .eq('id', confirmId)
+
+          return NextResponse.json({
+            success: true, confirmed: true, overwritten: true,
+            activity_session_id: bestaandeSessie.id,
+          })
+        }
+      }
+
+      let { data: userActivity } = await adminSupabase
+        .from('activities').select('id').eq('user_id', user.id).eq('name', activityLabel).single()
+
+      if (!userActivity) {
+        const { data: template } = await adminSupabase
+          .from('activity_templates').select('id').eq('name', activityLabel).single()
+        const { data: newActivity } = await adminSupabase
+          .from('activities').insert({ user_id: user.id, template_id: template?.id || null, name: activityLabel })
+          .select().single()
+        userActivity = newActivity
+      }
 
       const { data: session, error: sessionError } = await adminSupabase
         .from('activity_sessions')
