@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.43 — Activiteiten in bottom-nav + Strava-consolidatie (zelfde principe als v2.4.40)
+**Vervolg op v2.4.40 (Garmin-consolidatie) — nu Strava's "Synchroniseren"
+en "Bekijk activiteiten" ook verplaatst naar `/activities`. Ontdekking
+tijdens overleg: `/activities` had geen permanente ingang in de app (geen
+bottom-nav-tab) — opgelost door een 6e tab toe te voegen.**
+
+- `src/components/layout/index.tsx` (`BottomNav`) — nieuwe **"Activiteiten"**-
+  tab toegevoegd (6e item). De balk is nu horizontaal scrollbaar
+  (`overflow-x-auto` i.p.v. `justify-around`, elk item met vaste
+  `min-w-[68px]`) zodat 6 tabs niet knijpen op kleinere schermen.
+- `src/app/settings/page.tsx` — `StravaSection` sterk vereenvoudigd: toont
+  nu alleen de koppelingsstatus (verbonden/niet, "Verbind Strava"). De
+  "Activiteiten synchroniseren"- en "Bekijk activiteiten"-knoppen
+  (inclusief alle bijbehorende sync-state en -logica) zijn verwijderd —
+  verplaatst naar `/activities`. Ongebruikte imports opgeschoond
+  (`RefreshCw`, `BarChart2`, `AlertTriangle`, `useRef`, `SyncResult`-type).
+- `src/app/activities/page.tsx` — nieuwe **"Synchroniseer Strava"**-knop,
+  direct onder de bestaande "Activiteit toevoegen" (Garmin). Bewuste
+  volgorde: Garmin bovenaan, want naar verwachting vaker gebruikt dan
+  Strava. Sync-logica (inclusief de v2.4.22-timeout- en
+  duidelijke-foutafhandeling) hergebruikt, nu hier in plaats van in
+  Instellingen.
+
+**Resultaat — alle activiteiten-gerelateerde acties nu op één plek:**
+- `/activities` → "Activiteit toevoegen" (Garmin screenshot/TCX)
+- `/activities` → "Synchroniseer Strava"
+- `/activities` → activiteitenlijst zelf, klikbaar voor detail+route (v2.4.41)
+- Instellingen → Strava-kaart: alleen nog koppeling zelf (echte instelling)
+
 ## v2.4.42 — TCX-import overschrijft nu i.p.v. te weigeren bij duplicaat
 **Directe aanleiding: route-data (v2.4.41) ontbrak bij al eerder
 geïmporteerde activiteiten (geüpload vóór die functie bestond). Opnieuw

@@ -216,7 +216,7 @@ vervangen).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.42 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.43 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 24/102 live (18 PNG + 6 WebP), #22 Forward Lunge volgende | 🔄 In progress |
 | Kettlebell gewicht uitbreiden naar 32kg | 🟡 |
@@ -229,7 +229,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.42
+- Versie: 2.4.43
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -522,6 +522,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.43 — Activiteiten in bottom-nav (6e tab, horizontaal scrollbaar) + Strava-consolidatie naar /activities
 - v2.4.42 — TCX-import overschrijft nu i.p.v. te weigeren bij duplicaat (geen nieuwe Coach Call)
 - v2.4.41 — NIEUW: Route-kaart bij activiteiten (Leaflet + OpenStreetMap), nieuwe detailpagina /activities/[id]
 - v2.4.40 — Consolidatie: 3 importwegen → 1, kapotte oude GPX/TCX-route (lap-bug) verwijderd

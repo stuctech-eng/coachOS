@@ -1,7 +1,7 @@
 'use client'
-import { Suspense, useEffect, useState, useRef } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { LogOut, User, Target, Info, ChevronRight, Activity, RefreshCw, CheckCircle, XCircle, Zap, Calendar, Camera, BarChart2, HelpCircle, Wrench, Bug, AlertTriangle } from 'lucide-react'
+import { LogOut, User, Target, Info, ChevronRight, Activity, CheckCircle, XCircle, Zap, Calendar, Camera, HelpCircle, Wrench, Bug } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -12,15 +12,6 @@ interface StravaStatus {
   last_sync: string | null
 }
 
-interface SyncResult {
-  success: boolean
-  message: string
-  imported?: number
-  skipped?: number
-  importedNames?: string[]
-  errors?: string[]
-}
-
 // v2.4.22: REBUILD van de sync-UI. Voorheen kon het resultaatbericht
 // verdwijnen zonder duidelijke reden (bv. als de request nooit teruggaf
 // door het ontbreken van een timeout aan de serverkant — zie
@@ -28,55 +19,21 @@ interface SyncResult {
 // volgende sync-poging, en na 10 seconden zonder resultaat verschijnt een
 // expliciete "dit duurt langer dan verwacht"-melding in plaats van alleen
 // een spinner die eindeloos kan blijven draaien.
+// v2.4.43: sterk vereenvoudigd — Sync- en Bekijk-activiteiten-knoppen zijn
+// verhuisd naar /activities (zie daar), consistent met hoe Garmin-import
+// al werkte sinds v2.4.40. Deze sectie toont nu alleen de koppelingsstatus
+// zelf, wat een echte "instelling" is (OAuth-koppeling verbreken/maken).
 function StravaSection() {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const [stravaStatus, setStravaStatus] = useState<StravaStatus>({ connected: false, athlete_name: null, last_sync: null })
-  const [syncing, setSyncing] = useState(false)
-  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
-  const [langzameSync, setLangzameSync] = useState(false)
-  const langzameSyncTimer = useRef<NodeJS.Timeout | null>(null)
+  const [koppelResultaat, setKoppelResultaat] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/strava/sync', { credentials: 'include' }).then(r => r.json()).then(setStravaStatus).catch(() => {})
     const stravaParam = searchParams.get('strava')
-    if (stravaParam === 'connected') setSyncResult({ success: true, message: 'Strava gekoppeld!' })
-    if (stravaParam === 'error') setSyncResult({ success: false, message: 'Koppeling mislukt. Probeer opnieuw.' })
+    if (stravaParam === 'connected') setKoppelResultaat('Strava gekoppeld!')
+    if (stravaParam === 'error') setKoppelResultaat('Koppeling mislukt. Probeer opnieuw.')
   }, [searchParams])
-
-  const handleStravaSync = async () => {
-    setSyncing(true)
-    setSyncResult(null)
-    setLangzameSync(false)
-
-    // Na 10 sec zonder resultaat: laat expliciet weten dat het langer duurt
-    // dan gebruikelijk, in plaats van een spinner die niets zegt
-    langzameSyncTimer.current = setTimeout(() => setLangzameSync(true), 10000)
-
-    try {
-      const res = await fetch('/api/strava/sync', { method: 'POST', credentials: 'include' })
-      const data = await res.json()
-      setSyncResult({
-        success: data.success !== false,
-        message: data.message || (data.success === false ? (data.error || 'Sync mislukt') : 'Sync klaar'),
-        imported: data.imported,
-        skipped: data.skipped,
-        importedNames: data.importedNames,
-        errors: data.errors,
-      })
-      fetch('/api/strava/sync', { credentials: 'include' }).then(r => r.json()).then(setStravaStatus).catch(() => {})
-    } catch (e) {
-      setSyncResult({ success: false, message: 'Sync mislukt — netwerkfout: ' + (e as Error).message })
-    } finally {
-      setSyncing(false)
-      setLangzameSync(false)
-      if (langzameSyncTimer.current) clearTimeout(langzameSyncTimer.current)
-    }
-  }
-
-  useEffect(() => {
-    return () => { if (langzameSyncTimer.current) clearTimeout(langzameSyncTimer.current) }
-  }, [])
 
   return (
     <Card className="p-4">
@@ -96,44 +53,17 @@ function StravaSection() {
         }
       </div>
 
-      {syncing && langzameSync && (
-        <div className="flex items-start gap-2 mb-3 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-          <AlertTriangle size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-400">Dit duurt langer dan gebruikelijk — Strava reageert traag. Nog even geduld (max. 20 sec).</p>
-        </div>
+      {koppelResultaat && (
+        <p className="text-xs text-primary-400 mb-3">{koppelResultaat}</p>
       )}
 
-      {syncResult && !syncing && (
-        <div className={`mb-3 px-3 py-2 rounded-lg ${syncResult.success ? 'bg-primary-500/10 border border-primary-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-          <p className={`text-xs ${syncResult.success ? 'text-primary-400' : 'text-red-400'}`}>{syncResult.message}</p>
-          {syncResult.importedNames && syncResult.importedNames.length > 0 && (
-            <div className="mt-1.5 flex flex-col gap-0.5">
-              {syncResult.importedNames.map((naam, i) => (
-                <p key={i} className="text-xs text-slate-400">• {naam}</p>
-              ))}
-            </div>
-          )}
-          {syncResult.errors && syncResult.errors.length > 0 && (
-            <p className="text-xs text-red-400/70 mt-1">{syncResult.errors.length} activiteit(en) gaven een fout — check Debug diagnostiek voor details.</p>
-          )}
-        </div>
-      )}
-
-      {stravaStatus.connected ? (
-        <div className="flex flex-col gap-2">
-          <Button onClick={handleStravaSync} loading={syncing} variant="secondary" fullWidth size="sm">
-            <RefreshCw size={14} className="mr-2" />
-            Activiteiten synchroniseren
-          </Button>
-          <Button onClick={() => router.push('/activities')} variant="secondary" fullWidth size="sm">
-            <BarChart2 size={14} className="mr-2" />
-            Bekijk activiteiten
-          </Button>
-        </div>
-      ) : (
+      {!stravaStatus.connected && (
         <Button onClick={() => window.location.href = '/api/strava/auth'} variant="secondary" fullWidth size="sm">
           Verbind Strava
         </Button>
+      )}
+      {stravaStatus.connected && (
+        <p className="text-xs text-slate-500">Synchroniseren en activiteiten bekijken kan via de Activiteiten-tab.</p>
       )}
     </Card>
   )

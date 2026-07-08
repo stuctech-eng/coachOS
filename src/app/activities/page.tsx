@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronRight, Plus } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Plus, RefreshCw, AlertTriangle } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 
 interface ActivityMetrics {
@@ -77,6 +77,36 @@ export default function ActiviteitenPage() {
   const [sessions, setSessions] = useState<ActivitySession[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('alle')
+  // v2.4.43: Strava-sync verplaatst vanuit Instellingen naar hier, naast
+  // de Garmin-import-knop — consistent, alle manieren om activiteiten
+  // binnen te halen op één plek.
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<{ success: boolean; message: string; importedNames?: string[] } | null>(null)
+  const [langzameSync, setLangzameSync] = useState(false)
+
+  async function handleStravaSync() {
+    setSyncing(true)
+    setSyncResult(null)
+    setLangzameSync(false)
+    const langzameSyncTimer = setTimeout(() => setLangzameSync(true), 10000)
+    try {
+      const res = await fetch('/api/strava/sync', { method: 'POST', credentials: 'include' })
+      const data = await res.json()
+      setSyncResult({
+        success: data.success !== false,
+        message: data.message || (data.success === false ? (data.error || 'Sync mislukt') : 'Sync klaar'),
+        importedNames: data.importedNames,
+      })
+      if (data.success !== false) await laadActiviteiten()
+    } catch (e) {
+      setSyncResult({ success: false, message: 'Sync mislukt — netwerkfout: ' + (e as Error).message })
+    } finally {
+      setSyncing(false)
+      setLangzameSync(false)
+      clearTimeout(langzameSyncTimer)
+    }
+  }
+
 
   useEffect(() => {
     laadActiviteiten()
@@ -158,6 +188,38 @@ export default function ActiviteitenPage() {
             </div>
             <ChevronRight size={18} className="text-gray-600 flex-shrink-0" />
           </button>
+
+          {/* v2.4.43: Strava-sync, verplaatst vanuit Instellingen */}
+          <button onClick={handleStravaSync} disabled={syncing}
+            className="w-full bg-[#1c2128] rounded-2xl p-4 flex items-center gap-3 active:bg-[#22272e] transition-colors mt-3 disabled:opacity-60">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+              <RefreshCw size={20} className={`text-orange-400 ${syncing ? 'animate-spin' : ''}`} />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-semibold text-white">{syncing ? 'Synchroniseren...' : 'Synchroniseer Strava'}</p>
+              <p className="text-xs text-gray-400">Haal nieuwe Strava-activiteiten op</p>
+            </div>
+          </button>
+
+          {syncing && langzameSync && (
+            <div className="flex items-start gap-2 mt-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <AlertTriangle size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-400">Dit duurt langer dan gebruikelijk — Strava reageert traag. Nog even geduld (max. 20 sec).</p>
+            </div>
+          )}
+
+          {syncResult && !syncing && (
+            <div className={`mt-2 px-3 py-2 rounded-lg ${syncResult.success ? 'bg-primary-500/10 border border-primary-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
+              <p className={`text-xs ${syncResult.success ? 'text-primary-400' : 'text-red-400'}`}>{syncResult.message}</p>
+              {syncResult.importedNames && syncResult.importedNames.length > 0 && (
+                <div className="mt-1.5 flex flex-col gap-0.5">
+                  {syncResult.importedNames.map((naam, i) => (
+                    <p key={i} className="text-xs text-slate-400">• {naam}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Filter tabs */}
