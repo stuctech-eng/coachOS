@@ -1,5 +1,35 @@
 # CoachOS — Changelog
 
+## v2.4.56 — Tempo-keuze (Slow/Normaal/Fast) nu ook in Archief
+**Laatste stap van de gewicht/tempo-consistentie tussen Trainer AI/
+Bibliotheek en Archief. Archief had al gewicht (v2.4.49), tempo ontbrak
+nog volledig — vaste 3 sec/rep, niet instelbaar.**
+
+- `src/app/archief/oefening/[id]/page.tsx` — nieuw tempo-systeem, zelfde
+  concept als Trainer AI/Bibliotheek (`localStorage`-voorkeur per
+  oefeningnaam, 4/3/2 sec-per-rep voor slow/normal/fast). **Geen
+  advies-vergelijking** — Archief heeft geen coach-schema om van af te
+  wijken, dus dat deel (v2.4.52/53) is hier niet van toepassing, puur een
+  persoonlijke instelling.
+- Tempo-knoppen op **twee plekken**, consistent met hoe gewicht/tempo in
+  Trainer AI werken sinds v2.4.54:
+  - **Instelscherm** (vóór starten): tempo instelbaar, naast de
+    bestaande gewicht-knoppen — alleen zichtbaar bij rep-gebaseerde
+    oefeningen.
+  - **Actieve set**: tempo live bijstelbaar, past de resterende tijd
+    direct aan (`phase_end_at` herberekend op basis van het nieuwe tempo).
+- Bij opslaan wordt het gebruikte tempo meegestuurd (`segment.tempo`) —
+  komt via de al bestaande `training/complete/route.ts`-logica (v2.4.53)
+  terecht in `exercise_records.tempo`, zonder dat dat bestand aangepast
+  hoefde te worden (de fallback las al `seg.tempo` als er geen
+  `actual_tempo` aanwezig was).
+
+**Resultaat: Trainer AI/Bibliotheek en Archief bieden nu identieke
+gewicht- en tempo-functionaliteit**, met als enige verschil dat Trainer
+AI een coach-advies als startpunt heeft (en de coach ziet afwijkingen),
+terwijl Archief een pure, geheugen-gebaseerde persoonlijke voorkeur
+gebruikt (geen advies om van af te wijken).
+
 ## v2.4.55 — NIEUW: "Ververs schema"-knop — doorbreekt dubbele cache
 **Directe aanleiding: gebruiker zag geen gewicht/tempo-knoppen (v2.4.51/54)
 bij een Kettlebell-schema dat die dag al eerder was geopend. Root cause:

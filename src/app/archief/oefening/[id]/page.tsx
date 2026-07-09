@@ -17,6 +17,30 @@ import { MOBILITY_OEFENINGEN } from '@/lib/mobility-exercises'
 // v2.4.49: uitgebreid van 14-16-20 naar 14-16-20-24-28-32 op verzoek
 const KETTLEBELL_GEWICHTEN = [14, 16, 20, 24, 28, 32]
 
+// v2.4.56: tempo-keuze (Slow/Normaal/Fast), zelfde concept als Trainer
+// AI/Bibliotheek — puur een persoonlijke voorkeur (localStorage), geen
+// coach-advies om van af te wijken (Archief heeft geen coach-schema).
+type Tempo = 'slow' | 'normal' | 'fast'
+const TEMPO_SEC_PER_REP_MAP: Record<Tempo, number> = { slow: 4, normal: 3, fast: 2 }
+const TEMPO_STORAGE_KEY = 'coachos_exercise_tempo'
+
+function getTempoMap(): Record<string, Tempo> {
+  try {
+    const raw = localStorage.getItem(TEMPO_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch { return {} }
+}
+function getTempo(exercise: string): Tempo {
+  return getTempoMap()[exercise] || 'normal'
+}
+function setTempoVoorkeur(exercise: string, tempo: Tempo) {
+  try {
+    const map = getTempoMap()
+    map[exercise] = tempo
+    localStorage.setItem(TEMPO_STORAGE_KEY, JSON.stringify(map))
+  } catch { /* */ }
+}
+
 // v2.4.30 — TIMER ENGINE REBUILD voor Archief (zelfde techniek als
 // training/session/[module]/page.tsx v2.4.29, maar met eigen flowregels
 // omdat de gebruikssituatie anders is: één losse oefening met herhaalde
@@ -102,6 +126,10 @@ export default function ArchiefOefeningPage() {
   const [duurSec, setDuurSec] = useState(30)
   const [rustSec, setRustSec] = useState(60)
   const [gewicht, setGewicht] = useState<number | null>(null)
+  // v2.4.56: tempo-keuze, zelfde plek in de state als de andere instelbare
+  // waarden — begint op 'normal', wordt bijgewerkt zodra de oefening
+  // geladen is (met de opgeslagen persoonlijke voorkeur, indien aanwezig)
+  const [tempo, setTempo] = useState<Tempo>('normal')
 
   // Workout state
   const [fase, setFase] = useState<'instellen' | 'countdown' | 'actief' | 'rust' | 'voltooid' | 'evaluatie' | 'opgeslagen'>('instellen')
@@ -117,11 +145,12 @@ export default function ArchiefOefeningPage() {
   const [rating, setRating] = useState<number | null>(null)
   const [opslaan, setOpslaan] = useState(false)
 
-  // Reps worden omgezet naar tijdseenheid via tempo (3 sec/rep) zodat er
-  // altijd een aftellende timer getoond kan worden — ook bij rep-oefeningen.
+  // Reps worden omgezet naar tijdseenheid via tempo zodat er altijd een
+  // aftellende timer getoond kan worden — ook bij rep-oefeningen.
+  // v2.4.56: TEMPO_SEC_PER_REP was een vaste 3 — nu instelbaar via de
+  // nieuwe tempo-state, zelfde 4/3/2 sec-per-rep-logica als Trainer AI.
   const isTijdGebaseerd = data?.oefening.duur !== undefined && !data?.oefening.herhalingen
-  const TEMPO_SEC_PER_REP = 3
-  const effectieveDuurSec = isTijdGebaseerd ? duurSec : reps * TEMPO_SEC_PER_REP
+  const effectieveDuurSec = isTijdGebaseerd ? duurSec : reps * TEMPO_SEC_PER_REP_MAP[tempo]
 
   useEffect(() => {
     const gevonden = vindOefening(oefeningId)
@@ -131,6 +160,11 @@ export default function ArchiefOefeningPage() {
       setReps(gemReps)
       if (gevonden.oefening.duur) setDuurSec(gevonden.oefening.duur)
       if (gevonden.oefening.isKettlebell) setGewicht(KETTLEBELL_GEWICHTEN[0])
+      // v2.4.56: opgeslagen tempo-voorkeur laden, alleen relevant bij
+      // rep-gebaseerde oefeningen (tijd-gebaseerde hebben al een directe duur)
+      if (!gevonden.oefening.duur || gevonden.oefening.herhalingen) {
+        setTempo(getTempo(gevonden.oefening.naam))
+      }
     }
     setLaden(false)
   }, [oefeningId])
@@ -181,6 +215,10 @@ export default function ArchiefOefeningPage() {
         reps: isTijdGebaseerd ? null : reps,
         duration_sec: isTijdGebaseerd ? duurSec : null,
         weight_kg: gewicht,
+        // v2.4.56: tempo meesturen — zelfde generieke veld als v2.4.50 bij
+        // niet-kettlebell Trainer AI-oefeningen (geen advies-vergelijking
+        // hier, puur de gebruikte waarde, Archief heeft geen coach-schema)
+        tempo: isTijdGebaseerd ? null : tempo,
       }
 
       await fetch('/api/training/complete', {
@@ -459,6 +497,25 @@ export default function ArchiefOefeningPage() {
                   </div>
                 )}
 
+                {/* v2.4.56: tempo-keuze, alleen bij rep-gebaseerde
+                    oefeningen — bij tijd-gebaseerde oefeningen bepaalt de
+                    gebruiker de duur al direct, geen apart tempo-concept */}
+                {!isTijdGebaseerd && (
+                  <div>
+                    <p className="text-sm text-slate-300 mb-2">Tempo</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
+                        <button key={t} onClick={() => { setTempo(t); setTempoVoorkeur(oefening.naam, t) }}
+                          className={cn('py-2.5 rounded-xl text-sm font-semibold capitalize transition-colors',
+                            tempo === t ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
+                          )}>
+                          {t === 'slow' ? 'Slow' : t === 'normal' ? 'Normaal' : 'Fast'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-slate-300">Rust tussen sets</p>
                   <div className="flex items-center gap-3">
@@ -542,6 +599,25 @@ export default function ArchiefOefeningPage() {
             <p className="text-slate-400 text-sm mb-1">
               {oefening.naam}{gewicht ? ` · ${gewicht}kg` : ''}
             </p>
+            {/* v2.4.56: tempo live bijstelbaar tijdens de actieve set —
+                past direct de resterende tijd aan, zelfde principe als
+                Trainer AI/Bibliotheek */}
+            {!isTijdGebaseerd && (
+              <div className="grid grid-cols-3 gap-2 mt-4">
+                {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
+                  <button key={t} onClick={() => {
+                    setTempo(t)
+                    setTempoVoorkeur(oefening.naam, t)
+                    setPhaseEndAt(Date.now() + reps * TEMPO_SEC_PER_REP_MAP[t] * 1000)
+                  }}
+                    className={cn('py-2 rounded-lg text-xs font-semibold capitalize transition-colors',
+                      tempo === t ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
+                    )}>
+                    {t === 'slow' ? 'Slow' : t === 'normal' ? 'Normaal' : 'Fast'}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex gap-3 mt-6">
               <button onClick={togglePauze}
                 className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold flex items-center justify-center gap-2">
