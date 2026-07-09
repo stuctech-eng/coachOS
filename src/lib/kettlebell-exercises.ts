@@ -63,7 +63,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-deadlift',
     naam: 'Kettlebell Deadlift',
-    illustratie: 'kettlebell-deadlift.png',
+    illustratie: 'kettlebell-deadlift.webp',
     categorie: 'hinge',
     lichaamsdelen: ['benen', 'billen', 'rug'],
     doelen: ['kracht', 'warmup'],
@@ -81,7 +81,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-sumo-deadlift',
     naam: 'Sumo Deadlift',
-    illustratie: 'sumo-deadlift.png',
+    illustratie: 'sumo-deadlift.webp',
     categorie: 'hinge',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht'],
@@ -99,7 +99,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-single-arm-deadlift',
     naam: 'Single Arm Deadlift',
-    illustratie: 'single-arm-deadlift.png',
+    illustratie: 'single-arm-deadlift.webp',
     categorie: 'hinge',
     lichaamsdelen: ['benen', 'billen', 'rug', 'core'],
     doelen: ['kracht', 'core'],
@@ -117,7 +117,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-romanian-deadlift',
     naam: 'Romanian Deadlift',
-    illustratie: 'romanian-deadlift.png',
+    illustratie: 'romanian-deadlift.webp',
     categorie: 'hinge',
     lichaamsdelen: ['benen', 'billen', 'rug'],
     doelen: ['kracht', 'herstel'],
@@ -135,7 +135,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-staggered-deadlift',
     naam: 'Staggered Stance Deadlift',
-    illustratie: 'staggered-stance-deadlift.png',
+    illustratie: 'staggered-stance-deadlift.webp',
     categorie: 'hinge',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht'],
@@ -154,7 +154,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
     id: 'kb-swing',
     naam: 'Kettlebell Swing',
     categorie: 'hinge',
-    illustratie: 'kettlebell-swing.png',
+    illustratie: 'kettlebell-swing.webp',
     lichaamsdelen: ['billen', 'rug', 'fullbody'],
     doelen: ['kracht', 'conditie', 'ballistisch'],
     niveau: 'beginner',
@@ -171,7 +171,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-russian-swing',
     naam: 'Russian Swing',
-    illustratie: 'russian-swing.png',
+    illustratie: 'russian-swing.webp',
     categorie: 'hinge',
     lichaamsdelen: ['billen', 'rug'],
     doelen: ['kracht', 'conditie'],
@@ -189,7 +189,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-american-swing',
     naam: 'American Swing',
-    illustratie: 'american-swing.png',
+    illustratie: 'american-swing.webp',
     categorie: 'hinge',
     lichaamsdelen: ['billen', 'rug', 'schouders'],
     doelen: ['kracht', 'conditie', 'ballistisch'],
@@ -207,7 +207,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-one-arm-swing',
     naam: 'One Arm Swing',
-    illustratie: 'one-arm-swing.png',
+    illustratie: 'one-arm-swing.webp',
     categorie: 'hinge',
     lichaamsdelen: ['billen', 'rug', 'core'],
     doelen: ['kracht', 'conditie', 'core'],
@@ -225,7 +225,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-hand-to-hand-swing',
     naam: 'Hand-to-Hand Swing',
-    illustratie: 'hand-to-hand-swing.png',
+    illustratie: 'hand-to-hand-swing.webp',
     categorie: 'hinge',
     lichaamsdelen: ['billen', 'rug', 'core'],
     doelen: ['kracht', 'conditie', 'ballistisch'],
@@ -243,7 +243,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-double-swing',
     naam: 'Double Swing',
-    illustratie: 'double-swing.png',
+    illustratie: 'double-swing.webp',
     categorie: 'hinge',
     lichaamsdelen: ['billen', 'rug'],
     doelen: ['kracht', 'conditie'],
@@ -261,7 +261,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-alternating-swing',
     naam: 'Alternating Swing',
-    illustratie: 'alternating-swing.png',
+    illustratie: 'alternating-swing.webp',
     categorie: 'hinge',
     lichaamsdelen: ['billen', 'rug', 'core'],
     doelen: ['kracht', 'conditie'],
@@ -282,7 +282,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-goblet-squat',
     naam: 'Goblet Squat',
-    illustratie: 'goblet-squat.png',
+    illustratie: 'goblet-squat.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht', 'warmup'],
@@ -300,7 +300,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-front-squat',
     naam: 'Front Squat',
-    illustratie: 'front-squat.png',
+    illustratie: 'front-squat.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen', 'schouders'],
     doelen: ['kracht'],
@@ -318,7 +318,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-double-front-squat',
     naam: 'Double Front Squat',
-    illustratie: 'double-front-squat.png',
+    illustratie: 'double-front-squat.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen', 'schouders'],
     doelen: ['kracht'],
@@ -444,6 +444,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-forward-lunge',
     naam: 'Forward Lunge',
+    illustratie: 'forward-lunge.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht', 'conditie'],
@@ -461,6 +462,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-walking-lunge',
     naam: 'Walking Lunge',
+    illustratie: 'walking-lunge.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht', 'conditie'],
@@ -478,6 +480,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-lateral-lunge',
     naam: 'Lateral Lunge',
+    illustratie: 'lateral-lunge.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht', 'mobiliteit'],
@@ -495,6 +498,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-cossack-squat',
     naam: 'Cossack Squat',
+    illustratie: 'cossack-squat.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen'],
     doelen: ['kracht', 'mobiliteit'],
@@ -512,6 +516,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-thruster',
     naam: 'Thruster',
+    illustratie: 'thruster.webp',
     categorie: 'squat',
     lichaamsdelen: ['benen', 'billen', 'schouders'],
     doelen: ['kracht', 'conditie', 'ballistisch'],
@@ -532,7 +537,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-strict-press',
     naam: 'Strict Press',
-    illustratie: 'kettlebell-press.png',
+    illustratie: 'kettlebell-press.webp',
     categorie: 'push',
     lichaamsdelen: ['schouders', 'armen'],
     doelen: ['kracht'],
@@ -550,6 +555,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-push-press',
     naam: 'Push Press',
+    illustratie: 'push-press.webp',
     categorie: 'push',
     lichaamsdelen: ['schouders', 'armen', 'benen'],
     doelen: ['kracht', 'ballistisch'],
@@ -845,7 +851,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-clean',
     naam: 'Clean',
-    illustratie: 'kettlebell-clean.png',
+    illustratie: 'kettlebell-clean.webp',
     categorie: 'ballistisch',
     lichaamsdelen: ['fullbody'],
     doelen: ['kracht', 'ballistisch', 'conditie'],
@@ -1019,7 +1025,7 @@ export const KETTLEBELL_OEFENINGEN: KettlebellOefening[] = [
   {
     id: 'kb-farmer-carry',
     naam: 'Farmer Carry',
-    illustratie: 'farmer-carry.png',
+    illustratie: 'farmer-carry.webp',
     categorie: 'carry',
     lichaamsdelen: ['core', 'fullbody'],
     doelen: ['kracht', 'conditie'],

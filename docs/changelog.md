@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.58 — 6 nieuwe illustraties (#22-27) + alle 24 bestaande retroactief gecomprimeerd
+**Ontdekking: de 100-300 KB-richtlijn uit de Illustratie Workflow-sectie is
+nooit daadwerkelijk gehaald, ook niet bij eerdere illustraties — alle 24
+al-gekoppelde bestanden (18 "PNG", 6 "WebP") bleken in werkelijkheid
+allemaal ~0,8-1,3 MB, ongeacht bestandsextensie. Bevestigd door de
+bestanden rechtstreeks van GitHub op te halen en te meten, niet aangenomen.**
+
+**6 nieuwe illustraties gekoppeld:**
+- Forward Lunge (#22), Walking Lunge (#23), Lateral Lunge (#24),
+  Cossack Squat (#25), Thruster (#26), Push Press (#27)
+- **Totaal nu 30/102 kettlebell-oefeningen met illustratie.**
+
+**Alle 24 bestaande illustraties retroactief gecomprimeerd:**
+- Opgehaald van GitHub (commit `0b8f5a9`), geconverteerd met PIL/Pillow
+  (quality=85, method=6), teruggezet als `.webp`.
+- **Totale reductie: 23,5 MB → 1,5 MB (94%)** voor de 24 bestaande, plus
+  de 6 nieuwe (~450 KB samen) — **totaal pakket nu ~2,0 MB voor 30
+  illustraties**, was ~29,5 MB.
+- **18 bestanden die eerder `.png` waren, zijn nu `.webp`** —
+  `kettlebell-exercises.ts` is bijgewerkt: alle `illustratie`-velden
+  wijzen nu naar `.webp`, geen `.png`-referenties meer over.
+- Visueel gecontroleerd (2 steekproeven, waaronder een voormalig PNG-
+  bestand): geen zichtbaar kwaliteitsverlies bij quality=85.
+
+**Belangrijke correctie op de eerdere v2.4.57-aanname:** bestandsgrootte
+was **geen** technisch blokkerend probleem voor GitHub/Vercel (beide
+kunnen dit probleemloos aan) — puur een laadtijd-optimalisatie voor
+eindgebruikers op mobiel. De gebruiker had gelijk dat dit niet per se
+nodig was om te "werken", maar koos ervoor het alsnog te doen zodra
+bleek dat de bestaande richtlijn nooit werd gehaald.
+
+**Bijwerking nodig in Working Copy:** de oude `.png`-bestanden
+(kettlebell-deadlift.png, sumo-deadlift.png, etc.) blijven ongebruikt in
+de repo staan — kunnen op een gewenst moment handmatig verwijderd worden,
+niet urgent (geen functionele impact, alleen overbodige opslag).
+
 ## v2.4.57 — Gewicht nu ook live bijstelbaar tijdens de actieve set (Archief)
 **Gemist bij v2.4.56: tempo werd toen wel live bijstelbaar gemaakt tijdens
 de actieve set, gewicht bleef alleen statische tekst (`· 16kg`) — een
