@@ -276,9 +276,11 @@ function getActiveDuration(seg: KettlebellSegment | undefined): number {
 
 // ─── Presentatie-componenten (grotendeels ongewijzigd qua uiterlijk) ─────────
 
-function SchemaLayer({ schema, onStart }: {
+function SchemaLayer({ schema, onStart, onRefresh, refreshing }: {
   schema: TrainingSchema
   onStart: (overrides: { gewicht: Record<number, number>; tempo: Record<number, Tempo> }) => void
+  onRefresh: () => void
+  refreshing: boolean
 }) {
   const intensiteitLabel = { light: 'Licht', medium: 'Gemiddeld', heavy: 'Zwaar' }
   const segments = getSegments(schema)
@@ -307,7 +309,22 @@ function SchemaLayer({ schema, onStart }: {
   return (
     <div className="flex flex-col gap-4 pb-4">
       <Card className="p-5">
-        <h2 className="text-xl font-bold text-white mb-2">{schema.title || 'Training'}</h2>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h2 className="text-xl font-bold text-white">{schema.title || 'Training'}</h2>
+          {/* v2.4.55: ververs-knop — doorbreekt zowel de server-side als
+              localStorage-cache, nodig om een schema dat vandaag al eerder
+              werd gegenereerd (vóór een codewijziging) alsnog vers op te
+              halen. Zie training/today/route.ts (force) en de handler in
+              SessionPage hieronder. */}
+          <button onClick={onRefresh} disabled={refreshing}
+            className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50 flex-shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              className={cn('text-slate-400', refreshing && 'animate-spin')}>
+              <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </button>
+        </div>
         <div className="flex items-center gap-2 flex-wrap mb-3">
           <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full">{schema.duration || 30} min</span>
           <span className={cn('text-xs px-3 py-1 rounded-full',
@@ -1058,6 +1075,46 @@ export default function SessionPage() {
     setLoading(false)
   }
 
+  const [refreshing, setRefreshing] = useState(false)
+
+  // v2.4.55: doorbreekt zowel de localStorage-cache (client) als de
+  // coach_recommendations-cache (server, via force:true) — beide caches
+  // moeten samen doorbroken worden, anders blijft een schema dat vandaag
+  // al eerder werd gegenereerd hangen, ongeacht hoeveel nieuwe
+  // codewijzigingen erna gedeployed zijn.
+  async function verversSchema() {
+    setRefreshing(true)
+    try {
+      const isLibrary = session?.training_source === 'library'
+      if (isLibrary) {
+        localStorage.removeItem(`training_lib_${module}_data`)
+        localStorage.removeItem(`training_lib_${module}_datum`)
+      } else {
+        localStorage.removeItem('training_instructie_data')
+      }
+      const res = await fetch('/api/training/today', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isLibrary ? { module, source: 'library', force: true } : { force: true }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const instruction = data.instruction || data
+        if (instruction?.training_type || instruction?.segments) {
+          const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+          if (isLibrary) {
+            localStorage.setItem(`training_lib_${module}_data`, JSON.stringify(instruction))
+            localStorage.setItem(`training_lib_${module}_datum`, vandaag)
+          } else {
+            localStorage.setItem('training_instructie_data', JSON.stringify(instruction))
+          }
+          buildAndSetSession(instruction, isLibrary ? 'library' : 'coach_plan')
+        }
+      }
+    } catch { /* stil falen — gebruiker kan het gewoon opnieuw proberen */ }
+    finally { setRefreshing(false) }
+  }
+
   useEffect(() => { if (session) saveSession(session) }, [session])
 
   // ─── Centrale ticking-loop + visibilitychange-herstel ─────────────────────
@@ -1442,7 +1499,7 @@ export default function SessionPage() {
                   gebruikt_tempo: { ...prev.gebruikt_tempo, ...overrides.tempo },
                   status: 'learning',
                 } : prev)
-              }} />
+              }} onRefresh={verversSchema} refreshing={refreshing} />
             )}
 
             {session.status === 'learning' && (

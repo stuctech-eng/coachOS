@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.55 — NIEUW: "Ververs schema"-knop — doorbreekt dubbele cache
+**Directe aanleiding: gebruiker zag geen gewicht/tempo-knoppen (v2.4.51/54)
+bij een Kettlebell-schema dat die dag al eerder was geopend. Root cause:
+twee losse caches, beide op datum, allebei ongevoelig voor nieuwe
+code-deploys diezelfde dag.**
+
+- **Server-side cache** (`coach_recommendations`-tabel, `training/today/
+  route.ts`): gaf bij elke aanvraag dezelfde dag altijd de eerder
+  gegenereerde versie terug, zelfs na een nieuwe deploy met nieuwe velden.
+- **Client-side cache** (`localStorage`, `session/[module]/page.tsx`):
+  checkte zelfs vóórdat de server ooit benaderd werd — dus zelfs een
+  server-side fix zou nooit zichtbaar worden zonder deze ook te doorbreken.
+
+**Fix:**
+- `src/app/api/training/today/route.ts` — nieuwe `force: true`-optie in
+  de POST-body omzeilt de server-side cache-check volledig.
+- `src/app/training/session/[module]/page.tsx` — nieuwe **ververs-knop**
+  (rond-pijltjes-icoon) naast de titel op het schema-overzichtsscherm.
+  Wist bij een tik zowel de relevante `localStorage`-sleutels als de
+  server-cache (via `force: true`), haalt een écht vers schema op, en
+  herbouwt de sessie daarmee.
+- Werkt voor zowel Trainingsbibliotheek-schema's (`training_lib_*`-sleutels)
+  als het normale coach-gegenereerde dagschema (`training_instructie_data`).
+
+**Nuttig, niet alleen voor dit specifieke geval:** dit soort dubbele
+cache-problemen kan bij elke toekomstige schema-gerelateerde codewijziging
+opnieuw optreden — de knop is een permanente uitweg, niet een eenmalige
+patch.
+
 ## v2.4.54 — Gewicht + tempo nu ook instelbaar in het trainingsoverzicht
 **Besluit (overleg): gewicht is een eenmalige, vooraf-te-bepalen keuze per
 oefening (hoort in het overzicht) — tempo is bedoeld om ook TIJDENS het

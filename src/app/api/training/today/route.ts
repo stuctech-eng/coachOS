@@ -81,14 +81,20 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient()
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
-    let body: { module?: TrainingModule; source?: string } = {}
+    let body: { module?: TrainingModule; source?: string; force?: boolean } = {}
     try { body = await req.json() } catch { /* geen body */ }
     const forcedModule = body.module
     const isLibrary = body.source === 'library' && !!forcedModule
     const cacheType = isLibrary ? `library_${forcedModule}` : 'training_today'
 
-    // Cache check
-    {
+    // v2.4.55: force=true omzeilt de cache-check volledig — nodig omdat
+    // gedeployde codewijzigingen (bv. nieuwe velden zoals weight_kg/
+    // target_tempo, v2.4.51) anders NOOIT zichtbaar worden voor een
+    // schema dat dezelfde dag al eerder werd gegenereerd en gecached,
+    // ongeacht hoeveel nieuwe deploys erna volgen. Zie ook de client-side
+    // localStorage-cache in session/[module]/page.tsx, die apart
+    // doorbroken moet worden (zie daar).
+    if (!body.force) {
       const { data: cached } = await supabase
         .from('coach_recommendations')
         .select('training_instruction')
