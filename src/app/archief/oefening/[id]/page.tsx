@@ -599,11 +599,26 @@ export default function ArchiefOefeningPage() {
             <p className="text-slate-400 text-sm mb-1">
               {oefening.naam}{gewicht ? ` · ${gewicht}kg` : ''}
             </p>
+            {/* v2.4.57: gewicht live bijstelbaar tijdens de actieve set —
+                was eerder alleen statische tekst. Consistent met tempo
+                hieronder, en met hoe Trainer AI/Bibliotheek dit al deed. */}
+            {oefening.isKettlebell && (
+              <div className="grid grid-cols-6 gap-1.5 mt-3">
+                {KETTLEBELL_GEWICHTEN.map(g => (
+                  <button key={g} onClick={() => setGewicht(g)}
+                    className={cn('py-2 rounded-lg text-xs font-semibold transition-colors',
+                      gewicht === g ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'
+                    )}>
+                    {g}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* v2.4.56: tempo live bijstelbaar tijdens de actieve set —
                 past direct de resterende tijd aan, zelfde principe als
                 Trainer AI/Bibliotheek */}
             {!isTijdGebaseerd && (
-              <div className="grid grid-cols-3 gap-2 mt-4">
+              <div className="grid grid-cols-3 gap-2 mt-3">
                 {(['slow', 'normal', 'fast'] as Tempo[]).map(t => (
                   <button key={t} onClick={() => {
                     setTempo(t)

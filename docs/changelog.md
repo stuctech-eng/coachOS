@@ -1,5 +1,17 @@
 # CoachOS — Changelog
 
+## v2.4.57 — Gewicht nu ook live bijstelbaar tijdens de actieve set (Archief)
+**Gemist bij v2.4.56: tempo werd toen wel live bijstelbaar gemaakt tijdens
+de actieve set, gewicht bleef alleen statische tekst (`· 16kg`) — een
+inconsistentie die de gebruiker meteen opmerkte.**
+
+- `src/app/archief/oefening/[id]/page.tsx` — gewicht-keuzeknoppen
+  (6, 14-32kg) toegevoegd aan de actieve set, direct boven de al
+  bestaande tempo-knoppen. Zelfde patroon als in het instelscherm.
+- Geen aanpassing aan de timer nodig bij een gewichtswijziging (in
+  tegenstelling tot tempo, dat de resterende tijd herberekent) — gewicht
+  heeft geen invloed op de duur van een set.
+
 ## v2.4.56 — Tempo-keuze (Slow/Normaal/Fast) nu ook in Archief
 **Laatste stap van de gewicht/tempo-consistentie tussen Trainer AI/
 Bibliotheek en Archief. Archief had al gewicht (v2.4.49), tempo ontbrak
