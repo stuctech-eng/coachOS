@@ -152,7 +152,11 @@ op precies het soort fout die deze gezondheidscheck juist moet voorkomen.
 ```
 Claude genereert illustratie-prompt (bestaand sjabloon, ongewijzigd)
     ↓
-Genereren via GPT, exporteren als WebP (PNG alleen bij noodzakelijke transparantie)
+Genereren via GPT (vaak PNG)
+    ↓
+Als PNG: Claude converteert naar WebP (PIL/Pillow, quality=90) — vangnet
+voor het geval de externe generator geen WebP oplevert, of de bestandsgrootte
+boven de 100-300 KB-richtlijn uitkomt
     ↓
 Kopiëren naar public/exercises/[naam].webp via Working Copy
     ↓
@@ -217,9 +221,9 @@ vervangen).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.57 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.58 | 🟡 |
 | Life-events pagina testen | 🟡 |
-| Kettlebell illustraties: 24/102 live (18 PNG + 6 WebP), #22 Forward Lunge volgende | 🔄 In progress |
+| Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
 | Exercise records vullen na eerste training | 🔄 automatisch |
 
@@ -229,7 +233,7 @@ vervangen).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.57
+- Versie: 2.4.58
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -487,7 +491,13 @@ Zie sectie "Illustratie Workflow" voor de PNG→WebP-knip vanaf #16.
 | Split Squat | ✅ Live (WebP) |
 | Bulgaarse Split Squat | ✅ Live (WebP) |
 | Reverse Lunge | ✅ Live (WebP) |
-| Forward Lunge | 🔄 Volgende (WebP) |
+| Forward Lunge | ✅ Live (WebP) |
+| Walking Lunge | ✅ Live (WebP) |
+| Lateral Lunge | ✅ Live (WebP) |
+| Cossack Squat | ✅ Live (WebP) |
+| Thruster | ✅ Live (WebP) |
+| Push Press | ✅ Live (WebP) |
+| Strict Press | 🔄 Volgende (#28, WebP) — eerdere sessie-aanname dat dit al gekoppeld was, klopte niet, gecontroleerd en gecorrigeerd |
 
 **Volgende:** vraag "volgende" voor de eerstvolgende oefening zonder illustratie
 (array-volgorde in `kettlebell-exercises.ts`, reeds voltooide overgeslagen).
@@ -522,6 +532,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.58 — 6 nieuwe illustraties (#22-27) + alle 24 bestaande retroactief gecomprimeerd (23,5MB → 1,5MB)
 - v2.4.57 — Gewicht nu ook live bijstelbaar tijdens de actieve set (was alleen tempo, v2.4.56)
 - v2.4.56 — Tempo-keuze (Slow/Normaal/Fast) nu ook in Archief, consistent met Trainer AI/Bibliotheek
 - v2.4.55 — NIEUW: "Ververs schema"-knop, doorbreekt dubbele (server+client) cache
@@ -637,7 +648,25 @@ Dit systeem is volledig ontworpen voor iPhone-first ontwikkeling. Desktop-workfl
 - Volledige bestanden, geen gedeeltelijke implementaties
 - Bestaande stijl en naamgeving behouden
 - Geen dubbele code, geen dode code, geen placeholders
-- ZIP naam: `coachos-fix.zip` / `coachos-update.zip` / `coachos-docs.zip`
+- ZIP naam: volgt het formaat `<project-slug>-<type>.zip` (project-slug =
+  `coachos`, altijd kleine letters, geen spaties/streepjes-varianten)
+
+  **Type-opties:**
+  - `fix` / `hotfix` / `patch` → kleine correctie (geen auto-tag)
+  - `update` / `feature` / `refactor` → grote wijziging (auto-tag)
+  - `docs` / `config` → documentatie/configuratie (geen auto-tag)
+
+  **Illustraties/assets vallen onder `update` of `feature`, geen apart
+  "assets"-type** — bijvoorbeeld:
+  - `coachos-update.zip` → een paar nieuwe illustraties toevoegen aan `public/`
+  - `coachos-feature.zip` → grote hoeveelheid nieuwe assets als onderdeel
+    van een feature
+
+  **Ongeacht het type bestand:** naam begint altijd met de exacte
+  project-slug, paden in de ZIP beginnen bij de repo root (dus
+  `public/exercises/naam.webp`, niet `coachos/public/exercises/naam.webp`
+  en niet met een omvattende prefix-map), geen spaties/hoofdletters in de
+  bestandsnaam zelf.
 - Paden beginnen bij repo root: `src/app/page.tsx` niet `coachOS/src/app/page.tsx`
 
 **iPhone-first workflow:**
@@ -679,8 +708,11 @@ Maak een spritesheet-afbeelding voor een trainingsapp die de oefening **[OEFENIN
 
 **De 5 fasen zijn:** [FASE 1 — FASE 2 — FASE 3 — FASE 4 — FASE 5]
 
-**Bestandsnaam:** `[oefening-id].png`
-**Bestandsformaat:** PNG, witte achtergrond, minimaal 1200px breed
+**Bestandsnaam:** `[oefening-id].webp`
+**Bestandsformaat:** WebP (voorkeur), witte achtergrond, minimaal 1200px breed.
+Levert GPT een PNG op (gebruikelijk): Claude converteert deze naar WebP
+(PIL/Pillow, quality=90) vóór levering — geen aparte vraag nodig, dit is
+een vaste stap in de workflow (zie sectie "Illustratie Workflow" hierboven).
 
 ---
 
