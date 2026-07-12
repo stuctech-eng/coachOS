@@ -238,10 +238,10 @@ uitgebreide regels verderop in dit document.
 
 ---
 
-## Specialist Coach Platform — architectuurtraject (nieuw, in ontwerpfase)
+## Specialist Coach Platform — architectuurtraject (in opbouw)
 
-**Status: architectuur + database-ontwerp goedgekeurd, SQL nog niet
-geschreven, geen code gewijzigd.**
+**Status: architectuur + database-ontwerp goedgekeurd, SQL geschreven
+(v2.4.59), nog geen API/UI.**
 
 Uitbreiding van CoachOS van één brede coach naar een platform met
 gespecialiseerde coaches (Cycling, Running, Rowing, Strength, ...) onder
@@ -260,8 +260,10 @@ gespecialiseerde coaches (Cycling, Running, Rowing, Strength, ...) onder
 **Kernbeslissing:** specialisten *adviseren*, de Master Coach *beslist* —
 geen losse AI-coaches, één coachervaring voor de gebruiker.
 
-**Volgende stap:** exacte SQL voor `specialist_profiles` en
-`specialist_analyses`, daarna API-ontwerp, dan pas UI. Nog niet gestart.
+**Voortgang:** ✅ architectuur, ✅ database-ontwerp, ✅ SQL
+(`supabase/specialist_layer.sql`, v2.4.59). **Volgende stap:**
+API-ontwerp (Orchestrator-route, specialist-activatie-endpoint), daarna
+pas UI. Nog niet gestart.
 
 ---
 
@@ -274,7 +276,7 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.58 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.59 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -286,7 +288,7 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.58
+- Versie: 2.4.59
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -585,6 +587,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.59 — SQL: specialist_profiles + specialist_analyses (eerste code van het specialistlaag-traject)
 - v2.4.58 — 6 nieuwe illustraties (#22-27) + alle 24 bestaande retroactief gecomprimeerd (23,5MB → 1,5MB)
 - v2.4.57 — Gewicht nu ook live bijstelbaar tijdens de actieve set (was alleen tempo, v2.4.56)
 - v2.4.56 — Tempo-keuze (Slow/Normaal/Fast) nu ook in Archief, consistent met Trainer AI/Bibliotheek

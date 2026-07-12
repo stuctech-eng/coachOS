@@ -1,5 +1,36 @@
 # CoachOS — Changelog
 
+## v2.4.59 — SQL: specialist_profiles + specialist_analyses
+**Eerste daadwerkelijke code van het specialistlaag-traject — exact de
+twee tabellen die in `docs/specialist-database-design.md` zijn besloten,
+niets extra's. Nog geen API-routes, nog geen UI (volgende stappen).**
+
+- **Nieuw:** `supabase/specialist_layer.sql`
+  - `specialist_profiles` — identity/activatie-laag. `user_id`,
+    `specialist_type`, `active`, `activated_at`, `preferences` (JSONB).
+    **Geen `goals`-veld** — doelen leven in de bestaande `user_goals`,
+    zoals besloten. Unieke constraint op `(user_id, specialist_type)` —
+    voorkomt duplicaten bij dubbel activeren. `updated_at` automatisch
+    bijgewerkt via trigger.
+  - `specialist_analyses` — analyse-laag, bewust **losstaand** van
+    `progress_analyses` (onderbouwing: zie changelog-entry
+    "Specialist Coach Platform" hierboven, en §4.5 van
+    `specialist-database-design.md`). `user_id`, `specialist_type`,
+    `period_days`, `analysis` (JSONB, vrije vorm), `generated_at`.
+  - RLS ingeschakeld op beide tabellen, standaard Supabase-patroon
+    (`auth.uid() = user_id`). **Aanname, niet geverifieerd tegen
+    bestaande RLS-policies elders in dit project** — routes gebruiken tot
+    nu toe vrijwel overal `createAdminClient()` (service-role, omzeilt
+    RLS toch al), dus dit is vooral een vangnet. Pas aan indien dit
+    project een ander RLS-patroon hanteert.
+  - **Geen wijzigingen aan bestaande tabellen** — `activity_sessions`,
+    `training_results`, `exercise_records`, `coach_calls`,
+    `progress_analyses`, `user_goals` blijven allemaal ongewijzigd,
+    exact zoals in het goedgekeurde ontwerp vastgelegd.
+
+**Volgende stap (nog niet gestart):** API-ontwerp (Orchestrator-route,
+specialist-activatie-endpoint), daarna pas UI ("Mijn Coaches"-sectie).
+
 ## [docs] Specialist Coach Platform — architectuur + database-ontwerp
 **Geen versie-ophoging — puur documentatie, geen code/SQL gewijzigd.**
 
