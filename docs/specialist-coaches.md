@@ -113,12 +113,37 @@ gebruiken (stijgende frequentie, progressie, aanwezigheid van een doel,
 past het bij de gebruiker) — maar de **drempel zelf** is vast en
 data-driven, niet AI-bepaald.
 
-**Belangrijk:** het bereiken van de drempel activeert **nooit**
-automatisch een specialist. Het systeem mag alleen **voorstellen**:
+**Aanscherping: frequentie alleen is niet de enige geldige trigger.**
+Iemand die één keer per maand een lange fietstocht doet, hoeft geen
+Cycling Hub voorgesteld te krijgen — dat is geen opkomend patroon. Maar
+andersom moet het systeem ook niet star vasthouden aan "exact 3 keer" als
+er al eerder een duidelijk opkomend patroon zichtbaar is (bijvoorbeeld
+toenemende frequentie binnen een kortere periode). Concreet betekent dit
+twee geldige, evenwaardige triggers voor een voorstel:
+1. **Drempel bereikt** (3-in-30, zoals hierboven) — het "harde" signaal
+2. **Opkomend patroon herkend** — bijv. duidelijk toenemende frequentie,
+   ook vóór de volle drempel — het "zachte" signaal
+
+Beide leiden tot **exact hetzelfde vervolg**, nooit tot automatische
+activatie (zie hieronder) — het verschil zit alleen in *wanneer* het
+systeem het gesprek durft te openen, niet in *wat* er gebeurt als dat
+gesprek wordt geopend.
+
+**Belangrijk, ongeacht welke trigger: het bereiken van een signaal
+activeert nooit automatisch een specialist.** Het systeem mag alleen
+**voorstellen**:
 
 > "Je doet dit regelmatig. Wil je deze coach activeren?"
 
-**De gebruiker beslist altijd zelf over activatie.**
+Of, bij het zachtere signaal:
+
+> "Ik zie dat fietsen onderdeel wordt van jouw patroon. Wil je een
+> Cycling Coach activeren?"
+
+**De gebruiker beslist altijd zelf over activatie.** Samengevat, de vaste
+volgorde: **data-signaal → voorstel → gebruiker akkoord → specialist
+wordt actief.** CoachOS begeleidt, maar neemt niet ongemerkt de regie
+over.
 
 ### Niveau 3 — Specialist activeren
 Gebruiker bevestigt → specialist wordt actief → bijbehorende Hub ontstaat

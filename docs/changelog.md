@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## [docs] Specialist Coach Platform — architectuur + database-ontwerp
+**Geen versie-ophoging — puur documentatie, geen code/SQL gewijzigd.**
+
+- **Nieuw:** `docs/specialist-coaches.md` — architectuur voor een
+  uitbreiding van CoachOS naar een platform met gespecialiseerde coaches
+  (Cycling, Running, Rowing, Strength, ...) onder één Master Coach.
+  Kernprincipe: specialisten adviseren, Master Coach beslist. Bevat
+  rollen, data-driven activatiemodel (3-in-30-dagen-drempel + "opkomend
+  patroon"-signaal, gebruiker beslist altijd zelf over activatie),
+  Hub-structuur (geen nieuwe bottom-nav, aparte routes binnen Coach),
+  kostenbewuste AI-routing (niet elke dagelijkse call raadpleegt alle
+  actieve specialisten).
+- **Nieuw:** `docs/specialist-database-design.md` — impactanalyse vóór
+  enige SQL geschreven wordt. Conclusie: bestaand fundament
+  (`activity_sessions`, `training_results`, `exercise_records`,
+  `coach_calls`, `user_goals`) is grotendeels herbruikbaar. Slechts **2
+  nieuwe tabellen** nodig (`specialist_profiles`, `specialist_analyses`),
+  **0 wijzigingen** aan bestaande tabellen. Elke keuze onderbouwd met
+  daadwerkelijk opgehaalde code (`api/progress-analysis/route.ts`,
+  `api/goals/route.ts`) — niet op aanname, na een expliciete correctie
+  onderweg toen een eerste "voeg een kolom toe aan progress_analyses"-
+  aanname bij nader onderzoek risicovol bleek (vaste JSONB-vorm,
+  ongefilterde cache-/ophaal-logica).
+- `README.md` — nieuwe sectie "Specialist Coach Platform" toegevoegd,
+  verwijst naar beide documenten en de huidige status.
+
+**Volgende stap (nog niet gestart):** exacte SQL voor de twee nieuwe
+tabellen, daarna API, dan pas UI.
+
 ## v2.4.58 — 6 nieuwe illustraties (#22-27) + alle 24 bestaande retroactief gecomprimeerd
 **Ontdekking: de 100-300 KB-richtlijn uit de Illustratie Workflow-sectie is
 nooit daadwerkelijk gehaald, ook niet bij eerdere illustraties — alle 24

@@ -212,6 +212,33 @@ vervangen).
 
 ---
 
+## Specialist Coach Platform — architectuurtraject (nieuw, in ontwerpfase)
+
+**Status: architectuur + database-ontwerp goedgekeurd, SQL nog niet
+geschreven, geen code gewijzigd.**
+
+Uitbreiding van CoachOS van één brede coach naar een platform met
+gespecialiseerde coaches (Cycling, Running, Rowing, Strength, ...) onder
+één centrale Master Coach. Twee documenten leggen dit vast:
+
+- **`docs/specialist-coaches.md`** — architectuurprincipe, rollen,
+  activatiemodel (data-driven, gebruiker beslist altijd zelf),
+  Hub-structuur, kostenbewuste AI-routing
+- **`docs/specialist-database-design.md`** — impactanalyse: welke
+  bestaande tabellen hergebruikt worden (`activity_sessions`,
+  `training_results`, `exercise_records`, `coach_calls`, `user_goals`),
+  en welke twee nieuwe tabellen nodig zijn (`specialist_profiles`,
+  `specialist_analyses`) — elke keuze onderbouwd met daadwerkelijk
+  geziene code, niet op aanname
+
+**Kernbeslissing:** specialisten *adviseren*, de Master Coach *beslist* —
+geen losse AI-coaches, één coachervaring voor de gebruiker.
+
+**Volgende stap:** exacte SQL voor `specialist_profiles` en
+`specialist_analyses`, daarna API-ontwerp, dan pas UI. Nog niet gestart.
+
+---
+
 ## Openstaand
 
 | Item | Prioriteit |
