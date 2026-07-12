@@ -212,6 +212,32 @@ vervangen).
 
 ---
 
+## Nieuwe Claude-sessie starten
+
+Deze repo is openbaar — een nieuwe Claude-sessie kan bestanden
+rechtstreeks ophalen van GitHub, zonder handmatige upload:
+
+```
+curl -sL -o /home/claude/<naam> "https://raw.githubusercontent.com/stuctech-eng/coachOS/main/<pad-in-repo>"
+```
+
+Werkt voor elk bestand (code, `.md`, `.webp`/`.png`), met deze
+kanttekeningen:
+- Repo moet publiek blijven — anders werkt dit niet meer
+- Alleen gecommitte **én** gepushte wijzigingen zijn zichtbaar
+- Pad moet kloppen — bij een 404: ander pad proberen, niet per se afwezig
+- Geen live-verbinding — elke fetch is een eenmalige snapshot
+
+**Lees bij elke nieuwe sessie eerst:**
+1. `README.md` (dit bestand) — actuele status, versiegeschiedenis, openstaand
+2. `docs/changelog.md` — volledige wijzigingsgeschiedenis
+3. Eventuele andere `docs/*.md` die relevant blijken voor de huidige vraag
+
+**ZIP-naamconventie** bij het leveren van wijzigingen — zie de
+uitgebreide regels verderop in dit document.
+
+---
+
 ## Specialist Coach Platform — architectuurtraject (nieuw, in ontwerpfase)
 
 **Status: architectuur + database-ontwerp goedgekeurd, SQL nog niet
