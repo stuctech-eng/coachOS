@@ -186,9 +186,9 @@ delen welk bestand deze tabel schrijft, of een voorbeeld van de
 
 **Waarom nodig:** geen bestaande tabel houdt bij welke specialisten voor
 welke gebruiker actief zijn, sinds wanneer, en met welke
-specialist-specifieke doelen/voorkeuren. Dit past bij het bestaande
-patroon van aparte, "één-rij-per-item"-tabellen (§1.7), niet bij
-uitbreiding van `profiles`.
+specialist-specifieke voorkeuren. Dit past bij het bestaande patroon van
+aparte, "één-rij-per-item"-tabellen (§1.7), niet bij uitbreiding van
+`profiles`.
 
 **Voorgestelde velden** (namen indicatief, definitieve typen bij de
 SQL-fase):
@@ -197,36 +197,47 @@ SQL-fase):
 - `specialist_type` — welke specialist (bijv. `'cycling'`)
 - `active` — is deze specialist momenteel actief
 - `activated_at` — wanneer geactiveerd
-- `goals` — specialist-specifieke doelen (bijv. FTP-target) — **open
-  vraag:** los veld (JSONB, flexibel per specialist) of relatie naar een
-  uitgebreide `user_goals`? Zie §3.2.
 - `preferences` — specialist-specifieke voorkeuren (JSONB)
+
+**Geen `goals`-veld** — specialist-doelen leven in de bestaande
+`user_goals`-tabel (via een eigen `goal_type`-waarde), definitief
+besloten in §3.2. Dit houdt `specialist_profiles` puur gericht op
+identity/activatie, conform het onderscheid uit §4.5.
 
 **Relatie:** `user_id` → bestaande gebruikerstabel (zelfde patroon als
 `injuries.user_id`, `user_goals.user_id`).
 
-### 3.2 Open ontwerpvraag — `goals`-veld
-Twee opties, geen van beide nu al besloten:
+### 3.2 `goals`-veld — definitief opgelost: hergebruik `user_goals`
 
-**Optie A — los JSONB-veld binnen `specialist_profiles`:**
-Simpel, flexibel per specialist (Cycling heeft FTP, Running heeft
-5km-tijd, geen gedeeld schema nodig). Nadeel: doelen leven dan op twee
-plekken (`user_goals` voor algemene doelen, `specialist_profiles.goals`
-voor sportspecifieke) — mogelijk verwarrend.
+**Bevestigd via `src/app/api/goals/route.ts` en `src/app/goals/page.tsx`:**
 
-**Optie B — uitbreiding van bestaande `user_goals`:**
-Als `user_goals` al ruimte heeft (of krijgt) voor een `specialist_type`-
-koppelveld, zouden specialist-doelen daar gewoon bij kunnen, één centrale
-doelen-tabel. Vereist wel te weten hoe `user_goals` er nu exact uitziet
-buiten het ene `title`-veld dat is gezien (zie §1.6 — ook hier is de
-volledige structuur niet 100% bevestigd, alleen `title` en `status` zijn
-daadwerkelijk gezien in een `SELECT`).
+`user_goals` bevat al: `user_id`, `goal_type`, `title`, `priority`,
+`status`, `target_value`, `target_date`, `current_value`. Het
+`goal_type`-veld is een **vrij tekstveld**, nergens hard gecodeerd in een
+vaste lijst toegestane waarden in de UI (alleen één plek die `'custom'`
+als standaardwaarde meegeeft bij het aanmaken van een algemeen doel via
+het bestaande formulier).
 
-**Aanbeveling, niet definitief:** optie A (los JSONB-veld) als
-pragmatische start — flexibeler, minder risico op het aanraken van een
-tabel (`user_goals`) waarvan de volledige structuur nog niet compleet
-geverifieerd is. Heroverwegen zodra `user_goals`' volledige schema
-bevestigd is.
+**Conclusie, in lijn met dezelfde zorgvuldigheid als bij
+`progress_analyses` (§4.5), maar met een ander resultaat:**
+- `user_goals`' `GET` haalt **alle** doelen van de gebruiker op, geen
+  enkele/meest-recente-rij-aanname zoals bij `progress_analyses` — een
+  specialist-doel ertussen breekt dus niets
+- Geen vaste, getypeerde JSONB-vorm — gewoon losse kolommen, generiek
+  genoeg voor zowel algemene als specialist-doelen
+- Geen verborgen aannames in de UI over welke `goal_type`-waarden mogen
+  voorkomen
+
+**Definitieve keuze: Optie B (hergebruik `user_goals`).** Specialist-
+doelen krijgen een eigen `goal_type`-waarde (bijv. `specialist_cycling`
+of specifieker, exacte naamgeving bij de SQL-fase), geen nieuwe kolom,
+geen nieuwe tabel.
+
+**Gevolg voor `specialist_profiles` (§3.1):** het `goals`-veld
+**vervalt** uit die tabel — doelen leven volledig in `user_goals`.
+`specialist_profiles` blijft daarmee kleiner en puur gericht op
+identity/activatie: `user_id`, `specialist_type`, `active`,
+`activated_at`, `preferences`.
 
 ---
 
@@ -389,19 +400,20 @@ niet nieuwe opslag van sportdata zelf.
 
 ---
 
-## Openstaande punten vóór SQL geschreven wordt
+## Openstaande punten — alle drie opgelost
 
 1. ~~`progress_analyses`~~ — **opgelost.** Structuur én gebruik bevestigd
    via `src/app/api/progress-analysis/route.ts`. Definitieve keuze:
-   Optie C, `progress_analyses` blijft ongewijzigd (zie §4.5).
-2. **`user_goals`** — volledige structuur (buiten `title`/`status`) niet
-   bevestigd — relevant voor de open vraag in §3.2.
-3. **`goals`-veld in `specialist_profiles`** — optie A (los JSONB) of
-   optie B (uitbreiding `user_goals`)? Zie §3.2. **Optie C (kolom op
-   bestaande tabel) is voor dit punt vervallen** — dezelfde risico's die
-   bij `progress_analyses` naar boven kwamen (ongefilterde queries, vaste
-   verwachte vorm) gelden potentieel ook hier, dus voorzichtigheid blijft
-   geboden totdat `user_goals`' volledige gebruik ook bevestigd is.
+   Optie C, `progress_analyses` blijft ongewijzigd, nieuwe
+   `specialist_analyses`-tabel voor specialist-analyses (§4.5).
+2. ~~`user_goals`~~ — **opgelost.** Structuur én gebruik bevestigd via
+   `src/app/api/goals/route.ts` en `src/app/goals/page.tsx`. Definitieve
+   keuze: hergebruik via nieuwe `goal_type`-waarden, geen nieuwe kolom
+   (§3.2).
+3. ~~`goals`-veld in `specialist_profiles`~~ — **opgelost**, gevolg van
+   punt 2: het veld vervalt, doelen leven volledig in `user_goals`
+   (§3.1/3.2).
 
-Zodra punt 2 helder is, kan de exacte SQL voor `specialist_profiles` (en
-de nieuwe `specialist_analyses`-tabel, zie §4.5) opgesteld worden.
+**Alle drie fundamentele ontwerpvragen zijn nu beantwoord, elk met
+bewijs uit de daadwerkelijke code, niet op aanname.** Klaar voor de
+SQL-fase.
