@@ -1,5 +1,27 @@
 # CoachOS — Changelog
 
+## v2.4.62 — Fix: pagina reset zichzelf willekeurig (service-worker-config)
+**Gemeld tijdens het testen van de Fase 2a Data Layer (v2.4.61) —
+`/debug/specialists` "sprong terug" naar een initiële laadstatus,
+schijnbaar willekeurig. Root cause gevonden, niet aangenomen.**
+
+- `next.config.js` — `skipWaiting: true` → `skipWaiting: false`
+- **Root cause:** `skipWaiting: true` laat een nieuwe service-worker-
+  versie **onmiddellijk** overnemen zodra hij beschikbaar is — ook
+  midden in een actieve sessie, ook potentieel bij een gewone
+  paginalading zonder dat er per se net een nieuwe deploy was. Dit
+  triggert doorgaans een geforceerde paginaherlaad, wat zich voordeed
+  als "de hele pagina reset zichzelf naar de initiële staat" —
+  reproduceerbaar bevestigd via screenshots (Fase 1 én Fase 2a beide
+  terug naar "Laden.../nog niets opgehaald" op hetzelfde tijdstip).
+- **Fix:** `skipWaiting: false` laat een nieuwe service-worker-versie
+  netjes wachten totdat alle open tabbladen/instanties van de oude
+  versie gesloten zijn, vóórdat hij overneemt — geen onderbreking meer
+  van een actieve sessie.
+- **Reikwijdte:** dit is een bestaand configuratiebestand, niet iets
+  wat vandaag is geïntroduceerd — de fix raakt de **hele app**, niet
+  alleen de nieuwe specialist-testpagina's.
+
 ## v2.4.61 — Fase 2a: Data Layer (Cycling-referentie, stap 2/5)
 **Puur verzamelen/filteren — geen berekening, geen AI, geen
 interpretatie. De Cycling Analysis Engine (Fase 2b, volgende stap) rekent
