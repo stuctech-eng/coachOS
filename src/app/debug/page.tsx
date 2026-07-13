@@ -21,6 +21,8 @@ const ALLE_TABELLEN = [
   'life_events', 'profiles', 'progress_analyses', 'recovery_results',
   'recovery_sessions', 'strava_tokens', 'training_results', 'training_sessions',
   'user_goals',
+  // v2.4.65: ontbrak — de twee tabellen uit de specialistlaag (SQL v2.4.59)
+  'specialist_profiles', 'specialist_analyses',
 ] as const
 
 // v2.4.13: kern-routes die veilig te testen zijn met GET zonder bijeffecten.
@@ -46,6 +48,7 @@ const KERN_ROUTES_GET = [
   '/api/profile',
   '/api/equipment',
   '/api/weekly',
+  '/api/specialists', // v2.4.65: specialistlaag Fase 1
 ] as const
 
 export default function DebugPage() {
@@ -53,6 +56,64 @@ export default function DebugPage() {
   const [bezig, setBezig] = useState(false)
   const [copied, setCopied] = useState(false)
   const [wiped, setWiped] = useState(false)
+
+  // v2.4.65: interactieve specialistlaag-tests — hergebruikt van de
+  // verwijderde, losse /debug/specialists-pagina. Die pagina gebruikte
+  // geen AppShell en had daardoor twee losse problemen (geen scroll,
+  // en een nooit-volledig-verklaarde paginaherlaad-bug tijdens
+  // navigatie). Hier, binnen deze al-werkende, al-ingelogde
+  // AppShell-pagina, treden beide problemen niet op.
+  const [specialisten, setSpecialisten] = useState<Array<{ specialist_type: string; label: string; beschikbaar: boolean; actief: boolean; activated_at: string | null }>>([])
+  const [specialistenBezig, setSpecialistenBezig] = useState(false)
+  const [specialistToggleBezig, setSpecialistToggleBezig] = useState<string | null>(null)
+  const [specialistResultaat, setSpecialistResultaat] = useState('')
+  const [dataLayerBezig, setDataLayerBezig] = useState(false)
+  const [dataLayerResultaat, setDataLayerResultaat] = useState('')
+
+  async function laadSpecialisten() {
+    setSpecialistenBezig(true)
+    try {
+      const res = await fetch('/api/specialists', { credentials: 'include' })
+      const data = await res.json()
+      setSpecialistResultaat(`GET /api/specialists →\n${JSON.stringify(data, null, 2)}`)
+      setSpecialisten(data.specialisten || [])
+    } catch (e) {
+      setSpecialistResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setSpecialistenBezig(false)
+    }
+  }
+
+  async function toggleSpecialist(type: string, huidigeStatus: boolean) {
+    setSpecialistToggleBezig(type)
+    try {
+      const res = await fetch('/api/specialists', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ specialist_type: type, active: !huidigeStatus }),
+      })
+      const data = await res.json()
+      setSpecialistResultaat(`POST /api/specialists (${type}, active: ${!huidigeStatus}) →\n${JSON.stringify(data, null, 2)}`)
+      await laadSpecialisten()
+    } catch (e) {
+      setSpecialistResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setSpecialistToggleBezig(null)
+    }
+  }
+
+  async function testDataLayer() {
+    setDataLayerBezig(true)
+    try {
+      const res = await fetch('/api/specialists/cycling/data?period_days=90', { credentials: 'include' })
+      const data = await res.json()
+      setDataLayerResultaat(`GET /api/specialists/cycling/data?period_days=90 →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setDataLayerResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setDataLayerBezig(false)
+    }
+  }
 
   const log = (tekst: string, status: LogItem['status'] = 'info') => {
     setLogs(prev => [...prev, { tekst: `${new Date().toLocaleTimeString('nl-NL')} ${tekst}`, status }])
@@ -447,6 +508,51 @@ export default function DebugPage() {
             </button>
           </div>
         )}
+
+        {/* v2.4.65: Specialistlaag — interactieve tests (Fase 1 + 2a) */}
+        <div className="border-t border-slate-800 pt-4 mt-2">
+          <h2 className="text-sm font-bold text-white mb-1">Specialistlaag — Fase 1 + 2a (Cycling-referentie)</h2>
+          <p className="text-xs text-slate-500 mb-3">Interactieve tests, los van de algemene diagnostiek hierboven.</p>
+
+          <button onClick={laadSpecialisten} disabled={specialistenBezig}
+            className="w-full mb-3 py-2.5 bg-slate-800 rounded-xl text-sm font-medium text-white disabled:opacity-50">
+            {specialistenBezig ? 'Laden...' : 'Ververs specialisten (GET /api/specialists)'}
+          </button>
+
+          {specialisten.length > 0 && (
+            <div className="flex flex-col gap-2 mb-3">
+              {specialisten.map(s => (
+                <div key={s.specialist_type} className="bg-slate-900 rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{s.label}</p>
+                    <p className="text-xs text-slate-500">
+                      {s.beschikbaar ? (s.actief ? `Actief sinds ${s.activated_at?.slice(0, 10)}` : 'Beschikbaar, niet actief') : 'In ontwikkeling'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleSpecialist(s.specialist_type, s.actief)}
+                    disabled={!s.beschikbaar || specialistToggleBezig === s.specialist_type}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-30 ${s.actief ? 'bg-red-500/20 text-red-400' : 'bg-primary-500 text-white'}`}
+                  >
+                    {specialistToggleBezig === s.specialist_type ? '...' : s.actief ? 'Deactiveer' : 'Activeer'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {specialistResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{specialistResultaat}</pre>
+          )}
+
+          <button onClick={testDataLayer} disabled={dataLayerBezig}
+            className="w-full mb-3 py-2.5 bg-slate-800 rounded-xl text-sm font-medium text-white disabled:opacity-50">
+            {dataLayerBezig ? 'Ophalen...' : 'Test: GET /api/specialists/cycling/data'}
+          </button>
+          {dataLayerResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{dataLayerResultaat}</pre>
+          )}
+        </div>
 
         {/* Wis training sessie — fix voor client-side crashes in training */}
         <button

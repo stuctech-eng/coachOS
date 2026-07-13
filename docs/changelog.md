@@ -1,5 +1,33 @@
 # CoachOS — Changelog
 
+## v2.4.65 — Specialistlaag-tests verplaatst naar bestaande /debug-pagina
+**Gebruiker stelde terecht de vraag: kon dit niet in de app zelf? Ja —
+en dat is een betere oplossing dan de losse `/debug/specialists`-pagina
+die deze sessie twee losse problemen had (geen scroll, v2.4.36-patroon
+gemist; en een nooit-volledig-verklaarde paginaherlaad tijdens
+navigatie). De bestaande `/debug`-pagina gebruikt al `AppShell`
+(werkende scroll) en wordt al bereikt via normale, al-ingelogde
+app-navigatie — geen van beide problemen is daar van toepassing.**
+
+- `src/app/debug/page.tsx` — nieuwe sectie **"Specialistlaag — Fase 1 +
+  2a"** toegevoegd: dezelfde activeer/deactiveer-knoppen en Data
+  Layer-test die op de losse pagina stonden, nu hier ingebed
+- **Bijkomstige bug gevonden en gefixt:** `specialist_profiles` en
+  `specialist_analyses` (SQL v2.4.59) ontbraken in `ALLE_TABELLEN` — de
+  algemene diagnostiek testte deze twee nieuwe tabellen dus nooit mee.
+  Toegevoegd.
+- `/api/specialists` toegevoegd aan `KERN_ROUTES_GET` — wordt nu ook
+  meegenomen in de "Start diagnostiek"-algehele-health-check
+- **Verwijderd** (handmatig te verwijderen in Working Copy):
+  `src/app/debug/specialists/page.tsx` — overbodig, en de bron van de
+  twee problemen hierboven
+- `next.config.js` — `skipWaiting` teruggezet naar `false` (van
+  volledig `disable: true` in v2.4.63). Nu we terugvallen op een
+  bestaande, al-werkende pagina zonder navigatie-gevoelige flow, is
+  volledige uitschakeling waarschijnlijk niet meer nodig. **Als het
+  reset-probleem hier ook optreedt, is dat een sterk signaal dat de
+  service worker alsnog (mede)oorzaak was — meld dat direct.**
+
 ## v2.4.64 — Testpagina herbouwd: ingebouwd inlogformulier, geen navigatie
 **Gebruiker meldde dat het reset-probleem óók optrad met de service
 worker volledig uit (v2.4.63) — dus de service worker was waarschijnlijk
