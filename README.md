@@ -260,10 +260,17 @@ gespecialiseerde coaches (Cycling, Running, Rowing, Strength, ...) onder
 **Kernbeslissing:** specialisten *adviseren*, de Master Coach *beslist* —
 geen losse AI-coaches, één coachervaring voor de gebruiker.
 
-**Voortgang:** ✅ architectuur, ✅ database-ontwerp, ✅ SQL
-(`supabase/specialist_layer.sql`, v2.4.59). **Volgende stap:**
-API-ontwerp (Orchestrator-route, specialist-activatie-endpoint), daarna
-pas UI. Nog niet gestart.
+**Ontwerpfase (6 documenten, allemaal afgerond):**
+`specialist-coaches.md`, `specialist-database-design.md`,
+`specialist-api.md`, `specialist-memory.md`,
+`specialist-decision-engine.md`, `specialist-engine-architecture.md`.
+
+**Implementatie — Cycling als referentie-specialist, 5 stappen:**
+1. ✅ Identity Layer/Registry (`/api/specialists`, v2.4.60)
+2. 🔄 Data Layer (`/api/specialists/cycling/data`) — volgende
+3. ⬜ Cycling Analysis Engine
+4. ⬜ Coach Layer (AI)
+5. ⬜ Capability Registry-entry + Hub-UI
 
 ---
 
@@ -276,7 +283,7 @@ pas UI. Nog niet gestart.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.59 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.60 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -288,7 +295,7 @@ pas UI. Nog niet gestart.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.59
+- Versie: 2.4.60
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -587,6 +594,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.60 — Fase 1 Specialist Registry (Cycling-referentie, stap 1/5) + tijdelijk testschermpje
 - v2.4.59 — SQL: specialist_profiles + specialist_analyses (eerste code van het specialistlaag-traject)
 - v2.4.58 — 6 nieuwe illustraties (#22-27) + alle 24 bestaande retroactief gecomprimeerd (23,5MB → 1,5MB)
 - v2.4.57 — Gewicht nu ook live bijstelbaar tijdens de actieve set (was alleen tempo, v2.4.56)

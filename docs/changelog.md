@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.60 — Fase 1: Specialist Registry (Cycling-referentie-implementatie, stap 1/5)
+**Eerste code na de ontwerpstop (6 architectuurdocumenten, zie
+`docs/specialist-*.md`). Cycling gekozen als referentie-specialist.
+Deze stap: alleen Fase 1 (Identity Layer/Registry) — geen AI, geen
+berekeningen, puur activatie-beheer.**
+
+- **Nieuw:** `src/app/api/specialists/route.ts`
+  - `GET` — lijst specialisten voor de gebruiker (actief/beschikbaar/
+    in-ontwikkeling), combineert vaste code-config met
+    `specialist_profiles` (SQL v2.4.59)
+  - `POST` — activeer/deactiveer, body `{ specialist_type, active }`,
+    upsert naar `specialist_profiles`
+  - **Vaste config:** alleen `cycling` heeft status `active` — overige
+    specialisten (`running`, `rowing`, `strength`) staan op
+    `development`, bewust niet activeerbaar totdat ze daadwerkelijk
+    gebouwd zijn (geen overclaiming van functionaliteit die nog niet
+    bestaat)
+- **Nieuw, tijdelijk:** `src/app/debug/specialists/page.tsx` — testscherm
+  om Fase 1 te kunnen testen zonder curl/Postman, direct op de telefoon.
+  **Geen onderdeel van de uiteindelijke architectuur** — wordt vervangen
+  zodra de echte Hub-UI gebouwd wordt (zie
+  `specialist-engine-architecture.md`, Hub-modules-sectie).
+
+**Test-instructies:** zie bericht bij levering.
+
+**Volgende stap (2/5):** Data Layer (Fase 2a) —
+`/api/specialists/cycling/data`, ruwe data verzamelen uit
+`activity_sessions`/`training_results`, nog geen berekeningen.
+
 ## v2.4.59 — SQL: specialist_profiles + specialist_analyses
 **Eerste daadwerkelijke code van het specialistlaag-traject — exact de
 twee tabellen die in `docs/specialist-database-design.md` zijn besloten,
