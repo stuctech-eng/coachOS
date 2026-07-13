@@ -1,5 +1,31 @@
 # CoachOS — Changelog
 
+## v2.4.61 — Fase 2a: Data Layer (Cycling-referentie, stap 2/5)
+**Puur verzamelen/filteren — geen berekening, geen AI, geen
+interpretatie. De Cycling Analysis Engine (Fase 2b, volgende stap) rekent
+met deze ruwe output.**
+
+- **Nieuw:** `src/app/api/specialists/[type]/data/route.ts`
+  - `GET /api/specialists/cycling/data?period_days=30` — combineert twee
+    bestaande bronnen: `activity_sessions` (Strava/Garmin-ritten,
+    gefilterd via gekoppelde `activities.name`) en `training_results`
+    (AI-gecoachte cycling-trainingen, `training_type='cycling'`)
+  - `period_days` optioneel via query-param, standaard 30
+  - Andere `[type]`-waarden dan `cycling` geven bewust een `501 Not
+    Implemented` — geen stille lege response die verwarring zou geven
+  - **Eerlijk gevlagd:** de lijst cycling-gerelateerde activity-namen
+    (`Fietsen`, `Fietsen (buiten)`, `Indoor Fietsen`) is gebaseerd op wat
+    deze sessie is gezien, mogelijk niet uitputtend
+- `src/app/debug/specialists/page.tsx` — testsectie toegevoegd voor deze
+  route, naast de bestaande Fase 1-tests
+
+**Test-instructies:** zie bericht bij levering.
+
+**Volgende stap (3/5):** Cycling Analysis Engine (Fase 2b) — sport-
+specifieke berekeningen op deze ruwe data (frequentie, vermogen-trend,
+trainingsbelasting). FTP/TSS/CTL blijven uitgeschakeld totdat een
+FTP-referentiewaarde-bron is bevestigd (zie `specialist-api.md`).
+
 ## v2.4.60 — Fase 1: Specialist Registry (Cycling-referentie-implementatie, stap 1/5)
 **Eerste code na de ontwerpstop (6 architectuurdocumenten, zie
 `docs/specialist-*.md`). Cycling gekozen als referentie-specialist.

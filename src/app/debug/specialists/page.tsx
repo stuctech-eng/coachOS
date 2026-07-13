@@ -23,6 +23,9 @@ export default function DebugSpecialistsPage() {
   const [laden, setLaden] = useState(true)
   const [bezig, setBezig] = useState<string | null>(null)
   const [laatsteResultaat, setLaatsteResultaat] = useState<string>('')
+  // v2.4.61: test-state voor Fase 2a (Data Layer)
+  const [dataLayerBezig, setDataLayerBezig] = useState(false)
+  const [dataLayerResultaat, setDataLayerResultaat] = useState<string>('')
 
   async function laadSpecialisten() {
     setLaden(true)
@@ -54,6 +57,20 @@ export default function DebugSpecialistsPage() {
       setLaatsteResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setBezig(null)
+    }
+  }
+
+  // v2.4.61: test-functie voor Fase 2a (Data Layer)
+  async function testDataLayer() {
+    setDataLayerBezig(true)
+    try {
+      const res = await fetch('/api/specialists/cycling/data?period_days=90', { credentials: 'include' })
+      const data = await res.json()
+      setDataLayerResultaat(`GET /api/specialists/cycling/data?period_days=90 →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setDataLayerResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setDataLayerBezig(false)
     }
   }
 
@@ -99,9 +116,26 @@ export default function DebugSpecialistsPage() {
       </div>
 
       <p className="text-xs text-slate-500 mb-2">Laatste API-resultaat (ruwe JSON):</p>
-      <pre className="bg-black/50 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">
+      <pre className="bg-black/50 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-8">
         {laatsteResultaat || '(nog niets opgehaald)'}
       </pre>
+
+      {/* v2.4.61: Fase 2a — Data Layer testsectie */}
+      <div className="border-t border-white/10 pt-6">
+        <h2 className="text-sm font-bold mb-1">Fase 2a — Data Layer (Cycling)</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          Puur ruwe data, geen berekening. Verwacht: activiteiten uit
+          activity_sessions + trainingsresultaten uit training_results,
+          beide gefilterd op cycling, laatste 90 dagen.
+        </p>
+        <button onClick={testDataLayer} disabled={dataLayerBezig}
+          className="w-full mb-3 py-2.5 bg-slate-800 rounded-xl text-sm font-medium disabled:opacity-50">
+          {dataLayerBezig ? 'Ophalen...' : 'Test: GET /api/specialists/cycling/data'}
+        </button>
+        <pre className="bg-black/50 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">
+          {dataLayerResultaat || '(nog niets opgehaald)'}
+        </pre>
+      </div>
     </div>
   )
 }

@@ -267,8 +267,8 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 
 **Implementatie — Cycling als referentie-specialist, 5 stappen:**
 1. ✅ Identity Layer/Registry (`/api/specialists`, v2.4.60)
-2. 🔄 Data Layer (`/api/specialists/cycling/data`) — volgende
-3. ⬜ Cycling Analysis Engine
+2. ✅ Data Layer (`/api/specialists/cycling/data`, v2.4.61)
+3. 🔄 Cycling Analysis Engine — volgende
 4. ⬜ Coach Layer (AI)
 5. ⬜ Capability Registry-entry + Hub-UI
 
@@ -283,7 +283,7 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.60 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.61 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -295,7 +295,7 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.60
+- Versie: 2.4.61
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -594,6 +594,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.61 — Fase 2a Data Layer (Cycling-referentie, stap 2/5)
 - v2.4.60 — Fase 1 Specialist Registry (Cycling-referentie, stap 1/5) + tijdelijk testschermpje
 - v2.4.59 — SQL: specialist_profiles + specialist_analyses (eerste code van het specialistlaag-traject)
 - v2.4.58 — 6 nieuwe illustraties (#22-27) + alle 24 bestaande retroactief gecomprimeerd (23,5MB → 1,5MB)
