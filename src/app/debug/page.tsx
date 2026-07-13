@@ -72,6 +72,9 @@ export default function DebugPage() {
   // v2.4.66: test-state voor Fase 2b (Cycling Analysis Engine)
   const [engineBezig, setEngineBezig] = useState(false)
   const [engineResultaat, setEngineResultaat] = useState('')
+  // v2.4.67: test-state voor Fase 3 (Coach Layer, AI)
+  const [coachBezig, setCoachBezig] = useState(false)
+  const [coachResultaat, setCoachResultaat] = useState('')
 
   async function laadSpecialisten() {
     setSpecialistenBezig(true)
@@ -129,6 +132,25 @@ export default function DebugPage() {
       setEngineResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setEngineBezig(false)
+    }
+  }
+
+  // v2.4.67: test-functie voor Fase 3 (Coach Layer, AI) — POST, want dit
+  // genereert daadwerkelijk een nieuw AI-advies (of geeft cache terug)
+  async function testCoach() {
+    setCoachBezig(true)
+    try {
+      const res = await fetch('/api/specialists/cycling/coach', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period_days: 90 }),
+      })
+      const data = await res.json()
+      setCoachResultaat(`POST /api/specialists/cycling/coach →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setCoachResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setCoachBezig(false)
     }
   }
 
@@ -576,7 +598,16 @@ export default function DebugPage() {
             {engineBezig ? 'Berekenen...' : 'Test: GET /api/specialists/cycling/engine'}
           </button>
           {engineResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{engineResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{engineResultaat}</pre>
+          )}
+
+          {/* v2.4.67: Fase 3 — Coach Layer (AI) */}
+          <button onClick={testCoach} disabled={coachBezig}
+            className="w-full mb-3 py-2.5 bg-primary-600 rounded-xl text-sm font-medium text-white disabled:opacity-50">
+            {coachBezig ? 'AI genereert advies...' : 'Test: POST /api/specialists/cycling/coach (AI)'}
+          </button>
+          {coachResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{coachResultaat}</pre>
           )}
         </div>
 

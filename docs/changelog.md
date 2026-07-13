@@ -1,5 +1,48 @@
 # CoachOS — Changelog
 
+## v2.4.67 — Fase 3: Cycling Coach Layer — eerste AI-call (Cycling-referentie, stap 4/5)
+**Eerste daadwerkelijke AI-aanroep in de specialistlaag. Personality
+volledig hergebruikt uit de bestaande `coach-personality.ts` — geen
+nieuwe stem, dezelfde coach met extra vakkennis.**
+
+- **Nieuw:** `src/app/api/specialists/cycling/coach/route.ts`
+  - `GET` — meest recente cycling-analyse ophalen (`specialist_analyses`)
+  - `POST` — nieuwe analyse genereren: cache-check (max 1x/24u, zelfde
+    patroon als `progress-analysis/route.ts`), roept intern Fase 2b aan
+    (`analyseerCycling`), haalt lichte context op (`user_goals`,
+    `specialist_profiles.preferences`), bouwt de prompt, roept Claude
+    aan, valideert/parseert, slaat op in `specialist_analyses`
+  - **Personality-hergebruik, expliciet:** `COACH_CORE_IDENTITY` +
+    `CORE_SAFETY_RULE` + `getCoachTone(2)` — allemaal geïmporteerd uit de
+    bestaande `@/core/prompts/coach-personality.ts`, niets nieuws
+    geschreven. Niveau 2 gekozen (niet 3) — dit is periodiek advies
+    genereren, geen reactie op een zojuist afgeronde evaluatie
+  - **"AI rekent nooit"-principe, hard afgedwongen in de prompt:** de
+    prompt bevat expliciet *"onderstaande cijfers zijn AL BEREKEND (...)
+    jij rekent zelf NIETS opnieuw uit"* — de AI krijgt de Fase 2b-
+    `resultaat` én `reden[]` kant-en-klaar aangeleverd, mag alleen
+    interpreteren
+  - Output vaste vorm: `samenvatting`/`sterke_punten`/`aandachtspunten`/
+    `advies` — bewust een eigen vorm, niet gedeeld met de
+    `ProgressAnalysis`-interface van `progress_analyses` (zie eerdere
+    onderbouwing in `specialist-database-design.md` §4.5 waarom die twee
+    gescheiden zijn)
+  - **Fallback bij AI-storing:** nette Nederlandse standaardtekst, geen
+    crash — zelfde patroon als andere AI-routes in dit project
+- `src/app/debug/page.tsx` — testsectie uitgebreid met de Coach Layer-test
+
+**Bewust nog niet meegenomen:** Goal Engine-berekening (voortgang t.o.v.
+doel) — doelen worden nu alleen als ruwe context meegegeven, geen
+deterministische "ligt op schema"-berekening. Specialist Memory — nog
+niet gebouwd (apart ontwerp, `specialist-memory.md`, geen
+geïmplementeerde tabel). Master Coach-context — Fase 4 Orchestrator-
+integratie is een aparte, latere stap.
+
+**Test-instructies:** zie bericht bij levering.
+
+**Volgende stap (5/5, laatste):** Capability Registry-entry voor Cycling
++ eerste Hub-UI-element.
+
 ## v2.4.66 — Fase 2b: Cycling Analysis Engine (Cycling-referentie, stap 3/5)
 **Volledig deterministisch, geen AI — precies zoals vastgelegd in
 `docs/specialist-engine-architecture.md`. Berekent frequentie, vermogen-
