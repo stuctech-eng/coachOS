@@ -278,12 +278,13 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 
 | Item | Prioriteit |
 |------|-----------|
+| **⚠️ Service worker staat uit (`disable: true`, v2.4.63)** — PWA-offline-functionaliteit en app-installatie werken niet zolang dit zo staat. Zet terug naar `false` zodra alle 5 stappen van de Cycling-referentie-specialist getest en stabiel zijn. Root cause van het oorspronkelijke "pagina reset zichzelf"-probleem is nooit 100% bevestigd (kon de live SW niet inspecteren) — bij het terugzetten alert zijn op een mogelijke terugkeer van het symptoom. | 🔴 |
 | **Testen: neemt de coach gewicht/tempo-afwijking (v2.4.51-53) daadwerkelijk mee in zijn geschreven advies?** De data komt gegarandeerd in de prompt terecht (code, geen AI-gok), maar of Sonnet het ook elke keer expliciet benoemt is niet gegarandeerd — instructie staat nu als "je mag dit benoemen" (optioneel), niet dwingend. Test door bewust af te wijken tijdens een kettlebell-training en het volgende coach-advies te checken. Reminder gezet voor 10 juli. Indien coach het niet consistent noemt: instructie in `coach/route.ts` aanscherpen naar een dwingender "je MOET dit noemen als relevant". | 🟡 |
 | **Controleer op bestaand duplicaat in `activity_sessions` vóór/na v2.4.28-deploy** (zie changelog) | 🟡 |
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.62 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.63 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -295,7 +296,7 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.62
+- Versie: 2.4.63
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -594,6 +595,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.63 — Service worker TIJDELIJK volledig uitgeschakeld (disable: true) — v2.4.62 loste het probleem niet volledig op
 - v2.4.62 — Fix: pagina reset zichzelf willekeurig (skipWaiting: true → false in service-worker-config)
 - v2.4.61 — Fase 2a Data Layer (Cycling-referentie, stap 2/5)
 - v2.4.60 — Fase 1 Specialist Registry (Cycling-referentie, stap 1/5) + tijdelijk testschermpje

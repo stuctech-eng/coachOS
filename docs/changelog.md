@@ -1,5 +1,28 @@
 # CoachOS — Changelog
 
+## v2.4.63 — Service worker TIJDELIJK volledig uitgeschakeld
+**v2.4.62 (`skipWaiting: false`) loste het probleem niet volledig op —
+gebruiker meldde nog steeds "even blijft staan, dan springt terug",
+resterende service-worker-interferentie. Ik kon de daadwerkelijk
+gedraaide, live service worker niet inspecteren (geen tool-toegang tot
+het Vercel-domein, alleen naar bijv. GitHub) — in plaats van verder te
+gokken naar de exacte resterende oorzaak: de service worker staat nu
+volledig uit.**
+
+- `next.config.js` — `disable: true` toegevoegd aan de `next-pwa`-config
+- **Gevolg:** geen enkele service-worker-registratie meer, dus ook geen
+  enkele mogelijkheid tot een onverwachte automatische paginaherlaad
+  vanuit dat mechanisme — dit zou het probleem definitief moeten
+  wegnemen, ongeacht de exacte resterende oorzaak binnen de SW zelf
+- **Bijwerking:** dit schakelt ook PWA-offline-functionaliteit uit
+  (geen app-installatie-prompt, geen offline-toegang) — geaccepteerd
+  compromis tijdens de specialistlaag-testfase, niet bedoeld als
+  permanente staat
+- **Volgende stap, expliciet vastgelegd:** zodra alle 5
+  implementatiestappen van de Cycling-referentie-specialist getest en
+  stabiel zijn, `disable: true` weer verwijderen/terugzetten naar
+  `false` — PWA-functionaliteit is nodig voor productiegebruik
+
 ## v2.4.62 — Fix: pagina reset zichzelf willekeurig (service-worker-config)
 **Gemeld tijdens het testen van de Fase 2a Data Layer (v2.4.61) —
 `/debug/specialists` "sprong terug" naar een initiële laadstatus,
