@@ -238,24 +238,14 @@ uitgebreide regels verderop in dit document.
 
 ---
 
-## Specialist Coach Platform — architectuurtraject (in opbouw)
+## Specialist Coach Platform — architectuurtraject (Cycling-referentie compleet)
 
-**Status: architectuur + database-ontwerp goedgekeurd, SQL geschreven
-(v2.4.59), nog geen API/UI.**
+**Status: architectuur ✅, database-ontwerp ✅ (SQL v2.4.59), API/Engine/AI/
+Hub-UI ✅ — Cycling-referentie-implementatie volledig afgerond (v2.4.68).**
 
 Uitbreiding van CoachOS van één brede coach naar een platform met
 gespecialiseerde coaches (Cycling, Running, Rowing, Strength, ...) onder
-één centrale Master Coach. Twee documenten leggen dit vast:
-
-- **`docs/specialist-coaches.md`** — architectuurprincipe, rollen,
-  activatiemodel (data-driven, gebruiker beslist altijd zelf),
-  Hub-structuur, kostenbewuste AI-routing
-- **`docs/specialist-database-design.md`** — impactanalyse: welke
-  bestaande tabellen hergebruikt worden (`activity_sessions`,
-  `training_results`, `exercise_records`, `coach_calls`, `user_goals`),
-  en welke twee nieuwe tabellen nodig zijn (`specialist_profiles`,
-  `specialist_analyses`) — elke keuze onderbouwd met daadwerkelijk
-  geziene code, niet op aanname
+één centrale Master Coach.
 
 **Kernbeslissing:** specialisten *adviseren*, de Master Coach *beslist* —
 geen losse AI-coaches, één coachervaring voor de gebruiker.
@@ -265,12 +255,23 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 `specialist-api.md`, `specialist-memory.md`,
 `specialist-decision-engine.md`, `specialist-engine-architecture.md`.
 
-**Implementatie — Cycling als referentie-specialist, 5 stappen:**
+**Implementatie — Cycling als referentie-specialist, 5/5 stappen compleet:**
 1. ✅ Identity Layer/Registry (`/api/specialists`, v2.4.60)
 2. ✅ Data Layer (`/api/specialists/cycling/data`, v2.4.61)
 3. ✅ Cycling Analysis Engine (`/api/specialists/cycling/engine`, v2.4.66)
 4. ✅ Coach Layer/AI (`/api/specialists/cycling/coach`, v2.4.67)
-5. 🔄 Capability Registry-entry + Hub-UI — laatste stap
+5. ✅ Capability Registry + Hub-UI (`/coach/cycling`, v2.4.68)
+
+**Bereikbaar via directe URL:** `/coach/cycling` — nog niet gekoppeld
+aan de hoofdnavigatie (aparte, latere stap).
+
+**Volgende, niet-gestart, buiten de 5-stappen-referentie:**
+- Navigatie-integratie ("Mijn Coaches"-sectie binnen Coach-tab)
+- Fase 4 — Master Coach Orchestrator-integratie (`api/coach/route.ts`)
+- Decision Engine (pas relevant bij 2e actieve specialist)
+- Goal Engine, Specialist Memory (apart ontworpen, nog niet gebouwd)
+- Running/Rowing/Strength — invuloefening binnen dezelfde architectuur
+  zodra gewenst
 
 ---
 
@@ -284,7 +285,7 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.67 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.68 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -296,7 +297,7 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.67
+- Versie: 2.4.68
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -595,6 +596,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.68 — Capability Registry + Cycling Hub-UI (Cycling-referentie, stap 5/5, LAATSTE STAP — referentie-implementatie compleet)
 - v2.4.67 — Fase 3 Cycling Coach Layer, eerste AI-call (Cycling-referentie, stap 4/5), personality volledig hergebruikt
 - v2.4.66 — Fase 2b Cycling Analysis Engine (Cycling-referentie, stap 3/5), volledig deterministisch
 - v2.4.65 — Specialistlaag-tests verplaatst naar bestaande /debug-pagina (AppShell, geen navigatie-problemen), losse pagina overbodig

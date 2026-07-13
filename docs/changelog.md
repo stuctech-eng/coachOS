@@ -1,5 +1,59 @@
 # CoachOS — Changelog
 
+## v2.4.68 — Capability Registry + Cycling Hub-UI (Cycling-referentie, stap 5/5 — LAATSTE STAP)
+**De vijfde en laatste stap van de Cycling-referentie-implementatie.
+Eerste echte, gebruikersgerichte UI in de specialistlaag — geen
+debug-testknop meer, maar een daadwerkelijk bruikbaar scherm.**
+
+- **Nieuw:** `src/lib/specialists/capability-registry.ts`
+  - Centrale registratie van wat elke specialist daadwerkelijk
+    ondersteunt — voorkomt if-specialist-constructies in de UI
+  - **Bewust eerlijk:** Cycling heeft `hasDataLayer`/`hasAnalysisEngine`/
+    `hasCoachLayer` op `true` (stappen 1-4, daadwerkelijk gebouwd), maar
+    `supportsPeriodization`/`supportsEvents`/`supportsPredictions`/
+    `supportsBenchmarks` staan op `false` — niet omdat ze onmogelijk
+    zijn, maar omdat ze nog niet bestaan. Geen overclaiming.
+- **Nieuw:** `src/app/coach/cycling/page.tsx` — de Cycling Hub zelf
+  - Aparte route (`/coach/cycling`), zoals vastgelegd in
+    `specialist-coaches.md` §6
+  - Toont het Coach Layer-advies (Fase 3) leesbaar geformatteerd —
+    samenvatting, sterke punten, aandachtspunten, advies — in plaats
+    van ruwe JSON
+  - Toont de onderliggende Analysis Engine-cijfers (Fase 2b) als
+    overzichtelijke statistiek-kaarten (frequentie met trend-icoon,
+    vermogen, afstand, trainingsbelasting)
+  - "Ververs analyse"-knop, respecteert de bestaande 24-uur-cache
+  - **Geen grijze/uitgeschakelde placeholders** voor niet-bestaande
+    modules (Periodisering, Wedstrijden, etc.) — die worden simpelweg
+    niet getoond, in lijn met "geen overclaiming"
+
+**Bewust nog niet meegenomen, buiten scope van de 5-stappen-referentie:**
+- Integratie in de hoofdnavigatie (een link vanuit de Coach-tab/"Mijn
+  Coaches"-sectie, zoals `specialist-coaches.md` §6 beschrijft) —
+  `/coach/cycling` is nu alleen bereikbaar via directe URL
+- Fase 4 (Master Coach Orchestrator-integratie in `api/coach/route.ts`)
+- Decision Engine (pas relevant zodra een 2e specialist actief kan zijn)
+- Goal Engine, Specialist Memory — apart ontworpen, nog niet gebouwd
+
+**Test-instructies:** zie bericht bij levering.
+
+---
+
+## 🎉 Cycling-referentie-implementatie compleet — alle 5 stappen
+
+1. ✅ Identity Layer/Registry (v2.4.60)
+2. ✅ Data Layer (v2.4.61)
+3. ✅ Cycling Analysis Engine (v2.4.66)
+4. ✅ Coach Layer/AI (v2.4.67)
+5. ✅ Capability Registry + Hub-UI (v2.4.68)
+
+**Zoals vastgelegd in de ontwerpfase:** Running, Rowing en Strength zijn
+nu grotendeels een invuloefening binnen dezelfde architectuur — Data
+Layer en Analysis Engine zijn per sport uniek werk, maar Identity Layer,
+Learning/Confidence/Decision Engine-patronen en de Hub-structuur zijn al
+generiek herbruikbaar (zie `specialist-engine-architecture.md`,
+Herbruikbaarheid-sectie).
+
 ## v2.4.67 — Fase 3: Cycling Coach Layer — eerste AI-call (Cycling-referentie, stap 4/5)
 **Eerste daadwerkelijke AI-aanroep in de specialistlaag. Personality
 volledig hergebruikt uit de bestaande `coach-personality.ts` — geen
