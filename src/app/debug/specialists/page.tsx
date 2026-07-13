@@ -2,12 +2,16 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import { browserClient } from '@/lib/supabase'
 
-// v2.4.60 (kandidaat) — TIJDELIJK testschermpje voor Fase 1 (Specialist
-// Registry). Geen onderdeel van de uiteindelijke architectuur — puur om
-// /api/specialists te kunnen testen zonder curl/Postman, direct op de
-// telefoon. Wordt vervangen zodra de echte Hub-UI gebouwd wordt
-// (specialist-engine-architecture.md, Hub-modules-sectie).
+// v2.4.64 — Testschermpje herbouwd: ingebouwd inlogformulier, GEEN
+// paginanavigatie meer naar /login. Test-hypothese: het "pagina reset
+// zichzelf"-probleem trad mogelijk specifiek op TIJDENS een paginawissel
+// (client-side navigatie tussen routes), niet door de service worker
+// zelf (die staat sinds v2.4.63 al volledig uit, disable: true, en het
+// probleem bleef optreden). Door inloggen en testen op exact dezelfde
+// pagina te laten gebeuren, zonder ooit router.push() aan te roepen,
+// isoleren we of navigatie zelf de trigger was.
 
 interface Specialist {
   specialist_type: string
@@ -19,13 +23,46 @@ interface Specialist {
 
 export default function DebugSpecialistsPage() {
   const router = useRouter()
+  const [ingelogd, setIngelogd] = useState<boolean | null>(null) // null = nog aan het checken
+  const [email, setEmail] = useState('')
+  const [wachtwoord, setWachtwoord] = useState('')
+  const [inlogFout, setInlogFout] = useState('')
+  const [inloggenBezig, setInloggenBezig] = useState(false)
+
   const [specialisten, setSpecialisten] = useState<Specialist[]>([])
-  const [laden, setLaden] = useState(true)
+  const [laden, setLaden] = useState(false)
   const [bezig, setBezig] = useState<string | null>(null)
   const [laatsteResultaat, setLaatsteResultaat] = useState<string>('')
-  // v2.4.61: test-state voor Fase 2a (Data Layer)
   const [dataLayerBezig, setDataLayerBezig] = useState(false)
   const [dataLayerResultaat, setDataLayerResultaat] = useState<string>('')
+
+  // Checkt bij laden of er al een sessie is — geen navigatie, alleen
+  // een lokale state-update
+  useEffect(() => {
+    browserClient.auth.getSession().then(({ data: { session } }) => {
+      setIngelogd(!!session)
+      if (session) laadSpecialisten()
+    })
+  }, [])
+
+  async function handleInloggen(e: React.FormEvent) {
+    e.preventDefault()
+    setInloggenBezig(true)
+    setInlogFout('')
+    try {
+      const { error } = await browserClient.auth.signInWithPassword({ email, password: wachtwoord })
+      if (error) {
+        setInlogFout(error.message)
+      } else {
+        setIngelogd(true)
+        await laadSpecialisten()
+      }
+    } catch (e) {
+      setInlogFout((e as Error).message)
+    } finally {
+      setInloggenBezig(false)
+    }
+  }
 
   async function laadSpecialisten() {
     setLaden(true)
@@ -60,7 +97,6 @@ export default function DebugSpecialistsPage() {
     }
   }
 
-  // v2.4.61: test-functie voor Fase 2a (Data Layer)
   async function testDataLayer() {
     setDataLayerBezig(true)
     try {
@@ -74,8 +110,47 @@ export default function DebugSpecialistsPage() {
     }
   }
 
-  useEffect(() => { laadSpecialisten() }, [])
+  // ── Nog aan het checken of er een sessie is ──────────────────────────
+  if (ingelogd === null) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-6 flex items-center justify-center">
+        <p className="text-sm text-slate-500">Sessie checken...</p>
+      </div>
+    )
+  }
 
+  // ── Niet ingelogd: inlogformulier, GEEN navigatie naar /login ────────
+  if (!ingelogd) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-6">
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => router.push('/debug')} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
+            <ArrowLeft size={18} className="text-slate-400" />
+          </button>
+          <div>
+            <h1 className="text-lg font-bold">Debug: Specialists (Fase 1+2a)</h1>
+            <p className="text-xs text-amber-400">Log hier direct in — geen aparte /login-pagina nodig</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleInloggen} className="flex flex-col gap-3">
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="E-mail" required
+            className="bg-[#1c2128] rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500" />
+          <input type="password" value={wachtwoord} onChange={e => setWachtwoord(e.target.value)}
+            placeholder="Wachtwoord" required
+            className="bg-[#1c2128] rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500" />
+          {inlogFout && <p className="text-xs text-red-400">{inlogFout}</p>}
+          <button type="submit" disabled={inloggenBezig}
+            className="py-3 bg-primary-500 rounded-xl text-sm font-semibold disabled:opacity-50">
+            {inloggenBezig ? 'Inloggen...' : 'Inloggen'}
+          </button>
+        </form>
+      </div>
+    )
+  }
+
+  // ── Ingelogd: het eigenlijke testschermpje, exact zelfde als v2.4.61 ─
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-6">
       <div className="flex items-center gap-3 mb-6">
@@ -83,8 +158,8 @@ export default function DebugSpecialistsPage() {
           <ArrowLeft size={18} className="text-slate-400" />
         </button>
         <div>
-          <h1 className="text-lg font-bold">Debug: Specialists (Fase 1)</h1>
-          <p className="text-xs text-amber-400">Tijdelijk testschermpje — niet de uiteindelijke UI</p>
+          <h1 className="text-lg font-bold">Debug: Specialists (Fase 1+2a)</h1>
+          <p className="text-xs text-amber-400">Tijdelijk testschermpje — geen navigatie meer nodig om in te loggen</p>
         </div>
       </div>
 
@@ -120,7 +195,6 @@ export default function DebugSpecialistsPage() {
         {laatsteResultaat || '(nog niets opgehaald)'}
       </pre>
 
-      {/* v2.4.61: Fase 2a — Data Layer testsectie */}
       <div className="border-t border-white/10 pt-6">
         <h2 className="text-sm font-bold mb-1">Fase 2a — Data Layer (Cycling)</h2>
         <p className="text-xs text-slate-500 mb-3">

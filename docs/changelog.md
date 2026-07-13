@@ -1,5 +1,23 @@
 # CoachOS — Changelog
 
+## v2.4.64 — Testpagina herbouwd: ingebouwd inlogformulier, geen navigatie
+**Gebruiker meldde dat het reset-probleem óók optrad met de service
+worker volledig uit (v2.4.63) — dus de service worker was waarschijnlijk
+niet (de enige) oorzaak. Nieuwe hypothese: het probleem hangt samen met
+de paginanavigatie zelf (van /login naar /debug/specialists), niet met
+een achtergrondmechanisme. Test hiervoor gebouwd, geen definitieve
+conclusie getrokken zonder bevestiging.**
+
+- `src/app/debug/specialists/page.tsx` — volledig herbouwd met een
+  **ingebouwd inlogformulier** (`browserClient.auth.signInWithPassword`)
+  direct op dezelfde pagina. **Nooit meer `router.push('/login')`** — in-
+  en uitloggen en alle Fase 1/2a-tests gebeuren nu op exact één pagina,
+  zonder enige client-side route-wissel.
+- **Doel:** isoleren of het probleem specifiek aan navigatie gekoppeld
+  is. Als dit stabiel blijft waar de oude versie (met navigatie naar
+  /login) niet stabiel bleef, bevestigt dat de hypothese. Zo niet, dan
+  ligt de oorzaak elders en moet verder gezocht worden.
+
 ## v2.4.63 — Service worker TIJDELIJK volledig uitgeschakeld
 **v2.4.62 (`skipWaiting: false`) loste het probleem niet volledig op —
 gebruiker meldde nog steeds "even blijft staan, dan springt terug",
