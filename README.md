@@ -268,8 +268,8 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 **Implementatie — Cycling als referentie-specialist, 5 stappen:**
 1. ✅ Identity Layer/Registry (`/api/specialists`, v2.4.60)
 2. ✅ Data Layer (`/api/specialists/cycling/data`, v2.4.61)
-3. 🔄 Cycling Analysis Engine — volgende
-4. ⬜ Coach Layer (AI)
+3. ✅ Cycling Analysis Engine (`/api/specialists/cycling/engine`, v2.4.66)
+4. 🔄 Coach Layer (AI) — volgende
 5. ⬜ Capability Registry-entry + Hub-UI
 
 ---
@@ -284,7 +284,7 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.65 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.66 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -296,7 +296,7 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.65
+- Versie: 2.4.66
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -595,6 +595,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.66 — Fase 2b Cycling Analysis Engine (Cycling-referentie, stap 3/5), volledig deterministisch
 - v2.4.65 — Specialistlaag-tests verplaatst naar bestaande /debug-pagina (AppShell, geen navigatie-problemen), losse pagina overbodig
 - v2.4.64 — Testpagina herbouwd: ingebouwd inlogformulier, geen navigatie meer (isoleert of navigatie zelf de trigger was)
 - v2.4.63 — Service worker TIJDELIJK volledig uitgeschakeld (disable: true) — v2.4.62 loste het probleem niet volledig op

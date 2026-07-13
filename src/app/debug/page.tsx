@@ -69,6 +69,9 @@ export default function DebugPage() {
   const [specialistResultaat, setSpecialistResultaat] = useState('')
   const [dataLayerBezig, setDataLayerBezig] = useState(false)
   const [dataLayerResultaat, setDataLayerResultaat] = useState('')
+  // v2.4.66: test-state voor Fase 2b (Cycling Analysis Engine)
+  const [engineBezig, setEngineBezig] = useState(false)
+  const [engineResultaat, setEngineResultaat] = useState('')
 
   async function laadSpecialisten() {
     setSpecialistenBezig(true)
@@ -112,6 +115,20 @@ export default function DebugPage() {
       setDataLayerResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setDataLayerBezig(false)
+    }
+  }
+
+  // v2.4.66: test-functie voor Fase 2b (Cycling Analysis Engine)
+  async function testEngine() {
+    setEngineBezig(true)
+    try {
+      const res = await fetch('/api/specialists/cycling/engine?period_days=90', { credentials: 'include' })
+      const data = await res.json()
+      setEngineResultaat(`GET /api/specialists/cycling/engine?period_days=90 →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setEngineResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setEngineBezig(false)
     }
   }
 
@@ -550,7 +567,16 @@ export default function DebugPage() {
             {dataLayerBezig ? 'Ophalen...' : 'Test: GET /api/specialists/cycling/data'}
           </button>
           {dataLayerResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{dataLayerResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{dataLayerResultaat}</pre>
+          )}
+
+          {/* v2.4.66: Fase 2b — Cycling Analysis Engine */}
+          <button onClick={testEngine} disabled={engineBezig}
+            className="w-full mb-3 py-2.5 bg-slate-800 rounded-xl text-sm font-medium text-white disabled:opacity-50">
+            {engineBezig ? 'Berekenen...' : 'Test: GET /api/specialists/cycling/engine'}
+          </button>
+          {engineResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{engineResultaat}</pre>
           )}
         </div>
 

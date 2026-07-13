@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.66 — Fase 2b: Cycling Analysis Engine (Cycling-referentie, stap 3/5)
+**Volledig deterministisch, geen AI — precies zoals vastgelegd in
+`docs/specialist-engine-architecture.md`. Berekent frequentie, vermogen-
+trend, afstand, trainingsbelasting uit de Data Layer-output (v2.4.61).**
+
+- **Nieuw:** `src/lib/specialists/cycling-data.ts` — Data Layer-logica
+  geëxtraheerd uit `[type]/data/route.ts` naar een herbruikbare functie
+  (`haalCyclingData`), zodat de Analysis Engine dit intern kan aanroepen
+  zonder aparte HTTP-roundtrip (zoals vastgelegd in `specialist-api.md`
+  Fase 3). `[type]/data/route.ts` is nu een dunne wrapper hieromheen,
+  gedrag ongewijzigd.
+- **Nieuw:** `src/lib/specialists/cycling-analysis.ts` — de eigenlijke
+  Engine. Berekent:
+  - **Trainingsfrequentie:** huidige vs. vorige periode (evenlang),
+    trend bij ≥15% verschil
+  - **Vermogen:** gemiddeld/max watt, trend t.o.v. vorige periode.
+    **Eerlijk gevlagd:** `max_watts` is tot nu toe alleen bevestigd
+    aanwezig bij Garmin-imports, niet bij Strava — expliciete null-checks
+    overal, geen aanname dat het veld altijd bestaat
+  - **Afstand:** totaal + gemiddeld per activiteit
+  - **Trainingsbelasting:** duur-gebaseerd (bewust géén RPE-weging zoals
+    de bestaande `trainingsCoachContext` in `api/coach/route.ts` doet —
+    losse `activity_sessions` hebben doorgaans geen RPE, dus dat zou een
+    onvolledig beeld geven; hier puur transparant duur-gebaseerd)
+  - **Output-vorm:** volgt het `EngineResult`-patroon uit
+    `specialist-engine-architecture.md` — `resultaat` + `reden[]`
+    (Explainability-verplichting) + `databronnen[]` + `gegenereerd_op`,
+    plus `engine_version`/`algorithm_version` (versionering,
+    vastgelegd in hetzelfde document)
+- **Nieuw:** `src/app/api/specialists/cycling/engine/route.ts` — GET-
+  endpoint die de Engine blootgeeft, testbaar zoals de vorige stappen
+- `src/app/debug/page.tsx` — testsectie uitgebreid met de Engine-test
+
+**Bewust nog niet meegenomen, zoals vastgelegd in `specialist-api.md`:**
+FTP/TSS/CTL — vereist een FTP-referentiewaarde die nergens bevestigd
+aanwezig is. `herstel_indicatie` uit het architectuurdocument-voorbeeld
+is bewust weggelaten — dat vermengt Recovery-domein (Master Coach) met
+Cycling-domein, in strijd met de scheiding uit
+`specialist-decision-engine.md`.
+
+**Test-instructies:** zie bericht bij levering.
+
+**Volgende stap (4/5):** Coach Layer (AI) — de eerste daadwerkelijke
+AI-call in de specialistlaag, met `coach-personality.ts` hergebruikt.
+
 ## v2.4.65 — Specialistlaag-tests verplaatst naar bestaande /debug-pagina
 **Gebruiker stelde terecht de vraag: kon dit niet in de app zelf? Ja —
 en dat is een betere oplossing dan de losse `/debug/specialists`-pagina
