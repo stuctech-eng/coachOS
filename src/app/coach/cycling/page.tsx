@@ -46,20 +46,29 @@ export default function CyclingHubPage() {
   const [engineData, setEngineData] = useState<CyclingEngineResultaat | null>(null)
   const [verversen, setVerversen] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
+  // v2.4.70: Lifecycle Engine-state — DORMANT toont een melding, Hub
+  // blijft verder gewoon zichtbaar (kennis/geschiedenis gaat nooit
+  // verloren, zie specialist-coaches.md-vervolgoverleg)
+  const [dormant, setDormant] = useState(false)
 
   async function laadAlles() {
     setLaden(true)
     setFout(null)
     try {
-      const [adviesRes, engineRes] = await Promise.all([
+      const [adviesRes, engineRes, specialistenRes] = await Promise.all([
         fetch('/api/specialists/cycling/coach', { credentials: 'include' }),
         fetch('/api/specialists/cycling/engine?period_days=90', { credentials: 'include' }),
+        fetch('/api/specialists', { credentials: 'include' }),
       ])
       const adviesData = await adviesRes.json()
       const engineDataRes = await engineRes.json()
+      const specialistenData = await specialistenRes.json()
 
       if (adviesData?.analysis) setAdvies(adviesData.analysis)
       if (engineDataRes?.resultaat) setEngineData(engineDataRes.resultaat)
+
+      const cyclingEntry = (specialistenData.specialisten || []).find((s: { specialist_type: string }) => s.specialist_type === 'cycling')
+      setDormant(cyclingEntry?.lifecycle?.state === 'DORMANT')
     } catch (e) {
       setFout((e as Error).message)
     } finally {
@@ -100,6 +109,18 @@ export default function CyclingHubPage() {
             <p className="text-xs text-slate-500">Specialist-hub · laatste 90 dagen</p>
           </div>
         </div>
+
+        {/* v2.4.70: DORMANT — Hub blijft zichtbaar, kennis blijft
+            behouden, alleen een informatieve melding erbij */}
+        {!laden && dormant && (
+          <Card className="p-4 bg-slate-800/40 border-slate-700/50">
+            <p className="text-xs text-slate-400">
+              Momenteel geen recente fietsactiviteiten. Je geschiedenis en
+              analyses blijven gewoon bewaard — zodra je weer fietst,
+              pakken we het samen op.
+            </p>
+          </Card>
+        )}
 
         {laden && (
           <div className="flex flex-col gap-3">

@@ -278,13 +278,14 @@ rechtstreekse URL `/coach/cycling`.
 
 | Item | Prioriteit |
 |------|-----------|
+| **🔴 `docs/specialist-api.md` ontbreekt nog in de repo** — nooit daadwerkelijk gecommit, ondanks eerdere levering als zip (v2.4.70-bevinding). Moet zorgvuldig gereconstrueerd worden (bevat Fase 1-4, Capability Registry, Hub-modules, Event sourcing, Analyse-versionering) — niet zomaar opnieuw improviseren, de oorspronkelijke inhoud was al goedgekeurd. | 🔴 |
 | **Service worker weer op `skipWaiting: false` gezet (v2.4.65, was volledig `disable: true` in v2.4.63)** — test of het reset-probleem terugkeert nu tests via de bestaande `/debug`-pagina lopen (geen navigatie meer). Root cause nooit 100% bevestigd. Komt het terug: service worker is alsnog (mede)schuldig, dan opnieuw `disable: true` overwegen. | 🟡 |
 | **Testen: neemt de coach gewicht/tempo-afwijking (v2.4.51-53) daadwerkelijk mee in zijn geschreven advies?** De data komt gegarandeerd in de prompt terecht (code, geen AI-gok), maar of Sonnet het ook elke keer expliciet benoemt is niet gegarandeerd — instructie staat nu als "je mag dit benoemen" (optioneel), niet dwingend. Test door bewust af te wijken tijdens een kettlebell-training en het volgende coach-advies te checken. Reminder gezet voor 10 juli. Indien coach het niet consistent noemt: instructie in `coach/route.ts` aanscherpen naar een dwingender "je MOET dit noemen als relevant". | 🟡 |
 | **Controleer op bestaand duplicaat in `activity_sessions` vóór/na v2.4.28-deploy** (zie changelog) | 🟡 |
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.69 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.70 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -296,7 +297,7 @@ rechtstreekse URL `/coach/cycling`.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.69
+- Versie: 2.4.70
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -595,6 +596,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.70 — Specialist Lifecycle Engine (SUGGESTED/DORMANT/RETURNING-banners) + herstel ontbrekend specialist-memory.md (v3, Maturity Engine toegevoegd)
 - v2.4.69 — Navigatie-integratie: "Mijn Coaches"-rij in de Coach-tab, /coach/cycling nu bereikbaar zonder handmatige URL
 - v2.4.68 — Capability Registry + Cycling Hub-UI (Cycling-referentie, stap 5/5, LAATSTE STAP — referentie-implementatie compleet)
 - v2.4.67 — Fase 3 Cycling Coach Layer, eerste AI-call (Cycling-referentie, stap 4/5), personality volledig hergebruikt

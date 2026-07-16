@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
+import { bepaalCyclingLifecycle } from '@/lib/specialists/lifecycle-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -16,16 +17,6 @@ async function getUser() {
   return user
 }
 
-// ── Fase 1 — Specialist Registry ────────────────────────────────────────
-// Bron: docs/specialist-coaches.md §5, docs/specialist-api.md Fase 1.
-// Puur beheer: geen AI, geen berekeningen. Vaste code-config hieronder
-// bepaalt WELKE specialisten kunnen bestaan; specialist_profiles (SQL
-// v2.4.59) bepaalt WELKE daarvan actief zijn voor DEZE gebruiker.
-//
-// Referentie-implementatie: alleen 'cycling' heeft status 'active' —
-// de rest staat op 'development' totdat ze daadwerkelijk gebouwd zijn.
-// Bewust geen overclaiming: een specialist die nog niet bestaat, mag
-// niet activeerbaar lijken.
 const SPECIALIST_CONFIG: Record<string, { label: string; status: 'active' | 'development' }> = {
   cycling:  { label: 'Cycling Coach',  status: 'active' },
   running:  { label: 'Running Coach',  status: 'development' },
@@ -33,8 +24,11 @@ const SPECIALIST_CONFIG: Record<string, { label: string; status: 'active' | 'dev
   strength: { label: 'Strength Coach', status: 'development' },
 }
 
-// GET — lijst specialisten voor deze gebruiker: welke zijn actief,
-// welke zijn beschikbaar-maar-niet-actief, welke zijn nog in ontwikkeling
+// v2.4.70: welke specialisten hebben een werkende Lifecycle Engine?
+// Alleen cycling — de andere hebben geen data-fetcher (geen Data Layer
+// gebouwd), dus lifecycle-berekening zou daar niets zinnigs opleveren.
+const LIFECYCLE_ONDERSTEUND = new Set(['cycling'])
+
 export async function GET() {
   try {
     const user = await getUser()
@@ -50,16 +44,30 @@ export async function GET() {
 
     const profielMap = new Map((profielen || []).map(p => [p.specialist_type, p]))
 
-    const specialisten = Object.entries(SPECIALIST_CONFIG).map(([type, config]) => {
-      const profiel = profielMap.get(type)
-      return {
-        specialist_type: type,
-        label: config.label,
-        beschikbaar: config.status === 'active',
-        actief: profiel?.active ?? false,
-        activated_at: profiel?.activated_at ?? null,
-      }
-    })
+    const specialisten = await Promise.all(
+      Object.entries(SPECIALIST_CONFIG).map(async ([type, config]) => {
+        const profiel = profielMap.get(type)
+        const actief = profiel?.active ?? false
+
+        let lifecycle = null
+        if (LIFECYCLE_ONDERSTEUND.has(type)) {
+          try {
+            lifecycle = await bepaalCyclingLifecycle(user.id, actief)
+          } catch (e) {
+            console.error(`[specialists GET] lifecycle-berekening mislukt voor ${type}:`, e)
+          }
+        }
+
+        return {
+          specialist_type: type,
+          label: config.label,
+          beschikbaar: config.status === 'active',
+          actief,
+          activated_at: profiel?.activated_at ?? null,
+          lifecycle,
+        }
+      })
+    )
 
     return NextResponse.json({ specialisten })
   } catch (err) {
@@ -68,7 +76,6 @@ export async function GET() {
   }
 }
 
-// POST — activeer/deactiveer een specialist. Body: { specialist_type, active }
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
@@ -91,10 +98,6 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient()
 
-    // Upsert — gebruikt de unieke constraint (user_id, specialist_type)
-    // uit specialist_profiles (SQL v2.4.59). activated_at wordt alleen
-    // bijgewerkt bij het activeren, niet bij deactiveren (historisch
-    // referentiepunt blijft behouden).
     const upsertData: Record<string, unknown> = {
       user_id: user.id,
       specialist_type,

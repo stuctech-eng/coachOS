@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.70 — Specialist Lifecycle Engine + herstel ontbrekende documenten
+**⚠️ Belangrijke bevinding tijdens deze stap: `docs/specialist-api.md` en
+`docs/specialist-memory.md` bleken nooit daadwerkelijk gecommit, ondanks
+eerdere levering als zip. `specialist-memory.md` is hersteld (volledige
+tekst was nog beschikbaar). `specialist-api.md` volgt apart, moet
+zorgvuldiger gereconstrueerd worden.**
+
+- **Nieuw:** `src/lib/specialists/lifecycle-engine.ts` — volledig
+  deterministisch, **geen opgeslagen status-veld**. Berekent de
+  levenscyclus-toestand (`DISCOVERABLE`/`SUGGESTED`/`ACTIVE`/`DORMANT`/
+  `RETURNING`) elke keer opnieuw uit `specialist_profiles.active` +
+  `activity_sessions` — businesslogica, geen data, dus geen SQL-migratie
+  nodig.
+  - `SUGGESTED`: ≥3 activiteiten in 30 dagen, nog niet actief
+  - `DORMANT`: actief, maar ≥60 dagen geen activiteit
+  - `RETURNING`: actief, hervat binnen 14 dagen na een gap van ≥60 dagen
+    — inclusief `vorige_actieve_periode` (start/eind) voor persoonlijkere
+    context in het Coach Layer-advies
+- `src/app/api/specialists/route.ts` — `GET` uitgebreid met
+  `lifecycle`-veld per specialist (alleen berekend voor cycling, de
+  enige specialist met een werkende data-fetcher)
+- `src/app/chat/page.tsx` — twee nieuwe banners, **beide met expliciete
+  gebruikerskeuze, nooit automatische activatie**:
+  - `SUGGESTED` → "Je fietst regelmatig. Wil je de Cycling Coach
+    activeren?" met Activeren/Niet nu
+  - `RETURNING` → "Welkom terug!" met vorige-periode-context indien
+    bekend
+- `src/app/coach/cycling/page.tsx` — `DORMANT`-melding toegevoegd; Hub
+  blijft **volledig zichtbaar** (kennis/geschiedenis gaat nooit
+  verloren, alleen een informatieve melding erbij)
+- **Hersteld:** `docs/specialist-memory.md` (v3) — volledige v1/v2-inhoud
+  teruggezet, plus nieuwe sectie **Maturity Engine** (toekomstig
+  concept, bewust NIET nu gebouwd — vereist eerst een operationele
+  Memory + Confidence Engine, anders wordt het een schijnwaarde)
+
+**Vier gescheiden engines nu expliciet onderscheiden:** Lifecycle
+("wat doet de gebruiker") ✅ gebouwd, Memory ("wat is geleerd") ⏳,
+Confidence ("hoe zeker") ⏳, Maturity ("hoe volwassen is de begeleiding")
+toekomstig, in die volgorde.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.69 — Navigatie-integratie: "Mijn Coaches" in de Coach-tab
 **Kleine, gerichte toevoeging aan de bestaande, productie-actieve
 `/chat`-pagina (de Coach-tab). Maakt `/coach/cycling` (v2.4.68)
