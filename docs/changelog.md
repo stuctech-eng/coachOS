@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.72 — specialist-api.md: vijf inhoudelijke aanscherpingen na review
+**Reactie op een externe review van de v2.4.71-reconstructie. Eerst
+geverifieerd (niet aangenomen) dat alle versieclaims kloppen — alle zes
+`specialist-*.md`-documenten + kerncode gaven HTTP 200 op GitHub, plus
+bevestigd door live tests eerder in de sessie. Daarna vijf inhoudelijke
+verbeteringen doorgevoerd:**
+
+1. **"AI berekent nooit" genuanceerd** — te absoluut voor de praktijk.
+   Nieuwe formulering: *"Alle bedrijfskritische berekeningen, trends,
+   scores en beslislogica worden deterministisch uitgevoerd. AI mag
+   deze niet vervangen."* AI mag nog steeds geen bron van waarheid
+   worden voor een cijfer — kleine interpretatieve stappen in lopende
+   tekst blijven toegestaan.
+2. **Generieke rekenbibliotheek benoemd** — trendberekening, moving
+   average, rolling windows horen niet per sport opnieuw geschreven te
+   worden. Cycling Analysis Engine (v2.4.66) heeft dit nog inline staan
+   — bij een tweede specialist is dit het moment om te extraheren naar
+   een gedeelde bibliotheek.
+3. **Goal Engine: Global Goals vs. Specialist Goals** — niet elk doel is
+   sportspecifiek (bijv. "minder stress", "beter slapen" horen bij de
+   Master Coach, niet bij een specialist). Beide blijven in `user_goals`,
+   onderscheid zit in wie de voortgang berekent/gebruikt.
+4. **Hub-structuur herzien: capabilities i.p.v. vaste modulelijst** — een
+   specialist publiceert zijn eigen capability-set (bijv. Cycling:
+   Dashboard/Records/Grafieken/FTP/Wedstrijden, Nutrition: Maaltijden/
+   Macro's/Recepten), geen gedeelde lijst waar elke specialist uit put.
+   Capability Registry is hierin leidend.
+5. **Decision Engine expliciet in de Fase 4-flow** — was eerder alleen
+   een verwijzing ("zie ook"), nu een expliciete stap in het
+   flow-diagram: `Specialist(en) → Decision Engine → Master Coach`.
+
+**Alle vijf punten waren gerichte verbeteringen op een al goed
+beoordeeld document (9,5/10 review) — geen fundamentele koerswijziging.**
+
 ## v2.4.71 — Herstel: docs/specialist-api.md gereconstrueerd
 **`docs/specialist-api.md` bleek nooit gecommit (ontdekt in v2.4.70) —
 gereconstrueerd vanuit de conversatiegeschiedenis. GOEDE-TROUW-

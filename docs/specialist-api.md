@@ -4,13 +4,17 @@
 schrijven — inmiddels ingehaald door de werkelijkheid: Fase 1-3 zijn
 gebouwd in de Cycling-referentie-implementatie, v2.4.60-69)**
 
-**⚠️ Reconstructie-notitie (v2.4.71):** dit document bleek nooit
-daadwerkelijk gecommit in de repository, ondanks eerdere levering en
-goedkeuring. Onderstaande is een **goede-trouw-reconstructie** vanuit de
-conversatiegeschiedenis — geen byte-perfecte kopie van het origineel.
-Structuur en inhoud zijn zo getrouw mogelijk gereconstrueerd; kleine
-formuleringsverschillen ten opzichte van wat oorspronkelijk is
-goedgekeurd zijn mogelijk.
+**⚠️ Reconstructie-notitie (v2.4.71, aangescherpt v2.4.72):** dit
+document bleek nooit daadwerkelijk gecommit in de repository, ondanks
+eerdere levering en goedkeuring — gereconstrueerd vanuit de
+conversatiegeschiedenis. **Versieclaims (v2.4.60 etc.) hieronder zijn
+geverifieerd** — rechtstreeks gecontroleerd tegen de GitHub-repo
+(HTTP 200 op elk genoemd bestand) en bevestigd door live tests tijdens
+de sessie zelf, niet slechts beweerd. Na reconstructie volgde een
+inhoudelijke review met vijf aanscherpingen (v2.4.72): nuancering van
+"AI berekent nooit", generieke rekenbibliotheek, Global vs. Specialist
+Goals, Capability-gedreven Hub in plaats van vaste modulelijst, en de
+Decision Engine expliciet in de Fase 4-flow.
 
 Vervolg op `docs/specialist-coaches.md` (architectuurprincipe) en
 `docs/specialist-database-design.md` (database-ontwerp, uitgevoerd als
@@ -23,8 +27,23 @@ Dit is een directe uitbreiding van het bestaande CoachOS-principe
 ("Bibliotheken zijn de bron van waarheid, AI verzint geen oefeningen")
 naar de analyse-kant.
 
-**Expliciet, om geen ruimte voor interpretatie te laten — AI berekent
-nooit:**
+**Het kernprincipe, preciezer geformuleerd (v2.4.72-aanscherping):**
+> Alle bedrijfskritische berekeningen, trends, scores en beslislogica
+> worden deterministisch uitgevoerd. AI mag deze niet vervangen.
+
+**Waarom deze nuance:** de eerdere formulering "AI berekent nooit" was
+architectonisch bedoeld als harde grens tegen AI die zelf trends/cijfers
+verzint — maar in de praktijk kan AI best eenvoudige afleidingen of
+samenvattingen maken (bijv. "dit is drie weken op rij hoger" als
+observatie in lopende tekst). Het punt is niet dat AI nooit iets
+telt of vergelijkt in zijn formuleringen — het punt is dat AI nooit de
+**bron van waarheid** wordt voor een cijfer, trend, score of beslissing
+die het systeem daadwerkelijk gebruikt. Die blijven altijd
+deterministisch. Deze nuance voorkomt dat de regel later onnodig
+beperkend blijkt voor legitieme, kleine interpretatieve stappen binnen
+de Coach Layer.
+
+**Concreet, wat nog steeds altijd deterministisch blijft (ongewijzigd):**
 - Trends
 - Grafieken
 - FTP
@@ -111,6 +130,23 @@ exact wat in de Cycling Analysis Engine is gebouwd.
 **Waarom volledig los van Fase 2a:** maakt de sport-specifieke
 rekenlogica **volledig testbaar zonder AI en zonder database.**
 
+**Generieke rekenbibliotheek, aanvulling (v2.4.72):** "één losse engine
+per sport" betekent niet dat elke sport-engine alles opnieuw uitvindt.
+Terugkerende berekeningen — trendberekening, voortschrijdend gemiddelde
+(moving average), rolling windows, basisperiodisering-logica — horen
+thuis in een **gedeelde, generieke rekenbibliotheek**, die elke
+sport-specifieke engine aanroept. De Cycling Analysis Engine (v2.4.66)
+heeft dit onderscheid nog niet expliciet doorgevoerd (de trend- en
+gemiddelde-berekeningen staan nu inline in `cycling-analysis.ts`) —
+bij de bouw van een tweede specialist is dit het moment om deze
+generieke stukken te extraheren naar bijvoorbeeld
+`src/lib/specialists/rekenbibliotheek.ts`, zodat Running/Rowing/Strength
+niet dezelfde trendlogica opnieuw hoeven te schrijven. Onderscheid dus:
+- **Generieke rekenbibliotheek** — sport-onafhankelijk (trend, moving
+  average, rolling window)
+- **Sport-specifieke implementatie** — welke velden, welke drempels,
+  welke metrics relevant zijn per discipline
+
 **Roept nooit een AI aan.**
 
 ---
@@ -155,14 +191,33 @@ maar actief *berekenen*:
 - Moet periodisering worden aangepast?
 - Moet belasting omhoog of omlaag?
 
-**Plek in de architectuur:** volledig deterministisch — geen AI. Hoort
-logisch bij de specialist, niet bij de Master Coach. Leest `user_goals`
-(gefilterd op deze specialist) + Specialist Engine-output (Fase 2b).
+**Aanscherping (v2.4.72): onderscheid Global Goals vs. Specialist
+Goals.** De oorspronkelijke opzet koppelde de Goal Engine uitsluitend
+aan specialisten — maar niet elk doel is sportspecifiek. De Master
+Coach heeft óók doelen nodig die geen enkele specialist "bezit":
+- **Global Goals** (Master Coach-niveau) — bijv. minder stress, beter
+  slapen, algeheel fitter worden, afvallen (dat laatste kán aan een
+  specialist raken, maar is niet per se sport-gebonden)
+- **Specialist Goals** (specialist-niveau) — bijv. FTP-target, 5km-PR,
+  een specifiek wedstrijddoel
+
+Beide leven in dezelfde `user_goals`-tabel (geen aparte tabel nodig,
+zie `specialist-database-design.md` §3.2) — het onderscheid zit in
+**wie de voortgang berekent en gebruikt**, niet in de opslag zelf.
+Global Goals worden gelezen/berekend richting de Master Coach
+(toekomstige Fase 4-integratie), Specialist Goals richting de
+betreffende specialist (Fase 3, Coach Layer). Exacte
+onderscheidingslogica (bijv. via `goal_type`-conventie) nog niet
+uitgewerkt — vergt bevestiging bij implementatie.
+
+**Plek in de architectuur:** volledig deterministisch — geen AI. Leest
+`user_goals` (gefilterd op specialist óf op "algemeen") + Specialist
+Engine-output (Fase 2b) voor de specialist-variant.
 
 **Status:** ontworpen, **nog niet gebouwd** — de Cycling-referentie-
 implementatie (v2.4.60-69) nam alleen doelen als lichte, ruwe context
 mee in de Coach Layer-prompt, geen aparte deterministische
-voortgangsberekening. Vergt een eigen implementatiestap.
+voortgangsberekening, en nog geen Global/Specialist-onderscheid.
 
 **Roept nooit een AI aan.**
 
@@ -178,6 +233,30 @@ begonnen wordt, aangezien dit bestaande, actieve productiecode raakt).
 uit** voor specialistische kennis. Hij vraagt een specialist om een
 **samenvatting**, geen ruwe data.
 
+**Volledige flow, expliciet gecorrigeerd (v2.4.72):** de oorspronkelijke
+versie van dit document toonde de flow als rechtstreeks
+"Specialist → Master Coach". Dat miste een laag die in het latere
+`specialist-decision-engine.md` wél is vastgelegd — de correcte,
+volledige flow is:
+
+```
+Specialist(en)
+   ↓
+Decision Engine     ← bepaalt bij conflicten wie voorrang krijgt
+   ↓
+Master Coach          ← integreert tot één coherent advies
+```
+
+Zodra er twee of meer specialisten tegelijk actief zijn en mogelijk
+conflicterende adviezen geven, gaat hun output **altijd eerst** door de
+Decision Engine (vaste prioriteitsregels: gezondheid > prestatie,
+blessures > periodisering, herstel > belasting, lange termijn > korte
+termijn, gebruikersdoel als tiebreaker) vóórdat de Master Coach het ziet.
+Bij precies één actieve specialist (de huidige situatie, alleen Cycling)
+is er geen conflict om op te lossen, maar de laag bestaat architectonisch
+al vanaf het moment dat Fase 4 gebouwd wordt — niet pas achteraf
+toegevoegd.
+
 ```
 Cycling Coach-samenvatting:
   Belasting: hoog
@@ -191,39 +270,49 @@ Cycling Coach-samenvatting:
 advies nooit Fase 3 opnieuw aan — hij leest de laatst gegenereerde,
 al-opgeslagen samenvatting uit `specialist_analyses`.
 
-**Zie ook:** `specialist-decision-engine.md` voor hoe conflicten tussen
-meerdere gelijktijdig actieve specialisten worden opgelost (relevant
-zodra een 2e specialist naast Cycling actief kan zijn) — inclusief de
+**Zie ook:** `specialist-decision-engine.md` voor de volledige
 `DecisionResult`-structuur en de precisering dat de Master Coach de
 geselecteerde uitkomsten *integreert* tot één coherent advies, niet
 slechts verwoordt.
 
 ---
 
-## Hub-structuur — standaardisatie per specialist
+## Hub-structuur — capabilities, geen vaste modulelijst
 
-**Aanvulling op `specialist-coaches.md` §6.** Elke Hub krijgt uiteindelijk
-dezelfde vaste structuur, opgebouwd uit **modules** (niet vaste,
-hardgecodeerde pagina's — een specialist *activeert* modules):
+**Aanvulling op `specialist-coaches.md` §6, herzien (v2.4.72).** De
+oorspronkelijke formulering hierboven beschreef één vaste lijst modules
+die "elke Hub uiteindelijk krijgt" — dat suggereert ten onrechte dat
+elke specialist naar dezelfde eindvorm toegroeit. In werkelijkheid
+verschillen specialisten fundamenteel in wat relevant is:
 
-- Dashboard
-- Training Plan
-- Periodisering
-- Grafieken
-- Wedstrijden (Event Engine, toekomstig)
-- Persoonlijke inzichten (Memory, zodra gebouwd)
-- Coach
-- Bibliotheek (discipline-specifieke oefeningen/drills)
-- Records
-- Doelen
-- Instellingen
+**Preciezere formulering: een specialist publiceert zijn eigen
+capabilities, geen vaste lijst.** Voorbeelden, illustratief:
+
+```
+Cycling:
+  Dashboard, Records, Grafieken, FTP, Wedstrijden
+
+Nutrition (toekomstig):
+  Maaltijden, Macro's, Recepten
+
+Recovery (toekomstig):
+  Slaap, HRV, Herstel
+```
+
+**De Capability Registry (zie `specialist-engine-architecture.md`) is
+hierin leidend** — niet een gedeelde modulelijst waar elke specialist
+uit put, maar per specialist een eigen, expliciete set. Terugkerende
+bouwstenen (Dashboard, Coach, Instellingen) komen in de praktijk
+waarschijnlijk bij de meeste specialisten voor, maar dat is een
+**toevallig gevolg** van gedeelde behoeften, geen architecturale eis dat
+elke specialist ze allemaal moet hebben.
 
 **Status:** de Cycling Hub (v2.4.68) implementeert een eerste, beperkte
-versie — Dashboard + Coach-advies + basisstatistieken. De overige
-modules zijn nog niet gebouwd, welke een specialist toont wordt bepaald
-door de **Capability Registry** (zie `specialist-engine-architecture.md`
-— daar verder uitgewerkt met concrete velden als `supportsPeriodization`
-etc.).
+capability-set — Dashboard + Coach-advies + basisstatistieken. De
+Capability Registry (`capability-registry.ts`) legt op dit moment al
+eerlijk vast welke geavanceerde capabilities (periodisering, events,
+predictions, benchmarks) nog `false` staan voor Cycling — consistent met
+dit herziene principe.
 
 ---
 
