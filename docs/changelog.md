@@ -1,5 +1,27 @@
 # CoachOS — Changelog
 
+## v2.4.73 — Memory Engine, sub-stap 1/5: SQL specialist_memory
+**Eerste stap van de Memory Engine, zoals vastgelegd in
+`specialist-memory.md`. Alleen de opslagstructuur — nog geen Learning-
+of Confidence-logica (sub-stappen 2 en 4), nog geen AI-integratie
+(sub-stap 3), nog geen terugkoppeling naar de Coach Layer (sub-stap 5).**
+
+- **Nieuw:** `supabase/specialist_memory.sql`
+  - Exact het veldontwerp uit `specialist-memory.md`: `id`, `user_id`,
+    `specialist_type`, `knowledge_type` (hard/soft, met check-constraint),
+    `insight`, `category`, `confidence` (0-100), `status`
+    (candidate/active/deprecated, met check-constraint),
+    `confirmation_count`, `first_observed_at`, `last_confirmed_at`
+  - Bewust **geen** wijziging aan `specialist_profiles` of
+    `specialist_analyses` — derde, losstaande tabel, zoals onderbouwd
+    in `specialist-database-design.md` §4.5 / `specialist-memory.md`
+  - `updated_at`-trigger, indexen, RLS — zelfde patroon als
+    `specialist_layer.sql` (v2.4.59)
+
+**Volgende sub-stap (2/5):** Learning Engine — deterministische logica
+die bepaalt of een kandidaat-inzicht gepromoveerd wordt van `candidate`
+naar `active`.
+
 ## v2.4.72 — specialist-api.md: vijf inhoudelijke aanscherpingen na review
 **Reactie op een externe review van de v2.4.71-reconstructie. Eerst
 geverifieerd (niet aangenomen) dat alle versieclaims kloppen — alle zes
