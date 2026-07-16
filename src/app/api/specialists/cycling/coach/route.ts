@@ -5,6 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { analyseerCycling } from '@/lib/specialists/cycling-analysis'
+import { verwerkKandidaatInzicht } from '@/lib/specialists/learning-engine'
 import { COACH_CORE_IDENTITY, CORE_SAFETY_RULE, getCoachTone } from '@/core/prompts/coach-personality'
 
 async function getUser() {
@@ -26,17 +27,32 @@ export interface CyclingCoachAdvies {
   generated_at: string
 }
 
+// v2.4.75: apart van het advies zelf — de AI mag hooguit 0-2
+// kandidaat-inzichten voorstellen per keer, bewust NIET onderdeel van
+// CyclingCoachAdvies (dat blijft de opgeslagen analyse-vorm,
+// ongewijzigd t.o.v. eerdere versies). Kandidaten gaan direct door de
+// Learning Engine, worden niet zelf opgeslagen als "waarheid" door de AI.
+interface KandidaatInzichtRuw {
+  category: 'training_response' | 'preference' | 'risk_pattern'
+  insight: string
+}
+
 // ── Fase 3 — Cycling Coach Layer ────────────────────────────────────────
 // Bron: docs/specialist-api.md Fase 3. EERSTE AI-CALL in de
 // specialistlaag. Roept intern Fase 2b aan (analyseerCycling) — geen
 // nieuwe berekening hier, alleen interpretatie van al-berekende cijfers.
 //
 // Personality: hergebruikt COACH_CORE_IDENTITY/CORE_SAFETY_RULE/
-// getCoachTone(2) uit de BESTAANDE coach-personality.ts (zie
-// specialist-engine-architecture.md, "Coach Personality — hergebruik,
-// geen nieuwe laag"). Niveau 2 gekozen (niet 3) — dit is periodiek
-// advies genereren, geen reactie op een zojuist afgeronde evaluatie
-// (dat is waar Niveau 3 voor bedoeld is, zie coach-personality.ts).
+// getCoachTone(2) uit de BESTAANDE coach-personality.ts.
+//
+// v2.4.75 — Memory Engine sub-stap 3: de AI mag nu ook (optioneel,
+// max 2 per keer) kandidaat-inzichten voorstellen naast het advies.
+// Deze gaan NOOIT direct het geheugen in — ze worden doorgegeven aan de
+// Learning Engine (verwerkKandidaatInzicht), die deterministisch beslist
+// of het een bevestiging is en of promotie naar 'active' plaatsvindt.
+// De AI schrijft dus zelf niet naar specialist_memory, exact zoals
+// vastgelegd in specialist-memory.md ("AI leest Memory wel, schrijft er
+// nooit rechtstreeks naartoe").
 
 export async function GET() {
   try {
@@ -127,12 +143,29 @@ ${doelenContext}
 Geef een persoonlijk, motiverend maar eerlijk cycling-advies. Schrijf in
 het Nederlands. Wees concreet — gebruik de cijfers, verzin niets.
 
+KANDIDAAT-INZICHTEN (v2.4.75, optioneel): als je in de cijfers of context
+een duurzaam patroon herkent (geen eenmalige observatie, maar iets wat
+zich lijkt te herhalen), mag je dat voorstellen als kandidaat-inzicht.
+BELANGRIJK: dit is een VOORSTEL, geen vastgestelde waarheid — een
+losstaand systeem (de Learning Engine) beslist of dit vaak genoeg
+terugkomt om echt te worden vastgelegd. Wees daarom terughoudend: geef
+maximaal 2 kandidaten, alleen als je een echt patroon ziet, nooit puur
+om het veld te vullen. Elke kandidaat hoort bij één van deze drie
+categorieën: "training_response" (hoe reageert het lichaam op een type
+training), "preference" (waar de gebruiker blijkbaar naar neigt),
+"risk_pattern" (een patroon dat aandacht verdient, bijv. overbelasting).
+Geef gewoon een lege array als je niets duurzaams ziet — dat is de
+normale, verwachte situatie bij weinig data.
+
 Reageer ALLEEN in dit JSON-formaat:
 {
   "samenvatting": "1-2 zinnen, de kern van waar deze atleet nu staat qua fietsen",
   "sterke_punten": "2-3 zinnen over wat goed gaat",
   "aandachtspunten": "2-3 zinnen over wat aandacht verdient",
-  "advies": "2-3 zinnen concreet advies voor de komende periode"
+  "advies": "2-3 zinnen concreet advies voor de komende periode",
+  "kandidaat_inzichten": [
+    { "category": "training_response", "insight": "korte, concrete inzin" }
+  ]
 }`
 
     let advies: CyclingCoachAdvies = {
@@ -142,6 +175,10 @@ Reageer ALLEEN in dit JSON-formaat:
       advies: 'Ga door met fietsen en importeer je ritten — over een paar weken kan de coach een beter beeld geven.',
       generated_at: new Date().toISOString(),
     }
+    // v2.4.75: kandidaat-inzichten apart bijgehouden, alleen voor
+    // logging/testdoeleinden in de response — worden NIET in het
+    // opgeslagen advies (specialist_analyses.analysis) meegenomen
+    let leerResultaten: Array<{ category: string; insight: string; actie: string; status: string }> = []
 
     try {
       const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -165,7 +202,31 @@ Reageer ALLEEN in dit JSON-formaat:
         const jsonMatch = rawText.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
+          const kandidaten: KandidaatInzichtRuw[] = Array.isArray(parsed.kandidaat_inzichten) ? parsed.kandidaat_inzichten : []
+          // Verwijder kandidaat_inzichten uit wat opgeslagen wordt als
+          // advies — dat blijft de bestaande, ongewijzigde vorm
+          delete parsed.kandidaat_inzichten
           advies = { ...advies, ...parsed, generated_at: new Date().toISOString() }
+
+          // ── Elke kandidaat door de Learning Engine ────────────────
+          // Geldige category vereist, insight-tekst niet leeg — anders
+          // negeren i.p.v. de hele call te laten falen (AI-output is
+          // nooit 100% gegarandeerd correct gevormd)
+          const GELDIGE_CATEGORIEEN = ['training_response', 'preference', 'risk_pattern']
+          for (const kandidaat of kandidaten.slice(0, 2)) {
+            if (!GELDIGE_CATEGORIEEN.includes(kandidaat.category) || !kandidaat.insight?.trim()) continue
+            try {
+              const resultaat = await verwerkKandidaatInzicht(user.id, {
+                specialist_type: 'cycling',
+                knowledge_type: 'soft', // AI-voorgestelde inzichten zijn altijd soft, nooit hard (zie specialist-memory.md)
+                insight: kandidaat.insight.trim(),
+                category: kandidaat.category,
+              })
+              leerResultaten.push({ category: kandidaat.category, insight: kandidaat.insight, actie: resultaat.actie, status: resultaat.status })
+            } catch (leerErr) {
+              console.error('[specialists/cycling/coach] Learning Engine-verwerking mislukt:', leerErr)
+            }
+          }
         }
       }
     } catch (aiErr) {
@@ -186,7 +247,10 @@ Reageer ALLEEN in dit JSON-formaat:
 
     if (saveError) throw saveError
 
-    return NextResponse.json(saved)
+    // v2.4.75: leerResultaten wordt NIET opgeslagen in specialist_analyses
+    // (dat blijft precies CyclingCoachAdvies) — alleen in de API-response
+    // meegegeven, zodat sub-stap 3 testbaar is zonder een aparte query
+    return NextResponse.json({ ...saved, leer_resultaten: leerResultaten })
   } catch (err) {
     console.error('[specialists/cycling/coach]', err)
     return NextResponse.json({ error: 'Advies genereren mislukt' }, { status: 500 })

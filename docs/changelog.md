@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.75 — Memory Engine, sub-stap 3/5: Coach Layer voorstelt kandidaat-inzichten
+**De AI mag voortaan zelf kandidaat-inzichten voorstellen — schrijft
+NOOIT rechtstreeks naar het geheugen. Elke kandidaat gaat verplicht door
+de Learning Engine (sub-stap 2), die deterministisch beslist over
+bevestiging/promotie. Exact zoals vastgelegd in
+`specialist-memory.md`.**
+
+- `src/app/api/specialists/cycling/coach/route.ts`
+  - Prompt uitgebreid: AI mag max. 2 kandidaat-inzichten per keer
+    voorstellen, alleen bij een **duurzaam patroon** (niet een eenmalige
+    observatie), verplicht binnen één van drie vaste categorieën
+    (`training_response`/`preference`/`risk_pattern`) — expliciet
+    benadrukt in de prompt dat dit een *voorstel* is, geen vastgestelde
+    waarheid
+    - Lege array is de normale, verwachte situatie bij weinig data —
+      geen druk om altijd iets te vinden
+  - `kandidaat_inzichten` wordt **verwijderd** vóór opslag in
+    `specialist_analyses.analysis` — dat blijft exact `CyclingCoachAdvies`,
+    ongewijzigd. Kandidaten gaan uitsluitend naar de Learning Engine
+  - Elke kandidaat: `knowledge_type` altijd `'soft'` (AI-voorgestelde
+    inzichten zijn per definitie nooit hard knowledge — dat komt uit
+    directe meting, niet AI-interpretatie, zie `specialist-memory.md`)
+  - Ongeldige/lege kandidaten worden genegeerd, niet de hele call laten
+    falen — AI-output is nooit 100% gegarandeerd correct gevormd
+  - `leer_resultaten` toegevoegd aan de API-response (niet aan het
+    opgeslagen record) — puur voor testbaarheid van deze stap
+
+**⚠️ Test-kanttekening:** de bestaande 24-uur-cache (v2.4.67) betekent
+dat een herhaalde test binnen 24 uur de **oude, gecachte** analyse
+teruggeeft, zonder nieuwe AI-call en dus zonder nieuwe
+`leer_resultaten`. Voor een schone test: wacht tot de cache verloopt, of
+wijzig tijdelijk de cache-drempel voor testdoeleinden.
+
+**Volgende sub-stap (4/5):** Confidence Engine — herweegt confidence over
+tijd, zet `active`-items onder een ondergrens automatisch naar
+`deprecated`.
+
 ## v2.4.74 — Memory Engine, sub-stap 2/5: Learning Engine
 **Volledig deterministisch, geen AI. Bepaalt of een kandidaat-inzicht een
 bevestiging is van een bestaand item, en promoveert `candidate` naar
