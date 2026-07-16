@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Trash2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Send, Bot, User, Trash2, Bike, ChevronRight } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
 
@@ -21,11 +22,17 @@ function getVandaag(): string {
 }
 
 export default function ChatPage() {
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [laden, setLaden] = useState(true)
   const [wisBevestiging, setWisBevestiging] = useState(false)
+  // v2.4.69: "Mijn Coaches" — actieve specialisten, navigatie-integratie
+  // naar de Hub-schermen (bijv. /coach/cycling). Toont alleen specialisten
+  // die de gebruiker daadwerkelijk heeft geactiveerd — geen lege sectie
+  // als er niets actief is.
+  const [actieveSpecialisten, setActieveSpecialisten] = useState<Array<{ specialist_type: string; label: string }>>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -59,6 +66,18 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // v2.4.69: actieve specialisten ophalen — los van de chat-logica,
+  // faalt stil als het niet lukt (geen kritieke functionaliteit)
+  useEffect(() => {
+    fetch('/api/specialists', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        const actief = (data.specialisten || []).filter((s: { actief: boolean }) => s.actief)
+        setActieveSpecialisten(actief)
+      })
+      .catch(() => { /* stil falen — "Mijn Coaches" is geen kritieke functie */ })
+  }, [])
 
   async function stuurBericht(tekst: string) {
     if (!tekst.trim() || loading) return
@@ -118,6 +137,21 @@ export default function ChatPage() {
             </button>
           )}
         </div>
+
+        {/* v2.4.69: "Mijn Coaches" — alleen zichtbaar als er daadwerkelijk
+            een actieve specialist is, geen lege sectie tonen */}
+        {actieveSpecialisten.length > 0 && (
+          <div className="px-5 pb-3 flex-shrink-0 flex gap-2 overflow-x-auto">
+            {actieveSpecialisten.map(s => (
+              <button key={s.specialist_type} onClick={() => router.push(`/coach/${s.specialist_type}`)}
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-slate-800/70 rounded-xl border border-slate-700/50 active:bg-slate-700">
+                <Bike size={14} className="text-primary-400" />
+                <span className="text-xs text-slate-300 font-medium">{s.label}</span>
+                <ChevronRight size={12} className="text-slate-600" />
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Bevestiging wissen */}
         {wisBevestiging && (

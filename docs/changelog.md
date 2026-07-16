@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.69 — Navigatie-integratie: "Mijn Coaches" in de Coach-tab
+**Kleine, gerichte toevoeging aan de bestaande, productie-actieve
+`/chat`-pagina (de Coach-tab). Maakt `/coach/cycling` (v2.4.68)
+bereikbaar zonder handmatige URL — de laagdrempelige helft van
+navigatie-integratie. Raakt NIET `api/coach/route.ts` zelf (Fase 4
+Master Coach-integratie) — dat blijft een aparte, expliciet af te
+stemmen stap.**
+
+- `src/app/chat/page.tsx` — nieuwe **"Mijn Coaches"-rij** direct onder de
+  header, vóór de chat-berichten. Toont alleen specialisten die de
+  gebruiker daadwerkelijk heeft geactiveerd (`GET /api/specialists`,
+  gefilterd op `actief: true`) — **geen lege sectie** als er niets actief
+  is, geen overclaiming van functionaliteit die er niet is.
+- Elke chip navigeert naar `/coach/${specialist_type}` — voor Cycling dus
+  naar de in v2.4.68 gebouwde Hub.
+- Ophalen van specialisten faalt bewust **stil** (geen foutmelding aan de
+  gebruiker) — dit is een secundaire, niet-kritieke functie, mag de
+  hoofdfunctionaliteit van de Coach-chat nooit verstoren.
+- Bewust géén wijziging aan de bestaande chat-logica, berichten-opslag,
+  of `/api/chat`-aanroep — puur een toevoeging, geen refactor.
+
+**Resultaat:** vanaf nu, zodra Cycling Coach actief staat, is de Hub
+rechtstreeks vanuit de normale Coach-tab bereikbaar.
+
+**Nog steeds bewust niet gedaan (ongewijzigd t.o.v. v2.4.68):** Fase 4 —
+Master Coach Orchestrator-integratie in `api/coach/route.ts` zelf. Dat
+raakt bestaande, actieve productiecode (het dagelijkse coach-advies) en
+vereist expliciete, aparte afstemming voordat daaraan begonnen wordt.
+
 ## v2.4.68 — Capability Registry + Cycling Hub-UI (Cycling-referentie, stap 5/5 — LAATSTE STAP)
 **De vijfde en laatste stap van de Cycling-referentie-implementatie.
 Eerste echte, gebruikersgerichte UI in de specialistlaag — geen

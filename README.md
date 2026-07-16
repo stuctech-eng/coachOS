@@ -262,11 +262,10 @@ geen losse AI-coaches, één coachervaring voor de gebruiker.
 4. ✅ Coach Layer/AI (`/api/specialists/cycling/coach`, v2.4.67)
 5. ✅ Capability Registry + Hub-UI (`/coach/cycling`, v2.4.68)
 
-**Bereikbaar via directe URL:** `/coach/cycling` — nog niet gekoppeld
-aan de hoofdnavigatie (aparte, latere stap).
+**Bereikbaar via de Coach-tab** (v2.4.69, "Mijn Coaches"-rij) én
+rechtstreekse URL `/coach/cycling`.
 
 **Volgende, niet-gestart, buiten de 5-stappen-referentie:**
-- Navigatie-integratie ("Mijn Coaches"-sectie binnen Coach-tab)
 - Fase 4 — Master Coach Orchestrator-integratie (`api/coach/route.ts`)
 - Decision Engine (pas relevant bij 2e actieve specialist)
 - Goal Engine, Specialist Memory (apart ontworpen, nog niet gebouwd)
@@ -285,7 +284,7 @@ aan de hoofdnavigatie (aparte, latere stap).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.68 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.69 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -297,7 +296,7 @@ aan de hoofdnavigatie (aparte, latere stap).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.68
+- Versie: 2.4.69
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -596,6 +595,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.69 — Navigatie-integratie: "Mijn Coaches"-rij in de Coach-tab, /coach/cycling nu bereikbaar zonder handmatige URL
 - v2.4.68 — Capability Registry + Cycling Hub-UI (Cycling-referentie, stap 5/5, LAATSTE STAP — referentie-implementatie compleet)
 - v2.4.67 — Fase 3 Cycling Coach Layer, eerste AI-call (Cycling-referentie, stap 4/5), personality volledig hergebruikt
 - v2.4.66 — Fase 2b Cycling Analysis Engine (Cycling-referentie, stap 3/5), volledig deterministisch
