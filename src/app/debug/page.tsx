@@ -75,6 +75,11 @@ export default function DebugPage() {
   // v2.4.67: test-state voor Fase 3 (Coach Layer, AI)
   const [coachBezig, setCoachBezig] = useState(false)
   const [coachResultaat, setCoachResultaat] = useState('')
+  // v2.4.74: test-state voor Memory Engine, sub-stap 2 (Learning Engine)
+  const [memoryBezig, setMemoryBezig] = useState(false)
+  const [memoryResultaat, setMemoryResultaat] = useState('')
+  const [testInsight, setTestInsight] = useState('Reageert goed op langere duurritten')
+  const [testCategory, setTestCategory] = useState('training_response')
 
   async function laadSpecialisten() {
     setSpecialistenBezig(true)
@@ -151,6 +156,37 @@ export default function DebugPage() {
       setCoachResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setCoachBezig(false)
+    }
+  }
+
+  // v2.4.74: test-functies voor Memory Engine, sub-stap 2 (Learning Engine)
+  async function laadMemory() {
+    setMemoryBezig(true)
+    try {
+      const res = await fetch('/api/specialists/cycling/memory', { credentials: 'include' })
+      const data = await res.json()
+      setMemoryResultaat(`GET /api/specialists/cycling/memory →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setMemoryResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setMemoryBezig(false)
+    }
+  }
+
+  async function dienKandidaatIn() {
+    setMemoryBezig(true)
+    try {
+      const res = await fetch('/api/specialists/cycling/memory', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ insight: testInsight, category: testCategory, knowledge_type: 'soft' }),
+      })
+      const data = await res.json()
+      setMemoryResultaat(`POST /api/specialists/cycling/memory →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setMemoryResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setMemoryBezig(false)
     }
   }
 
@@ -607,7 +643,32 @@ export default function DebugPage() {
             {coachBezig ? 'AI genereert advies...' : 'Test: POST /api/specialists/cycling/coach (AI)'}
           </button>
           {coachResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{coachResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{coachResultaat}</pre>
+          )}
+
+          {/* v2.4.74: Memory Engine, sub-stap 2 — Learning Engine */}
+          <h3 className="text-xs font-bold text-white mb-2 mt-2">Memory Engine — Learning Engine (sub-stap 2/5)</h3>
+          <p className="text-xs text-slate-500 mb-3">
+            Handmatig een kandidaat-inzicht indienen (tijdelijk — sub-stap 3
+            koppelt dit later automatisch aan de AI). Dien 3x hetzelfde
+            category in om de candidate→active-promotie te zien.
+          </p>
+          <input value={testInsight} onChange={e => setTestInsight(e.target.value)}
+            placeholder="Inzicht-tekst" className="w-full mb-2 px-3 py-2 bg-slate-900 rounded-lg text-xs text-white" />
+          <input value={testCategory} onChange={e => setTestCategory(e.target.value)}
+            placeholder="Category" className="w-full mb-3 px-3 py-2 bg-slate-900 rounded-lg text-xs text-white" />
+          <div className="flex gap-2 mb-3">
+            <button onClick={dienKandidaatIn} disabled={memoryBezig}
+              className="flex-1 py-2.5 bg-primary-600 rounded-xl text-xs font-medium text-white disabled:opacity-50">
+              {memoryBezig ? 'Bezig...' : 'Dien kandidaat in (POST)'}
+            </button>
+            <button onClick={laadMemory} disabled={memoryBezig}
+              className="flex-1 py-2.5 bg-slate-800 rounded-xl text-xs font-medium text-white disabled:opacity-50">
+              Ververs Memory (GET)
+            </button>
+          </div>
+          {memoryResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{memoryResultaat}</pre>
           )}
         </div>
 

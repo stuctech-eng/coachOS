@@ -285,7 +285,7 @@ rechtstreekse URL `/coach/cycling`.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.73 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.74 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -297,7 +297,7 @@ rechtstreekse URL `/coach/cycling`.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.73
+- Versie: 2.4.74
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -596,6 +596,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.74 — Memory Engine sub-stap 2/5: Learning Engine (candidate→active promotie, deterministisch)
 - v2.4.73 — Memory Engine sub-stap 1/5: SQL specialist_memory (opslagstructuur, nog geen Learning/Confidence-logica)
 - v2.4.72 — specialist-api.md: 5 aanscherpingen na review (AI-nuance, rekenbibliotheek, Global/Specialist Goals, Capability-Hub, Decision Engine in Fase 4-flow) — versieclaims geverifieerd (HTTP 200 + live tests)
 - v2.4.71 — Herstel: docs/specialist-api.md gereconstrueerd (goede-trouw, controle aanbevolen) — alle 6 ontwerpdocumenten nu daadwerkelijk in de repo

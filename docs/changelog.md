@@ -1,5 +1,37 @@
 # CoachOS — Changelog
 
+## v2.4.74 — Memory Engine, sub-stap 2/5: Learning Engine
+**Volledig deterministisch, geen AI. Bepaalt of een kandidaat-inzicht een
+bevestiging is van een bestaand item, en promoveert `candidate` naar
+`active` bij het bereiken van de drempel (3 bevestigingen).**
+
+- **Nieuw:** `src/lib/specialists/learning-engine.ts`
+  - `verwerkKandidaatInzicht()` — matcht op `user_id + specialist_type +
+    category` (niet op de inzicht-tekst zelf, dat zou niet-
+    deterministisch worden). Bestaand item → `confirmation_count` +1,
+    meest recente formulering overschrijft de oudere, promotie naar
+    `active` bij drempel. Geen bestaand item → nieuw `candidate`-item
+    (of direct `active` bij `knowledge_type: 'hard'`, zoals vastgelegd
+    in `specialist-memory.md`: één geldige observatie volstaat voor
+    objectief bewezen feiten)
+  - **Eerlijk gevlagde beperking:** category-based matching behandelt
+    twee écht verschillende inzichten binnen dezelfde category als
+    hetzelfde (nieuwste overschrijft oudste). Redelijk startpunt voor nu
+    (categorieën zijn bewust grof), maar geen perfecte oplossing
+  - `haalMemoryOp()` — leeshelper, gebruikt door de nieuwe route en later
+    door sub-stap 5 (terugkoppeling naar Coach Layer)
+- **Nieuw:** `src/app/api/specialists/cycling/memory/route.ts`
+  - `GET` — huidige Memory-staat
+  - `POST` — **tijdelijk**, handmatig een kandidaat-inzicht indienen,
+    totdat sub-stap 3 de Coach Layer koppelt zodat de AI dit automatisch
+    doet
+- `src/app/debug/page.tsx` — testsectie: kandidaat indienen (met vaste
+  velden, 3x hetzelfde `category` indienen laat de promotie zien) +
+  Memory ophalen
+
+**Volgende sub-stap (3/5):** Cycling Coach Layer uitbreiden zodat de AI
+zelf kandidaat-inzichten voorstelt, apart van het gewone advies.
+
 ## v2.4.73 — Memory Engine, sub-stap 1/5: SQL specialist_memory
 **Eerste stap van de Memory Engine, zoals vastgelegd in
 `specialist-memory.md`. Alleen de opslagstructuur — nog geen Learning-
