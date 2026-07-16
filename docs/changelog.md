@@ -1,5 +1,28 @@
 # CoachOS — Changelog
 
+## v2.4.71 — Herstel: docs/specialist-api.md gereconstrueerd
+**`docs/specialist-api.md` bleek nooit gecommit (ontdekt in v2.4.70) —
+gereconstrueerd vanuit de conversatiegeschiedenis. GOEDE-TROUW-
+RECONSTRUCTIE, geen byte-perfecte kopie van het origineel — controleer
+bij twijfel of de inhoud overeenkomt met wat destijds is goedgekeurd.**
+
+- **Hersteld:** `docs/specialist-api.md` — Fase 1-4, Goal Engine,
+  Hub-structuur (modules), Event Engine (toekomstig), endpoints-
+  overzicht, relatie tot overige documenten
+- **Bijgewerkt t.o.v. het origineel:** elke Fase-sectie geeft nu ook de
+  daadwerkelijke gebouwd-status aan (✅ v2.4.60-67 voor Fase 1-3, ⏳ voor
+  Fase 4/Goal Engine) — het origineel was een zuiver ontwerpdocument
+  zonder deze latere realisatiestatus
+- **Alle zes documenten nu daadwerkelijk in de repo:**
+  `specialist-coaches.md`, `specialist-database-design.md`,
+  `specialist-api.md` (hersteld), `specialist-memory.md` (hersteld,
+  v2.4.70), `specialist-decision-engine.md`,
+  `specialist-engine-architecture.md`
+
+**Aanbeveling:** commit dit, en doe een korte controle-leesbeurt van
+beide herstelde documenten (`specialist-api.md`,
+`specialist-memory.md`) om te bevestigen dat de reconstructie voldoet.
+
 ## v2.4.70 — Specialist Lifecycle Engine + herstel ontbrekende documenten
 **⚠️ Belangrijke bevinding tijdens deze stap: `docs/specialist-api.md` en
 `docs/specialist-memory.md` bleken nooit daadwerkelijk gecommit, ondanks
