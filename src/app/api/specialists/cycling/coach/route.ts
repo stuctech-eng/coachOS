@@ -325,6 +325,10 @@ Reageer ALLEEN in dit JSON-formaat:
         period_days: periodDays,
         analysis: advies,
         generated_at: new Date().toISOString(),
+        // v2.4.80: nu wél opgeslagen — rechtzetting op v2.4.79, waar dit
+        // bewust alleen in de API-response stond. De Master Coach kan
+        // dit anders nergens lezen. Zie supabase/specialist_summary_kolom.sql
+        specialist_summary: specialistSummary,
       })
       .select()
       .single()
@@ -338,7 +342,11 @@ Reageer ALLEEN in dit JSON-formaat:
     // opgeslagen in specialist_analyses (dat blijft exact CyclingCoachAdvies)
     // — alleen in de API-response, voor testbaarheid en straks voor de
     // Master Coach om te lezen (nog te bouwen, aparte stap)
-    return NextResponse.json({ ...saved, leer_resultaten: leerResultaten, specialist_summary: specialistSummary, coach_policy_gebruikt: policy })
+    // v2.4.80: specialist_summary zit nu al in 'saved' (opgeslagen kolom),
+    // geen losse toevoeging meer nodig — coach_policy_gebruikt blijft
+    // response-only (bewust niet opgeslagen, is per-call context, geen
+    // duurzame data)
+    return NextResponse.json({ ...saved, leer_resultaten: leerResultaten, coach_policy_gebruikt: policy })
   } catch (err) {
     console.error('[specialists/cycling/coach]', err)
     return NextResponse.json({ error: 'Advies genereren mislukt' }, { status: 500 })

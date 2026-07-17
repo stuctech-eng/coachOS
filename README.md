@@ -250,8 +250,8 @@ uitgebreide regels verderop in dit document.
 
 **Status: architectuur ✅, database-ontwerp ✅ (SQL v2.4.59), API/Engine/AI/
 Hub-UI ✅ — Cycling-referentie-implementatie volledig afgerond (v2.4.68).
-Memory Engine 4/5 sub-stappen ✅. Coach Policy-contract: specialist-kant
-✅ (v2.4.79), Master Coach-kant ⏳ (raakt api/coach/route.ts, aparte stap).**
+Memory Engine 4/5 sub-stappen ✅. Coach Policy-contract volledig gesloten
+✅ (v2.4.79-80, inclusief Master Coach-kant, raakt api/coach/route.ts).**
 
 Uitbreiding van CoachOS van één brede coach naar een platform met
 gespecialiseerde coaches (Cycling, Running, Rowing, Strength, ...) onder
@@ -287,18 +287,17 @@ geen opgeslagen status, volledig berekend uit bestaande data.
 4. ✅ Confidence Engine — stijging/decay/auto-deprecate (v2.4.76)
 5. ⏳ Terugkoppeling naar Coach Layer — volgende in de rij
 
-**Coach Policy & Specialist Summary** (document v2.4.78, specialist-kant
-geïmplementeerd v2.4.79) — het deterministische contract tussen Master
-Coach en een specialist: `genereerCoachPolicy()` (beleid, geen ruwe
-data — bouwt voort op bestaande `calculateRecoveryScore()`) zet nu al
-harde grenzen in de Cycling Coach-prompt; de Cycling Coach retourneert
-al een `specialist_summary`. **Niet hetzelfde als de Decision Engine**
-— geldt al bij 1 specialist, Decision Engine wordt pas relevant bij
-meerdere tegelijk. **Master Coach leest dit nog niet terug.**
+**Coach Policy & Specialist Summary** (document v2.4.78, volledig
+geïmplementeerd v2.4.79-80) — het deterministische contract tussen
+Master Coach en een specialist is nu **volledig gesloten**:
+`genereerCoachPolicy()` zet harde grenzen in de Cycling Coach-prompt,
+de Cycling Coach retourneert een `specialist_summary` (nu ook
+daadwerkelijk opgeslagen), en `api/coach/route.ts` leest dat terug en
+neemt het mee in het dagelijkse advies. **Niet hetzelfde als de Decision
+Engine** — geldt al bij 1 specialist, Decision Engine wordt pas relevant
+bij meerdere tegelijk.
 
 **Volgende, niet-gestart:**
-- CoachPolicy/SpecialistSummary: Master Coach-kant (raakt bestaande
-  `api/coach/route.ts` — vereist aparte afstemming)
 - Memory Engine sub-stap 5 (terugkoppeling naar Coach Layer)
 - Decision Engine-implementatie (pas relevant bij 2e actieve specialist)
 - Goal Engine (apart ontworpen, nog niet gebouwd)
@@ -318,7 +317,7 @@ meerdere tegelijk. **Master Coach leest dit nog niet terug.**
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.79 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.80 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -330,7 +329,7 @@ meerdere tegelijk. **Master Coach leest dit nog niet terug.**
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.79
+- Versie: 2.4.80
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -629,6 +628,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.80 — CoachPolicy/SpecialistSummary: Master Coach-kant, raakt api/coach/route.ts (additief, eigen try/catch, contract nu volledig gesloten)
 - v2.4.79 — CoachPolicy/SpecialistSummary: specialist-kant geïmplementeerd (deterministische policy-generator + Cycling Coach respecteert grenzen)
 - v2.4.78 — Nieuw: specialist-coach-policy.md (CoachPolicy/SpecialistSummary-contract) + up-to-date sweep van specialist-api.md, specialist-decision-engine.md, README
 - v2.4.77 — "Hoe werkt CoachOS": nieuwe sectie over Specialisten, vaste afspraak om dit voortaan bij te houden bij gebruikersgerichte wijzigingen

@@ -67,7 +67,7 @@ export async function POST() {
     const vandaagNummer = new Date().getDay()
     const isWeekend = vandaagNummer === 0 || vandaagNummer === 6
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents, exerciseRecordsRes, coachCallsRes, weerRes] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents, exerciseRecordsRes, coachCallsRes, weerRes, actieveSpecialistenRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -131,10 +131,55 @@ export async function POST() {
       fetchWithTimeout('https://coach-os-tau.vercel.app/api/weather', {}, 3000)
         .then(r => r.ok ? r.json() : null)
         .catch(() => null),
+      // v2.4.80: welke specialisten zijn actief — bepaalt of we straks
+      // hun SpecialistSummary erbij zoeken (zie na de Promise.all)
+      supabase.from('specialist_profiles').select('specialist_type').eq('user_id', user.id).eq('active', true),
     ])
 
     const profile = profileRes.data
     if (!profile) return NextResponse.json({ error: 'Profiel niet gevonden' }, { status: 404 })
+
+    // ── v2.4.80: SpecialistSummary's ophalen voor actieve specialisten ──
+    // Bron: docs/specialist-coach-policy.md. Master Coach leest de meest
+    // recente SpecialistSummary per actieve specialist (nooit ruwe
+    // specialist-data zelf) en neemt dat mee in zijn eigen eindadvies.
+    // Bewust in een eigen try/catch: als dit om welke reden dan ook
+    // faalt, mag het dagelijkse coach-advies NOOIT breken — specialisten
+    // zijn een aanvulling, geen vereiste.
+    let specialistContext = ''
+    try {
+      const actieveSpecialisten = actieveSpecialistenRes.data || []
+      if (actieveSpecialisten.length > 0) {
+        const summaries = await Promise.all(
+          actieveSpecialisten.map(async (s: { specialist_type: string }) => {
+            const { data } = await supabase
+              .from('specialist_analyses')
+              .select('specialist_summary, generated_at')
+              .eq('user_id', user.id)
+              .eq('specialist_type', s.specialist_type)
+              .not('specialist_summary', 'is', null)
+              .order('generated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+            return data
+          })
+        )
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const geldigeSummaries = summaries.filter((s): s is { specialist_summary: any; generated_at: string } => !!s?.specialist_summary)
+
+        if (geldigeSummaries.length > 0) {
+          const regels = geldigeSummaries.map(s => {
+            const sum = s.specialist_summary
+            const specialistNaam = typeof sum.specialist === 'string' ? sum.specialist : 'specialist'
+            return `- ${specialistNaam} Coach: belasting ${sum.load}, progressie ${sum.progress}, risico ${sum.risk}. "${sum.recommendation}" (zekerheid ${sum.confidence}%)`
+          })
+          specialistContext = `\n\nActieve specialisten — samenvatting (niet zelf herberekenen, dit is al hun eigen analyse):\n${regels.join('\n')}\nNeem dit mee in je algehele advies indien relevant, maar jij blijft eindverantwoordelijk voor de gezondheids- en herstelbeslissing.`
+        }
+      }
+    } catch (specialistErr) {
+      console.error('[coach] Specialist-context ophalen mislukt, dagadvies gaat door zonder:', specialistErr)
+    }
 
     const garmin = garminRes.data?.parsed_data || null
     const garminDatum = garminRes.data?.date || null
@@ -449,7 +494,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (weerContext || '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + trainerInstructiePrompt
+    ) + garminContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (weerContext || '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + (specialistContext || '') + trainerInstructiePrompt
 
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

@@ -1,5 +1,43 @@
 # CoachOS — Changelog
 
+## v2.4.80 — CoachPolicy/SpecialistSummary: Master Coach leest terug ⚠️ RAAKT PRODUCTIECODE
+**Laatste etappe van het contract uit `specialist-coach-policy.md`. Dit
+raakt `api/coach/route.ts` — het bestaande, dagelijkse coach-advies dat
+voor iedereen al actief is. Zorgvuldig, additief gebouwd: nieuwe context
+wordt toegevoegd, niets bestaands verwijderd of gewijzigd. Faalt de
+nieuwe stap, dan gaat het dagadvies gewoon door zonder specialist-context
+(eigen try/catch, geen crash-risico).**
+
+- **Rechtzetting op v2.4.79:** `specialist_summary` werd daar bewust
+  alleen in de API-response gezet, niet opgeslagen — dat betekende dat
+  de Master Coach het nergens kon lezen. Nu gecorrigeerd:
+  - **Nieuw:** `supabase/specialist_summary_kolom.sql` — één nullable
+    JSONB-kolom op `specialist_analyses`, backwards compatible, geen
+    wijziging aan bestaande data/rijen
+  - `src/app/api/specialists/cycling/coach/route.ts` — slaat
+    `specialist_summary` nu daadwerkelijk op bij de insert
+- **`src/app/api/coach/route.ts`:**
+  - Nieuwe query in de bestaande Promise.all: welke specialisten zijn
+    actief (`specialist_profiles`)
+  - Ná de Promise.all, in een **eigen try/catch**: voor elke actieve
+    specialist de meest recente `specialist_summary` ophalen uit
+    `specialist_analyses`
+  - `specialistContext` toegevoegd aan de prompt-samenstelling, **exact
+    hetzelfde patroon** als de bestaande context-blokken
+    (`garminContext`, `trainingsCoachContext`, etc.) — geen nieuwe
+    aanpak geïntroduceerd, aangesloten bij wat er al was
+  - Prompt-instructie: *"niet zelf herberekenen, dit is al hun eigen
+    analyse"* + *"jij blijft eindverantwoordelijk voor de gezondheids-
+    en herstelbeslissing"* — Master Coach neemt specialist-input mee,
+    maar behoudt het laatste woord, consistent met de architectuur
+
+**Resultaat:** de twee systemen "praten" nu daadwerkelijk met elkaar —
+de vraag die deze hele stap in gang zette. Master Coach → CoachPolicy →
+Cycling Coach → SpecialistSummary → Master Coach, volledig gesloten.
+
+**Test-instructies:** zie bericht bij levering. **Extra voorzichtig
+testen** aangezien dit het dagelijkse coach-advies raakt.
+
 ## v2.4.79 — CoachPolicy/SpecialistSummary: specialist-kant geïmplementeerd
 **Eerste etappe van het contract uit `specialist-coach-policy.md`.
 Raakt UITSLUITEND de specialist-route, NIET `api/coach/route.ts` —
