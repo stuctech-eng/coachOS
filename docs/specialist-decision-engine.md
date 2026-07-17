@@ -119,16 +119,20 @@ dezelfde data.
 
 ## Contract met Fase 4 (Master Coach Orchestrator)
 
-**Concrete wijziging op het eerder vastgelegde contract in
-`specialist-api.md`:** de Master Coach ontvangt niet zomaar een lijst
-specialist-samenvattingen om zelf te wegen — hij ontvangt het resultaat
-**ná** de Decision Engine.
+**Bijgewerkt (v2.4.78):** "specialist levert zijn samenvatting" is
+sindsdien concreet uitgewerkt in een eigen document,
+`specialist-coach-policy.md` — de `SpecialistSummary`-interface. **De
+Decision Engine is niet hetzelfde als dat contract:** het
+CoachPolicy/SpecialistSummary-contract geldt al bij één actieve
+specialist (de huidige situatie), de Decision Engine hieronder wordt
+pas relevant zodra er **meerdere** SpecialistSummary's tegelijk
+binnenkomen die kunnen conflicteren.
 
 **Bijgewerkte flow:**
 ```
-1. Elke actieve specialist levert zijn samenvatting
-   (Coach Layer-output, zie specialist-memory.md)
-2. Decision Engine ontvangt alle samenvattingen + gezondheid/herstel/
+1. Elke actieve specialist levert zijn SpecialistSummary
+   (zie specialist-coach-policy.md voor de volledige interface)
+2. Decision Engine ontvangt alle summaries + gezondheid/herstel/
    blessure-context (bestaande data, ongewijzigd)
 3. Decision Engine past regels 1-5 toe, deterministisch, levert een
    DecisionResult per betrokken specialist (zie hierboven)

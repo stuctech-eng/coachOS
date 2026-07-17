@@ -229,51 +229,47 @@ voortgangsberekening, en nog geen Global/Specialist-onderscheid.
 gewijzigd** — vereist expliciete, aparte afstemming vóórdat hieraan
 begonnen wordt, aangezien dit bestaande, actieve productiecode raakt).
 
-**Principe:** de Master Coach vraagt **nooit rechtstreeks de database
-uit** voor specialistische kennis. Hij vraagt een specialist om een
-**samenvatting**, geen ruwe data.
-
-**Volledige flow, expliciet gecorrigeerd (v2.4.72):** de oorspronkelijke
-versie van dit document toonde de flow als rechtstreeks
-"Specialist → Master Coach". Dat miste een laag die in het latere
-`specialist-decision-engine.md` wél is vastgelegd — de correcte,
-volledige flow is:
+**Principe, verder aangescherpt (v2.4.78) — het contract is nu
+tweerichtings en expliciet vastgelegd in een eigen document,
+`specialist-coach-policy.md`:**
 
 ```
-Specialist(en)
+Master Coach Engine (deterministisch)
    ↓
-Decision Engine     ← bepaalt bij conflicten wie voorrang krijgt
+CoachPolicy               ← beleid, geen ruwe data ("max intensiteit: matig",
+   ↓                          niet "HRV = 45ms")
+Specialist(en) (AI)        ← optimaliseert binnen de policy-grenzen
    ↓
-Master Coach          ← integreert tot één coherent advies
+SpecialistSummary           ← gestructureerde terugkoppeling
+   ↓
+Decision Engine              ← ALLEEN relevant bij 2+ gelijktijdig actieve
+   ↓                            specialisten, kiest tussen hun summaries
+Master Coach (AI)             ← integreert tot één coherent advies
 ```
 
-Zodra er twee of meer specialisten tegelijk actief zijn en mogelijk
-conflicterende adviezen geven, gaat hun output **altijd eerst** door de
-Decision Engine (vaste prioriteitsregels: gezondheid > prestatie,
-blessures > periodisering, herstel > belasting, lange termijn > korte
-termijn, gebruikersdoel als tiebreaker) vóórdat de Master Coach het ziet.
-Bij precies één actieve specialist (de huidige situatie, alleen Cycling)
-is er geen conflict om op te lossen, maar de laag bestaat architectonisch
-al vanaf het moment dat Fase 4 gebouwd wordt — niet pas achteraf
-toegevoegd.
-
-```
-Cycling Coach-samenvatting:
-  Belasting: hoog
-  Progressie: +8%
-  Herstel: voldoende
-  FTP: +12 watt
-  Aanbeveling: geen intensieve intervallen vandaag
-```
+**Belangrijk onderscheid, verduidelijkt (v2.4.78):** `CoachPolicy`/
+`SpecialistSummary` is **niet** de Decision Engine. Het is het contract
+tussen de Master Coach en **één** specialist, en geldt al bij precies
+één actieve specialist (de huidige situatie). De Decision Engine
+gebruikt straks meerdere `SpecialistSummary`'s als input zodra er
+meerdere specialisten tegelijk actief zijn — een laag bovenop dit
+contract, geen vervanging ervan. Zie `specialist-coach-policy.md` voor
+de volledige uitwerking, inclusief de exacte interfaces en de
+bevestiging dat `CoachPolicy`-generatie **volledig deterministisch** is
+(bouwt voort op de bestaande `calculateRecoveryScore()`,
+géén AI-aanroep).
 
 **Kostenbewuste routing:** de Master Coach roept bij een dagelijks
 advies nooit Fase 3 opnieuw aan — hij leest de laatst gegenereerde,
 al-opgeslagen samenvatting uit `specialist_analyses`.
 
-**Zie ook:** `specialist-decision-engine.md` voor de volledige
-`DecisionResult`-structuur en de precisering dat de Master Coach de
-geselecteerde uitkomsten *integreert* tot één coherent advies, niet
-slechts verwoordt.
+**Zie ook:**
+- `specialist-coach-policy.md` — het volledige CoachPolicy/
+  SpecialistSummary-contract, met interfaces en implementatievolgorde
+- `specialist-decision-engine.md` — de `DecisionResult`-structuur voor
+  wanneer meerdere specialisten conflicteren, en de precisering dat de
+  Master Coach de geselecteerde uitkomsten *integreert*, niet slechts
+  verwoordt
 
 ---
 
@@ -349,8 +345,13 @@ daar blijft, geen onderdeel van de huidige implementatiestappen.
   Specialist Memory, Learning Engine, Confidence Engine, en (als
   toekomstig concept) de Maturity Engine — destijds als open punt
   vanuit dit document doorverwezen, inmiddels apart volledig uitgewerkt.
+- **`specialist-coach-policy.md`** (nieuw, v2.4.78) — het deterministische
+  CoachPolicy/SpecialistSummary-contract tussen Master Coach en één
+  specialist, het daadwerkelijke Fase 4-mechanisme.
 - **`specialist-decision-engine.md`** — conflictresolutie tussen
-  meerdere specialisten, raakt het Fase 4-contract hierboven.
+  meerdere specialisten, gebruikt de SpecialistSummary's uit
+  `specialist-coach-policy.md` als input, raakt het Fase 4-contract
+  hierboven.
 - **`specialist-engine-architecture.md`** — het herbruikbare
   engine-patroon (uniform `EngineResult`-datacontract), Capability
   Registry, en de bevestiging dat Coach Personality wordt hergebruikt.

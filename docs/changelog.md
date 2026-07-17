@@ -1,5 +1,44 @@
 # CoachOS — Changelog
 
+## v2.4.78 — Nieuw document: Coach Policy & Specialist Summary + up-to-date sweep
+**Naar aanleiding van de vraag "praten Master Coach en specialist met
+elkaar" — antwoord bleek nee, en dat leidde tot een belangrijk nieuw
+architectuurstuk: een deterministisch beleids-contract tussen Master
+Coach en specialist, los van de Decision Engine.**
+
+- **Nieuw:** `docs/specialist-coach-policy.md`
+  - `CoachPolicy` (Master → Specialist): `recoveryState`, `maxIntensity`,
+    `volumeAdjustmentPct`, `priority`, `allowedTrainingTypes`,
+    `forbiddenTrainingTypes`, `reasons` — **beleid, geen ruwe data**
+    ("max intensiteit: matig", niet "HRV = 45ms")
+  - **Bevestigd, geen AI-aanroep:** CoachPolicy-generatie is volledig
+    deterministisch, bouwt voort op de al-bestaande
+    `calculateRecoveryScore()` (`src/core/ai-engine/recovery-engine.ts`,
+    al in gebruik in `api/coach/route.ts`) — concrete vertaaltabel
+    score→policy opgenomen
+  - `SpecialistSummary` (Specialist → Master): `load`, `progress`,
+    `risk`, `recommendation`, `confidence`, `reasons` — rijker dan het
+    eerdere illustratieve voorbeeld, sluit aan bij het bestaande
+    `EngineResult`-patroon
+  - **Expliciet onderscheid van de Decision Engine:** dit contract geldt
+    al bij 1 specialist; Decision Engine gebruikt straks meerdere
+    `SpecialistSummary`'s als input zodra er 2+ specialisten tegelijk
+    actief zijn — een laag erboven, geen vervanging
+
+**Up-to-date sweep, zoals gevraagd — bijgewerkt waar verouderd:**
+- `docs/specialist-api.md` — Fase 4-sectie herschreven: het generieke
+  "specialist levert samenvatting"-voorbeeld vervangen door een
+  verwijzing naar het nu concrete CoachPolicy/SpecialistSummary-contract
+- `docs/specialist-decision-engine.md` — "Contract met Fase 4"-sectie
+  bijgewerkt: `SpecialistSummary` expliciet gekoppeld aan
+  `specialist-coach-policy.md` als bron, niet meer een los begrip
+- `README.md` — Specialist-sectie grondig geactualiseerd:
+  - 7 ontwerpdocumenten i.p.v. 6
+  - **Correctie:** "Specialist Memory (apart ontworpen, nog niet
+    gebouwd)" was verouderd — Memory Engine staat inmiddels op 4/5
+    sub-stappen, nu correct weergegeven
+  - Nieuwe Coach Policy-status toegevoegd
+
 ## v2.4.77 — "Hoe werkt CoachOS": nieuwe sectie over Specialisten
 **Gebruikersgerichte uitleg, geen technische documentatie — dat blijft
 in `docs/specialist-*.md`. Nieuwe vaste afspraak: deze pagina wordt
