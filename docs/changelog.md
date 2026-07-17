@@ -1,5 +1,22 @@
 # CoachOS — Changelog
 
+## v2.4.85 — Decision Engine: directe testroute
+**Los van het dagadvies zelf testbaar — gebruikt echte, actuele
+`specialist_summary`'s van je actieve specialisten, geen nepdata. Geen
+wijziging aan bestaand gedrag, puur inzicht.**
+
+- **Nieuw:** `src/app/api/specialists/decision-test/route.ts` — haalt
+  `CoachPolicy` + de meest recente `specialist_summary` van elke actieve
+  specialist op (exact dezelfde ophaal-logica als `api/coach/route.ts`,
+  v2.4.84), roept `beslisTussenSpecialisten()` aan, en geeft het volledige
+  resultaat terug: welke summaries zijn gebruikt, wat de policy-prioriteit
+  was, en de `DecisionResult` (of `null` bij geen conflict)
+- `src/app/debug/page.tsx` — testsectie toegevoegd
+
+**Vergt voor een zinvolle test:** 2+ actieve specialisten, elk met een
+recente `specialist_summary` (dus eerst bij elke specialist een analyse
+gegenereerd hebben).
+
 ## v2.4.84 — Decision Engine geïmplementeerd ⚠️ RAAKT PRODUCTIECODE
 **Nu voor het eerst zinvol te testen, met Cycling + Running beide actief.
 Raakt `api/coach/route.ts` — additief, eigen try/catch, geen bestaand

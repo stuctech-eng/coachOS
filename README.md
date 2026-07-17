@@ -331,7 +331,7 @@ nog niet — vergen eerst de Goal Engine.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.84 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.85 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -343,7 +343,7 @@ nog niet — vergen eerst de Goal Engine.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.84
+- Versie: 2.4.85
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -642,6 +642,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.85 — Decision Engine: directe testroute, echte data, geen wijziging aan bestaand gedrag
 - v2.4.84 — Decision Engine geïmplementeerd, raakt api/coach/route.ts (additief) — lost op wanneer meerdere specialisten samen te veel volume adviseren
 - v2.4.83 — Running: tweede specialist, bewijst herbruikbaarheid — grotendeels invuloefening, api/coach/route.ts bleek al generiek
 - v2.4.82 — Memory Engine sub-stap 5/5 LAATSTE: terugkoppeling naar Coach Layer — Memory Engine hiermee volledig afgerond

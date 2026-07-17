@@ -78,6 +78,9 @@ export default function DebugPage() {
   // v2.4.74: test-state voor Memory Engine, sub-stap 2 (Learning Engine)
   const [memoryBezig, setMemoryBezig] = useState(false)
   const [memoryResultaat, setMemoryResultaat] = useState('')
+  // v2.4.85: test-state voor de Decision Engine
+  const [decisionBezig, setDecisionBezig] = useState(false)
+  const [decisionResultaat, setDecisionResultaat] = useState('')
   const [testInsight, setTestInsight] = useState('Reageert goed op langere duurritten')
   const [testCategory, setTestCategory] = useState('training_response')
 
@@ -187,6 +190,21 @@ export default function DebugPage() {
       setMemoryResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setMemoryBezig(false)
+    }
+  }
+
+  // v2.4.85: test-functie voor de Decision Engine — gebruikt echte,
+  // actuele data van je actieve specialisten
+  async function testDecisionEngine() {
+    setDecisionBezig(true)
+    try {
+      const res = await fetch('/api/specialists/decision-test', { credentials: 'include' })
+      const data = await res.json()
+      setDecisionResultaat(`GET /api/specialists/decision-test →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setDecisionResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setDecisionBezig(false)
     }
   }
 
@@ -668,7 +686,22 @@ export default function DebugPage() {
             </button>
           </div>
           {memoryResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{memoryResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{memoryResultaat}</pre>
+          )}
+
+          {/* v2.4.85: Decision Engine — directe test met echte data */}
+          <h3 className="text-xs font-bold text-white mb-2 mt-2">Decision Engine (v2.4.84-85)</h3>
+          <p className="text-xs text-slate-500 mb-3">
+            Gebruikt de echte, actuele specialist_summary's van je actieve
+            specialisten — geen nepdata. Vergt 2+ actieve specialisten met
+            elk een recente analyse om een conflict te kunnen tonen.
+          </p>
+          <button onClick={testDecisionEngine} disabled={decisionBezig}
+            className="w-full mb-3 py-2.5 bg-slate-800 rounded-xl text-sm font-medium text-white disabled:opacity-50">
+            {decisionBezig ? 'Bezig...' : 'Test: GET /api/specialists/decision-test'}
+          </button>
+          {decisionResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{decisionResultaat}</pre>
           )}
         </div>
 
