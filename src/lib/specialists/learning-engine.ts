@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase'
+import { berekenNieuweConfidenceBijBevestiging, herwaardeerMemory } from './confidence-engine'
 
 // ── Learning Engine ──────────────────────────────────────────────────────
 // Bron: docs/specialist-memory.md, "Learning Engine — de kern van dit
@@ -62,6 +63,10 @@ export async function verwerkKandidaatInzicht(userId: string, kandidaat: Kandida
     const nieuweCount = bestaand.confirmation_count + 1
     const wordtGepromoveerd = bestaand.status === 'candidate' && nieuweCount >= PROMOTIE_DREMPEL
     const nieuweStatus = wordtGepromoveerd ? 'active' : bestaand.status
+    // v2.4.76: confidence stijgt bij elke bevestiging, ongeacht of
+    // dit ook een promotie-moment is — bevestiging is altijd een
+    // positief signaal (Confidence Engine, deterministisch)
+    const nieuweConfidence = berekenNieuweConfidenceBijBevestiging(bestaand.confidence)
 
     const { data: bijgewerkt, error } = await supabase
       .from('specialist_memory')
@@ -70,6 +75,7 @@ export async function verwerkKandidaatInzicht(userId: string, kandidaat: Kandida
         confirmation_count: nieuweCount,
         last_confirmed_at: new Date().toISOString(),
         status: nieuweStatus,
+        confidence: nieuweConfidence,
       })
       .eq('id', bestaand.id)
       .select()
@@ -118,6 +124,12 @@ export async function verwerkKandidaatInzicht(userId: string, kandidaat: Kandida
 
 export async function haalMemoryOp(userId: string, specialistType: string, alleenActief = false) {
   const supabase = createAdminClient()
+
+  // v2.4.76: decay lazy toepassen vóór het lezen — geen achtergrond-
+  // cronjob nodig, confidence is alleen relevant op het moment dat
+  // Memory daadwerkelijk gelezen wordt (bijv. door de Coach Layer)
+  await herwaardeerMemory(supabase, userId, specialistType)
+
   let query = supabase
     .from('specialist_memory')
     .select('*')

@@ -1,5 +1,37 @@
 # CoachOS — Changelog
 
+## v2.4.76 — Memory Engine, sub-stap 4/5: Confidence Engine
+**Volledig deterministisch. Confidence stijgt bij elke bevestiging
+(+15, max 100), daalt geleidelijk zonder bevestiging (-3 per volle week),
+en zet `active`-items onder de ondergrens (15) automatisch naar
+`deprecated`. Decay wordt LAZY berekend — bij het lezen van Memory, geen
+achtergrond-cronjob nodig.**
+
+- **Nieuw:** `src/lib/specialists/confidence-engine.ts`
+  - `berekenNieuweConfidenceBijBevestiging()` — +15 per bevestiging,
+    begrensd op 100
+  - `berekenGedecayedeConfidence()` — -3 per volle week zonder
+    herbevestiging, begrensd op 0
+  - `herwaardeerMemory()` — herberekent alle `active`-items van een
+    specialist, schrijft alleen weg wat daadwerkelijk verandert, zet
+    items onder de ondergrens naar `deprecated`
+- `src/lib/specialists/learning-engine.ts`
+  - `verwerkKandidaatInzicht()` verhoogt nu ook confidence bij elke
+    bevestiging (naast de bestaande `confirmation_count`-logica)
+  - `haalMemoryOp()` roept `herwaardeerMemory()` aan vóór het lezen —
+    decay is dus altijd actueel op het moment dat iets de Memory
+    daadwerkelijk raadpleegt (bijv. straks de Coach Layer, sub-stap 5)
+
+**Test-kanttekening:** de confidence-**stijging** is vandaag al
+testbaar (via de bestaande sub-stap 2-testknop, herhaald indienen). De
+confidence-**daling** vergt per ontwerp minimaal een week zonder
+bevestiging om zichtbaar te worden — niet vandaag al te forceren zonder
+de `last_confirmed_at`-waarde handmatig in het verleden te zetten.
+
+**Volgende sub-stap (5/5, laatste):** terugkoppeling naar de Coach
+Layer — bij het genereren van een nieuw advies leest de AI voortaan ook
+`active`-Memory-items met hoge confidence, als extra context.
+
 ## v2.4.75 — Memory Engine, sub-stap 3/5: Coach Layer voorstelt kandidaat-inzichten
 **De AI mag voortaan zelf kandidaat-inzichten voorstellen — schrijft
 NOOIT rechtstreeks naar het geheugen. Elke kandidaat gaat verplicht door
