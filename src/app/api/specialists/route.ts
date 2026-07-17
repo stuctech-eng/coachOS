@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
-import { bepaalCyclingLifecycle } from '@/lib/specialists/lifecycle-engine'
+import { bepaalCyclingLifecycle, bepaalRunningLifecycle } from '@/lib/specialists/lifecycle-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -17,17 +17,21 @@ async function getUser() {
   return user
 }
 
+// v2.4.83: running geactiveerd — tweede specialist, referentie-
+// implementatie voor de "invuloefening"-belofte uit
+// specialist-engine-architecture.md
 const SPECIALIST_CONFIG: Record<string, { label: string; status: 'active' | 'development' }> = {
   cycling:  { label: 'Cycling Coach',  status: 'active' },
-  running:  { label: 'Running Coach',  status: 'development' },
+  running:  { label: 'Running Coach',  status: 'active' },
   rowing:   { label: 'Rowing Coach',   status: 'development' },
   strength: { label: 'Strength Coach', status: 'development' },
 }
 
-// v2.4.70: welke specialisten hebben een werkende Lifecycle Engine?
-// Alleen cycling — de andere hebben geen data-fetcher (geen Data Layer
-// gebouwd), dus lifecycle-berekening zou daar niets zinnigs opleveren.
-const LIFECYCLE_ONDERSTEUND = new Set(['cycling'])
+// v2.4.83: running toegevoegd — heeft nu een werkende Data Layer
+const LIFECYCLE_ONDERSTEUND: Record<string, (userId: string, actief: boolean) => Promise<unknown>> = {
+  cycling: bepaalCyclingLifecycle,
+  running: bepaalRunningLifecycle,
+}
 
 export async function GET() {
   try {
@@ -50,9 +54,10 @@ export async function GET() {
         const actief = profiel?.active ?? false
 
         let lifecycle = null
-        if (LIFECYCLE_ONDERSTEUND.has(type)) {
+        const lifecycleFn = LIFECYCLE_ONDERSTEUND[type]
+        if (lifecycleFn) {
           try {
-            lifecycle = await bepaalCyclingLifecycle(user.id, actief)
+            lifecycle = await lifecycleFn(user.id, actief)
           } catch (e) {
             console.error(`[specialists GET] lifecycle-berekening mislukt voor ${type}:`, e)
           }

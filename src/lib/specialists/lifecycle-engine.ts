@@ -1,4 +1,5 @@
 import { haalCyclingData } from './cycling-data'
+import { haalRunningData } from './running-data'
 
 // ── Specialist Lifecycle Engine ─────────────────────────────────────────
 // Bewust GEEN opgeslagen status-veld in de database — de levenscyclus is
@@ -7,9 +8,12 @@ import { haalCyclingData } from './cycling-data'
 //
 // DISCOVERABLE → SUGGESTED → ACTIVE → DORMANT → RETURNING → (terug naar ACTIVE)
 //
-// Op dit moment cycling-specifiek (roept haalCyclingData aan) — bij een
-// volgende specialist wordt dit patroon hergebruikt met een eigen
-// data-fetcher, dezelfde toestandslogica.
+// v2.4.83: geherstructureerd naar een generieke kernfunctie
+// (berekenLifecycle) + dunne per-sport-wrappers, in plaats van
+// gedupliceerde logica per sport. Toepassing van de "generieke
+// rekenbibliotheek, sport-specifieke implementatie"-aanscherping uit
+// specialist-api.md (v2.4.72) — precies het scenario dat toen werd
+// voorspeld, nu voor het eerst concreet.
 
 export type LifecycleState = 'DISCOVERABLE' | 'SUGGESTED' | 'ACTIVE' | 'DORMANT' | 'RETURNING'
 
@@ -18,21 +22,31 @@ export interface LifecycleResult {
   aantal_activiteiten_30d: number
   laatste_activiteit_datum: string | null
   dagen_sinds_laatste_activiteit: number | null
-  // Alleen gevuld bij RETURNING — de vorige actieve periode, voor
-  // persoonlijkere context in het Coach Layer-advies ("je vorige
-  // trainingsblok eindigde in maart")
   vorige_actieve_periode: { start: string; eind: string } | null
 }
 
-const PATROON_DREMPEL = 3           // activiteiten binnen PATROON_PERIODE_DAGEN → SUGGESTED
+const PATROON_DREMPEL = 3
 const PATROON_PERIODE_DAGEN = 30
-const DORMANT_DAGEN = 60            // geen activiteit in X dagen → DORMANT
-const RETURNING_VENSTER_DAGEN = 14  // hoe lang na hervatting nog "RETURNING" i.p.v. gewoon "ACTIVE"
-const HISTORIE_DAGEN = 730          // hoe ver terugkijken voor een eventuele vorige periode (2 jaar)
+const DORMANT_DAGEN = 60
+const RETURNING_VENSTER_DAGEN = 14
+const HISTORIE_DAGEN = 730
 
-export async function bepaalCyclingLifecycle(userId: string, isActief: boolean): Promise<LifecycleResult> {
-  const data = await haalCyclingData(userId, HISTORIE_DAGEN)
-  const activiteiten = [...data.activiteiten].sort((a, b) => a.date.localeCompare(b.date)) // oud → nieuw
+interface ActiviteitMetDatum {
+  date: string
+}
+
+interface DataMetActiviteiten {
+  activiteiten: ActiviteitMetDatum[]
+}
+
+// ── Generieke kern — sport-onafhankelijk ────────────────────────────────
+async function berekenLifecycle(
+  haalData: (userId: string, periodDays: number) => Promise<DataMetActiviteiten>,
+  userId: string,
+  isActief: boolean
+): Promise<LifecycleResult> {
+  const data = await haalData(userId, HISTORIE_DAGEN)
+  const activiteiten = [...data.activiteiten].sort((a, b) => a.date.localeCompare(b.date))
 
   const nu = new Date()
   const dertigDagenGeleden = new Date(nu.getTime() - PATROON_PERIODE_DAGEN * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -52,10 +66,6 @@ export async function bepaalCyclingLifecycle(userId: string, isActief: boolean):
   } else if (dagenSindsLaatste === null || dagenSindsLaatste >= DORMANT_DAGEN) {
     state = 'DORMANT'
   } else {
-    // Zoek de meest recente "grote gap" (>= DORMANT_DAGEN) in de
-    // geschiedenis — als de huidige activiteit-cluster daar net na
-    // begon (binnen RETURNING_VENSTER_DAGEN), is dit een terugkeer,
-    // geen doorlopende actieve periode.
     let eersteActiviteitNaGap: string | null = null
     for (let i = activiteiten.length - 1; i > 0; i--) {
       const gapDagen = Math.floor(
@@ -83,4 +93,13 @@ export async function bepaalCyclingLifecycle(userId: string, isActief: boolean):
     dagen_sinds_laatste_activiteit: dagenSindsLaatste,
     vorige_actieve_periode: vorigePeriode,
   }
+}
+
+// ── Dunne, sport-specifieke wrappers ────────────────────────────────────
+export async function bepaalCyclingLifecycle(userId: string, isActief: boolean): Promise<LifecycleResult> {
+  return berekenLifecycle(haalCyclingData, userId, isActief)
+}
+
+export async function bepaalRunningLifecycle(userId: string, isActief: boolean): Promise<LifecycleResult> {
+  return berekenLifecycle(haalRunningData, userId, isActief)
 }

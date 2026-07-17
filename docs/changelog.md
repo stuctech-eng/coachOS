@@ -1,5 +1,64 @@
 # CoachOS — Changelog
 
+## v2.4.83 — Running: tweede specialist, bewijst herbruikbaarheid van de architectuur
+**De belangrijkste test van de hele specialistlaag-architectuur: kan een
+tweede specialist gebouwd worden zonder de bestaande architectuur
+opnieuw te ontwerpen? Antwoord: ja — grotendeels een invuloefening,
+exact zoals voorspeld in `specialist-engine-architecture.md`.**
+
+**Wat volledig hergebruikt is, ZONDER wijziging:**
+- `genereerCoachPolicy()` (`coach-policy.ts`) — sport-onafhankelijk,
+  geen enkele regel aangepast
+- `verwerkKandidaatInzicht()`, `haalMemoryOp()` (`learning-engine.ts`) —
+  al generiek via `specialist_type`-parameter, geen wijziging
+- Confidence Engine (`confidence-engine.ts`) — ongewijzigd
+- `api/coach/route.ts` (Master Coach-integratie) — bleek al generiek
+  gebouwd (v2.4.80 loopte al over ALLE actieve specialisten, niet
+  hardcoded op cycling) — **geen wijziging nodig**
+- Coach Personality (`coach-personality.ts`) — ongewijzigd, zelfde stem
+
+**Wat per sport uniek werk was (zoals voorspeld):**
+- **Nieuw:** `src/lib/specialists/running-data.ts` — Data Layer.
+  Activiteitnaam geverifieerd (niet aangenomen): Strava
+  `SPORT_TYPE_MAP.Run → 'Hardlopen'`, Garmin `ACTIVITEIT_OPTIES`
+  bevestigt dezelfde naam, geen indoor/buiten-splitsing zoals bij Fietsen
+- **Nieuw:** `src/lib/specialists/running-analysis.ts` — Analysis Engine.
+  Belangrijkste inhoudelijke verschil met Cycling: **snelheid**
+  (`avg_speed`) i.p.v. **vermogen** (`avg_watts`) — running heeft
+  doorgaans geen vermogensmeter
+- **Nieuw:** `src/app/api/specialists/running/engine/route.ts`,
+  `src/app/api/specialists/running/coach/route.ts` (Coach Layer,
+  spiegelbeeld van cycling met "hardlopen"-vakkennis i.p.v. "wielrennen")
+- **Nieuw:** `src/app/coach/running/page.tsx` — Hub-UI, spiegelbeeld van
+  de Cycling Hub
+
+**Refactor tijdens het bouwen — generieke rekenbibliotheek:**
+- `src/lib/specialists/lifecycle-engine.ts` — geherstructureerd naar één
+  generieke `berekenLifecycle()`-kernfunctie + dunne per-sport-wrappers
+  (`bepaalCyclingLifecycle`, `bepaalRunningLifecycle`), in plaats van
+  gedupliceerde logica. Toepassing van de aanscherping uit
+  `specialist-api.md` (v2.4.72: "generieke rekenbibliotheek, sport-
+  specifieke implementatie") — nu voor het eerst concreet toegepast.
+
+**Generaliseringen aan bestaande, gedeelde bestanden:**
+- `src/app/api/specialists/[type]/data/route.ts` — was hardcoded op
+  alleen `'cycling'`, nu een `DATA_FETCHERS`-lookup die beide sporten
+  ondersteunt
+- `src/app/api/specialists/route.ts` — `running` status `development` →
+  `active`; `LIFECYCLE_ONDERSTEUND` van een `Set` naar een lookup-map
+  (generieker, makkelijker uit te breiden voor een 3e specialist later)
+- `src/lib/specialists/capability-registry.ts` — `running`-entry
+  toegevoegd, exact dezelfde capability-set als cycling op dit moment
+- `src/app/chat/page.tsx` — icoon was hardcoded op `Bike` voor **alle**
+  actieve specialisten (klopte toevallig toen er maar één was) — nu een
+  `SPECIALIST_ICOON`-lookup (`Bike`/`Footprints`). Zelfde voor de
+  SUGGESTED-bannertekst ("je fietst" was hardcoded, nu een
+  `SPECIALIST_WERKWOORD`-lookup)
+
+**Bewust NIET aangepast:** `api/coach/route.ts` — bleek al generiek.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.82 — Memory Engine, sub-stap 5/5 (LAATSTE): terugkoppeling naar Coach Layer
 **De Memory Engine is hiermee volledig afgerond — alle 5 sub-stappen.
 De Cycling Coach leest voortaan zijn eigen bevestigde geheugen terug bij

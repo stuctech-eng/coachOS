@@ -35,9 +35,21 @@ export const CAPABILITY_REGISTRY: Record<string, SpecialistCapabilities> = {
     supportsPredictions: false,
     supportsBenchmarks: false,
   },
-  // running/rowing/strength: nog geen enkele laag gebouwd (status
-  // 'development' in de Specialist Registry, zie api/specialists/route.ts)
-  // — bewust geen entry hier totdat er daadwerkelijk iets bestaat om te
+  // v2.4.83: running toegevoegd — tweede specialist, exact dezelfde
+  // capability-set als cycling op dit moment (stappen 1-4, geen
+  // Periodisering/Events/Predictions/Benchmarks)
+  running: {
+    hasDataLayer: true,
+    hasAnalysisEngine: true,
+    hasCoachLayer: true,
+    supportsPeriodization: false,
+    supportsEvents: false,
+    supportsPredictions: false,
+    supportsBenchmarks: false,
+  },
+  // rowing/strength: nog geen enkele laag gebouwd (status 'development'
+  // in de Specialist Registry, zie api/specialists/route.ts) — bewust
+  // geen entry hier totdat er daadwerkelijk iets bestaat om te
   // registreren.
 }
 

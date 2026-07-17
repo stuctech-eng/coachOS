@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Send, Bot, User, Trash2, Bike, ChevronRight } from 'lucide-react'
+import { Send, Bot, User, Trash2, Bike, Footprints, ChevronRight } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
 
@@ -19,6 +19,20 @@ const SUGGESTIES = [
 
 function getVandaag(): string {
   return new Date().toISOString().split('T')[0]
+}
+
+// v2.4.83: icoon-lookup, nu er een tweede specialist is — was hardcoded
+// op Bike voor alle specialisten, klopt niet meer met 2+ actief
+const SPECIALIST_ICOON: Record<string, typeof Bike> = {
+  cycling: Bike,
+  running: Footprints,
+}
+
+// v2.4.83: werkwoord voor de SUGGESTED-bannertekst — was hardcoded op
+// "fietst", moet generiek zijn nu er een tweede specialist bestaat
+const SPECIALIST_WERKWOORD: Record<string, string> = {
+  cycling: 'fietst',
+  running: 'hardloopt',
 }
 
 export default function ChatPage() {
@@ -182,7 +196,7 @@ export default function ChatPage() {
         {suggestie && (
           <div className="mx-5 mb-3 flex-shrink-0 bg-primary-500/10 border border-primary-500/20 rounded-2xl p-4">
             <p className="text-sm text-white mb-3">
-              Je fietst de laatste tijd regelmatig. Wil je de {suggestie.label} activeren voor gerichte begeleiding?
+              Je {SPECIALIST_WERKWOORD[suggestie.specialist_type] || 'sport'} de laatste tijd regelmatig. Wil je de {suggestie.label} activeren voor gerichte begeleiding?
             </p>
             <div className="flex gap-2">
               <button onClick={() => setSuggestie(null)}
@@ -218,14 +232,17 @@ export default function ChatPage() {
             een actieve specialist is, geen lege sectie tonen */}
         {actieveSpecialisten.length > 0 && (
           <div className="px-5 pb-3 flex-shrink-0 flex gap-2 overflow-x-auto">
-            {actieveSpecialisten.map(s => (
-              <button key={s.specialist_type} onClick={() => router.push(`/coach/${s.specialist_type}`)}
-                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-slate-800/70 rounded-xl border border-slate-700/50 active:bg-slate-700">
-                <Bike size={14} className="text-primary-400" />
-                <span className="text-xs text-slate-300 font-medium">{s.label}</span>
-                <ChevronRight size={12} className="text-slate-600" />
-              </button>
-            ))}
+            {actieveSpecialisten.map(s => {
+              const Icoon = SPECIALIST_ICOON[s.specialist_type] || Bike
+              return (
+                <button key={s.specialist_type} onClick={() => router.push(`/coach/${s.specialist_type}`)}
+                  className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-slate-800/70 rounded-xl border border-slate-700/50 active:bg-slate-700">
+                  <Icoon size={14} className="text-primary-400" />
+                  <span className="text-xs text-slate-300 font-medium">{s.label}</span>
+                  <ChevronRight size={12} className="text-slate-600" />
+                </button>
+              )
+            })}
           </div>
         )}
 
