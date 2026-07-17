@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { analyseerCycling } from '@/lib/specialists/cycling-analysis'
 import { verwerkKandidaatInzicht } from '@/lib/specialists/learning-engine'
+import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 import { COACH_CORE_IDENTITY, CORE_SAFETY_RULE, getCoachTone } from '@/core/prompts/coach-personality'
 
 async function getUser() {
@@ -37,6 +38,22 @@ interface KandidaatInzichtRuw {
   insight: string
 }
 
+// v2.4.79: SpecialistSummary, bron docs/specialist-coach-policy.md.
+// Wordt door de AI zelf ingevuld (binnen de door CoachPolicy gestelde
+// grenzen) — bewust NIET opgeslagen in specialist_analyses.analysis
+// (dat blijft exact CyclingCoachAdvies), alleen meegegeven in de
+// API-response, klaar voor de Master Coach om straks te lezen
+// (nog te bouwen, apart afgestemde stap — raakt api/coach/route.ts).
+interface SpecialistSummary {
+  specialist: 'cycling'
+  load: 'low' | 'moderate' | 'high'
+  progress: 'improving' | 'stable' | 'declining'
+  risk: 'none' | 'low' | 'high'
+  recommendation: string
+  confidence: number
+  reasons: string[]
+}
+
 // ── Fase 3 — Cycling Coach Layer ────────────────────────────────────────
 // Bron: docs/specialist-api.md Fase 3. EERSTE AI-CALL in de
 // specialistlaag. Roept intern Fase 2b aan (analyseerCycling) — geen
@@ -53,6 +70,14 @@ interface KandidaatInzichtRuw {
 // De AI schrijft dus zelf niet naar specialist_memory, exact zoals
 // vastgelegd in specialist-memory.md ("AI leest Memory wel, schrijft er
 // nooit rechtstreeks naartoe").
+//
+// v2.4.79 — CoachPolicy/SpecialistSummary-contract (docs/specialist-
+// coach-policy.md). CoachPolicy wordt HIER opgehaald (deterministisch,
+// genereerCoachPolicy) en als harde grenzen in de prompt gezet — de AI
+// mag nooit een verboden trainingstype aanraden. AI retourneert op zijn
+// beurt een SpecialistSummary, klaar voor de Master Coach om te lezen
+// (die kant is nog NIET gebouwd — apart af te stemmen stap, raakt
+// api/coach/route.ts).
 
 export async function GET() {
   try {
@@ -101,6 +126,12 @@ export async function POST(req: NextRequest) {
     // ── Fase 2b aanroepen — intern, geen HTTP-roundtrip ──────────────
     const engineResultaat = await analyseerCycling(user.id, periodDays)
 
+    // ── v2.4.79: CoachPolicy ophalen — deterministisch, geen AI-aanroep.
+    // De Cycling Coach krijgt hiermee harde grenzen (max intensiteit,
+    // verboden trainingstypes), gebaseerd op de bestaande
+    // calculateRecoveryScore(). Zie docs/specialist-coach-policy.md.
+    const policy = await genereerCoachPolicy(user.id)
+
     // ── Doelen + voorkeuren ophalen (licht, geen Goal Engine-berekening
     // hier — die is nog niet gebouwd, bewust buiten scope van deze stap)
     const [goalsRes, profielRes] = await Promise.all([
@@ -115,6 +146,24 @@ export async function POST(req: NextRequest) {
     const doelenContext = doelen.length > 0
       ? `\nActieve doelen van de gebruiker:\n${doelen.map(g => `- ${g.title}${g.target_value ? ` (streefwaarde: ${g.target_value})` : ''}${g.target_date ? ` (datum: ${g.target_date})` : ''}`).join('\n')}`
       : '\nGeen actieve doelen ingesteld.'
+
+    // v2.4.79: CoachPolicy als HARDE grenzen in de prompt — geen ruwe
+    // hersteldata, alleen het beleid dat eruit volgt (zie
+    // specialist-coach-policy.md: "beleid, geen ruwe data")
+    const policyContext = `
+COACH POLICY (bepaald door de Master Coach, GEEN AI-beslissing — dit zijn
+harde grenzen, geen suggesties):
+- Maximale intensiteit vandaag: ${policy.maxIntensity}
+- Volume-aanpassing: ${policy.volumeAdjustmentPct === 0 ? 'geen aanpassing' : `${policy.volumeAdjustmentPct}%`}
+- Prioriteit: ${policy.priority}
+- Toegestane type training: ${policy.allowedTrainingTypes.join(', ')}
+- VERBODEN type training: ${policy.forbiddenTrainingTypes.length > 0 ? policy.forbiddenTrainingTypes.join(', ') : 'geen'}
+Reden: ${policy.reasons.join('; ')}
+
+BELANGRIJK: je advies mag NOOIT een verboden trainingstype aanraden, ongeacht
+wat de cijfers hieronder suggereren. Als de data een intensieve training
+logisch zou maken maar de policy dat verbiedt, leg dat uit aan de gebruiker
+in plaats van de policy te negeren.`
 
     const systemPrompt = `${COACH_CORE_IDENTITY}
 ${getCoachTone(2)}
@@ -138,10 +187,12 @@ CIJFERS (laatste ${periodDays} dagen):
 
 TOELICHTING BIJ DE CIJFERS (van de Analysis Engine, ter referentie):
 ${reden.join('\n')}
+${policyContext}
 ${doelenContext}
 
 Geef een persoonlijk, motiverend maar eerlijk cycling-advies. Schrijf in
 het Nederlands. Wees concreet — gebruik de cijfers, verzin niets.
+Respecteer altijd de Coach Policy hierboven — dit zijn harde grenzen.
 
 KANDIDAAT-INZICHTEN (v2.4.75, optioneel): als je in de cijfers of context
 een duurzaam patroon herkent (geen eenmalige observatie, maar iets wat
@@ -157,6 +208,15 @@ training), "preference" (waar de gebruiker blijkbaar naar neigt),
 Geef gewoon een lege array als je niets duurzaams ziet — dat is de
 normale, verwachte situatie bij weinig data.
 
+SPECIALIST SUMMARY (v2.4.79, verplicht): vul ook een korte, gestructureerde
+samenvatting in — dit is wat de Master Coach straks leest, dus geen lopende
+tekst maar exact deze velden. "load": hoe zwaar was de trainingsbelasting
+(low/moderate/high, gebaseerd op de cijfers hierboven). "progress":
+verbetert/stabiel/verslechtert het (gebaseerd op de trends). "risk": geen/
+licht/verhoogd risico (bijv. bij overbelasting-signalen). "recommendation":
+één zin, het kernadvies. "confidence": 0-100, hoe zeker ben je van deze
+inschatting gegeven de hoeveelheid data.
+
 Reageer ALLEEN in dit JSON-formaat:
 {
   "samenvatting": "1-2 zinnen, de kern van waar deze atleet nu staat qua fietsen",
@@ -165,7 +225,14 @@ Reageer ALLEEN in dit JSON-formaat:
   "advies": "2-3 zinnen concreet advies voor de komende periode",
   "kandidaat_inzichten": [
     { "category": "training_response", "insight": "korte, concrete inzin" }
-  ]
+  ],
+  "specialist_summary": {
+    "load": "moderate",
+    "progress": "stable",
+    "risk": "none",
+    "recommendation": "korte kernboodschap voor de Master Coach",
+    "confidence": 70
+  }
 }`
 
     let advies: CyclingCoachAdvies = {
@@ -179,6 +246,9 @@ Reageer ALLEEN in dit JSON-formaat:
     // logging/testdoeleinden in de response — worden NIET in het
     // opgeslagen advies (specialist_analyses.analysis) meegenomen
     let leerResultaten: Array<{ category: string; insight: string; actie: string; status: string }> = []
+    // v2.4.79: SpecialistSummary — null totdat de AI 'm daadwerkelijk
+    // invult (kan mislukken/ontbreken, dan blijft dit null, geen crash)
+    let specialistSummary: SpecialistSummary | null = null
 
     try {
       const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -203,10 +273,24 @@ Reageer ALLEEN in dit JSON-formaat:
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
           const kandidaten: KandidaatInzichtRuw[] = Array.isArray(parsed.kandidaat_inzichten) ? parsed.kandidaat_inzichten : []
-          // Verwijder kandidaat_inzichten uit wat opgeslagen wordt als
-          // advies — dat blijft de bestaande, ongewijzigde vorm
+          // v2.4.79: specialist_summary ook eruit halen, apart bewaren —
+          // niet onderdeel van het opgeslagen advies (CyclingCoachAdvies)
+          const ruweSummary = parsed.specialist_summary
           delete parsed.kandidaat_inzichten
+          delete parsed.specialist_summary
           advies = { ...advies, ...parsed, generated_at: new Date().toISOString() }
+
+          if (ruweSummary && typeof ruweSummary === 'object') {
+            specialistSummary = {
+              specialist: 'cycling',
+              load: ['low', 'moderate', 'high'].includes(ruweSummary.load) ? ruweSummary.load : 'moderate',
+              progress: ['improving', 'stable', 'declining'].includes(ruweSummary.progress) ? ruweSummary.progress : 'stable',
+              risk: ['none', 'low', 'high'].includes(ruweSummary.risk) ? ruweSummary.risk : 'none',
+              recommendation: typeof ruweSummary.recommendation === 'string' ? ruweSummary.recommendation : advies.advies,
+              confidence: typeof ruweSummary.confidence === 'number' ? Math.max(0, Math.min(100, ruweSummary.confidence)) : 50,
+              reasons: policy.reasons,
+            }
+          }
 
           // ── Elke kandidaat door de Learning Engine ────────────────
           // Geldige category vereist, insight-tekst niet leeg — anders
@@ -250,7 +334,11 @@ Reageer ALLEEN in dit JSON-formaat:
     // v2.4.75: leerResultaten wordt NIET opgeslagen in specialist_analyses
     // (dat blijft precies CyclingCoachAdvies) — alleen in de API-response
     // meegegeven, zodat sub-stap 3 testbaar is zonder een aparte query
-    return NextResponse.json({ ...saved, leer_resultaten: leerResultaten })
+    // v2.4.79: specialist_summary en de gebruikte coach_policy worden NIET
+    // opgeslagen in specialist_analyses (dat blijft exact CyclingCoachAdvies)
+    // — alleen in de API-response, voor testbaarheid en straks voor de
+    // Master Coach om te lezen (nog te bouwen, aparte stap)
+    return NextResponse.json({ ...saved, leer_resultaten: leerResultaten, specialist_summary: specialistSummary, coach_policy_gebruikt: policy })
   } catch (err) {
     console.error('[specialists/cycling/coach]', err)
     return NextResponse.json({ error: 'Advies genereren mislukt' }, { status: 500 })

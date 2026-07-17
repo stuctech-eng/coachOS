@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.79 — CoachPolicy/SpecialistSummary: specialist-kant geïmplementeerd
+**Eerste etappe van het contract uit `specialist-coach-policy.md`.
+Raakt UITSLUITEND de specialist-route, NIET `api/coach/route.ts` —
+die kant (Master Coach leest SpecialistSummary terug) is een aparte,
+apart af te stemmen stap.**
+
+- **Nieuw:** `src/lib/specialists/coach-policy.ts`
+  - `genereerCoachPolicy()` — volledig deterministisch, **geen
+    AI-aanroep**. Hergebruikt de bestaande `calculateRecoveryScore()`
+    (`src/core/ai-engine/recovery-engine.ts`), vertaalt naar
+    `CoachPolicy` volgens de vertaaltabel uit
+    `specialist-coach-policy.md` (green→good/high, orange→moderate/
+    moderate, red→low/low)
+  - Blessure-regel: actieve blessure verlaagt `maxIntensity` met
+    minimaal één stap, consistent met Decision Engine-regel 2
+- `src/app/api/specialists/cycling/coach/route.ts`
+  - `CoachPolicy` wordt opgehaald vóór de prompt gebouwd wordt, als
+    **harde grenzen** in de prompt gezet ("beleid, geen ruwe data" —
+    de AI ziet nooit HRV-waarden, alleen "max intensiteit: matig")
+  - Prompt expliciet: *"je advies mag NOOIT een verboden trainingstype
+    aanraden, ongeacht wat de cijfers suggereren"*
+  - AI retourneert nu ook `specialist_summary` (load/progress/risk/
+    recommendation/confidence) — apart geëxtraheerd, **niet** opgeslagen
+    in `specialist_analyses.analysis` (dat blijft exact
+    `CyclingCoachAdvies`, ongewijzigd), alleen in de API-response
+  - Validatie op de AI-output: ongeldige enum-waarden vallen terug op
+    een veilige default, geen crash bij onverwachte AI-output
+
+**Bewust NIET gedaan in deze stap, volgende etappe:** de Master
+Coach (`api/coach/route.ts`) leest deze `SpecialistSummary` nog niet —
+dat vereist expliciete, aparte afstemming (bestaande productiecode).
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.78 — Nieuw document: Coach Policy & Specialist Summary + up-to-date sweep
 **Naar aanleiding van de vraag "praten Master Coach en specialist met
 elkaar" — antwoord bleek nee, en dat leidde tot een belangrijk nieuw
