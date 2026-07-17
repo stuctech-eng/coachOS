@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.81 — Fix: specialist_summary kwam soms null binnen (afkapping)
+**Gevonden tijdens Master Coach-integratietest: een verse Cycling-
+analyse had `specialist_summary: null`, ondanks de verplichte
+prompt-instructie. Waarschijnlijke oorzaak: `max_tokens: 800` was te
+krap geworden sinds v2.4.79 het JSON-schema uitbreidde met
+`kandidaat_inzichten` + `specialist_summary` — bij uitgebreide
+tekstvelden (samenvatting/sterke_punten/aandachtspunten) kon de AI-
+respons afkappen vóórdat het bij die laatste twee velden kwam.**
+
+- `src/app/api/specialists/cycling/coach/route.ts`
+  - `max_tokens: 800` → `1200` — meer ruimte voor het volledige,
+    uitgebreidere schema
+  - **Extra vangnet:** `specialist_summary` staat nu **eerst** in het
+    JSON-schema-voorbeeld in de prompt (was laatst) — mocht de respons
+    ooit alsnog afkappen, is dit veld dan al binnen vóórdat dat gebeurt
+
+**Nog niet met zekerheid bevestigd of dit de enige/volledige oorzaak
+was** — eerlijk gezegd, geen 100% garantie tot een volgende test dit
+bevestigt. Als het probleem terugkeert, is de volgende stap: het
+JSON-schema zelf verkleinen (kortere tekstvelden), of `specialist_summary`
+en het advies als twee aparte AI-calls behandelen.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.80 — CoachPolicy/SpecialistSummary: Master Coach leest terug ⚠️ RAAKT PRODUCTIECODE
 **Laatste etappe van het contract uit `specialist-coach-policy.md`. Dit
 raakt `api/coach/route.ts` — het bestaande, dagelijkse coach-advies dat

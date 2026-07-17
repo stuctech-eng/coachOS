@@ -217,22 +217,24 @@ licht/verhoogd risico (bijv. bij overbelasting-signalen). "recommendation":
 één zin, het kernadvies. "confidence": 0-100, hoe zeker ben je van deze
 inschatting gegeven de hoeveelheid data.
 
-Reageer ALLEEN in dit JSON-formaat:
+Reageer ALLEEN in dit JSON-formaat. Let op: "specialist_summary" staat
+BEWUST eerst — vul dat als eerste in, zodat het compleet is ook als de
+rest van je antwoord onverhoopt wordt afgekapt:
 {
-  "samenvatting": "1-2 zinnen, de kern van waar deze atleet nu staat qua fietsen",
-  "sterke_punten": "2-3 zinnen over wat goed gaat",
-  "aandachtspunten": "2-3 zinnen over wat aandacht verdient",
-  "advies": "2-3 zinnen concreet advies voor de komende periode",
-  "kandidaat_inzichten": [
-    { "category": "training_response", "insight": "korte, concrete inzin" }
-  ],
   "specialist_summary": {
     "load": "moderate",
     "progress": "stable",
     "risk": "none",
     "recommendation": "korte kernboodschap voor de Master Coach",
     "confidence": 70
-  }
+  },
+  "samenvatting": "1-2 zinnen, de kern van waar deze atleet nu staat qua fietsen",
+  "sterke_punten": "2-3 zinnen over wat goed gaat",
+  "aandachtspunten": "2-3 zinnen over wat aandacht verdient",
+  "advies": "2-3 zinnen concreet advies voor de komende periode",
+  "kandidaat_inzichten": [
+    { "category": "training_response", "insight": "korte, concrete inzin" }
+  ]
 }`
 
     let advies: CyclingCoachAdvies = {
@@ -260,7 +262,7 @@ Reageer ALLEEN in dit JSON-formaat:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 800,
+          max_tokens: 1200, // v2.4.81: was 800 — te krap sinds v2.4.79 het JSON-schema uitbreidde met kandidaat_inzichten + specialist_summary, resulteerde in afgekapte responses (specialist_summary bleef null)
           system: systemPrompt,
           messages: [{ role: 'user', content: 'Geef je Cycling Coach-advies.' }],
         }),
