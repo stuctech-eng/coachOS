@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.77 — "Hoe werkt CoachOS": nieuwe sectie over Specialisten
+**Gebruikersgerichte uitleg, geen technische documentatie — dat blijft
+in `docs/specialist-*.md`. Nieuwe vaste afspraak: deze pagina wordt
+voortaan bijgewerkt zodra er gebruikersgerichte functionaliteit
+verandert (nieuwe features, gewijzigd gedrag) — niet bij interne
+refactors of debug-toevoegingen die voor de gebruiker onzichtbaar zijn.**
+
+- `src/app/settings/hoe-werkt-het/page.tsx` — nieuwe sectie
+  **"Specialisten — verdieping per sport"**, geplaatst na de bestaande
+  "Coach AI"-sectie (logisch vervolg)
+  - In warme, toegankelijke taal — geen technische termen als "Learning
+    Engine" of "confirmation_count", wel de onderliggende concepten in
+    gewone woorden: hoe activeer je, wat zie je in de Hub, hoe "leert"
+    de coach patronen (met de meermaals-bevestiging-drempel uitgelegd
+    zonder het als getal te noemen), hoe vertrouwen kan wegzakken, wat
+    er gebeurt als je een tijd niet sport
+  - Zelfde stijl/structuur/toon als bestaande secties (intro + meerdere
+    alinea's, uitklapbare kaart)
+
+**Overwogen en bewust niet gedaan:** hernoemen naar "Handleiding" — de
+inhoud (bestaand en nieuw) is overwegend conceptuele uitleg ("waarom
+werkt het zo"), geen taakgerichte instructies ("hoe doe ik X"). Naam
+blijft "Hoe werkt CoachOS", tenzij hier later op teruggekomen wordt.
+
 ## v2.4.76 — Memory Engine, sub-stap 4/5: Confidence Engine
 **Volledig deterministisch. Confidence stijgt bij elke bevestiging
 (+15, max 100), daalt geleidelijk zonder bevestiging (-3 per volle week),

@@ -1,6 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Brain, Dumbbell, Wind, TrendingUp, Battery, Heart, Zap, Clock, Camera, BarChart2, ChevronDown, Phone } from 'lucide-react'
+import { ArrowLeft, Brain, Dumbbell, Wind, TrendingUp, Battery, Heart, Zap, Clock, Camera, BarChart2, ChevronDown, Phone, Bike } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
@@ -83,6 +83,21 @@ const SECTIES: Sectie[] = [
       'De Coach Chat (tab "Coach") is directe toegang tot Coach AI. Je kunt vragen stellen over je data, uitleg vragen over een beslissing, of feedback geven. De chat heeft toegang tot dezelfde context als het dagplan.',
       'Coach AI heeft een geheugen. Patronen die hij ontdekt worden opgeslagen en meegenomen in toekomstige analyses. Na een week begint hij patronen te herkennen. Na een maand maakt hij voorspellingen.',
       'Toon: Coach AI past zijn toon aan de situatie aan. Bij dagadvies en planning spreekt hij als een betrokken, persoonlijke coach. Bij evaluaties na een training mag hij directer zijn — inclusief een vriendelijk standje als je rust hebt genegeerd.',
+    ],
+  },
+  {
+    id: 'specialisten',
+    icoon: Bike,
+    kleur: 'text-green-400',
+    titel: 'Specialisten — verdieping per sport',
+    intro: 'Naast Coach AI kun je specialisten activeren: coaches die één sport tot in detail kennen. Op dit moment bestaat de Cycling Coach.',
+    inhoud: [
+      'Coach AI blijft altijd de baas over je algehele gezondheid en herstel. Een specialist voegt daar diepgaande vakkennis over één sport aan toe — geen aparte chatbot met een andere stem, maar dezelfde coach die je al kent, nu met extra expertise.',
+      'Je activeert een specialist via Instellingen, of het systeem stelt het zelf voor: fiets je drie keer of vaker binnen een maand, dan verschijnt er een kaartje in de Coach-tab met de vraag of je de Cycling Coach wilt inschakelen. Jij beslist altijd zelf — er wordt nooit automatisch iets voor je aangezet.',
+      'Eenmaal actief krijg je een eigen scherm (de Hub) met je vermogen, afstand, trainingsfrequentie en -belasting van de afgelopen periode, plus een persoonlijk geschreven advies daarover. De cijfers zelf worden altijd eerst uitgerekend — de AI verzint nooit een getal, die legt alleen uit wat de cijfers betekenen.',
+      'De Cycling Coach leert je langzaam kennen. Merkt hij een terugkerend patroon op — bijvoorbeeld dat je het beste reageert op lange, rustige ritten — dan onthoudt hij dat niet meteen als vaststaand feit. Pas als hetzelfde patroon een paar keer opnieuw naar voren komt, wordt het "bevestigde kennis" die meeweegt in toekomstige adviezen. Een eenmalige observatie telt dus nooit direct mee.',
+      'Dat vertrouwen blijft ook niet voor altijd hetzelfde. Verandert je gedrag, en wordt een eerder patroon een tijd niet meer bevestigd, dan laat de coach zijn vertrouwen daarin geleidelijk zakken — net zoals een menselijke coach zijn beeld van je zou bijstellen.',
+      'Fiets je een tijd niet? Dan verdwijnt er niets. De Hub blijft gewoon zichtbaar, met een melding dat er weinig recente activiteit is. Zodra je weer begint, herkent de coach dat je terugkeert en pakt hij het waar mogelijk weer op waar jullie gebleven waren.',
     ],
   },
   {
