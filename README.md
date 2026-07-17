@@ -307,15 +307,15 @@ specialisten zonder wijziging** aan `genereerCoachPolicy()` of
 `api/coach/route.ts` (die laatste bleek al generiek over alle actieve
 specialisten te lopen, niet hardcoded op cycling).
 
-**Decision Engine — nu voor het eerst daadwerkelijk relevant.** Met twee
-specialisten tegelijk actief kunnen conflicterende adviezen daadwerkelijk
-optreden — het ontwerp (`specialist-decision-engine.md`) staat klaar,
-implementatie nog niet gestart.
+**Decision Engine — geïmplementeerd (v2.4.84).** Lost op wanneer meerdere
+specialisten elk afzonderlijk "meer volume" adviseren maar de optelsom
+te veel wordt. Regel 2 (blessures/risico) en regel 3 (herstel > belasting)
+geïmplementeerd; regels 4-5 (lange termijn, gebruikersdoel als tiebreaker)
+nog niet — vergen eerst de Goal Engine.
 
 **Volgende, niet-gestart:**
-- Decision Engine-implementatie (nu pas echt zinvol te testen, met 2
-  specialisten)
-- Goal Engine (apart ontworpen, nog niet gebouwd)
+- Goal Engine (apart ontworpen, nog niet gebouwd) — ook nodig voor
+  Decision Engine-regels 4-5
 - Rowing/Strength — verdere invuloefening, patroon nu 2x bevestigd
 
 ---
@@ -331,7 +331,7 @@ implementatie nog niet gestart.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.83 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.84 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -343,7 +343,7 @@ implementatie nog niet gestart.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.83
+- Versie: 2.4.84
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -642,6 +642,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.84 — Decision Engine geïmplementeerd, raakt api/coach/route.ts (additief) — lost op wanneer meerdere specialisten samen te veel volume adviseren
 - v2.4.83 — Running: tweede specialist, bewijst herbruikbaarheid — grotendeels invuloefening, api/coach/route.ts bleek al generiek
 - v2.4.82 — Memory Engine sub-stap 5/5 LAATSTE: terugkoppeling naar Coach Layer — Memory Engine hiermee volledig afgerond
 - v2.4.81 — Fix: specialist_summary kwam soms null binnen (max_tokens 800→1200, veld naar voren in JSON-schema)

@@ -1,5 +1,51 @@
 # CoachOS — Changelog
 
+## v2.4.84 — Decision Engine geïmplementeerd ⚠️ RAAKT PRODUCTIECODE
+**Nu voor het eerst zinvol te testen, met Cycling + Running beide actief.
+Raakt `api/coach/route.ts` — additief, eigen try/catch, geen bestaand
+gedrag verwijderd.**
+
+**Belangrijke precisering vóór implementatie:** regels 1-3 uit
+`specialist-decision-engine.md` (gezondheid > prestatie, blessures >
+periodisering, herstel > belasting) zitten al **gedeeltelijk** geborgd
+via `CoachPolicy` — elke specialist krijgt dezelfde, deterministisch
+bepaalde grenzen, dus kan al geen zware training adviseren bij laag
+herstel. **Het conflict dat déze Decision Engine daadwerkelijk oplost:**
+als meerdere specialisten elk afzonderlijk, binnen hun eigen grenzen,
+"meer volume" adviseren, ziet geen van beide dat de **optelsom**
+alsnog te veel wordt.
+
+- **Nieuw:** `src/lib/specialists/decision-engine.ts`
+  - `beslisTussenSpecialisten()` — volledig deterministisch, geen AI
+  - **Regel 2 (blessures/verhoogd risico):** een specialist met
+    `risk: 'high'` krijgt altijd voorrang, ongeacht wat anderen
+    adviseren
+  - **Regel 3 (herstel > belasting):** bij `coachPriority` "recovery" of
+    "balance" (dus niet bij een goede hersteldag) — als 2+ specialisten
+    tegelijk niet-lage belasting tonen, krijgt alleen degene met de
+    hoogste belasting vandaag de hoofdfocus, de rest wordt getemperd
+  - Retourneert `null` bij 0-1 specialist of geen conflict — bestaand
+    gedrag (alle specialisten gelijkwaardig genoemd) blijft dan intact
+  - `DecisionResult`: `selectedCoach`, `rejectedCoaches[]`,
+    `appliedRule`, `priorityScore`, `reasoning[]` — exact zoals
+    vastgelegd in `specialist-decision-engine.md`
+- `src/app/api/coach/route.ts`
+  - `genereerCoachPolicy()` nu ook hier aangeroepen (was alleen in de
+    specialist-routes) — nodig als input voor de Decision Engine.
+    Zelfde deterministische functie, zelfde dag, dus consistente
+    uitkomst met wat de specialist-routes al gebruikten
+  - Decision Engine aangeroepen tussen het ophalen van de
+    SpecialistSummary's en het opbouwen van de prompt-tekst
+  - Bij een conflict: getemperde specialisten krijgen een markering
+    `[vandaag getemperd — zie Decision Engine-toelichting]` in de
+    prompt, plus een aparte toelichting-regel met de reden
+  - **Eigen try/catch, additief:** faalt de Decision Engine, dan
+    blijven specialisten gewoon gelijkwaardig getoond — geen crash-risico
+
+**Test-instructies:** zie bericht bij levering. Vergt beide specialisten
+(Cycling + Running) actief én met een niet-lage belasting om het
+conflict-scenario daadwerkelijk te triggeren.
+
 ## v2.4.83 — Running: tweede specialist, bewijst herbruikbaarheid van de architectuur
 **De belangrijkste test van de hele specialistlaag-architectuur: kan een
 tweede specialist gebouwd worden zonder de bestaande architectuur

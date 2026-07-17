@@ -8,6 +8,8 @@ import { calculateRecoveryScore } from '@/core/ai-engine/recovery-engine'
 import { buildDailyCoachPrompt, WeekMetrics } from '@/core/prompts/daily-coach'
 import { fetchTodaysLifeEvents, formatLifeEventsContext } from '@/core/utils/life-events-context'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
+import { beslisTussenSpecialisten } from '@/lib/specialists/decision-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -139,6 +141,18 @@ export async function POST() {
     const profile = profileRes.data
     if (!profile) return NextResponse.json({ error: 'Profiel niet gevonden' }, { status: 404 })
 
+    // ── v2.4.84: CoachPolicy hier ook opgehaald — nodig als input voor de
+    // Decision Engine (policy.priority bepaalt of er "ruimte" is voor
+    // meerdere specialisten om tegelijk op te bouwen). Dezelfde
+    // deterministische functie als de specialist-routes al gebruiken —
+    // zelfde dag, zelfde onderliggende data, dus consistente uitkomst.
+    let masterPolicy: Awaited<ReturnType<typeof genereerCoachPolicy>> | null = null
+    try {
+      masterPolicy = await genereerCoachPolicy(user.id)
+    } catch (policyErr) {
+      console.error('[coach] CoachPolicy ophalen mislukt voor Decision Engine, specialisten blijven gelijkwaardig:', policyErr)
+    }
+
     // ── v2.4.80: SpecialistSummary's ophalen voor actieve specialisten ──
     // Bron: docs/specialist-coach-policy.md. Master Coach leest de meest
     // recente SpecialistSummary per actieve specialist (nooit ruwe
@@ -169,12 +183,42 @@ export async function POST() {
         const geldigeSummaries = summaries.filter((s): s is { specialist_summary: any; generated_at: string } => !!s?.specialist_summary)
 
         if (geldigeSummaries.length > 0) {
+          // ── v2.4.84: Decision Engine — alleen relevant bij 2+ specialisten
+          // met een geldige summary. Bepaalt of er een conflict is
+          // (bijv. beide willen vandaag volume opbouwen) en zo ja, wie
+          // vandaag de hoofdfocus krijgt. Geeft null terug als er geen
+          // conflict is — dan blijft het bestaande gedrag (alle
+          // specialisten gelijkwaardig genoemd) ongewijzigd.
+          let decision: ReturnType<typeof beslisTussenSpecialisten> = null
+          if (masterPolicy) {
+            try {
+              decision = beslisTussenSpecialisten(
+                geldigeSummaries.map(s => ({
+                  specialist: typeof s.specialist_summary.specialist === 'string' ? s.specialist_summary.specialist : 'specialist',
+                  load: s.specialist_summary.load,
+                  risk: s.specialist_summary.risk,
+                  recommendation: s.specialist_summary.recommendation,
+                })),
+                masterPolicy.priority
+              )
+            } catch (decisionErr) {
+              console.error('[coach] Decision Engine mislukt, specialisten blijven gelijkwaardig:', decisionErr)
+            }
+          }
+
           const regels = geldigeSummaries.map(s => {
             const sum = s.specialist_summary
             const specialistNaam = typeof sum.specialist === 'string' ? sum.specialist : 'specialist'
-            return `- ${specialistNaam} Coach: belasting ${sum.load}, progressie ${sum.progress}, risico ${sum.risk}. "${sum.recommendation}" (zekerheid ${sum.confidence}%)`
+            const isAfgewezen = decision?.rejectedCoaches.includes(specialistNaam)
+            const markering = isAfgewezen ? ' [vandaag getemperd — zie Decision Engine-toelichting]' : ''
+            return `- ${specialistNaam} Coach: belasting ${sum.load}, progressie ${sum.progress}, risico ${sum.risk}. "${sum.recommendation}" (zekerheid ${sum.confidence}%)${markering}`
           })
-          specialistContext = `\n\nActieve specialisten — samenvatting (niet zelf herberekenen, dit is al hun eigen analyse):\n${regels.join('\n')}\nNeem dit mee in je algehele advies indien relevant, maar jij blijft eindverantwoordelijk voor de gezondheids- en herstelbeslissing.`
+
+          const decisionToelichting = decision
+            ? `\n\nDecision Engine-toelichting (deterministisch bepaald, niet zelf heroverwegen): ${decision.selectedCoach} Coach krijgt vandaag de hoofdfocus. Reden: ${decision.reasoning.join(' ')}`
+            : ''
+
+          specialistContext = `\n\nActieve specialisten — samenvatting (niet zelf herberekenen, dit is al hun eigen analyse):\n${regels.join('\n')}${decisionToelichting}\nNeem dit mee in je algehele advies indien relevant, maar jij blijft eindverantwoordelijk voor de gezondheids- en herstelbeslissing.`
         }
       }
     } catch (specialistErr) {
