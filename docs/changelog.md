@@ -1,5 +1,40 @@
 # CoachOS — Changelog
 
+## v2.4.82 — Memory Engine, sub-stap 5/5 (LAATSTE): terugkoppeling naar Coach Layer
+**De Memory Engine is hiermee volledig afgerond — alle 5 sub-stappen.
+De Cycling Coach leest voortaan zijn eigen bevestigde geheugen terug bij
+elk nieuw advies.**
+
+- `src/app/api/specialists/cycling/coach/route.ts`
+  - `haalMemoryOp(userId, 'cycling', true)` opgehaald vóór de prompt
+    gebouwd wordt — **alleen `active`-items**, dus al meermaals bevestigd
+    door de Learning Engine, geen eenmalige AI-gok
+  - Confidence is al actueel dankzij `haalMemoryOp()`'s ingebouwde
+    decay-toepassing (Confidence Engine, sub-stap 4) — geen aparte
+    herberekening hier nodig
+  - Maximaal 5 inzichten meegegeven, gesorteerd op confidence (hoogste
+    eerst), expliciet als *"achtergrondkennis, niet als nieuw te
+    herhalen conclusie"* — voorkomt dat de AI het als nieuwe ontdekking
+    presenteert
+  - Eigen try/catch: als Memory ophalen faalt, gaat het advies gewoon
+    door zonder die context — geen crash-risico
+
+## 🎉 Memory Engine volledig afgerond — alle 5 sub-stappen
+
+1. ✅ SQL `specialist_memory` (v2.4.73)
+2. ✅ Learning Engine — candidate→active promotie (v2.4.74)
+3. ✅ Coach Layer stelt kandidaat-inzichten voor (v2.4.75)
+4. ✅ Confidence Engine — stijging/decay/auto-deprecate (v2.4.76)
+5. ✅ Terugkoppeling naar Coach Layer (v2.4.82)
+
+**Volledige cyclus, nu gesloten:** AI stelt een patroon voor → Learning
+Engine bevestigt het pas na meermaals terugkeren → Confidence Engine
+onderhoudt het vertrouwen over tijd → Coach Layer leest het terug bij
+elk nieuw advies → AI gebruikt het als achtergrondkennis, niet als
+losse aanname.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.81 — Fix: specialist_summary kwam soms null binnen (afkapping)
 **Gevonden tijdens Master Coach-integratietest: een verse Cycling-
 analyse had `specialist_summary: null`, ondanks de verplichte

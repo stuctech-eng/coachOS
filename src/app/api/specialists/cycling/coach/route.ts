@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { analyseerCycling } from '@/lib/specialists/cycling-analysis'
-import { verwerkKandidaatInzicht } from '@/lib/specialists/learning-engine'
+import { verwerkKandidaatInzicht, haalMemoryOp } from '@/lib/specialists/learning-engine'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 import { COACH_CORE_IDENTITY, CORE_SAFETY_RULE, getCoachTone } from '@/core/prompts/coach-personality'
 
@@ -76,8 +76,14 @@ interface SpecialistSummary {
 // genereerCoachPolicy) en als harde grenzen in de prompt gezet — de AI
 // mag nooit een verboden trainingstype aanraden. AI retourneert op zijn
 // beurt een SpecialistSummary, klaar voor de Master Coach om te lezen
-// (die kant is nog NIET gebouwd — apart af te stemmen stap, raakt
-// api/coach/route.ts).
+// (v2.4.80, api/coach/route.ts leest dit inmiddels terug).
+//
+// v2.4.82 — Memory Engine sub-stap 5/5, LAATSTE STAP: 'active'-Memory-
+// items (Learning Engine, sub-stap 2) met actuele confidence (Confidence
+// Engine, sub-stap 4) worden hier gelezen en als achtergrondkennis in de
+// prompt gezet. Hiermee is de volledige cyclus gesloten:
+// AI stelt voor → Learning Engine bevestigt → Confidence Engine
+// onderhoudt → Coach Layer leest terug → AI gebruikt het.
 
 export async function GET() {
   try {
@@ -131,6 +137,26 @@ export async function POST(req: NextRequest) {
     // verboden trainingstypes), gebaseerd op de bestaande
     // calculateRecoveryScore(). Zie docs/specialist-coach-policy.md.
     const policy = await genereerCoachPolicy(user.id)
+
+    // ── v2.4.82: Memory Engine sub-stap 5 — terugkoppeling naar de Coach
+    // Layer. Alleen 'active'-items (dus al meermaals bevestigd door de
+    // Learning Engine, niet zomaar een eenmalige AI-gok) worden gelezen.
+    // haalMemoryOp() past decay al toe vóór teruggave (Confidence Engine,
+    // sub-stap 4) — wat hier binnenkomt is dus altijd de actuele stand.
+    let memoryContext = ''
+    try {
+      const actieveMemory = await haalMemoryOp(user.id, 'cycling', true)
+      if (actieveMemory.length > 0) {
+        const regels = actieveMemory
+          .slice(0, 5) // maximaal 5, al gesorteerd op confidence (hoog eerst)
+          .map((m: { insight: string; confidence: number; knowledge_type: string }) =>
+            `- ${m.insight} (${m.knowledge_type === 'hard' ? 'gemeten feit' : `vertrouwen ${m.confidence}%`})`
+          )
+        memoryContext = `\nBevestigde kennis over deze atleet (opgebouwd over meerdere trainingen, niet zomaar een eenmalige indruk):\n${regels.join('\n')}\nGebruik dit als achtergrondkennis, niet als nieuw te herhalen conclusie.`
+      }
+    } catch (memErr) {
+      console.error('[specialists/cycling/coach] Memory ophalen mislukt, prompt gaat door zonder:', memErr)
+    }
 
     // ── Doelen + voorkeuren ophalen (licht, geen Goal Engine-berekening
     // hier — die is nog niet gebouwd, bewust buiten scope van deze stap)
@@ -189,6 +215,7 @@ TOELICHTING BIJ DE CIJFERS (van de Analysis Engine, ter referentie):
 ${reden.join('\n')}
 ${policyContext}
 ${doelenContext}
+${memoryContext}
 
 Geef een persoonlijk, motiverend maar eerlijk cycling-advies. Schrijf in
 het Nederlands. Wees concreet — gebruik de cijfers, verzin niets.

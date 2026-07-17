@@ -250,7 +250,7 @@ uitgebreide regels verderop in dit document.
 
 **Status: architectuur ✅, database-ontwerp ✅ (SQL v2.4.59), API/Engine/AI/
 Hub-UI ✅ — Cycling-referentie-implementatie volledig afgerond (v2.4.68).
-Memory Engine 4/5 sub-stappen ✅. Coach Policy-contract volledig gesloten
+Memory Engine 5/5 sub-stappen ✅ VOLLEDIG AFGEROND. Coach Policy-contract volledig gesloten
 ✅ (v2.4.79-80, inclusief Master Coach-kant, raakt api/coach/route.ts).**
 
 Uitbreiding van CoachOS van één brede coach naar een platform met
@@ -280,12 +280,12 @@ rechtstreekse URL `/coach/cycling`.
 **Lifecycle Engine** (v2.4.70) — SUGGESTED/DORMANT/RETURNING-banners,
 geen opgeslagen status, volledig berekend uit bestaande data.
 
-**Memory Engine — 4/5 sub-stappen compleet:**
+**Memory Engine — 5/5 sub-stappen compleet, VOLLEDIG AFGEROND:**
 1. ✅ SQL `specialist_memory` (v2.4.73)
 2. ✅ Learning Engine — candidate→active promotie (v2.4.74)
 3. ✅ Coach Layer stelt kandidaat-inzichten voor (v2.4.75)
 4. ✅ Confidence Engine — stijging/decay/auto-deprecate (v2.4.76)
-5. ⏳ Terugkoppeling naar Coach Layer — volgende in de rij
+5. ✅ Terugkoppeling naar Coach Layer (v2.4.82)
 
 **Coach Policy & Specialist Summary** (document v2.4.78, volledig
 geïmplementeerd v2.4.79-80) — het deterministische contract tussen
@@ -298,7 +298,6 @@ Engine** — geldt al bij 1 specialist, Decision Engine wordt pas relevant
 bij meerdere tegelijk.
 
 **Volgende, niet-gestart:**
-- Memory Engine sub-stap 5 (terugkoppeling naar Coach Layer)
 - Decision Engine-implementatie (pas relevant bij 2e actieve specialist)
 - Goal Engine (apart ontworpen, nog niet gebouwd)
 - Running/Rowing/Strength — invuloefening binnen dezelfde architectuur
@@ -317,7 +316,7 @@ bij meerdere tegelijk.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.81 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.82 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -329,7 +328,7 @@ bij meerdere tegelijk.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.81
+- Versie: 2.4.82
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -628,6 +627,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.82 — Memory Engine sub-stap 5/5 LAATSTE: terugkoppeling naar Coach Layer — Memory Engine hiermee volledig afgerond
 - v2.4.81 — Fix: specialist_summary kwam soms null binnen (max_tokens 800→1200, veld naar voren in JSON-schema)
 - v2.4.80 — CoachPolicy/SpecialistSummary: Master Coach-kant, raakt api/coach/route.ts (additief, eigen try/catch, contract nu volledig gesloten)
 - v2.4.79 — CoachPolicy/SpecialistSummary: specialist-kant geïmplementeerd (deterministische policy-generator + Cycling Coach respecteert grenzen)
