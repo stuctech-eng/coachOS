@@ -1,0 +1,122 @@
+# CoachOS — Navigatie-architectuur v1.0
+
+**Status: GOEDGEKEURD (ontwerp) — implementatie nog niet gestart**
+
+Definitieve, principiële herstructurering van de hoofdnavigatie — niet
+als tijdelijke oplossing voor Cycling, maar als architectuurkeuze die
+de drie kernpijlers van CoachOS weerspiegelt.
+
+---
+
+## De drie niveaus, ieder met een eigen vraag
+
+| Niveau | Vraag | Scope |
+|---|---|---|
+| **Trainer** | "Wat doe ik vandaag?" | Uitvoering van de huidige training |
+| **Specialist** | "Hoe word ik een betere [sport]-er?" | Vakinhoudelijke expertise, langetermijnontwikkeling, één sport |
+| **Voortgang** | "Hoe ontwikkel ik me over alle sporten heen?" | Historie, trends, records — sport-overstijgend |
+
+Dit voorkomt dubbele schermen: geen activiteitenlijst bij Home, Coach,
+én Cycling apart — één plek per soort informatie.
+
+---
+
+## Definitieve navigatie (5 tabs)
+
+```
+🏠 Home        — ongewijzigd
+🧠 Coach        — was 'Coach', route /chat, ongewijzigde route
+💪 Trainer      — was 'Training', route /training, naam + icoon gewijzigd
+🚴 Specialisten — NIEUW, eigen overzichtspagina
+📈 Voortgang    — was 'Progressie', route /progressie, naam gewijzigd + uitgebreid
+```
+
+**Profiel/Instellingen:** geen zesde tab — bereikbaar via een
+account-icoon/menu vanuit Home, houdt de balk rustig (5 tabs, binnen de
+gangbare grens voor duim-bereik op een telefoon).
+
+**Activiteiten:** geen aparte tab meer — eerste sectie binnen
+Voortgang, want een activiteit is geen doel op zich, maar een
+gebeurtenis die bijdraagt aan de vraag "ga ik vooruit?"
+
+---
+
+## Uitwerking: Voortgang
+
+Sport-overstijgend, historie-gericht:
+- **Activiteiten** (chronologische lijst — dit is de huidige
+  `/activities`-pagina, verplaatst)
+- Kalender (alle sporten gecombineerd)
+- Statistieken
+- Records (algemeen/gecombineerd — sport-specifieke records leven
+  daarnaast ook bij de betreffende Specialist, zie hieronder)
+- Trends
+- Alle sporten gecombineerd-overzicht
+
+---
+
+## Uitwerking: Specialisten
+
+Vakinhoudelijk, één sport per keer — **geen** historie-overzicht,
+dat hoort bij Voortgang:
+
+```
+Specialisten-overzicht
+🚴 Cycling      (actief)
+🏃 Running       (actief)
+🚣 Rowing         (in ontwikkeling)
+🏋️ Strength        (in ontwikkeling)
+🥗 Nutrition (later)
+🏊 Swimming (later)
+🏔️ Trail Running (later)
+```
+
+Tikken op een specialist → volledige Hub met (voor Cycling, zie
+`cycling-specialist-roadmap-v1.md` Fase 2): Dashboard, Trainingsplan,
+Coach, Kalender (sport-specifiek), Analyse, Grafieken, FTP/zones,
+Records (sport-specifiek), Doelen (sport-specifiek), Wedstrijden.
+
+**Bewuste dubbeling, geen probleem:** Records en Kalender bestaan zowel
+bij Voortgang (gecombineerd, alle sporten) als bij een Specialist
+(sport-specifiek, verdiept) — dat is geen architecturale inconsistentie,
+het zijn twee verschillende vragen ("hoe doe ik het over alles heen" vs.
+"hoe doe ik het specifiek bij het fietsen").
+
+---
+
+## Relatie tot bestaande architectuur
+
+- **"Mijn Coaches"-chip-rij in de Coach-tab** (v2.4.69/83) — deze
+  functie verhuist logisch naar de nieuwe Specialisten-tab. De
+  Coach-tab (Master Coach-gesprek) hoeft de chips niet meer te tonen
+  zodra Specialisten bestaat.
+- **CoachPolicy/SpecialistSummary/Decision Engine** — ongewijzigd, dit
+  is puur een navigatie-/UI-herstructurering, geen wijziging aan de
+  onderliggende data-architectuur.
+- **Cycling Specialist Roadmap v1.0** — Fase 2 (Cycling Coach
+  Professional) krijgt hiermee zijn definitieve "thuis": de Cycling Hub
+  onder de nieuwe Specialisten-tab, in plaats van bereikbaar via
+  `/coach/cycling` zonder duidelijke navigatie-ingang.
+
+---
+
+## Implementatie — gefaseerd, NIET in één keer
+
+Dit raakt te veel schermen om in één stap te doen. Voorgestelde
+volgorde:
+
+1. **Labels/iconen wijzigen** (laag risico): Training → Trainer,
+   Progressie → Voortgang. Routes blijven ongewijzigd, puur cosmetisch.
+2. **Activiteiten verhuizen** naar een sectie binnen Voortgang, oude
+   `/activities`-tab uit de navigatiebalk verwijderen (route zelf kan
+   blijven bestaan, alleen niet meer als tab).
+3. **Specialisten-overzichtspagina bouwen** (`/specialisten`) — nieuwe
+   pagina, hergebruikt de bestaande `/api/specialists`-data.
+4. **Specialisten-tab toevoegen** aan de navigatiebalk, "Mijn Coaches"-
+   chips uit de Coach-tab verwijderen (functie verplaatst, niet
+   verdubbeld).
+5. **Profiel/account-menu** vanuit Home, in plaats van de huidige
+   plek — laatst, want dit is de minst kritieke wijziging.
+
+**Elke stap apart test baar en op te leveren**, zoals bij elke andere
+wijziging deze sessie.

@@ -1,5 +1,35 @@
 # CoachOS — Changelog
 
+## v2.4.90 — Nieuw document: Navigatie-architectuur v1.0 (GOEDGEKEURD, ontwerp)
+**Definitieve herstructurering van de hoofdnavigatie, principieel
+vastgelegd — niet als tijdelijke Cycling-oplossing. Implementatie
+bewust NIET in deze levering — dit raakt te veel schermen om in één
+stap te doen, zie het 5-stappen-implementatieplan in het document zelf.**
+
+- **Nieuw:** `docs/navigation-architecture-v1.md`
+  - Drie niveaus, ieder een eigen vraag: **Trainer** ("wat doe ik
+    vandaag") / **Specialist** ("hoe word ik beter in [sport]") /
+    **Voortgang** ("hoe ontwikkel ik me over alle sporten heen")
+  - Definitieve navigatie: 🏠 Home · 🧠 Coach · 💪 Trainer ·
+    🚴 Specialisten (nieuw) · 📈 Voortgang — 5 tabs, binnen de gangbare
+    grens voor duim-bereik
+  - **Activiteiten** verhuist van eigen tab naar eerste sectie binnen
+    Voortgang — "een activiteit is geen doel, maar een gebeurtenis die
+    bijdraagt aan 'ga ik vooruit'"
+  - Profiel/Instellingen: geen 6e tab, via account-icoon vanuit Home
+  - **Bewuste, uitgelegde dubbeling:** Records/Kalender bestaan zowel
+    bij Voortgang (gecombineerd) als bij een Specialist (sport-
+    specifiek) — twee verschillende vragen, geen inconsistentie
+  - "Mijn Coaches"-chips (Coach-tab, sinds v2.4.69/83) migreren logisch
+    naar de nieuwe Specialisten-tab
+  - **5-staps-implementatieplan**, elke stap apart testbaar: (1)
+    labels/iconen wijzigen, (2) Activiteiten verhuizen naar Voortgang,
+    (3) Specialisten-overzichtspagina bouwen, (4) Specialisten-tab
+    toevoegen + chips verwijderen uit Coach, (5) Profiel-menu
+
+**Volgende stap, bij akkoord:** implementatiestap 1 (labels/iconen) —
+laagste risico, puur cosmetisch, routes ongewijzigd.
+
 ## v2.4.89 — CoachOS Cycling Specialist Roadmap v1.0 (GOEDGEKEURD)
 **Definitieve versie na overleg. Bestandsnaam gewijzigd t.o.v. het
 eerdere concept: `cycling-specialist-roadmap-v1.md` (niet
