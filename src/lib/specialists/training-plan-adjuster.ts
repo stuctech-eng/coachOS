@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase'
+import { isoDatum } from '@/utils'
 import { genereerCoachPolicy } from './coach-policy'
 import { haalGoalsMetProgress } from './goal-engine'
 
@@ -29,7 +30,7 @@ export interface AanpassingResultaat {
 export async function voerDailyAdjustmentUit(userId: string, planId: string): Promise<AanpassingResultaat[]> {
   const supabase = createAdminClient()
   const aanpassingen: AanpassingResultaat[] = []
-  const vandaag = new Date().toISOString().split('T')[0]
+  const vandaag = isoDatum(new Date())
 
   // ── Trigger 1: missed_session ────────────────────────────────────────
   const { data: gemisteSessies } = await supabase

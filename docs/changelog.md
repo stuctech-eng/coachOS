@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.101 — Fix: tijdzone-bug in alle datum-berekeningen van de Training Plan Engine ⚠️ BESTAAND PLAN HEEFT MOGELIJK VERKEERDE DATUMS
+**Gevonden bij test: de Trainingskalender toonde "zaterdag 18 juli" bij
+een geselecteerde dag 19. Root cause: `d.toISOString().split('T')[0]`
+converteert naar UTC — voor gebruikers in een tijdzone vóór op UTC
+(Nederland, UTC+2 in de zomer) verschuift dit lokale-middernacht-datums
+een dag terug. Zat op 8 plekken in 5 bestanden, niet alleen de kalender.**
+
+- **Nieuw:** `isoDatum()` in `src/utils/index.ts` — bouwt de YYYY-MM-DD-
+  string uit lokale datumcomponenten (`getFullYear`/`getMonth`/
+  `getDate`), nooit een UTC-conversie. Geen tijdzone-afhankelijke
+  verschuiving meer, ongeacht waar de gebruiker zich bevindt
+- **Alle 8 voorkomens vervangen**, in 5 bestanden:
+  - `src/lib/specialists/training-plan-generator.ts` (3x — `start_date`,
+    `end_date`, en elke sessie-datum)
+  - `src/lib/specialists/training-plan-adjuster.ts` (1x — "vandaag" voor
+    de Daily Adjustment Layer-triggers)
+  - `src/app/coach/cycling/trainingsplan/page.tsx` (3x)
+  - `src/app/coach/cycling/kalender/page.tsx` (1x — de lokale, foute
+    functie is verwijderd, importeert nu de gedeelde, correcte versie)
+  - `src/app/api/specialists/cycling/training-plan/explain/route.ts`
+    (1x)
+
+**⚠️ BELANGRIJK — het al gegenereerde trainingsplan in de database is
+met de foute functie berekend, dus de opgeslagen datums kunnen één dag
+verschoven zijn t.o.v. wat bedoeld was.** Aanbevolen: genereer het plan
+opnieuw (POST /api/specialists/cycling/training-plan) ná het uitrollen
+van deze fix, zodat alle datums vanaf nu correct berekend worden. Het
+oude plan wordt daarbij automatisch op `abandoned` gezet (bestaand
+gedrag, geen dataverlies, alleen niet meer actief).
+
+**Geen SQL nodig voor deze fix** — puur een rekenfout in de applicatie-
+laag, geen schemawijziging.
+
 ## v2.4.100 — Cycling Specialist Roadmap Fase 2b: Trainingskalender
 **Maandweergave van het adaptieve trainingsplan. Hergebruikt dezelfde
 GET /api/specialists/cycling/training-plan als het planningsscherm —

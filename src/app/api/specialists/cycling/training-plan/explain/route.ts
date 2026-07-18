@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 import { COACH_CORE_IDENTITY, CORE_SAFETY_RULE, getCoachTone } from '@/core/prompts/coach-personality'
+import { isoDatum } from '@/utils'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -48,7 +49,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
     const supabase = createAdminClient()
 
-    const vandaag = new Date().toISOString().split('T')[0]
+    const vandaag = isoDatum(new Date())
 
     const { data: plan } = await supabase
       .from('training_plans')

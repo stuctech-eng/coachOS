@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase'
+import { isoDatum } from '@/utils'
 import { genereerCoachPolicy } from './coach-policy'
 import { haalGoalsMetProgress } from './goal-engine'
 import { analyseerCycling } from './cycling-analysis'
@@ -172,8 +173,8 @@ export async function genereerTrainingsplan(userId: string): Promise<Gegenereerd
     .insert({
       athlete_id: userId,
       goal_id: leidendDoel?.goal_id || null,
-      start_date: startDate.toISOString().split('T')[0],
-      end_date: endDate.toISOString().split('T')[0],
+      start_date: isoDatum(startDate),
+      end_date: isoDatum(endDate),
       status: 'active',
       created_by: 'generator',
     })
@@ -214,7 +215,7 @@ export async function genereerTrainingsplan(userId: string): Promise<Gegenereerd
         .from('training_plan_sessions')
         .insert({
           plan_id: plan.id,
-          date: datum.toISOString().split('T')[0],
+          date: isoDatum(datum),
           sport: 'cycling',
           type: finaalType,
           duration: finaleDuur,

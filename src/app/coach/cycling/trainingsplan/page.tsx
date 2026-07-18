@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, RefreshCw, Calendar, CheckCircle2, XCircle, ArrowRightLeft } from 'lucide-react'
 import { AppShell } from '@/components/layout'
+import { isoDatum } from '@/utils'
 import { Card, Button } from '@/components/ui'
 
 // ── Trainingsplan-scherm — Adaptive Training Plan Engine, Fase 2a
@@ -45,7 +46,7 @@ const REASON_LABEL: Record<string, string> = {
 
 function formatDatum(dateStr: string): string {
   const d = new Date(dateStr)
-  const vandaag = new Date().toISOString().split('T')[0]
+  const vandaag = isoDatum(new Date())
   if (dateStr === vandaag) return 'Vandaag'
   return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short' })
 }
@@ -79,7 +80,7 @@ export default function TrainingsplanPage() {
       setSessies(data.sessies || [])
 
       if (data.plan) {
-        const vandaag = new Date().toISOString().split('T')[0]
+        const vandaag = isoDatum(new Date())
         const vandaagSessie = (data.sessies || []).find((s: Sessie) => s.date === vandaag)
         if (vandaagSessie) laadUitleg()
       }
@@ -121,7 +122,7 @@ export default function TrainingsplanPage() {
     }
   }
 
-  const vandaag = new Date().toISOString().split('T')[0]
+  const vandaag = isoDatum(new Date())
   const vandaagSessie = sessies.find(s => s.date === vandaag)
   const komendeSessies = sessies.filter(s => s.date > vandaag).sort((a, b) => a.date.localeCompare(b.date))
 

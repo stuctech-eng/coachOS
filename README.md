@@ -376,7 +376,7 @@ uitstelbaar (balk had 6 items, niet 5).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.100 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.101 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -388,7 +388,7 @@ uitstelbaar (balk had 6 items, niet 5).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.100
+- Versie: 2.4.101
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -687,6 +687,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.101 — Fix: tijdzone-bug in 8 datum-berekeningen (5 bestanden), gedeelde isoDatum() in @/utils — bestaand plan aanbevolen opnieuw te genereren
 - v2.4.100 — Cycling Roadmap Fase 2b: Trainingskalender (maandgrid, kleur-gecodeerd, eerlijk over rolling horizon)
 - v2.4.99 — Adaptive Training Plan Engine sub-stap 3/3 (UI): planningsscherm met Vandaag+uitleg en komende sessies — Fase 2a hiermee volledig afgerond
 - v2.4.98 — Fix: prompttoon Coach-uitleglaag, "stiekem"-woordkeuze verwijderd, neutrale/feitelijke instructie

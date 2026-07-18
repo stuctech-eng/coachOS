@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
+import { isoDatum } from '@/utils'
 
 // ── Trainingskalender — Cycling Specialist Roadmap v1.0, Fase 2b ───────
 // Maandweergave van training_plan_sessions. Hergebruikt dezelfde
@@ -42,9 +43,6 @@ const TYPE_KLEUR: Record<string, string> = {
 const MAAND_NAMEN = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december']
 const DAG_LETTERS = ['M', 'D', 'W', 'D', 'V', 'Z', 'Z']
 
-function isoDatum(d: Date): string {
-  return d.toISOString().split('T')[0]
-}
 
 export default function TrainingsKalenderPage() {
   const router = useRouter()
