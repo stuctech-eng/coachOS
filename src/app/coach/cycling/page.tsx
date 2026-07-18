@@ -183,6 +183,16 @@ export default function CyclingHubPage() {
               </div>
             )}
 
+            {/* v2.4.99: link naar het adaptieve trainingsplan — Fase 2a sub-stap 3 */}
+            <button onClick={() => router.push('/coach/cycling/trainingsplan')}
+              className="w-full p-4 rounded-2xl bg-gradient-to-r from-primary-500/20 to-primary-500/5 border border-primary-500/30 flex items-center justify-between active:bg-primary-500/25">
+              <div className="text-left">
+                <p className="text-sm font-semibold text-white">Bekijk je trainingsplan</p>
+                <p className="text-xs text-slate-400">Adaptief schema, past zich aan op je herstel</p>
+              </div>
+              <span className="text-primary-400 text-lg">→</span>
+            </button>
+
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Sterke punten</p>
               <p className="text-sm text-slate-200 leading-relaxed">{advies.sterke_punten}</p>

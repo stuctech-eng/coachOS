@@ -1,5 +1,36 @@
 # CoachOS — Changelog
 
+## v2.4.99 — Adaptive Training Plan Engine, sub-stap 3/3: UI
+**Laatste sub-stap van Fase 2a — het planningsscherm. Toont wat de Plan
+Generator + Daily Adjustment Layer (deterministisch) bepaalden, met de
+Coach-uitleglaag-tekst voor vandaag prominent.**
+
+- **Nieuw:** `src/app/coach/cycling/trainingsplan/page.tsx`
+  - **Vandaag**, prominent bovenaan: type, duur, en de AI-uitleg (haalt
+    automatisch `/training-plan/explain` op) — inclusief een badge als
+    de sessie is aangepast (reason code vertaald naar leesbare tekst,
+    bijv. "Aangepast — laag herstel")
+  - **Komende trainingen**: rolling-horizon-sessies, met status-iconen
+    (afgerond/overgeslagen/aangepast)
+  - Expliciete uitleg in de UI zelf: *"Verder dan [datum] plant de coach
+    nog geen concrete dagen — dat volgt automatisch zodra die week
+    dichterbij komt"* — geen valse indruk van een volledig ingevuld
+    lange-termijn-schema
+  - Leeg-staat met een "Genereer je trainingsplan"-knop als er nog geen
+    plan bestaat
+- `src/app/coach/cycling/page.tsx` — prominente knop naar het nieuwe
+  Trainingsplan-scherm toegevoegd, tussen de statistieken-grid en de
+  tekstuele advies-kaarten
+
+**Fase 2a (Adaptive Training Plan Engine) hiermee volledig afgerond:**
+spec ✅, Decision Contract ✅, Engine zonder AI ✅, Coach-uitleglaag ✅, UI ✅.
+
+**Volgende stap volgens de roadmap:** Fase 2b (Trainingskalender) — een
+bredere, sport-overstijgende kalenderweergave, of verdere verdieping
+binnen Fase 2 (bijv. Fase 2c Dashboard, Fase 2d Grafieken).
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.98 — Fix: prompttoon Coach-uitleglaag ("stiekem"-woordkeuze)
 **Gevonden bij test: de instructie "dit was eerder onzichtbaar, dat mag
 niet meer" duwde de AI naar dramatische taal ("ik heb de sessie stiekem
