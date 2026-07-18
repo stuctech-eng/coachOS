@@ -110,7 +110,7 @@ ACTUELE COACHPOLICY (vandaags herstelcontext, al bepaald, niet zelf herberekenen
 - Maximale intensiteit vandaag: ${policy.maxIntensity}
 - Volume-aanpassing: ${policy.volumeAdjustmentPct === 0 ? 'geen aanpassing' : `${policy.volumeAdjustmentPct}%`}
 - Reden: ${policy.reasons.join('; ')}
-${isVolumeVerlaagd ? `\nBELANGRIJK: de duur van deze sessie is al stil verlaagd van oorspronkelijk ${baselineMinuten} naar ${sessie.duration} minuten, vanwege de volume-aanpassing hierboven. Benoem dit expliciet — dit was eerder onzichtbaar voor de gebruiker, dat mag niet meer.` : ''}
+${isVolumeVerlaagd ? `\nDeze sessie is qua duur aangepast: oorspronkelijk gepland op ${baselineMinuten} minuten, nu ${sessie.duration} minuten — vanwege de volume-aanpassing hierboven. Noem dit gewoon als een normale, verstandige coachbeslissing (bijv. "ik heb 'm vandaag wat ingekort naar ${sessie.duration} minuten, gezien je herstel"). Geen dramatische taal, geen suggestie dat dit een geheim was — dit is een doodnormale coachkeuze.` : ''}
 
 Schrijf een korte, motiverende uitleg (3-5 zinnen) in het Nederlands.
 Gebruik geen technische termen als "reason code" of "CoachPolicy" — vertaal

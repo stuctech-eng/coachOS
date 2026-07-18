@@ -1,5 +1,23 @@
 # CoachOS — Changelog
 
+## v2.4.98 — Fix: prompttoon Coach-uitleglaag ("stiekem"-woordkeuze)
+**Gevonden bij test: de instructie "dit was eerder onzichtbaar, dat mag
+niet meer" duwde de AI naar dramatische taal ("ik heb de sessie stiekem
+al teruggebracht... dat is iets wat je verdiend recht hebt om te
+weten"). Geen architectuurprobleem — de data-doorstroming werkte
+correct — puur een promptkwaliteitsfix.**
+
+- `src/app/api/specialists/cycling/training-plan/explain/route.ts` —
+  instructie herschreven naar neutraal/feitelijk: *"noem dit gewoon als
+  een normale, verstandige coachbeslissing... geen dramatische taal,
+  geen suggestie dat dit een geheim was"*
+
+**⚠️ Cache-kanttekening voor het testen:** de sessie van vandaag heeft
+al een gecachte (foute) uitleg staan van de vorige test —
+`explained_at >= updated_at` zorgt dat die zonder ingrijpen opnieuw
+teruggegeven wordt. Zie test-instructies bij levering voor de SQL om
+dit te wissen.
+
 ## v2.4.97 — Adaptive Training Plan Engine, Fase 2: Coach-uitleglaag
 **Bron: Decision Contract sectie 5. AI ontvangt decision + reason code +
 context, produceert de menselijke uitleg, beslist NIETS.**
