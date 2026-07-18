@@ -108,13 +108,20 @@ export default function GrafiekenPage() {
         {!laden && volumes.length > 0 && (
           <Card className="p-5">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Wekelijks volume (km)</p>
-            <div className="flex items-end gap-1.5 h-32">
-              {volumes.map(v => (
-                <div key={v.week_start} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full bg-primary-500/70 rounded-t-sm" style={{ height: `${Math.max(4, (v.totaal_km / maxKm) * 100)}%` }} />
-                  <span className="text-[8px] text-slate-600">{formatWeekLabel(v.week_start)}</span>
-                </div>
-              ))}
+            <div className="flex items-end gap-1.5" style={{ height: 128 }}>
+              {volumes.map(v => {
+                // v2.4.104: pixel-hoogte i.p.v. percentage — percentage-
+                // hoogte binnen geneste flex-containers resolvet niet
+                // betrouwbaar (de kolom-wrapper had geen expliciete
+                // hoogte om het percentage tegenaan te berekenen)
+                const barHoogtePx = Math.max(4, Math.round((v.totaal_km / maxKm) * 128))
+                return (
+                  <div key={v.week_start} className="flex-1 flex flex-col items-center justify-end gap-1" style={{ height: 128 }}>
+                    <div className="w-full bg-primary-500/70 rounded-t-sm" style={{ height: barHoogtePx }} />
+                    <span className="text-[8px] text-slate-600">{formatWeekLabel(v.week_start)}</span>
+                  </div>
+                )
+              })}
             </div>
           </Card>
         )}

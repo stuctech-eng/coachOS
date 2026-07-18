@@ -1,5 +1,22 @@
 # CoachOS — Changelog
 
+## v2.4.104 — Fix: staafdiagram wekelijks volume onzichtbaar
+**Gevonden bij test: week-labels toonden correct (bevestigt dat de data
+er wel was), maar de staafjes zelf waren onzichtbaar — een CSS-bug, geen
+data-bug. CTL/ATL-grafiek (SVG, geen percentage-hoogtes) werkte al wel
+correct, wat de root cause bevestigde.**
+
+- `src/app/coach/cycling/grafieken/page.tsx` — staafhoogtes worden nu in
+  **pixels** berekend (`Math.round((v.totaal_km / maxKm) * 128)`) i.p.v.
+  CSS-percentages. Root cause: percentage-hoogte in een geneste flex-
+  kolom-container resolveert niet betrouwbaar zonder een expliciete
+  hoogte op de directe ouder — die ontbrak
+
+**Geen wijziging aan de databerekening zelf** (`cycling-grafieken.ts`
+blijft ongewijzigd) — dit was zuiver een weergaveprobleem.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.103 — Cycling Specialist Roadmap Fase 2d: Grafieken
 **Wekelijks volume + CTL/ATL/TSB (Coggan-methode). Geen nieuwe npm-
 dependency — CSS-staafdiagram + native SVG-lijndiagram.**
