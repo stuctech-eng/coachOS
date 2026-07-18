@@ -1,5 +1,32 @@
 # CoachOS — Changelog
 
+## v2.4.88 — Doelen-UI voor de Goal Engine
+**Maakt de Goal Engine (v2.4.86-87) voor het eerst normaal bruikbaar —
+tot nu toe alleen bereikbaar via een directe API-call. Ontworpen om
+schaalbaar te zijn: een toekomstige specialist toevoegen betekent alleen
+een nieuwe `DOELTYPES`-regel + `PRESETS`-entry, geen structuurwijziging.**
+
+- `src/app/goals/page.tsx` — nieuw-doel-flow herbouwd in drie stappen:
+  1. **Doeltype** — 🌍 Algemeen, 🚴 Wielrennen, 🏃 Hardlopen (actief),
+     🚣 Roeien, 🏋️ Krachttraining (zichtbaar maar uitgeschakeld — status
+     'development' in `specialist_config`, geen overclaiming)
+  2. **Doel** — preset-chips per specialist (Cycling: FTP verhogen,
+     Kilometerdoel, Hoogtemeters, Gran Fondo, Tijdrit, Klimprestatie.
+     Running: 5/10km, halve/hele marathon, Weekkilometers, Tempo) of een
+     eigen omschrijving
+  3. **Belangrijkheid** (Hoog/Normaal/Laag → `importance`) + de
+     velden die voor dat specifieke preset relevant zijn (bijv. "Streef-
+     FTP (watt)" bij FTP verhogen, "Wedstrijddatum" bij Gran Fondo) —
+     niet elk doel toont dezelfde generieke velden
+  - Bestaande doelen-lijst toont nu een specialist-icoon i.p.v. altijd
+    hetzelfde generieke doel-icoon, plus een MUST/hoog-badge bij
+    `importance`
+  - `voegToe()` stuurt nu `goal_scope`/`specialist_type`/`importance`
+    mee — volledig aangesloten op de API die dit sinds v2.4.86-87 al
+    ondersteunt
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.87 — Rechtzetting: importance (gebruiker) vs. calculated_urgency (Goal Engine) ⚠️ RAAKT PRODUCTIECODE
 
 **⚠️ Build-fix, ontdekt via een mislukte Vercel-deploy op de eerste

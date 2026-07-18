@@ -326,10 +326,27 @@ deterministisch dagen-tot-deadline en waarde-kloof, bewust zonder een
 "op schema"-claim die niet uit de data te herleiden is (vergt een
 vastgelegde startwaarde, bestaat nog niet).
 
-**Volgende, niet-gestart:**
-- Rowing/Strength — verdere invuloefening, patroon nu 2x bevestigd
-- UI voor het instellen van goal_scope/specialist_type/importance bij het
-  aanmaken van een doel (API ondersteunt het al, UI nog niet aangepast)
+**Doelen-UI — geïmplementeerd (v2.4.88).** 3-staps-flow, schaalbaar
+ontworpen voor toekomstige specialisten.
+
+**De volledige keten is nu voor het eerst end-to-end bruikbaar voor de
+gebruiker** (niet alleen via API/debug): Database → API → Goal Engine →
+Decision Engine → Cycling/Running Coach → Doelen-UI.
+
+**Volgende, besproken prioriteitsvolgorde (focus op verdieping, niet
+breedte):**
+1. ✅ Doelen-UI
+2. Trainingsplan (automatisch meerweeks schema) — Cycling
+3. Trainingskalender
+4. Uitgebreide grafieken (Strava/Garmin/TrainingPeaks-niveau)
+5. Memory & Knowledge Engine — verdere verdieping (huidige implementatie
+   is functioneel maar basaal)
+6. Fase 4 — volledige Master Coach ↔ Specialist-koppeling verder
+   uitbouwen (basis staat sinds v2.4.80, kan dieper)
+
+**Bewust uitgesteld:** Rowing/Strength als 3e/4e specialist — eerst
+Cycling van "goede specialist" naar "compleet trainingsplatform" maken,
+daarna is hergebruik voor andere sporten eenvoudiger.
 
 ---
 
@@ -344,7 +361,7 @@ vastgelegde startwaarde, bestaat nog niet).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.87 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.88 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -356,7 +373,7 @@ vastgelegde startwaarde, bestaat nog niet).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.87
+- Versie: 2.4.88
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -655,6 +672,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.88 — Doelen-UI voor de Goal Engine: 3-staps-flow (doeltype → preset/eigen → belangrijkheid), specialist-schaalbaar ontworpen
 - v2.4.87 — Rechtzetting: importance (gebruiker, stabiel) vs. calculated_urgency (Goal Engine, dynamisch) — waren in v2.4.86 ten onrechte vermengd
 - v2.4.86 — Goal Engine (Global vs. Specialist Goals) + Decision Engine regels 4-5, raakt api/coach/route.ts (additief) — Decision Engine nu compleet
 - v2.4.85 — Decision Engine: directe testroute, echte data, geen wijziging aan bestaand gedrag
