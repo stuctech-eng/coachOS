@@ -215,10 +215,17 @@ export default function TrainingsplanPage() {
               Verder dan {komendeSessies.length > 0 ? formatDatum(komendeSessies[komendeSessies.length - 1].date) : 'nu'} plant de coach nog geen concrete dagen — dat volgt automatisch zodra die week dichterbij komt.
             </p>
 
-            <button onClick={laadPlan} className="w-full py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
-              <RefreshCw size={14} />
-              Ververs
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => router.push('/coach/cycling/kalender')}
+                className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+                <Calendar size={14} />
+                Kalender
+              </button>
+              <button onClick={laadPlan} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+                <RefreshCw size={14} />
+                Ververs
+              </button>
+            </div>
           </>
         )}
       </div>

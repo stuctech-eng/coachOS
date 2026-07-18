@@ -1,5 +1,31 @@
 # CoachOS — Changelog
 
+## v2.4.100 — Cycling Specialist Roadmap Fase 2b: Trainingskalender
+**Maandweergave van het adaptieve trainingsplan. Hergebruikt dezelfde
+GET /api/specialists/cycling/training-plan als het planningsscherm —
+geen nieuwe API, andere weergave van dezelfde data.**
+
+- **Nieuw:** `src/app/coach/cycling/kalender/page.tsx`
+  - Maandgrid, weken beginnen op maandag, kleur-gecodeerd per
+    trainingstype (duurtraining/interval/herstel/tempo/lange
+    duurtraining)
+  - Status zichtbaar via transparantie: afgerond (vol), gepland
+    (gedempt), overgeslagen (zeer licht)
+  - Tik op een dag → detail-kaart met type/duur/status/aanpassingsreden
+  - Maand-navigatie (vorige/volgende)
+  - **Bewust eerlijk over de rolling horizon:** dagen buiten de komende
+    1-2 weken tonen gewoon leeg, met de tekst *"Nog geen concrete
+    training gepland — dit volgt zodra deze week dichterbij komt"* —
+    geen nepdata, geen suggestie van een volledig ingevulde maand
+- `src/app/coach/cycling/trainingsplan/page.tsx` — knop naar de
+  kalender toegevoegd, naast de bestaande Ververs-knop
+
+**Fase 2b hiermee afgerond.** Volgende, per de roadmap: Fase 2c
+(Dashboard) of Fase 2d (Grafieken) — beide bouwen voort op dezelfde,
+al-bestaande data.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.99 — Adaptive Training Plan Engine, sub-stap 3/3: UI
 **Laatste sub-stap van Fase 2a — het planningsscherm. Toont wat de Plan
 Generator + Daily Adjustment Layer (deterministisch) bepaalden, met de
