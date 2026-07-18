@@ -1,5 +1,60 @@
 # CoachOS — Changelog
 
+## v2.4.96 — Adaptive Training Plan Engine, Fase 1: Engine zonder AI
+**Eerste implementatiestap, volgens `adaptive-training-plan-engine-spec.md`
++ `adaptive-training-plan-decision-contract-v1.md` (beide goedgekeurd).
+Volledig deterministisch — geen AI-aanroep in deze hele fase.**
+
+- **Nieuw:** `supabase/training_plan_engine.sql`
+  - `training_plans` + `training_plan_sessions`, exact de velden uit het
+    Decision Contract
+  - **Database-constraint, niet alleen documentatie:**
+    `adjustment_reason` is verplicht zodra `status='adjusted'` — een
+    check-constraint, geen sessiewijziging kan zonder reason code
+    opgeslagen worden
+  - RLS: alleen server-side schrijven (Plan Generator/Daily Adjustment),
+    zelfde patroon als eerdere specialistlaag-tabellen
+- **Nieuw:** `src/lib/specialists/training-plan-generator.ts` (Plan
+  Generator)
+  - Mesocyclus-verdeling: basis (40%) → opbouw (35%, met 3:1-herstelweek-
+    patroon) → piek (15%) → herstel/taper (10%) bij een streefdatum;
+    standaard 12-weken-macrocyclus zonder streefdatum
+  - **Rolling horizon, zoals vastgelegd:** volledige dagplanning alleen
+    voor de komende 2 weken, verder weg geen sessie-rijen — alleen de
+    mesocyclus-week-targets bestaan al
+  - **Prioriteitsketen afgedwongen, niet alleen gedocumenteerd:** elke
+    voorgestelde sessie wordt vóór opslag getoetst aan `CoachPolicy` —
+    een interval bij `forbiddenTrainingTypes` bevat "hoge_intensiteit"
+    wordt automatisch teruggebracht naar duurtraining, volume wordt
+    verlaagd bij een negatieve `volumeAdjustmentPct`
+  - Analysis Engine-data daadwerkelijk gebruikt: eerste basisweek wordt
+    verzacht als de huidige trainingsbelasting fors onder het
+    streefvolume ligt — voorkomt een te agressieve sprong in week 1
+  - Leidend doel: specialist-scoped Cycling-doel met hoogste
+    `importance` uit de bestaande Goal Engine
+- **Nieuw:** `src/lib/specialists/training-plan-adjuster.ts` (Daily
+  Adjustment Layer)
+  - **Eerlijke dekking, expliciet in de code gedocumenteerd:**
+    `missed_session`/`injury_protection`/`goal_change` volledig
+    geïmplementeerd. `fatigue_detected` gedeeltelijk (alleen huidige dag,
+    nog niet "meerdere dagen op rij" — vergt historische CoachPolicy-
+    snapshots die nog niet bijgehouden worden). `vacation_mode` nog niet
+    (vergt eerst een UI voor onbeschikbare dagen)
+  - Bij elke aanpassing: origineel blijft bewaard (`original_session_id`
+    + `cancelled`-status), nieuwe sessie krijgt de verplichte reason code
+- **Nieuw:** `src/app/api/specialists/cycling/training-plan/route.ts`
+  - `POST` — genereert een nieuw plan (sluit eerst een eventueel
+    bestaand actief plan af, nooit twee actieve plannen tegelijk)
+  - `GET` — voert eerst de Daily Adjustment Layer uit, dan pas de
+    actuele sessies teruggeven — altijd up-to-date bij het bekijken
+- `src/app/debug/page.tsx` — testsectie toegevoegd
+
+**Bewust nog niet gebouwd (volgt in Fase 2-3):** Coach-uitleglaag (AI
+zet reason codes om in menselijke uitleg), Kalender-UI, `vacation_mode`-
+trigger, volledige `fatigue_detected`-dekking.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.95 — Nieuw document: Adaptive Training Plan Engine — Decision Contract v1.0
 **Status: TE TOETSEN. Aanvulling op `adaptive-training-plan-engine-spec.md`
 (v2.4.92) — drie aanscherpingen na review, vóór de eerste code.**

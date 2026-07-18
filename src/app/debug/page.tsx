@@ -81,6 +81,9 @@ export default function DebugPage() {
   // v2.4.85: test-state voor de Decision Engine
   const [decisionBezig, setDecisionBezig] = useState(false)
   const [decisionResultaat, setDecisionResultaat] = useState('')
+  // v2.4.96: test-state voor de Adaptive Training Plan Engine
+  const [planBezig, setPlanBezig] = useState(false)
+  const [planResultaat, setPlanResultaat] = useState('')
   const [testInsight, setTestInsight] = useState('Reageert goed op langere duurritten')
   const [testCategory, setTestCategory] = useState('training_response')
 
@@ -205,6 +208,33 @@ export default function DebugPage() {
       setDecisionResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setDecisionBezig(false)
+    }
+  }
+
+  // v2.4.96: test-functies voor de Adaptive Training Plan Engine
+  async function genereerPlan() {
+    setPlanBezig(true)
+    try {
+      const res = await fetch('/api/specialists/cycling/training-plan', { method: 'POST', credentials: 'include' })
+      const data = await res.json()
+      setPlanResultaat(`POST /api/specialists/cycling/training-plan →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setPlanResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setPlanBezig(false)
+    }
+  }
+
+  async function haalPlanOp() {
+    setPlanBezig(true)
+    try {
+      const res = await fetch('/api/specialists/cycling/training-plan', { credentials: 'include' })
+      const data = await res.json()
+      setPlanResultaat(`GET /api/specialists/cycling/training-plan →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setPlanResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setPlanBezig(false)
     }
   }
 
@@ -701,7 +731,28 @@ export default function DebugPage() {
             {decisionBezig ? 'Bezig...' : 'Test: GET /api/specialists/decision-test'}
           </button>
           {decisionResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{decisionResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{decisionResultaat}</pre>
+          )}
+
+          {/* v2.4.96: Adaptive Training Plan Engine, Fase 1 */}
+          <h3 className="text-xs font-bold text-white mb-2 mt-2">Adaptive Training Plan Engine (Fase 1, v2.4.96)</h3>
+          <p className="text-xs text-slate-500 mb-3">
+            Vergt een ingevuld Cycling Profile met trainingsdagen (Instellingen).
+            Genereren maakt een nieuw plan (sluit het vorige actieve plan af).
+            Ophalen voert eerst de Daily Adjustment Layer uit.
+          </p>
+          <div className="flex gap-2 mb-3">
+            <button onClick={genereerPlan} disabled={planBezig}
+              className="flex-1 py-2.5 bg-primary-600 rounded-xl text-xs font-medium text-white disabled:opacity-50">
+              {planBezig ? 'Bezig...' : 'Genereer plan (POST)'}
+            </button>
+            <button onClick={haalPlanOp} disabled={planBezig}
+              className="flex-1 py-2.5 bg-slate-800 rounded-xl text-xs font-medium text-white disabled:opacity-50">
+              Haal plan op (GET)
+            </button>
+          </div>
+          {planResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{planResultaat}</pre>
           )}
         </div>
 
