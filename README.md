@@ -353,8 +353,9 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 ## 🚴 Actieve roadmap: Cycling Specialist v1.0
 
 **Zie `docs/cycling-specialist-roadmap-v1.md` voor het volledige,
-goedgekeurde bouwplan.** Volgende stap: Fase 1 (Cycling Foundation —
-Cycling Profile + automatische zoneberekening).
+goedgekeurde bouwplan.** ✅ Fase 1 (Cycling Foundation) geïmplementeerd
+(v2.4.91). Volgende stap: Fase 2a — Adaptive Training Plan Engine
+(vergt eerst een eigen, apart ontwerpdocument).
 
 ## 🧭 Navigatie-architectuur v1.0 (GOEDGEKEURD, ontwerp)
 
@@ -373,7 +374,7 @@ implementatie nog niet gestart — 5-staps-plan in het document zelf.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.90 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.91 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -385,7 +386,7 @@ implementatie nog niet gestart — 5-staps-plan in het document zelf.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.90
+- Versie: 2.4.91
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -684,6 +685,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.91 — Cycling Roadmap Fase 1 (Cycling Foundation): Cycling Profile + deterministische zone-berekening (Coggan-methode), geen nieuwe tabel, birth_date op algemeen profiel
 - v2.4.90 — Navigatie-architectuur v1.0 GOEDGEKEURD (navigation-architecture-v1.md) — 5-tabs-structuur (Home/Coach/Trainer/Specialisten/Voortgang), implementatie nog niet gestart
 - v2.4.89 — CoachOS Cycling Specialist Roadmap v1.0 GOEDGEKEURD (cycling-specialist-roadmap-v1.md) — Fase 1-3 vastgelegd, volgende stap: Fase 1 Cycling Foundation
 - v2.4.88 — Doelen-UI voor de Goal Engine: 3-staps-flow (doeltype → preset/eigen → belangrijkheid), specialist-schaalbaar ontworpen

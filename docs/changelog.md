@@ -1,5 +1,53 @@
 # CoachOS — Changelog
 
+## v2.4.91 — Cycling Specialist Roadmap Fase 1: Cycling Foundation
+**Eerste implementatiestap van de goedgekeurde v1.0-roadmap
+(`docs/cycling-specialist-roadmap-v1.md`). Geen afhankelijkheden, laagste
+risico van de hele roadmap.**
+
+**Ontwerpkeuze, zelf gemaakt binnen het al goedgekeurde plan:**
+`birth_date` op het **algemene** profiel (`profiles`), niet als
+Cycling-specifiek veld — de onderbouwing (leeftijdscategorieën, Masters-
+categorieën, leeftijdsafhankelijke zones) is sport-overstijgend, dus ook
+bruikbaar voor Running en toekomstige specialisten.
+
+- **Nieuw:** `supabase/fase1_cycling_foundation.sql`
+  - `profiles.birth_date` (date, nullable) — nieuwe bron van waarheid
+    voor leeftijd, `age` blijft tijdelijk bestaan
+  - **Geen nieuwe tabel voor cycling-specifieke velden** — hergebruikt
+    de al-bestaande `specialist_profiles.preferences` (jsonb), die al
+    door de Coach Layer-routes wordt gelezen
+- **Nieuw:** `src/lib/specialists/cycling-zones.ts`
+  - `berekenVermogensZones()` — Andrew Coggan's publiek gedocumenteerde
+    7-zone-model, **niet** een namaak van een propriëtair platform-model
+  - `berekenHartslagZones()` — gangbaar 5-zone-%-van-max-hartslag-model
+  - `berekenLeeftijd()` — hulpfunctie voor weergave uit `birth_date`
+  - Volledig deterministisch, geen AI
+- **Nieuw:** `src/app/api/specialists/cycling/profile/route.ts`
+  - `GET`/`PUT` voor het Cycling Profile: FTP, max hartslag, sensoren
+    (vermogensmeter/hartslagmeter/cadanssensor/smarttrainer/Zwift),
+    trainingsdagen, beschikbare uren per week
+  - **Bewust NIET opgeslagen:** gewicht, lengte, rusthartslag,
+    ervaringsniveau — bestaan al elders, geen duplicatie
+  - Validatie op alle velden (bijv. FTP 1-600W, max hartslag 1-250bpm)
+  - Zones worden direct meeberekend en meegegeven in de response, alleen
+    als de bijbehorende brondata daadwerkelijk is ingevuld
+- **Nieuw:** `src/app/settings/cycling-profile/page.tsx`
+  - Volledig instellingenscherm, toont berekende zones live na opslaan
+  - Toelichting in de UI zelf: *"Gewicht, lengte en rusthartslag beheer
+    je via je algemene profiel"* — voorkomt verwarring over waar iets
+    hoort
+- `src/app/settings/page.tsx` — link naar Cycling Profile toegevoegd
+- `src/app/coach/cycling/page.tsx` — instellingen-icoontje toegevoegd
+  naast de titel, snelle toegang vanuit de context waar het relevant is
+
+**Bewust buiten scope van Fase 1** (volgt in Fase 2, Adaptive Training
+Plan Engine): FTP/zones nog niet meegenomen in de Coach Layer-prompt of
+CoachPolicy — dat gebeurt zodra de Training Plan Engine daadwerkelijk
+gebouwd wordt en dit als input nodig heeft.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.90 — Nieuw document: Navigatie-architectuur v1.0 (GOEDGEKEURD, ontwerp)
 **Definitieve herstructurering van de hoofdnavigatie, principieel
 vastgelegd — niet als tijdelijke Cycling-oplossing. Implementatie

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Minus, Settings } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 
@@ -104,10 +104,14 @@ export default function CyclingHubPage() {
           <button onClick={() => router.push('/chat')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-lg font-bold text-white">Cycling Coach</h1>
             <p className="text-xs text-slate-500">Specialist-hub · laatste 90 dagen</p>
           </div>
+          {/* v2.4.91: link naar Cycling Profile — Fase 1, Cycling Foundation */}
+          <button onClick={() => router.push('/settings/cycling-profile')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+            <Settings size={16} className="text-slate-400" />
+          </button>
         </div>
 
         {/* v2.4.70: DORMANT — Hub blijft zichtbaar, kennis blijft

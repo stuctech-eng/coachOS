@@ -152,6 +152,7 @@ export default function SettingsPage() {
             <Row icon={Calendar} label="Levensgebeurtenissen" onClick={() => router.push('/life-events')} />
             <div className="h-px bg-coach-border mx-4" />
             <Row icon={Info} label="Inzichten" onClick={() => router.push('/insights')} />
+            <Row icon={Zap} label="Cycling Profile" onClick={() => router.push('/settings/cycling-profile')} />
           </Card>
         </div>
 
