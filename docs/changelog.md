@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.94 — Fix: 4 verouderde route-verwijzingen na navigatie-herstructurering
+**Gevonden na test-feedback: de Cycling Hub-terugknop ging naar /chat
+i.p.v. /specialisten. Bredere sweep uitgevoerd, drie soortgelijke
+plekken extra gevonden — zelfde bug-patroon, telkens een hardcoded
+verwijzing naar een route die vóór v2.4.93 de juiste "vorige plek" was,
+maar dat nu niet meer is.**
+
+- `src/app/coach/cycling/page.tsx` — terugknop: `/chat` → `/specialisten`
+- `src/app/coach/running/page.tsx` — terugknop: `/chat` → `/specialisten`
+- `src/app/activities/[id]/page.tsx` — terugknop: `/activities` →
+  `/progressie` (waar Activiteiten nu daadwerkelijk woont)
+- `src/app/settings/garmin-activity-import/page.tsx` — "Bekijk
+  activiteiten"-knop na een succesvolle import: `/activities` →
+  `/progressie`
+
+**Bewust NIET gewijzigd:** de `/activities`-route zelf blijft bestaan
+en werkt — deze fixes gaan alleen over waar knoppen *naartoe* wijzen,
+niet over welke routes bestaan.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.93 — Navigatie-architectuur v1.0: volledige implementatie ⚠️ RAAKT VEEL SCHERMEN
 **Alle 5 stappen uit `navigation-architecture-v1.md` in één levering,
 inclusief Stap 5 — die bleek NIET uitstelbaar: de balk had in

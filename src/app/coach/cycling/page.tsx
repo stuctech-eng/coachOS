@@ -101,7 +101,7 @@ export default function CyclingHubPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/chat')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+          <button onClick={() => router.push('/specialisten')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
           </button>
           <div className="flex-1">

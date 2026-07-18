@@ -377,7 +377,7 @@ export default function GarminActivityImportPage() {
               </p>
             </div>
             <div className="flex gap-2 mt-2 w-full">
-              <button onClick={() => router.push('/activities')} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
+              <button onClick={() => router.push('/progressie')} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
                 Bekijk activiteiten
               </button>
               <button onClick={() => router.push('/home')} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
