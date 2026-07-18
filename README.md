@@ -350,6 +350,12 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 
 ---
 
+## 🚴 Actieve roadmap: Cycling Specialist v1.0
+
+**Zie `docs/cycling-specialist-roadmap-v1.md` voor het volledige,
+goedgekeurde bouwplan.** Volgende stap: Fase 1 (Cycling Foundation —
+Cycling Profile + automatische zoneberekening).
+
 ## Openstaand
 
 | Item | Prioriteit |
@@ -361,7 +367,7 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.88 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.89 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -373,7 +379,7 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.88
+- Versie: 2.4.89
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -672,6 +678,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.89 — CoachOS Cycling Specialist Roadmap v1.0 GOEDGEKEURD (cycling-specialist-roadmap-v1.md) — Fase 1-3 vastgelegd, volgende stap: Fase 1 Cycling Foundation
 - v2.4.88 — Doelen-UI voor de Goal Engine: 3-staps-flow (doeltype → preset/eigen → belangrijkheid), specialist-schaalbaar ontworpen
 - v2.4.87 — Rechtzetting: importance (gebruiker, stabiel) vs. calculated_urgency (Goal Engine, dynamisch) — waren in v2.4.86 ten onrechte vermengd
 - v2.4.86 — Goal Engine (Global vs. Specialist Goals) + Decision Engine regels 4-5, raakt api/coach/route.ts (additief) — Decision Engine nu compleet

@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.89 — CoachOS Cycling Specialist Roadmap v1.0 (GOEDGEKEURD)
+**Definitieve versie na overleg. Bestandsnaam gewijzigd t.o.v. het
+eerdere concept: `cycling-specialist-roadmap-v1.md` (niet
+`cycling-specialist-bouwplan.md` — dat concept is nooit gecommit,
+vervangen vóór het live ging).**
+
+- **Nieuw:** `docs/cycling-specialist-roadmap-v1.md`
+  - **Fase 1 — Cycling Foundation:** Cycling Profile + automatische
+    zone-berekening. Definitieve, niet-dubbele veldenlijst na twee
+    duplicatie-checks tijdens het overleg:
+    - Bevestigd al bestaand, niet toegevoegd: gewicht, lengte,
+      rusthartslag, ervaringsniveau
+    - **Beslist: geboortedatum (`birth_date`) i.p.v. leeftijd** —
+      `profiles.age` veroudert handmatig, geboortedatum levert
+      leeftijd/leeftijdscategorieën/Masters-categorieën automatisch.
+      Migratiepad: `age` blijft tijdelijk bestaan, dynamisch berekend,
+      totdat gebruikers hun geboortedatum invullen
+    - **Beslist: geen apart "belangrijkste doel"-veld** — zou een derde
+      bron van waarheid worden naast `user_goals`/Goal Engine. Cycling
+      Coach haalt het hoogst-`importance`-Cycling-doel rechtstreeks uit
+      de bestaande Goal Engine, getoond in Dashboard, wijzigbaar via de
+      bestaande doelen-UI
+  - **Fase 2 — Cycling Coach Professional:** één samenhangend leverblok
+    (2a-2i), geen losse "Centers" die bestaande infrastructuur zouden
+    dupliceren:
+    - 2a Adaptive Training Plan Engine (kern, eigen spec-document eerst)
+    - 2b Trainingskalender, 2c Cycling Dashboard, 2d Grafieken
+      (incl. CTL/ATL/TSB, Coggan-methode), 2e Records, 2f Ritanalyse
+    - 2g Coach-verdieping — gebruikt uitsluitend bestaande Memory/Goal
+      Engine/CoachPolicy/SpecialistSummary, geen nieuwe engine
+    - 2h Master Coach-integratie (bevestiging/verdieping van bestaand
+      contract sinds v2.4.80)
+    - **2i Progress Center (nieuw, uit het overleg)** — centrale plek
+      voor FTP-ontwikkeling, W/kg, doelvoortgang, records, Memory-
+      inzichten, coach-samenvattingen. Het feitelijke "hart" van de
+      Cycling Hub
+  - **Fase 3 — Uitbreidingen, expliciet later:** Event Engine, Zwift/
+    Wahoo/Hammerhead, Nutrition Specialist, Triathlon Specialist, Race
+    Planner, Live Coaching
+
+**Volgende stap:** Fase 1 (Cycling Foundation) implementeren.
+
 ## v2.4.88 — Doelen-UI voor de Goal Engine
 **Maakt de Goal Engine (v2.4.86-87) voor het eerst normaal bruikbaar —
 tot nu toe alleen bereikbaar via een directe API-call. Ontworpen om
