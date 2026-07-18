@@ -356,7 +356,8 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 goedgekeurde bouwplan.** ✅ Fase 1 (Cycling Foundation) geïmplementeerd
 (v2.4.91). Fase 2a (Adaptive Training Plan Engine) — spec + Decision
 Contract goedgekeurd (v2.4.92, v2.4.95), **sub-stap 1/3 (Engine zonder
-AI) geïmplementeerd (v2.4.96).** Volgende: sub-stap 2 (Coach-uitleglaag).
+AI) geïmplementeerd (v2.4.96), sub-stap 2/3 (Coach-uitleglaag)
+geïmplementeerd (v2.4.97).** Volgende: sub-stap 3 (UI).
 
 ## 🧭 Navigatie-architectuur v1.0 (VOLLEDIG GEÏMPLEMENTEERD, v2.4.93)
 
@@ -376,7 +377,7 @@ uitstelbaar (balk had 6 items, niet 5).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.96 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.97 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -388,7 +389,7 @@ uitstelbaar (balk had 6 items, niet 5).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.96
+- Versie: 2.4.97
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -687,6 +688,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.97 — Adaptive Training Plan Engine Fase 2 (Coach-uitleglaag): AI legt uit, beslist niets — stille volume-reductie nu expliciet benoemd
 - v2.4.96 — Adaptive Training Plan Engine Fase 1 (Engine zonder AI): Plan Generator + Daily Adjustment Layer, rolling horizon, prioriteitsketen afgedwongen in code
 - v2.4.95 — Nieuw: adaptive-training-plan-decision-contract-v1.md (TE TOETSEN) — prioriteitsketen afdwingbaar, 5 reason codes, sessie-levenscyclus, volledige tabelvelden
 - v2.4.94 — Fix: 4 verouderde route-verwijzingen na navigatie-herstructurering (Cycling/Running Hub-terugknop, activiteit-detail, na-Garmin-import-knop)

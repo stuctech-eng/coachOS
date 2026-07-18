@@ -84,6 +84,9 @@ export default function DebugPage() {
   // v2.4.96: test-state voor de Adaptive Training Plan Engine
   const [planBezig, setPlanBezig] = useState(false)
   const [planResultaat, setPlanResultaat] = useState('')
+  // v2.4.97: test-state voor de Coach-uitleglaag (Fase 2)
+  const [uitlegBezig, setUitlegBezig] = useState(false)
+  const [uitlegResultaat, setUitlegResultaat] = useState('')
   const [testInsight, setTestInsight] = useState('Reageert goed op langere duurritten')
   const [testCategory, setTestCategory] = useState('training_response')
 
@@ -235,6 +238,20 @@ export default function DebugPage() {
       setPlanResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setPlanBezig(false)
+    }
+  }
+
+  // v2.4.97: test-functie voor de Coach-uitleglaag (Fase 2)
+  async function haalUitlegOp() {
+    setUitlegBezig(true)
+    try {
+      const res = await fetch('/api/specialists/cycling/training-plan/explain', { credentials: 'include' })
+      const data = await res.json()
+      setUitlegResultaat(`GET /api/specialists/cycling/training-plan/explain →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setUitlegResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setUitlegBezig(false)
     }
   }
 
@@ -752,7 +769,21 @@ export default function DebugPage() {
             </button>
           </div>
           {planResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{planResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{planResultaat}</pre>
+          )}
+
+          {/* v2.4.97: Coach-uitleglaag, Fase 2 */}
+          <h3 className="text-xs font-bold text-white mb-2 mt-2">Coach-uitleglaag (Fase 2, v2.4.97)</h3>
+          <p className="text-xs text-slate-500 mb-3">
+            Vergt een gegenereerd plan met een sessie voor vandaag. AI zet
+            de al-vastgestelde beslissing om in uitleg, beslist zelf niets.
+          </p>
+          <button onClick={haalUitlegOp} disabled={uitlegBezig}
+            className="w-full mb-3 py-2.5 bg-primary-600 rounded-xl text-xs font-medium text-white disabled:opacity-50">
+            {uitlegBezig ? 'AI schrijft uitleg...' : 'Test: GET .../training-plan/explain'}
+          </button>
+          {uitlegResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{uitlegResultaat}</pre>
           )}
         </div>
 

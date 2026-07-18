@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.97 — Adaptive Training Plan Engine, Fase 2: Coach-uitleglaag
+**Bron: Decision Contract sectie 5. AI ontvangt decision + reason code +
+context, produceert de menselijke uitleg, beslist NIETS.**
+
+**Directe verbetering op de test-bevinding bij Fase 1:** de stille
+volume-reductie (CoachPolicy `volumeAdjustmentPct`, die al werd toegepast
+maar niet werd uitgelegd) wordt nu **expliciet** als context aan de AI
+meegegeven — het verschil tussen `load_target` (baseline-uren) en
+`duration` (na-aanpassing-minuten) wordt berekend en, indien relevant,
+verplicht benoemd in de uitleg.
+
+- **Nieuw:** `supabase/training_plan_uitleg.sql` — `explanation` +
+  `explained_at` direct op `training_plan_sessions`, geen nieuwe tabel
+- **Nieuw:**
+  `src/app/api/specialists/cycling/training-plan/explain/route.ts`
+  - Leest de sessie van vandaag + reason code (indien aangepast) +
+    actuele CoachPolicy
+  - Berekent expliciet of er een stille volume-reductie was, en
+    forceert de AI om dat te benoemen als dat het geval is
+  - Prompt: *"de beslissing staat al vast... jij verzint niets en
+    wijzigt niets, je zet de al-genomen beslissing om in menselijke
+    uitleg"* — reason codes worden vertaald naar gewone taal (bijv.
+    `fatigue_detected` → "de herstelwaarden van vandaag waren laag")
+  - Cache op de sessie zelf: alleen opnieuw genereren als de sessie
+    sindsdien is gewijzigd (`explained_at` vs. `updated_at`)
+  - Nette fallback-tekst als de AI-call faalt — geen crash
+- `src/app/debug/page.tsx` — testsectie toegevoegd
+
+**Volgende stap:** Fase 3 — UI (planningsscherm, aanpassen,
+coachgesprek, historie).
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.96 — Adaptive Training Plan Engine, Fase 1: Engine zonder AI
 **Eerste implementatiestap, volgens `adaptive-training-plan-engine-spec.md`
 + `adaptive-training-plan-decision-contract-v1.md` (beide goedgekeurd).
