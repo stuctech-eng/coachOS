@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.92 — Nieuw document: Adaptive Training Plan Engine (compacte spec)
+**Status: TE TOETSEN. Fase 2a van de Cycling Specialist Roadmap v1.0 —
+vergt goedkeuring vóór implementatie, zoals bij Fase 1 ook gedaan.**
+
+- **Nieuw:** `docs/adaptive-training-plan-engine-spec.md`
+  - **Kernprincipe:** twee lagen — Plan Generation Engine (deterministisch,
+    genereert macro/meso/microcycli) + Daily Adjustment Layer
+    (deterministisch, vervangt bij CoachPolicy-conflict) + Coach Layer
+    (AI, schrijft alleen de uitleg, beslist niets)
+  - **Input:** volledig hergebruik van bestaande bronnen (Cycling
+    Profile, CoachPolicy, Goal Engine, Analysis Engine, Memory Engine,
+    Confidence Engine) — geen nieuwe databron nodig
+  - **"Rolling horizon"-planning:** volledige dagplanning voor komende
+    1-2 weken, verder weg alleen een week-belasting-target — voorkomt
+    valse precisie voor plannen die toch nog wijzigen
+  - **5 expliciete herberekenings-triggers:** gemiste training,
+    overbelasting-signaal, nieuwe blessure, vakantie/onbeschikbare
+    dagen, doelwijziging — elk met concreet gevolg
+  - **Rolverdeling herbevestigd:** Master Coach levert alleen
+    CoachPolicy-grenzen, nooit planbeslissingen; Cycling Specialist
+    beslist de planaanpassing binnen die grenzen — hergebruikt het
+    bestaande CoachPolicy/SpecialistSummary-contract, geen nieuwe
+    communicatielaag
+  - **Database, op hoofdlijnen:** twee nieuwe tabellen
+    (`training_plans`, `training_plan_sessions`), geen wijziging aan
+    bestaande tabellen — exact schema volgt bij implementatie
+  - **Expliciet NIET vastgelegd** (vergt praktijkervaring): exact
+    periodiseringsalgoritme, exacte trigger-drempelwaarden
+
+**Volgende stap, na goedkeuring:** implementatie in sub-stappen — eerst
+Plan Generation Engine, dan Daily Adjustment Layer, dan Coach Layer-
+uitbreiding, dan Kalender-UI (Fase 2b).
+
 ## v2.4.91 — Cycling Specialist Roadmap Fase 1: Cycling Foundation
 **Eerste implementatiestap van de goedgekeurde v1.0-roadmap
 (`docs/cycling-specialist-roadmap-v1.md`). Geen afhankelijkheden, laagste
