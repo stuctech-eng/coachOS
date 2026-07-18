@@ -193,22 +193,25 @@ export async function POST() {
           let decision: ReturnType<typeof beslisTussenSpecialisten> = null
           if (masterPolicy) {
             try {
-              // v2.4.86: per specialist de hoogste doelurgentie + naaste
-              // deadline ophalen (Goal Engine) — input voor regel 4/5
-              const urgentieData = await Promise.all(
+              // v2.4.87, rechtzetting: importance (gebruikerskeuze) en
+              // calculated_urgency (Goal Engine-berekening) APART
+              // opgehaald, niet meer vermengd tot één "urgency"-veld
+              const doelData = await Promise.all(
                 geldigeSummaries.map(async (s) => {
                   const specialistNaam = typeof s.specialist_summary.specialist === 'string' ? s.specialist_summary.specialist : 'specialist'
                   try {
                     const goals = await haalGoalsMetProgress(user.id, specialistNaam)
                     const specialistDoelen = goals.filter(g => g.goal_scope === 'specialist')
-                    if (specialistDoelen.length === 0) return { hoogsteUrgentie: undefined, naasteDeadlineDagen: undefined }
+                    if (specialistDoelen.length === 0) return { hoogsteImportance: undefined, hoogsteUrgentie: undefined, naasteDeadlineDagen: undefined }
+                    const importanceRang: Record<string, number> = { must: 3, high: 2, normal: 1, low: 0 }
                     const urgentieRang: Record<string, number> = { critical: 3, high: 2, normal: 1, low: 0 }
-                    const hoogste = specialistDoelen.reduce((a, b) => urgentieRang[a.urgency] >= urgentieRang[b.urgency] ? a : b)
+                    const hoogsteImportanceDoel = specialistDoelen.reduce((a, b) => importanceRang[a.importance] >= importanceRang[b.importance] ? a : b)
+                    const hoogsteUrgentieDoel = specialistDoelen.reduce((a, b) => urgentieRang[a.calculated_urgency] >= urgentieRang[b.calculated_urgency] ? a : b)
                     const deadlines = specialistDoelen.map(g => g.dagen_resterend).filter((d): d is number => d !== null)
                     const naasteDeadline = deadlines.length > 0 ? Math.min(...deadlines) : null
-                    return { hoogsteUrgentie: hoogste.urgency, naasteDeadlineDagen: naasteDeadline }
+                    return { hoogsteImportance: hoogsteImportanceDoel.importance, hoogsteUrgentie: hoogsteUrgentieDoel.calculated_urgency, naasteDeadlineDagen: naasteDeadline }
                   } catch {
-                    return { hoogsteUrgentie: undefined, naasteDeadlineDagen: undefined }
+                    return { hoogsteImportance: undefined, hoogsteUrgentie: undefined, naasteDeadlineDagen: undefined }
                   }
                 })
               )
@@ -219,8 +222,9 @@ export async function POST() {
                   load: s.specialist_summary.load,
                   risk: s.specialist_summary.risk,
                   recommendation: s.specialist_summary.recommendation,
-                  hoogsteUrgentie: urgentieData[i].hoogsteUrgentie,
-                  naasteDeadlineDagen: urgentieData[i].naasteDeadlineDagen,
+                  hoogsteImportance: doelData[i].hoogsteImportance,
+                  hoogsteUrgentie: doelData[i].hoogsteUrgentie,
+                  naasteDeadlineDagen: doelData[i].naasteDeadlineDagen,
                 })),
                 masterPolicy.priority
               )

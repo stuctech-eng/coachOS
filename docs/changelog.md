@@ -1,5 +1,57 @@
 # CoachOS — Changelog
 
+## v2.4.87 — Rechtzetting: importance (gebruiker) vs. calculated_urgency (Goal Engine) ⚠️ RAAKT PRODUCTIECODE
+
+**⚠️ Build-fix, ontdekt via een mislukte Vercel-deploy op de eerste
+v2.4.87-levering:** `src/app/api/specialists/decision-test/route.ts`
+gebruikte `let hoogsteImportance: string | undefined` — te generiek
+getypeerd. De Decision Engine verwacht specifiek
+`'must' | 'high' | 'normal' | 'low' | undefined`
+(`GoalImportance | undefined`), en TypeScript's strict typecheck
+weigerde terecht een gewone `string` daarvoor te accepteren. Gecorrigeerd
+door `GoalImportance`/`CalculatedUrgency` (uit `goal-engine.ts`) te
+importeren en te gebruiken i.p.v. generieke `string`-types. **Dit is de
+enige plek waar deze fout zat** — `api/coach/route.ts` leunt op
+typeninferentie vanuit de Goal Engine zelf en compileert correct.
+**Correctie op v2.4.86. Daar was `urgency` een door de gebruiker
+ingevuld, statisch veld — dat vermengt twee verschillende concepten die
+apart moeten blijven, en zou de Decision Engine kunnen laten sturen door
+een gebruikersinschatting in plaats van de werkelijkheid (bijv. "FTP
+280W" als "critical" markeren terwijl de wedstrijd nog 9 maanden weg is).**
+
+- **`supabase/goal_engine_importance_rechtzetting.sql`**
+  - Hernoemt `urgency` → `importance` (veilig ongeacht of v2.4.86 al
+    gedraaid was — gebruikt een conditionele check)
+  - Nieuwe waardenschaal: `must`/`high`/`normal`/`low` (was
+    `critical`/`high`/`normal`/`low`) — bestaande `critical`-waarden
+    gemigreerd naar `must`
+- **`src/lib/specialists/goal-engine.ts`** — volledig herbouwd:
+  - `importance` — **opgeslagen**, door de gebruiker ingesteld, stabiel
+  - `calculated_urgency` — **NOOIT opgeslagen**, elke keer opnieuw
+    berekend door `berekenCalculatedUrgency()`, puur op basis van
+    deadline-nabijheid (≤7 dagen: critical, ≤30: high, ≤90: normal,
+    anders/geen deadline: low)
+  - **Eerlijk vastgelegde beperking, ongewijzigd:** nog geen "op schema"-
+    beoordeling op basis van voortgang — vergt een vastgelegde
+    startwaarde/-datum die nu niet bestaat, expliciet als toekomstige
+    uitbreiding genoteerd in de code zelf
+- **`src/lib/specialists/decision-engine.ts`** — regel 4/5 herschreven:
+  regel 4 beslist eerst op `importance` (gebruikerskeuze), **alleen bij
+  een gelijke stand** wordt regel 5 (`calculated_urgency`) geraadpleegd
+  als secundaire tiebreaker — niet meer één vermengd veld
+- `src/app/api/goals/route.ts` — `POST`/`PATCH` accepteren nu
+  `importance` (niet meer `urgency`), met de nieuwe waardenschaal
+- `src/app/api/specialists/cycling/coach/route.ts`,
+  `.../running/coach/route.ts` — prompt toont nu `importance` en
+  `calculated_urgency` als twee aparte regels, niet meer samengevoegd
+- `src/app/api/coach/route.ts` — haalt nu apart de hoogste `importance`
+  én de hoogste `calculated_urgency` per specialist op, geeft beide door
+  aan de Decision Engine
+- `src/app/api/specialists/decision-test/route.ts` — testroute toont nu
+  ook `hoogsteImportance` naast `hoogsteUrgentie`
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.86 — Goal Engine + Decision Engine regels 4-5 ⚠️ RAAKT PRODUCTIECODE
 **Global vs. Specialist Goals-onderscheid, zoals vastgelegd in
 specialist-api.md v2.4.72, nu daadwerkelijk gebouwd. Ontgrendelt ook

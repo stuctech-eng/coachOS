@@ -314,15 +314,21 @@ specialisten elk afzonderlijk "meer volume" adviseren maar de optelsom
 te veel wordt (regel 3), en gebruikt doelurgentie als tiebreaker bij
 gelijke belasting (regel 4-5).
 
-**Goal Engine — geïmplementeerd (v2.4.86).** `user_goals` uitgebreid met
-`goal_scope`/`specialist_type`/`urgency` (nieuwe kolommen, `priority`
-— het bestaande weergavevolgorde-veld — ongewijzigd). Berekent
+**Goal Engine — geïmplementeerd (v2.4.86, gecorrigeerd v2.4.87).**
+`user_goals` uitgebreid met `goal_scope`/`specialist_type`/`importance`
+(nieuwe kolommen, `priority` — het bestaande weergavevolgorde-veld —
+ongewijzigd). **Belangrijk onderscheid:** `importance` is een
+gebruikerskeuze (stabiel, opgeslagen), `calculated_urgency` wordt elke
+keer opnieuw berekend door de Goal Engine (dynamisch, gebaseerd op
+deadline-nabijheid, NOOIT opgeslagen) — deze twee waren in v2.4.86 ten
+onrechte vermengd tot één veld, in v2.4.87 rechtgezet. Berekent
 deterministisch dagen-tot-deadline en waarde-kloof, bewust zonder een
-"op schema"-claim die niet uit de data te herleiden is.
+"op schema"-claim die niet uit de data te herleiden is (vergt een
+vastgelegde startwaarde, bestaat nog niet).
 
 **Volgende, niet-gestart:**
 - Rowing/Strength — verdere invuloefening, patroon nu 2x bevestigd
-- UI voor het instellen van goal_scope/specialist_type/urgency bij het
+- UI voor het instellen van goal_scope/specialist_type/importance bij het
   aanmaken van een doel (API ondersteunt het al, UI nog niet aangepast)
 
 ---
@@ -338,7 +344,7 @@ deterministisch dagen-tot-deadline en waarde-kloof, bewust zonder een
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.86 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.87 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -350,7 +356,7 @@ deterministisch dagen-tot-deadline en waarde-kloof, bewust zonder een
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.86
+- Versie: 2.4.87
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -649,6 +655,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.87 — Rechtzetting: importance (gebruiker, stabiel) vs. calculated_urgency (Goal Engine, dynamisch) — waren in v2.4.86 ten onrechte vermengd
 - v2.4.86 — Goal Engine (Global vs. Specialist Goals) + Decision Engine regels 4-5, raakt api/coach/route.ts (additief) — Decision Engine nu compleet
 - v2.4.85 — Decision Engine: directe testroute, echte data, geen wijziging aan bestaand gedrag
 - v2.4.84 — Decision Engine geïmplementeerd, raakt api/coach/route.ts (additief) — lost op wanneer meerdere specialisten samen te veel volume adviseren

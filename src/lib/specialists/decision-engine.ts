@@ -5,15 +5,24 @@
 // BELANGRIJKE PRECISERING (v2.4.84): regels 1-3 uit het ontwerpdocument
 // (gezondheid > prestatie, blessures > periodisering, herstel > belasting)
 // zitten al GEDEELTELIJK geborgd via CoachPolicy — elke specialist krijgt
-// dezelfde, deterministisch bepaalde grenzen (max intensiteit, verboden
-// trainingstypes), dus geen enkele specialist kan al een te zware
+// dezelfde, deterministisch bepaalde grenzen, dus kan al geen te zware
 // training adviseren als het herstel laag is.
 //
-// Het conflict dat déze Decision Engine oplost, is subtieler: als
-// MEERDERE specialisten elk AFZONDERLIJK binnen hun eigen grenzen "meer
-// volume" adviseren, ziet geen van beide dat de OPTELSOM van hun advies
-// alsnog te veel wordt voor het totale hersteltraject. Dat overzicht
-// heeft alleen de Decision Engine (en uiteindelijk de Master Coach).
+// Het conflict dat regel 3 hieronder oplost, is subtieler: als MEERDERE
+// specialisten elk AFZONDERLIJK binnen hun eigen grenzen "meer volume"
+// adviseren, ziet geen van beide dat de OPTELSOM alsnog te veel wordt.
+//
+// v2.4.87 RECHTZETTING op regel 4/5: importance (door de gebruiker
+// ingesteld, stabiel) en calculated_urgency (door de Goal Engine
+// berekend, dynamisch — gebaseerd op deadline-nabijheid) zijn nu twee
+// aparte, niet-vermengde velden. Regel 4 beslist eerst op importance;
+// alleen bij een gelijke stand wordt regel 5 (calculated_urgency)
+// geraadpleegd als secundaire tiebreaker. Hiervoor was er één "urgency"-
+// veld dat de gebruiker zelf invulde — dat liet de gebruiker ten onrechte
+// de tijdsdruk-beoordeling bepalen, niet de werkelijkheid (zie
+// vervolgoverleg: "FTP 280W" als "critical" markeren terwijl de
+// wedstrijd nog 9 maanden weg is, zou de Decision Engine op het verkeerde
+// been zetten).
 
 export type SpecialistLoad = 'low' | 'moderate' | 'high'
 export type SpecialistRisk = 'none' | 'low' | 'high'
@@ -23,9 +32,12 @@ export interface SpecialistSummaryVoorBeslissing {
   load: SpecialistLoad
   risk: SpecialistRisk
   recommendation: string
-  // v2.4.86: optioneel — hoogste urgentie/naaste deadline onder de
-  // specialist-specifieke doelen van deze specialist (Goal Engine).
-  // Alleen gebruikt door regel 4/5 hieronder, als tiebreaker.
+  // v2.4.87: TWEE aparte velden, niet vermengd — hoogsteImportance is de
+  // gebruikerskeuze (stabiel), hoogsteUrgentie is de Goal Engine-
+  // berekening (dynamisch, gebaseerd op deadline-nabijheid). Regel 4
+  // gebruikt importance, regel 5 gebruikt calculated_urgency als
+  // secundaire tiebreaker binnen gelijke importance.
+  hoogsteImportance?: 'must' | 'high' | 'normal' | 'low'
   hoogsteUrgentie?: 'critical' | 'high' | 'normal' | 'low'
   naasteDeadlineDagen?: number | null
 }
@@ -51,9 +63,7 @@ export function beslisTussenSpecialisten(
   // Geen conflict mogelijk met 0 of 1 actieve specialist
   if (summaries.length < 2) return null
 
-  // ── Regel 2: blessures/verhoogd risico gaat altijd vóór, ongeacht wat
-  // andere specialisten adviseren (specialist-decision-engine.md regel 2:
-  // "blessures gaan vóór periodisering") ──────────────────────────────
+  // ── Regel 2: blessures/verhoogd risico gaat altijd vóór ─────────────
   const hoogRisico = summaries.find(s => s.risk === 'high')
   if (hoogRisico) {
     return {
@@ -68,14 +78,11 @@ export function beslisTussenSpecialisten(
     }
   }
 
-  // ── Regel 3: bij een herstel- of balansprioriteit (dus NIET
-  // 'performance', wat betekent dat het herstel al goed is) mogen niet
-  // meerdere sporten tegelijk hun volume opbouwen — dat telt op ──────
+  // ── Regel 3: bij een herstel- of balansprioriteit mogen niet meerdere
+  // sporten tegelijk hun volume opbouwen — dat telt op ──────────────────
   if (coachPriority === 'recovery' || coachPriority === 'balance') {
     const nietLageBelasting = summaries.filter(s => s.load !== 'low')
     if (nietLageBelasting.length >= 2) {
-      // Hoogste belasting krijgt de hoofdfocus (die specialist "wint"
-      // het gesprek van vandaag), de rest wordt getemperd
       const hoofdfocus = nietLageBelasting.reduce((a, b) => {
         const rang = { low: 0, moderate: 1, high: 2 }
         return rang[a.load] >= rang[b.load] ? a : b
@@ -94,17 +101,19 @@ export function beslisTussenSpecialisten(
     }
   }
 
-  // Geen conflict gevonden via regel 2/3 — check regel 4/5 als tiebreaker
-  // ── Regel 4/5: lange termijn > korte termijn, gebruikersdoel als
-  // tiebreaker (specialist-decision-engine.md). Alleen relevant als de
-  // specialisten qua belasting/risico gelijkwaardig zijn (anders had
-  // regel 2/3 al een winnaar aangewezen) — dan beslist welke specialist
-  // de meest urgente/naderende deadline-doelen heeft. Vergt Goal Engine-
-  // data (urgency), pas mogelijk sinds v2.4.86. ─────────────────────────
-  const metUrgentie = summaries.filter(s => s.hoogsteUrgentie)
-  if (metUrgentie.length > 0) {
+  // ── Regel 4 (importance) + Regel 5 (calculated_urgency als tiebreaker) ──
+  // Alleen relevant als regel 2/3 geen winnaar aanwezen (belasting/risico
+  // zijn vergelijkbaar) — dan beslist eerst de gebruikerskeuze
+  // (importance), en pas bij een gelijke stand de berekende urgentie.
+  const metDoelData = summaries.filter(s => s.hoogsteImportance || s.hoogsteUrgentie)
+  if (metDoelData.length > 0) {
+    const importanceRang: Record<string, number> = { must: 3, high: 2, normal: 1, low: 0 }
     const urgentieRang: Record<string, number> = { critical: 3, high: 2, normal: 1, low: 0 }
+
     const gesorteerd = [...summaries].sort((a, b) => {
+      const ia = importanceRang[a.hoogsteImportance || 'normal']
+      const ib = importanceRang[b.hoogsteImportance || 'normal']
+      if (ia !== ib) return ib - ia
       const ua = urgentieRang[a.hoogsteUrgentie || 'normal']
       const ub = urgentieRang[b.hoogsteUrgentie || 'normal']
       if (ua !== ub) return ub - ua
@@ -115,25 +124,33 @@ export function beslisTussenSpecialisten(
     const winnaar = gesorteerd[0]
     const nummerTwee = gesorteerd[1]
 
-    // Alleen een DecisionResult teruggeven als er daadwerkelijk een
-    // aanwijsbaar verschil is — anders blijft iedereen gelijkwaardig
     const daadwerkelijkVerschil = nummerTwee && (
+      (winnaar.hoogsteImportance || 'normal') !== (nummerTwee.hoogsteImportance || 'normal') ||
       (winnaar.hoogsteUrgentie || 'normal') !== (nummerTwee.hoogsteUrgentie || 'normal') ||
       (winnaar.naasteDeadlineDagen ?? Infinity) !== (nummerTwee.naasteDeadlineDagen ?? Infinity)
     )
 
-    if (daadwerkelijkVerschil && winnaar.hoogsteUrgentie && winnaar.hoogsteUrgentie !== 'low') {
+    const winnaarImportance = winnaar.hoogsteImportance || 'normal'
+    const winnaarUrgentie = winnaar.hoogsteUrgentie || 'normal'
+    const isRelevant = winnaarImportance !== 'low' || winnaarUrgentie !== 'low'
+
+    if (daadwerkelijkVerschil && isRelevant) {
+      const welkeRegel = importanceRang[winnaarImportance] !== importanceRang[nummerTwee.hoogsteImportance || 'normal']
+        ? 'regel_4_doelbelangrijkheid'
+        : 'regel_5_berekende_urgentie_tiebreaker'
       const deadlineTekst = winnaar.naasteDeadlineDagen !== null && winnaar.naasteDeadlineDagen !== undefined
         ? ` (deadline over ${winnaar.naasteDeadlineDagen} dagen)`
         : ''
       return {
         selectedCoach: winnaar.specialist,
         rejectedCoaches: summaries.filter(s => s.specialist !== winnaar.specialist).map(s => s.specialist),
-        appliedRule: 'regel_4_5_doelurgentie_tiebreaker',
-        priorityScore: urgentieRang[winnaar.hoogsteUrgentie] * 10,
+        appliedRule: welkeRegel,
+        priorityScore: importanceRang[winnaarImportance] * 10 + urgentieRang[winnaarUrgentie],
         reasoning: [
           `Geen gezondheids- of belastingsconflict — belasting is bij alle specialisten vergelijkbaar.`,
-          `${winnaar.specialist} Coach heeft een doel met urgentie "${winnaar.hoogsteUrgentie}"${deadlineTekst} — krijgt daarom vandaag de hoofdfocus.`,
+          welkeRegel === 'regel_4_doelbelangrijkheid'
+            ? `${winnaar.specialist} Coach heeft een doel dat de gebruiker als "${winnaarImportance}" markeerde — krijgt daarom vandaag de hoofdfocus.`
+            : `Doelbelangrijkheid is gelijk — ${winnaar.specialist} Coach heeft de hoogste berekende urgentie vandaag ("${winnaarUrgentie}")${deadlineTekst}, gebaseerd op deadline-nabijheid, niet op wat de gebruiker zelf koos.`,
         ],
       }
     }

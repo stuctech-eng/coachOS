@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 import { beslisTussenSpecialisten } from '@/lib/specialists/decision-engine'
-import { haalGoalsMetProgress } from '@/lib/specialists/goal-engine'
+import { haalGoalsMetProgress, type GoalImportance, type CalculatedUrgency } from '@/lib/specialists/goal-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -74,26 +74,33 @@ export async function GET() {
     const invoerVoorBeslissing = await Promise.all(
       geldigeSummaries.map(async (s) => {
         const specialistNaam = typeof s.specialist_summary.specialist === 'string' ? s.specialist_summary.specialist : 'specialist'
-        // v2.4.86: urgentie-data ook in de testroute, zichtbaar voor testdoeleinden
-        let hoogsteUrgentie: string | undefined
+        // v2.4.87, rechtzetting: importance (gebruikerskeuze) en
+        // calculated_urgency (Goal Engine-berekening) apart, zichtbaar
+        // voor testdoeleinden
+        let hoogsteImportance: GoalImportance | undefined
+        let hoogsteUrgentie: CalculatedUrgency | undefined
         let naasteDeadlineDagen: number | null | undefined
         try {
           const goals = await haalGoalsMetProgress(user.id, specialistNaam)
           const specialistDoelen = goals.filter(g => g.goal_scope === 'specialist')
           if (specialistDoelen.length > 0) {
+            const importanceRang: Record<string, number> = { must: 3, high: 2, normal: 1, low: 0 }
             const urgentieRang: Record<string, number> = { critical: 3, high: 2, normal: 1, low: 0 }
-            const hoogste = specialistDoelen.reduce((a, b) => urgentieRang[a.urgency] >= urgentieRang[b.urgency] ? a : b)
-            hoogsteUrgentie = hoogste.urgency
+            const hoogsteImportanceDoel = specialistDoelen.reduce((a, b) => importanceRang[a.importance] >= importanceRang[b.importance] ? a : b)
+            const hoogsteUrgentieDoel = specialistDoelen.reduce((a, b) => urgentieRang[a.calculated_urgency] >= urgentieRang[b.calculated_urgency] ? a : b)
+            hoogsteImportance = hoogsteImportanceDoel.importance
+            hoogsteUrgentie = hoogsteUrgentieDoel.calculated_urgency
             const deadlines = specialistDoelen.map(g => g.dagen_resterend).filter((d): d is number => d !== null)
             naasteDeadlineDagen = deadlines.length > 0 ? Math.min(...deadlines) : null
           }
-        } catch { /* geen doelen of fout — urgentie blijft undefined, geen crash */ }
+        } catch { /* geen doelen of fout — blijft undefined, geen crash */ }
 
         return {
           specialist: specialistNaam,
           load: s.specialist_summary.load,
           risk: s.specialist_summary.risk,
           recommendation: s.specialist_summary.recommendation,
+          hoogsteImportance,
           hoogsteUrgentie,
           naasteDeadlineDagen,
         }

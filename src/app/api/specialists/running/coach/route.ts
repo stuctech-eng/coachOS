@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
           const scope = g.goal_scope === 'global' ? 'algemeen' : 'specifiek voor deze sport'
           const kloof = g.waarde_kloof !== null ? `, nog ${Math.abs(g.waarde_kloof)} te overbruggen` : ''
           const deadline = g.dagen_resterend !== null ? `, ${g.dagen_resterend >= 0 ? `nog ${g.dagen_resterend} dagen` : 'deadline verstreken'}` : ''
-          return `- ${g.title} [${scope}, urgentie: ${g.urgency}]${kloof}${deadline}`
+          return `- ${g.title} [${scope}, belangrijkheid: ${g.importance}, urgentie vandaag: ${g.calculated_urgency}]${kloof}${deadline}`
         }).join('\n')}`
       : '\nGeen actieve doelen ingesteld.'
 
