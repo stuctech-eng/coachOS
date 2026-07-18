@@ -1,5 +1,30 @@
 # CoachOS — Changelog
 
+## v2.4.102 — Cycling Specialist Roadmap Fase 2c: Dashboard
+**Voegt de twee dingen toe die de roadmap noemt en die nog ontbraken op
+de Cycling Hub: "volgende training" en "doelvoortgang". De bestaande
+statistieken (vermogen/afstand/belasting) bestonden al sinds v2.4.68.**
+
+- **Nieuw:** `src/app/api/specialists/cycling/doelvoortgang/route.ts` —
+  dunne laag over de al-bestaande Goal Engine, geen nieuwe berekening.
+  Geeft het leidende (hoogste `importance`) specialist-scoped
+  Cycling-doel terug
+- `src/app/coach/cycling/page.tsx` — nieuwe "Vandaag"-sectie, bovenaan
+  vóór de AI-samenvatting:
+  - **Vandaag-kaart:** haalt de sessie van vandaag op uit de al-bestaande
+    training-plan-API, tikken gaat naar het Trainingsplan-scherm
+  - **Doel-kaart:** toont het leidende doel + dagen tot deadline, tikken
+    gaat naar de bestaande doelen-UI
+  - Beide zijn verrijkingen — falen hiervan blokkeert de rest van de Hub
+    nooit (eigen try/catch, stille fallback)
+  - Gebruikt de gedeelde, tijdzone-veilige `isoDatum()` (v2.4.101) voor
+    de vandaag-vergelijking — geen nieuwe datum-bug geïntroduceerd
+
+**Fase 2c hiermee afgerond.** Volgende, per de roadmap: Fase 2d
+(Grafieken, incl. CTL/ATL/TSB via de Coggan-methode).
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.101 — Fix: tijdzone-bug in alle datum-berekeningen van de Training Plan Engine ⚠️ BESTAAND PLAN HEEFT MOGELIJK VERKEERDE DATUMS
 **Gevonden bij test: de Trainingskalender toonde "zaterdag 18 juli" bij
 een geselecteerde dag 19. Root cause: `d.toISOString().split('T')[0]`

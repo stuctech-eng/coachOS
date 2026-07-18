@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Minus, Settings } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
+import { isoDatum } from '@/utils'
 
 // ── Cycling Hub — eerste echte Hub-UI (Stap 5/5, referentie-implementatie) ──
 // Bron: docs/specialist-coaches.md §6 (Hub-structuur), aparte route
@@ -50,15 +51,21 @@ export default function CyclingHubPage() {
   // blijft verder gewoon zichtbaar (kennis/geschiedenis gaat nooit
   // verloren, zie specialist-coaches.md-vervolgoverleg)
   const [dormant, setDormant] = useState(false)
+  // v2.4.102: Fase 2c Dashboard — "volgende training" + "doelvoortgang",
+  // de twee dingen die de roadmap noemt en die nog ontbraken
+  const [vandaagTraining, setVandaagTraining] = useState<{ type: string; duration: number } | null>(null)
+  const [leidendDoel, setLeidendDoel] = useState<{ title: string; dagen_resterend: number | null; waarde_kloof: number | null } | null>(null)
 
   async function laadAlles() {
     setLaden(true)
     setFout(null)
     try {
-      const [adviesRes, engineRes, specialistenRes] = await Promise.all([
+      const [adviesRes, engineRes, specialistenRes, planRes, doelRes] = await Promise.all([
         fetch('/api/specialists/cycling/coach', { credentials: 'include' }),
         fetch('/api/specialists/cycling/engine?period_days=90', { credentials: 'include' }),
         fetch('/api/specialists', { credentials: 'include' }),
+        fetch('/api/specialists/cycling/training-plan', { credentials: 'include' }).catch(() => null),
+        fetch('/api/specialists/cycling/doelvoortgang', { credentials: 'include' }).catch(() => null),
       ])
       const adviesData = await adviesRes.json()
       const engineDataRes = await engineRes.json()
@@ -69,6 +76,24 @@ export default function CyclingHubPage() {
 
       const cyclingEntry = (specialistenData.specialisten || []).find((s: { specialist_type: string }) => s.specialist_type === 'cycling')
       setDormant(cyclingEntry?.lifecycle?.state === 'DORMANT')
+
+      // Vandaag-training en doelvoortgang zijn verrijkingen, geen
+      // kritieke functionaliteit — falen hiervan mag de rest van de
+      // Hub nooit blokkeren
+      try {
+        if (planRes) {
+          const planData = await planRes.json()
+          const vandaagStr = isoDatum(new Date())
+          const sessie = (planData.sessies || []).find((s: { date: string; status: string }) => s.date === vandaagStr && s.status !== 'cancelled')
+          if (sessie) setVandaagTraining({ type: sessie.type, duration: sessie.duration })
+        }
+      } catch { /* stil falen */ }
+      try {
+        if (doelRes) {
+          const doelData = await doelRes.json()
+          if (doelData.leidend_doel) setLeidendDoel(doelData.leidend_doel)
+        }
+      } catch { /* stil falen */ }
     } catch (e) {
       setFout((e as Error).message)
     } finally {
@@ -151,6 +176,43 @@ export default function CyclingHubPage() {
 
         {!laden && advies && (
           <>
+            {/* v2.4.102: Fase 2c Dashboard — "Vandaag"-overzicht met
+                volgende training + doelvoortgang, vóór de AI-tekst */}
+            {(vandaagTraining || leidendDoel) && (
+              <div className="grid grid-cols-2 gap-3">
+                {vandaagTraining ? (
+                  <button onClick={() => router.push('/coach/cycling/trainingsplan')} className="text-left">
+                    <Card className="p-4 h-full active:bg-slate-700">
+                      <p className="text-xs text-slate-500 mb-1">Vandaag</p>
+                      <p className="text-sm font-semibold text-white capitalize">{vandaagTraining.type.replace('_', ' ')}</p>
+                      <p className="text-xs text-slate-600">{vandaagTraining.duration} min</p>
+                    </Card>
+                  </button>
+                ) : (
+                  <Card className="p-4 h-full">
+                    <p className="text-xs text-slate-500 mb-1">Vandaag</p>
+                    <p className="text-sm text-slate-400">Geen training gepland</p>
+                  </Card>
+                )}
+                {leidendDoel ? (
+                  <button onClick={() => router.push('/goals')} className="text-left">
+                    <Card className="p-4 h-full active:bg-slate-700">
+                      <p className="text-xs text-slate-500 mb-1">Doel</p>
+                      <p className="text-sm font-semibold text-white line-clamp-1">{leidendDoel.title}</p>
+                      <p className="text-xs text-slate-600">
+                        {leidendDoel.dagen_resterend !== null ? `nog ${leidendDoel.dagen_resterend} dagen` : 'geen deadline'}
+                      </p>
+                    </Card>
+                  </button>
+                ) : (
+                  <Card className="p-4 h-full">
+                    <p className="text-xs text-slate-500 mb-1">Doel</p>
+                    <p className="text-sm text-slate-400">Geen Cycling-doel ingesteld</p>
+                  </Card>
+                )}
+              </div>
+            )}
+
             <Card className="p-5 bg-primary-500/10 border-primary-500/20">
               <p className="text-sm text-white leading-relaxed">{advies.samenvatting}</p>
             </Card>
