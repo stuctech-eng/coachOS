@@ -1,5 +1,35 @@
 # CoachOS — Changelog
 
+## v2.4.105 — Cycling Specialist Roadmap Fase 2e: Records
+**Bewust GEEN los "Records Center" — onderdeel van het bestaande
+Grafieken-scherm, precies zoals de roadmap voorschrijft.**
+
+**⚠️ Eerlijke beperking, vooraf:** "beste inspanning per duur"
+(5s/30s/1min/5min/20min/60min) vergt een vermogenscurve uit seconde-
+voor-seconde data — die wordt niet opgeslagen (zelfde beperking als NP
+voor TSS, zie v2.4.103). Gebouwd is uitsluitend wat eerlijk berekenbaar
+is uit wat per rit al is opgeslagen.
+
+- `src/lib/specialists/cycling-grafieken.ts` — `haalRecords()`:
+  - Langste rit (km + apart: langste tijd in minuten)
+  - Meeste hoogtemeters
+  - Hoogste vermogen (max_watts — dit IS beschikbaar per rit, ook zonder
+    NP-curve)
+  - Hoogste gemiddelde snelheid
+  - Grootste week — hergebruikt de al-bestaande wekelijkse-volumes-
+    berekening, geen nieuwe query
+- `src/app/api/specialists/cycling/grafieken/route.ts` — `records`
+  toegevoegd aan de bestaande response
+- `src/app/coach/cycling/grafieken/page.tsx` — nieuwe Records-kaart,
+  tussen Trainingsbelasting en de FTP-ontbreekt-melding. Toont alleen
+  records waarvoor daadwerkelijk data bestaat (geen lege/kapotte
+  velden), met de beperking zichtbaar in de kaart zelf
+
+**Fase 2e hiermee afgerond.** Volgende, per de roadmap: Fase 2f
+(Ritanalyse) of Fase 2g (Coach-verdieping).
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.104 — Fix: staafdiagram wekelijks volume onzichtbaar
 **Gevonden bij test: week-labels toonden correct (bevestigt dat de data
 er wel was), maar de staafjes zelf waren onzichtbaar — een CSS-bug, geen

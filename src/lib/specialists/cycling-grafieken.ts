@@ -98,6 +98,77 @@ export async function haalWekelijkseVolumes(userId: string, aantalWeken: number)
     .sort((a, b) => a.week_start.localeCompare(b.week_start))
 }
 
+// ── Records — Fase 2e ────────────────────────────────────────────────
+// ⚠️ EERLIJKE BEPERKING: "beste inspanning per duur" (5s/30s/1min/5min/
+// 20min/60min) vergt een vermogenscurve uit seconde-voor-seconde data —
+// die wordt niet opgeslagen (zelfde beperking als NP voor TSS, zie
+// boven). Wat hieronder berekend wordt, is UITSLUITEND gebaseerd op wat
+// daadwerkelijk per activiteit is opgeslagen: duur, afstand,
+// hoogtemeters, max/gemiddeld vermogen, gemiddelde snelheid — geen
+// duur-specifieke "beste 5 minuten"-records.
+
+export interface CyclingRecords {
+  langste_rit_km: { waarde: number; datum: string } | null
+  langste_rit_minuten: { waarde: number; datum: string } | null
+  meeste_hoogtemeters: { waarde: number; datum: string } | null
+  hoogste_vermogen: { waarde: number; datum: string } | null
+  hoogste_gem_snelheid: { waarde: number; datum: string } | null
+  grootste_week_km: { waarde: number; week_start: string } | null
+}
+
+export async function haalRecords(userId: string): Promise<CyclingRecords> {
+  const supabase = createAdminClient()
+
+  const { data: activiteiten, error } = await supabase
+    .from('activity_sessions')
+    .select('date, duration, metrics, activities!inner(name)')
+    .eq('user_id', userId)
+    .in('activities.name', ['Fietsen', 'Fietsen (buiten)', 'Indoor Fietsen'])
+    .order('date', { ascending: true })
+
+  if (error) throw error
+  if (!activiteiten || activiteiten.length === 0) {
+    return {
+      langste_rit_km: null, langste_rit_minuten: null, meeste_hoogtemeters: null,
+      hoogste_vermogen: null, hoogste_gem_snelheid: null, grootste_week_km: null,
+    }
+  }
+
+  let langsteKm: { waarde: number; datum: string } | null = null
+  let langsteMin: { waarde: number; datum: string } | null = null
+  let meesteHoogte: { waarde: number; datum: string } | null = null
+  let hoogsteVermogen: { waarde: number; datum: string } | null = null
+  let hoogsteSnelheid: { waarde: number; datum: string } | null = null
+
+  for (const a of activiteiten) {
+    const metrics = a.metrics as { distance?: number; elevation?: number; elevation_gain?: number; max_watts?: number; avg_speed?: number } | null
+    const km = (metrics?.distance || 0) / 1000
+    const hoogte = metrics?.elevation ?? metrics?.elevation_gain ?? 0
+
+    if (km > 0 && (!langsteKm || km > langsteKm.waarde)) langsteKm = { waarde: Math.round(km * 10) / 10, datum: a.date }
+    if (a.duration > 0 && (!langsteMin || a.duration > langsteMin.waarde)) langsteMin = { waarde: a.duration, datum: a.date }
+    if (hoogte > 0 && (!meesteHoogte || hoogte > meesteHoogte.waarde)) meesteHoogte = { waarde: Math.round(hoogte), datum: a.date }
+    if (metrics?.max_watts && (!hoogsteVermogen || metrics.max_watts > hoogsteVermogen.waarde)) hoogsteVermogen = { waarde: metrics.max_watts, datum: a.date }
+    if (metrics?.avg_speed && (!hoogsteSnelheid || metrics.avg_speed > hoogsteSnelheid.waarde)) hoogsteSnelheid = { waarde: metrics.avg_speed, datum: a.date }
+  }
+
+  // Grootste week hergebruikt de al-bestaande wekelijkse-volumes-logica
+  // — geen nieuwe berekening, alleen het maximum eruit gehaald
+  const volumes = await haalWekelijkseVolumes(userId, 104) // ~2 jaar terugkijken
+  const grootsteWeek = volumes.length > 0
+    ? volumes.reduce((a, b) => (b.totaal_km > a.totaal_km ? b : a))
+    : null
+
+  return {
+    langste_rit_km: langsteKm,
+    langste_rit_minuten: langsteMin,
+    meeste_hoogtemeters: meesteHoogte,
+    hoogste_vermogen: hoogsteVermogen,
+    hoogste_gem_snelheid: hoogsteSnelheid,
+    grootste_week_km: grootsteWeek ? { waarde: grootsteWeek.totaal_km, week_start: grootsteWeek.week_start } : null,
+  }
+}
+
 export async function haalCTLATLTSB(userId: string, aantalDagen: number): Promise<DagelijkseBelasting[]> {
   const supabase = createAdminClient()
 

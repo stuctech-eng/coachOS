@@ -24,6 +24,15 @@ interface DagelijkseBelasting {
   tsb: number
 }
 
+interface CyclingRecords {
+  langste_rit_km: { waarde: number; datum: string } | null
+  langste_rit_minuten: { waarde: number; datum: string } | null
+  meeste_hoogtemeters: { waarde: number; datum: string } | null
+  hoogste_vermogen: { waarde: number; datum: string } | null
+  hoogste_gem_snelheid: { waarde: number; datum: string } | null
+  grootste_week_km: { waarde: number; week_start: string } | null
+}
+
 function formatWeekLabel(weekStart: string): string {
   const d = new Date(weekStart)
   return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
@@ -64,6 +73,7 @@ export default function GrafiekenPage() {
   const [laden, setLaden] = useState(true)
   const [volumes, setVolumes] = useState<WeekVolume[]>([])
   const [belasting, setBelasting] = useState<DagelijkseBelasting[]>([])
+  const [records, setRecords] = useState<CyclingRecords | null>(null)
 
   useEffect(() => {
     fetch('/api/specialists/cycling/grafieken?weken=12', { credentials: 'include' })
@@ -71,6 +81,7 @@ export default function GrafiekenPage() {
       .then(data => {
         setVolumes(data.wekelijkse_volumes || [])
         setBelasting(data.ctl_atl_tsb || [])
+        setRecords(data.records || null)
       })
       .catch(() => {})
       .finally(() => setLaden(false))
@@ -78,6 +89,15 @@ export default function GrafiekenPage() {
 
   const maxKm = Math.max(...volumes.map(v => v.totaal_km), 1)
   const huidigeTsb = belasting.length > 0 ? belasting[belasting.length - 1].tsb : null
+
+  const recordsItems = records ? [
+    { label: 'Langste rit', waarde: records.langste_rit_km ? `${records.langste_rit_km.waarde} km` : null, datum: records.langste_rit_km?.datum },
+    { label: 'Langste tijd', waarde: records.langste_rit_minuten ? `${records.langste_rit_minuten.waarde} min` : null, datum: records.langste_rit_minuten?.datum },
+    { label: 'Meeste hoogtemeters', waarde: records.meeste_hoogtemeters ? `${records.meeste_hoogtemeters.waarde} m` : null, datum: records.meeste_hoogtemeters?.datum },
+    { label: 'Hoogste vermogen', waarde: records.hoogste_vermogen ? `${records.hoogste_vermogen.waarde} W` : null, datum: records.hoogste_vermogen?.datum },
+    { label: 'Hoogste gem. snelheid', waarde: records.hoogste_gem_snelheid ? `${records.hoogste_gem_snelheid.waarde} km/u` : null, datum: records.hoogste_gem_snelheid?.datum },
+    { label: 'Grootste week', waarde: records.grootste_week_km ? `${records.grootste_week_km.waarde} km` : null, datum: records.grootste_week_km?.week_start },
+  ].filter((item): item is { label: string; waarde: string; datum: string | undefined } => item.waarde !== null) : []
 
   return (
     <AppShell>
@@ -155,6 +175,24 @@ export default function GrafiekenPage() {
                 <div className="w-2 h-2 rounded-full bg-amber-500" />
                 <span className="text-[10px] text-slate-500">Vermoeidheid (ATL)</span>
               </div>
+            </div>
+          </Card>
+        )}
+
+        {!laden && recordsItems.length > 0 && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Records</p>
+            <p className="text-[10px] text-slate-600 mb-3">Gebaseerd op wat per rit is opgeslagen — geen duur-specifieke records (bijv. &quot;beste 5 minuten&quot;) zonder vermogenscurve-data.</p>
+            <div className="flex flex-col gap-3">
+              {recordsItems.map(item => (
+                <div key={item.label} className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">{item.label}</span>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-white">{item.waarde}</p>
+                    {item.datum && <p className="text-[10px] text-slate-600">{new Date(item.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</p>}
+                  </div>
+                </div>
+              ))}
             </div>
           </Card>
         )}

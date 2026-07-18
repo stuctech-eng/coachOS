@@ -353,12 +353,10 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 ## 🚴 Actieve roadmap: Cycling Specialist v1.0
 
 **Zie `docs/cycling-specialist-roadmap-v1.md` voor het volledige,
-goedgekeurde bouwplan.** ✅ Fase 1 (Cycling Foundation, v2.4.91). ✅
-Fase 2a (Adaptive Training Plan Engine, v2.4.92-99). ✅ Fase 2b
-(Trainingskalender, v2.4.100). ✅ Fase 2c (Dashboard, v2.4.102). ✅
-**Fase 2d (Grafieken, v2.4.103) — CTL/ATL/TSB is een gedocumenteerde
-schatting, geen NP beschikbaar.** Volgende: Fase 2e (Records) of Fase
-2f (Ritanalyse).
+goedgekeurde bouwplan.** ✅ Fase 1-2d (Cycling Foundation t/m Grafieken,
+v2.4.91-104). ✅ **Fase 2e (Records, v2.4.105) — onderdeel van
+Grafieken, geen los "Records Center".** Volgende: Fase 2f (Ritanalyse)
+of Fase 2g (Coach-verdieping).
 
 ## 🧭 Navigatie-architectuur v1.0 (VOLLEDIG GEÏMPLEMENTEERD, v2.4.93)
 
@@ -378,7 +376,7 @@ uitstelbaar (balk had 6 items, niet 5).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.104 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.105 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -390,7 +388,7 @@ uitstelbaar (balk had 6 items, niet 5).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.104
+- Versie: 2.4.105
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -689,6 +687,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.105 — Cycling Roadmap Fase 2e: Records (langste rit, hoogtemeters, vermogen, snelheid, grootste week) — onderdeel van Grafieken, geen los Records Center
 - v2.4.104 — Fix: staafdiagram wekelijks volume onzichtbaar (CSS percentage-hoogte in geneste flex → pixel-hoogte)
 - v2.4.103 — Cycling Roadmap Fase 2d: Grafieken (volume, geschatte CTL/ATL/TSB via Coggan-methode, geen nieuwe dependency)
 - v2.4.102 — Cycling Roadmap Fase 2c: Dashboard (Vandaag-training + doelvoortgang op de Cycling Hub)
