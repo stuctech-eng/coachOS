@@ -1,5 +1,43 @@
 # CoachOS — Changelog
 
+## v2.4.93 — Navigatie-architectuur v1.0: volledige implementatie ⚠️ RAAKT VEEL SCHERMEN
+**Alle 5 stappen uit `navigation-architecture-v1.md` in één levering,
+inclusief Stap 5 — die bleek NIET uitstelbaar: de balk had in
+werkelijkheid 6 items (Activiteiten én Instellingen), niet 5 zoals
+aangenomen. Zonder Stap 5 nu al mee te bouwen was Instellingen straks
+onbereikbaar geworden.**
+
+- **`src/components/layout/index.tsx`** — definitieve 5-tabs-structuur:
+  🏠 Home · 🧠 Coach (`/chat`) · 💪 Trainer (`/training`, was
+  "Training") · ⭐ Specialisten (`/specialisten`, NIEUW) · 📈 Voortgang
+  (`/progressie`, was "Progressie")
+- **Nieuw:** `src/components/ActiviteitenSectie.tsx` — geëxtraheerd uit
+  de voormalige losse `/activities`-pagina, herbruikt nu op twee plekken
+  (geen logica gedupliceerd). `compact`-prop voor gebruik als sectie
+  i.p.v. volledige pagina
+- `src/app/activities/page.tsx` — dunne wrapper geworden, blijft bestaan
+  voor eventuele diepe links, **niet meer in de navigatiebalk**
+- `src/app/progressie/page.tsx` — titel "Progressie" → "Voortgang",
+  `ActiviteitenSectie` als eerste sectie ingevoegd (compact-modus,
+  max. 5 activiteiten zichtbaar + doorklik naar volledig overzicht)
+- **Nieuw:** `src/app/specialisten/page.tsx` — overzichtspagina, drie
+  secties (Actief/Beschikbaar/Binnenkort). **Vervangt functioneel** de
+  "Mijn Coaches"-chips én de SUGGESTED/RETURNING-lifecycle-banners die
+  voorheen in de Coach-tab stonden — geen dubbele ingang
+- `src/app/chat/page.tsx` — alle specialist-gerelateerde state/UI
+  verwijderd (chips, banners, activatie-logica) — deze tab gaat nu
+  uitsluitend over het Master Coach-gesprek, consistent met de nieuwe
+  driedeling (Coach/Trainer/Specialisten)
+- `src/app/home/page.tsx` — account-icoon toegevoegd naast het
+  bel-icoontje, opent `/settings` — dit is nu de enige ingang naar
+  Instellingen, nu die geen eigen tab meer heeft
+
+**Bewust NIET aangepast:** `src/app/settings/page.tsx` zelf — alleen de
+ingang ernaartoe veranderde, de pagina-inhoud is ongewijzigd.
+
+**Test-instructies:** zie bericht bij levering — dit raakt veel
+schermen, extra zorgvuldig testen aanbevolen.
+
 ## v2.4.92 — Nieuw document: Adaptive Training Plan Engine (compacte spec)
 **Status: TE TOETSEN. Fase 2a van de Cycling Specialist Roadmap v1.0 —
 vergt goedkeuring vóór implementatie, zoals bij Fase 1 ook gedaan.**

@@ -1,7 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Send, Bot, User, Trash2, Bike, Footprints, ChevronRight } from 'lucide-react'
+import { Send, Bot, User, Trash2 } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
 
@@ -21,37 +20,12 @@ function getVandaag(): string {
   return new Date().toISOString().split('T')[0]
 }
 
-// v2.4.83: icoon-lookup, nu er een tweede specialist is — was hardcoded
-// op Bike voor alle specialisten, klopt niet meer met 2+ actief
-const SPECIALIST_ICOON: Record<string, typeof Bike> = {
-  cycling: Bike,
-  running: Footprints,
-}
-
-// v2.4.83: werkwoord voor de SUGGESTED-bannertekst — was hardcoded op
-// "fietst", moet generiek zijn nu er een tweede specialist bestaat
-const SPECIALIST_WERKWOORD: Record<string, string> = {
-  cycling: 'fietst',
-  running: 'hardloopt',
-}
-
 export default function ChatPage() {
-  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [laden, setLaden] = useState(true)
   const [wisBevestiging, setWisBevestiging] = useState(false)
-  // v2.4.69: "Mijn Coaches" — actieve specialisten, navigatie-integratie
-  // naar de Hub-schermen (bijv. /coach/cycling). Toont alleen specialisten
-  // die de gebruiker daadwerkelijk heeft geactiveerd — geen lege sectie
-  // als er niets actief is.
-  const [actieveSpecialisten, setActieveSpecialisten] = useState<Array<{ specialist_type: string; label: string }>>([])
-  // v2.4.70: Lifecycle Engine-gedreven banners — SUGGESTED (voorstel tot
-  // activeren) en RETURNING (welkom terug na een stille periode)
-  const [suggestie, setSuggestie] = useState<{ specialist_type: string; label: string } | null>(null)
-  const [terugkeer, setTerugkeer] = useState<{ specialist_type: string; label: string; vorigePeriode: { start: string; eind: string } | null } | null>(null)
-  const [activerenBezig, setActiverenBezig] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -85,52 +59,6 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  // v2.4.69/70: actieve specialisten + lifecycle-banners ophalen — los
-  // van de chat-logica, faalt stil als het niet lukt (geen kritieke
-  // functionaliteit)
-  useEffect(() => {
-    fetch('/api/specialists', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
-        const alle = data.specialisten || []
-        const actief = alle.filter((s: { actief: boolean }) => s.actief)
-        setActieveSpecialisten(actief)
-
-        // v2.4.70: Lifecycle-gedreven banners — maximaal één type
-        // tegelijk tonen (suggestie óf terugkeer, nooit beide door
-        // elkaar), geen automatische activatie, gebruiker beslist altijd
-        for (const s of alle) {
-          if (s.lifecycle?.state === 'SUGGESTED') {
-            setSuggestie({ specialist_type: s.specialist_type, label: s.label })
-            break
-          }
-          if (s.lifecycle?.state === 'RETURNING') {
-            setTerugkeer({ specialist_type: s.specialist_type, label: s.label, vorigePeriode: s.lifecycle.vorige_actieve_periode })
-            break
-          }
-        }
-      })
-      .catch(() => { /* stil falen — "Mijn Coaches" is geen kritieke functie */ })
-  }, [])
-
-  async function activeerSpecialist(type: string) {
-    setActiverenBezig(true)
-    try {
-      await fetch('/api/specialists', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ specialist_type: type, active: true }),
-      })
-      router.push(`/coach/${type}`)
-    } catch {
-      setActiverenBezig(false)
-    }
-  }
-
-  function formatDatum(iso: string): string {
-    return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })
-  }
 
   async function stuurBericht(tekst: string) {
     if (!tekst.trim() || loading) return
@@ -190,61 +118,6 @@ export default function ChatPage() {
             </button>
           )}
         </div>
-
-        {/* v2.4.70: SUGGESTED — Lifecycle Engine detecteerde een patroon,
-            gebruiker beslist zelf, geen automatische activatie */}
-        {suggestie && (
-          <div className="mx-5 mb-3 flex-shrink-0 bg-primary-500/10 border border-primary-500/20 rounded-2xl p-4">
-            <p className="text-sm text-white mb-3">
-              Je {SPECIALIST_WERKWOORD[suggestie.specialist_type] || 'sport'} de laatste tijd regelmatig. Wil je de {suggestie.label} activeren voor gerichte begeleiding?
-            </p>
-            <div className="flex gap-2">
-              <button onClick={() => setSuggestie(null)}
-                className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium">
-                Niet nu
-              </button>
-              <button onClick={() => activeerSpecialist(suggestie.specialist_type)} disabled={activerenBezig}
-                className="flex-1 py-2 rounded-xl bg-primary-500 text-white text-xs font-semibold disabled:opacity-50">
-                {activerenBezig ? 'Bezig...' : 'Activeren'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* v2.4.70: RETURNING — welkom terug na een stille periode, met
-            context over de vorige actieve periode indien bekend */}
-        {terugkeer && (
-          <div className="mx-5 mb-3 flex-shrink-0 bg-green-500/10 border border-green-500/20 rounded-2xl p-4">
-            <p className="text-sm text-white mb-1">Welkom terug! 👋</p>
-            <p className="text-xs text-slate-400 mb-3">
-              {terugkeer.vorigePeriode
-                ? `Je vorige trainingsblok liep tot ${formatDatum(terugkeer.vorigePeriode.eind)}. Zullen we het schema weer oppakken?`
-                : `Zullen we je ${terugkeer.label}-schema weer oppakken?`}
-            </p>
-            <button onClick={() => router.push(`/coach/${terugkeer.specialist_type}`)}
-              className="w-full py-2 rounded-xl bg-green-500/20 text-green-400 text-xs font-semibold border border-green-500/30">
-              Naar {terugkeer.label}
-            </button>
-          </div>
-        )}
-
-        {/* v2.4.69: "Mijn Coaches" — alleen zichtbaar als er daadwerkelijk
-            een actieve specialist is, geen lege sectie tonen */}
-        {actieveSpecialisten.length > 0 && (
-          <div className="px-5 pb-3 flex-shrink-0 flex gap-2 overflow-x-auto">
-            {actieveSpecialisten.map(s => {
-              const Icoon = SPECIALIST_ICOON[s.specialist_type] || Bike
-              return (
-                <button key={s.specialist_type} onClick={() => router.push(`/coach/${s.specialist_type}`)}
-                  className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-slate-800/70 rounded-xl border border-slate-700/50 active:bg-slate-700">
-                  <Icoon size={14} className="text-primary-400" />
-                  <span className="text-xs text-slate-300 font-medium">{s.label}</span>
-                  <ChevronRight size={12} className="text-slate-600" />
-                </button>
-              )
-            })}
-          </div>
-        )}
 
         {/* Bevestiging wissen */}
         {wisBevestiging && (

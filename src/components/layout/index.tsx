@@ -1,23 +1,27 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Dumbbell, TrendingUp, MessageCircle, Settings, Activity } from 'lucide-react'
+import { Home, Dumbbell, TrendingUp, MessageCircle, Star } from 'lucide-react'
 import { cn } from '@/utils'
 import { useEffect, useRef } from 'react'
 
-// v2.4.43: "Activiteiten"-tab toegevoegd — was voorheen alleen bereikbaar
-// via een omweg (Strava-knop in Instellingen, of het bevestigingsscherm
-// na een Garmin-import), geen permanente ingang. Met 6 tabs past de balk
-// niet meer comfortabel op kleinere schermen zonder te knijpen — vandaar
-// de horizontale scroll-wijziging hieronder (justify-around → overflow-x-
-// auto met vaste min-breedte per item).
+// v2.4.93: Navigatie-architectuur v1.0 — definitieve 5-tabs-structuur.
+// Was: Home/Training/Activiteiten/Progressie/Coach/Instellingen (6 tabs).
+// Nu: Home/Coach/Trainer/Specialisten/Voortgang (5 tabs).
+// - Activiteiten → eerste sectie binnen Voortgang (was /activities,
+//   route blijft bestaan voor diepe links, niet meer in de balk)
+// - Instellingen → account-icoon vanuit Home (zie /home), niet meer in
+//   de balk
+// - Training → Trainer (label/icoon gewijzigd, route ongewijzigd)
+// - Progressie → Voortgang (label gewijzigd, route ongewijzigd)
+// - Specialisten → NIEUW, /specialisten, vervangt de vroegere "Mijn
+//   Coaches"-chips in de Coach-tab
 const navItems = [
-  { href: '/home',       icon: Home,        label: 'Home' },
-  { href: '/training',   icon: Dumbbell,    label: 'Training' },
-  { href: '/activities', icon: Activity,    label: 'Activiteiten' },
-  { href: '/progressie', icon: TrendingUp,  label: 'Progressie' },
-  { href: '/chat',       icon: MessageCircle, label: 'Coach' },
-  { href: '/settings',   icon: Settings,    label: 'Instellingen' },
+  { href: '/home',         icon: Home,          label: 'Home' },
+  { href: '/chat',         icon: MessageCircle, label: 'Coach' },
+  { href: '/training',     icon: Dumbbell,      label: 'Trainer' },
+  { href: '/specialisten', icon: Star,          label: 'Specialisten' },
+  { href: '/progressie',   icon: TrendingUp,    label: 'Voortgang' },
 ]
 
 export function BottomNav() {

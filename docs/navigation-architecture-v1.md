@@ -21,6 +21,19 @@ Dit voorkomt dubbele schermen: geen activiteitenlijst bij Home, Coach,
 
 ---
 
+## Herbevestiging vóór implementatie (v2.4.93)
+
+Op het moment dat de bouw daadwerkelijk start (vlak vóór Fase 2a/2b van
+de Cycling Roadmap), nog een keer expliciet onderbouwd waarom dit de
+juiste timing is: bij het eerste ontwerp van deze navigatie leek een
+aparte Specialisten-tab misschien vroeg. Inmiddels is de specialistlaag
+uitgegroeid tot een volwaardig onderdeel van de architectuur — Specialist
+Engines, Decision Engine, Goal Engine, Memory Engine, CoachPolicy, en nu
+ook de Adaptive Training Plan Engine (Fase 2a-spec, v2.4.92). Specialisten
+zijn niet langer "een extra coach naast de hoofdcoach", maar een eigen
+laag met evenveel architecturaal gewicht als Trainer en Coach. Dat
+rechtvaardigt een eigen, gelijkwaardige plek in de hoofdnavigatie.
+
 ## Definitieve navigatie (5 tabs)
 
 ```

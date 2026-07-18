@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen, Phone, ShieldAlert } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen, Phone, ShieldAlert, CircleUserRound } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -310,9 +310,17 @@ export default function HomePage() {
               </div>
             )}
           </div>
-          <button className="w-11 h-11 rounded-xl bg-coach-card flex items-center justify-center text-slate-400">
-            <Bell size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="w-11 h-11 rounded-xl bg-coach-card flex items-center justify-center text-slate-400">
+              <Bell size={20} />
+            </button>
+            {/* v2.4.93: account-icoon — Navigatie-architectuur v1.0, Stap 5.
+                Instellingen staat niet meer in de onderste navigatiebalk
+                (5-tabs-structuur), dit is nu de ingang. */}
+            <button onClick={() => router.push('/settings')} className="w-11 h-11 rounded-xl bg-coach-card flex items-center justify-center text-slate-400">
+              <CircleUserRound size={20} />
+            </button>
+          </div>
         </div>
 
         {/* v2.4.14: Update-probleem banner — alleen zichtbaar na een
