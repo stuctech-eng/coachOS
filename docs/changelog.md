@@ -1,5 +1,33 @@
 # CoachOS — Changelog
 
+## v2.4.95 — Nieuw document: Adaptive Training Plan Engine — Decision Contract v1.0
+**Status: TE TOETSEN. Aanvulling op `adaptive-training-plan-engine-spec.md`
+(v2.4.92) — drie aanscherpingen na review, vóór de eerste code.**
+
+- **Nieuw:** `docs/adaptive-training-plan-decision-contract-v1.md`
+  - **Prioriteitsketen afdwingbaar in code:** `CoachPolicy > Cycling
+    Specialist > Plan Generator` — geen documentatie-intentie, maar een
+    échte validatiestap: elk sessievoorstel wordt vóór opslag getoetst
+    aan de actuele CoachPolicy, overschrijdingen worden automatisch
+    teruggebracht binnen de grens vóórdat de gebruiker het ziet
+  - **5 verplichte reason codes**, niet optioneel: `missed_session`,
+    `fatigue_detected`, `injury_protection`, `vacation_mode`,
+    `goal_change` — elke sessiewijziging moet er één krijgen, maakt
+    specifieke Coach-uitleg mogelijk i.p.v. "je plan is aangepast"
+  - **Sessie-levenscyclus vastgelegd:** `planned → scheduled →
+    completed/skipped/adjusted/cancelled`. Bij `adjusted` blijft de
+    oorspronkelijke sessie bewaard (`original_session_id`), geen
+    verloren historie
+  - **Database-velden uitgebreid** t.o.v. de "op hoofdlijnen"-versie in
+    de hoofdspec: volledige kolomdefinities voor `training_plans` en
+    `training_plan_sessions`, inclusief `adjustment_reason` (verplicht
+    bij `adjusted`) en `completed_activity_id`
+  - Bouwvolgorde herbevestigd: Fase 1 (Engine zonder AI) → Fase 2
+    (Coach-uitleglaag, AI beslist niets) → Fase 3 (UI)
+
+**Volgende stap, na goedkeuring van dit document:** implementatie start
+bij de Plan Generator — volledig deterministisch, testbaar zonder AI.
+
 ## v2.4.94 — Fix: 4 verouderde route-verwijzingen na navigatie-herstructurering
 **Gevonden na test-feedback: de Cycling Hub-terugknop ging naar /chat
 i.p.v. /specialisten. Bredere sweep uitgevoerd, drie soortgelijke
