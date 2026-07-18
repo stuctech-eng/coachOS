@@ -50,6 +50,19 @@ export async function POST(req: NextRequest) {
       .limit(1)
     const priority = ((existing?.[0]?.priority || 0) + 1)
 
+    // v2.4.86: Goal Engine — goal_scope/specialist_type/urgency toegevoegd.
+    // Validatie: specialist_type alleen zinvol bij goal_scope='specialist',
+    // dwing dat hier af i.p.v. stilzwijgend een inconsistente combinatie
+    // toe te staan (bijv. scope='global' met een specialist_type erbij).
+    const goalScope = body.goal_scope === 'specialist' ? 'specialist' : 'global'
+    const specialistType = goalScope === 'specialist' && typeof body.specialist_type === 'string' ? body.specialist_type : null
+    const geldigeUrgencies = ['critical', 'high', 'normal', 'low']
+    const urgency = geldigeUrgencies.includes(body.urgency) ? body.urgency : 'normal'
+
+    if (goalScope === 'specialist' && !specialistType) {
+      return NextResponse.json({ error: "specialist_type is verplicht wanneer goal_scope 'specialist' is" }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from('user_goals')
       .insert({
@@ -60,6 +73,9 @@ export async function POST(req: NextRequest) {
         status: 'active',
         target_value: body.target_value || null,
         target_date: body.target_date || null,
+        goal_scope: goalScope,
+        specialist_type: specialistType,
+        urgency,
       })
       .select()
       .single()
@@ -85,6 +101,13 @@ export async function PATCH(req: NextRequest) {
     if (body.current_value !== undefined) update.current_value = body.current_value
     if (body.target_value !== undefined)  update.target_value  = body.target_value
     if (body.title !== undefined)         update.title         = body.title
+    // v2.4.86: Goal Engine-velden ook via PATCH aanpasbaar
+    if (body.goal_scope !== undefined)    update.goal_scope    = body.goal_scope === 'specialist' ? 'specialist' : 'global'
+    if (body.specialist_type !== undefined) update.specialist_type = body.specialist_type || null
+    if (body.urgency !== undefined) {
+      const geldigeUrgencies = ['critical', 'high', 'normal', 'low']
+      update.urgency = geldigeUrgencies.includes(body.urgency) ? body.urgency : 'normal'
+    }
 
     const { error } = await supabase
       .from('user_goals')

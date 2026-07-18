@@ -7,6 +7,7 @@ import { cookies } from 'next/headers'
 import { analyseerRunning } from '@/lib/specialists/running-analysis'
 import { verwerkKandidaatInzicht, haalMemoryOp } from '@/lib/specialists/learning-engine'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
+import { haalGoalsMetProgress } from '@/lib/specialists/goal-engine'
 import { COACH_CORE_IDENTITY, CORE_SAFETY_RULE, getCoachTone } from '@/core/prompts/coach-personality'
 
 async function getUser() {
@@ -116,17 +117,28 @@ export async function POST(req: NextRequest) {
       console.error('[specialists/running/coach] Memory ophalen mislukt, prompt gaat door zonder:', memErr)
     }
 
-    const [goalsRes, profielRes] = await Promise.all([
-      supabase.from('user_goals').select('title, target_value, target_date').eq('user_id', user.id).eq('status', 'active'),
+    // ── v2.4.86: Goal Engine — vervangt de eerdere, lichte doelen-fetch.
+    // Haalt zowel global-doelen (Master Coach-niveau, bijv. "afvallen")
+    // als specialist-specifieke doelen (bijv. FTP-target) op, elk met
+    // deterministisch berekende dagen-tot-deadline en waarde-kloof.
+    const [goalProgress, profielRes] = await Promise.all([
+      haalGoalsMetProgress(user.id, 'running').catch(err => {
+        console.error('[specialists/running/coach] Goal Engine mislukt, prompt gaat door zonder:', err)
+        return []
+      }),
       supabase.from('specialist_profiles').select('preferences').eq('user_id', user.id).eq('specialist_type', 'running').single(),
     ])
-    const doelen = goalsRes.data || []
     const voorkeuren = profielRes.data?.preferences || {}
 
     const { resultaat, reden } = engineResultaat
 
-    const doelenContext = doelen.length > 0
-      ? `\nActieve doelen van de gebruiker:\n${doelen.map(g => `- ${g.title}${g.target_value ? ` (streefwaarde: ${g.target_value})` : ''}${g.target_date ? ` (datum: ${g.target_date})` : ''}`).join('\n')}`
+    const doelenContext = goalProgress.length > 0
+      ? `\nActieve doelen van de gebruiker (${goalProgress.length}, urgentie + Goal Engine-berekening erbij):\n${goalProgress.map(g => {
+          const scope = g.goal_scope === 'global' ? 'algemeen' : 'specifiek voor deze sport'
+          const kloof = g.waarde_kloof !== null ? `, nog ${Math.abs(g.waarde_kloof)} te overbruggen` : ''
+          const deadline = g.dagen_resterend !== null ? `, ${g.dagen_resterend >= 0 ? `nog ${g.dagen_resterend} dagen` : 'deadline verstreken'}` : ''
+          return `- ${g.title} [${scope}, urgentie: ${g.urgency}]${kloof}${deadline}`
+        }).join('\n')}`
       : '\nGeen actieve doelen ingesteld.'
 
     const policyContext = `

@@ -1,5 +1,58 @@
 # CoachOS — Changelog
 
+## v2.4.86 — Goal Engine + Decision Engine regels 4-5 ⚠️ RAAKT PRODUCTIECODE
+**Global vs. Specialist Goals-onderscheid, zoals vastgelegd in
+specialist-api.md v2.4.72, nu daadwerkelijk gebouwd. Ontgrendelt ook
+Decision Engine-regels 4-5 (lange termijn, gebruikersdoel als
+tiebreaker).**
+
+- **Nieuw:** `supabase/goal_engine_kolommen.sql`
+  - `user_goals.goal_scope` ('global'/'specialist', default 'global' —
+    backwards compatible)
+  - `user_goals.specialist_type` (nullable, alleen gevuld bij
+    scope='specialist')
+  - `user_goals.urgency` ('critical'/'high'/'normal'/'low', default
+    'normal')
+  - **Belangrijk, expliciet gecheckt:** `priority` bestond al
+    (integer, weergavevolgorde, auto-opgehoogd) — **niet hergebruikt/
+    overschreven**, `urgency` is een nieuwe, aparte kolom
+- **Nieuw:** `src/lib/specialists/goal-engine.ts`
+  - `berekenGoalProgress()` — deterministisch: dagen tot deadline,
+    ruwe waarde-kloof (`target_value - current_value`)
+  - **Bewust eerlijk begrensd:** claimt NIET te weten of de gebruiker
+    "op schema" ligt volgens een verwachte voortgangscurve (geen
+    vastgelegde startwaarde/-datum om dat op te baseren), en
+    interpreteert NIET welke richting (omhoog/omlaag) "goed" is voor
+    een doel — dat blijft aan de AI, die de doeltitel in natuurlijke
+    taal leest
+  - `haalGoalsMetProgress(userId, specialistType?)` — met
+    `specialistType`: global-doelen + specialist-specifieke doelen van
+    díe specialist. Zonder: alle doelen (Master Coach-gebruik)
+- `src/app/api/goals/route.ts` — `POST`/`PATCH` accepteren nu
+  `goal_scope`/`specialist_type`/`urgency`, met validatie
+  (specialist_type verplicht bij scope='specialist')
+- `src/app/api/specialists/cycling/coach/route.ts`,
+  `.../running/coach/route.ts` — lichte doelen-fetch vervangen door
+  `haalGoalsMetProgress()`, prompt toont nu scope + urgentie + kloof +
+  deadline per doel
+- **`src/lib/specialists/decision-engine.ts`** — regels 4-5 toegevoegd:
+  bij gelijke belasting/risico tussen specialisten (dus geen winnaar via
+  regel 2/3) beslist de hoogste doelurgentie + naaste deadline welke
+  specialist vandaag de hoofdfocus krijgt. Retourneert nog steeds `null`
+  als er geen aanwijsbaar verschil is
+- **`src/app/api/coach/route.ts`** — haalt nu per actieve specialist ook
+  de hoogste doelurgentie op (via Goal Engine) en geeft dat door aan de
+  Decision Engine — **additief, eigen try/catch behouden**
+- `src/app/api/specialists/decision-test/route.ts` — testroute
+  bijgewerkt, toont nu ook `hoogsteUrgentie`/`naasteDeadlineDagen` per
+  specialist
+
+**Decision Engine nu compleet: regels 2, 3, 4, 5 geïmplementeerd.**
+(Regel 1, gezondheid > prestatie, zat al structureel geborgd via
+CoachPolicy, geen aparte Decision Engine-logica voor nodig.)
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.85 — Decision Engine: directe testroute
 **Los van het dagadvies zelf testbaar — gebruikt echte, actuele
 `specialist_summary`'s van je actieve specialisten, geen nepdata. Geen
