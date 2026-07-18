@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.103 — Cycling Specialist Roadmap Fase 2d: Grafieken
+**Wekelijks volume + CTL/ATL/TSB (Coggan-methode). Geen nieuwe npm-
+dependency — CSS-staafdiagram + native SVG-lijndiagram.**
+
+**⚠️ Belangrijke, eerlijk gedocumenteerde beperking:** TSS vereist
+normaliter Normalized Power (NP), berekend uit een seconde-voor-seconde
+vermogensreeks — die wordt niet opgeslagen (alleen avg_watts/max_watts
+per rit). Wat hier berekend wordt is een **schatting** op basis van
+gemiddeld vermogen (`IF ≈ avg_watts/FTP`, `TSS_geschat = uren × IF² ×
+100`) — nauwkeurig bij gelijkmatige ritten, minder bij intervaltraining.
+Dit wordt overal expliciet "geschat" genoemd, nooit als exacte TSS
+gepresenteerd — zowel in code-comments, de API-respons
+(`tss_is_schatting: true`), als een zichtbare waarschuwing in de UI.
+
+- **Nieuw:** `src/lib/specialists/cycling-grafieken.ts`
+  - `berekenGeschatteTSS()` — de schattingsformule hierboven
+  - `haalWekelijkseVolumes()` — km/minuten/gem. vermogen per week
+  - `haalCTLATLTSB()` — publiek gedocumenteerde EWMA-formules (CTL:
+    42-dagen-venster, ATL: 7-dagen-venster, TSB: CTL-ATL), **geen FTP
+    ingesteld → eerlijk lege array, geen gegokte waarden**
+  - Historie wordt 42 dagen ruimer opgehaald dan gevraagd, zodat CTL al
+    "ingegroeid" is vóór de weergegeven periode
+- **Nieuw:** `src/app/api/specialists/cycling/grafieken/route.ts`
+- **Nieuw:** `src/app/coach/cycling/grafieken/page.tsx`
+  - Staafdiagram wekelijks volume (CSS, geen dependency)
+  - Lijndiagram CTL (fitness, blauw) + ATL (vermoeidheid, amber) — eigen
+    lichte SVG-component, geen chart-library nodig
+  - "Vorm" (TSB) prominent getoond, kleur-gecodeerd
+  - Nette leeg-staat + doorverwijzing naar Cycling Profile als er geen
+    FTP is ingesteld
+- `src/app/coach/cycling/page.tsx` — link naar Grafieken toegevoegd
+
+**Fase 2d hiermee afgerond.** Volgende, per de roadmap: Fase 2e
+(Records) of Fase 2f (Ritanalyse).
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.102 — Cycling Specialist Roadmap Fase 2c: Dashboard
 **Voegt de twee dingen toe die de roadmap noemt en die nog ontbraken op
 de Cycling Hub: "volgende training" en "doelvoortgang". De bestaande

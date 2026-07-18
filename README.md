@@ -355,8 +355,10 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 **Zie `docs/cycling-specialist-roadmap-v1.md` voor het volledige,
 goedgekeurde bouwplan.** ✅ Fase 1 (Cycling Foundation, v2.4.91). ✅
 Fase 2a (Adaptive Training Plan Engine, v2.4.92-99). ✅ Fase 2b
-(Trainingskalender, v2.4.100). ✅ **Fase 2c (Dashboard, v2.4.102).**
-Volgende: Fase 2d (Grafieken).
+(Trainingskalender, v2.4.100). ✅ Fase 2c (Dashboard, v2.4.102). ✅
+**Fase 2d (Grafieken, v2.4.103) — CTL/ATL/TSB is een gedocumenteerde
+schatting, geen NP beschikbaar.** Volgende: Fase 2e (Records) of Fase
+2f (Ritanalyse).
 
 ## 🧭 Navigatie-architectuur v1.0 (VOLLEDIG GEÏMPLEMENTEERD, v2.4.93)
 
@@ -376,7 +378,7 @@ uitstelbaar (balk had 6 items, niet 5).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.102 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.103 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -388,7 +390,7 @@ uitstelbaar (balk had 6 items, niet 5).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.102
+- Versie: 2.4.103
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -687,6 +689,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.103 — Cycling Roadmap Fase 2d: Grafieken (volume, geschatte CTL/ATL/TSB via Coggan-methode, geen nieuwe dependency)
 - v2.4.102 — Cycling Roadmap Fase 2c: Dashboard (Vandaag-training + doelvoortgang op de Cycling Hub)
 - v2.4.101 — Fix: tijdzone-bug in 8 datum-berekeningen (5 bestanden), gedeelde isoDatum() in @/utils — bestaand plan aanbevolen opnieuw te genereren
 - v2.4.100 — Cycling Roadmap Fase 2b: Trainingskalender (maandgrid, kleur-gecodeerd, eerlijk over rolling horizon)
