@@ -110,7 +110,7 @@ export default function ActivityDetailPage() {
     <AppShell>
       <div className="text-white px-4 pt-6 pb-10">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => router.push('/progressie')}
+          <button onClick={() => router.push('/activities')}
             className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center active:bg-white/10">
             <ArrowLeft size={20} className="text-slate-400" />
           </button>

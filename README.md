@@ -359,12 +359,13 @@ eerlijk gevlagde gaten (vermogenscurve, duur-specifieke records) —
 vergen een nieuwe datalaag, apart Fase 3-punt, losgekoppeld van de
 Adaptive Training Engine. Volgende, indien gewenst: Fase 3.
 
-## 🧭 Navigatie-architectuur v1.0 (VOLLEDIG GEÏMPLEMENTEERD, v2.4.93)
+## 🧭 Navigatie-architectuur v1.0 (GEÏMPLEMENTEERD, herzien v2.4.111)
 
-**Zie `docs/navigation-architecture-v1.md`.** Definitieve 5-tabs-
-structuur (Home/Coach/Trainer/Specialisten/Voortgang) live. Alle 5
-implementatiestappen afgerond in één levering — Stap 5 bleek niet
-uitstelbaar (balk had 6 items, niet 5).
+**Zie `docs/navigation-architecture-v1.md`.** Definitieve **6-tabs**-
+structuur (Home/Coach/Trainer/Specialisten/Activiteiten/Voortgang) live
+— Activiteiten in v2.4.111 teruggezet als eigen tab (was sectie binnen
+Voortgang sinds v2.4.93, op verzoek herzien: balk is al horizontaal
+scrollbaar).
 
 ## Openstaand
 
@@ -377,7 +378,7 @@ uitstelbaar (balk had 6 items, niet 5).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.110 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.111 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -389,7 +390,7 @@ uitstelbaar (balk had 6 items, niet 5).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.110
+- Versie: 2.4.111
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -688,6 +689,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.111 — Herziening: Activiteiten weer eigen navigatietab (was sectie binnen Voortgang sinds v2.4.93), balk nu 6 tabs
 - v2.4.110 — Vermogenscurve-datalaag: Garmin-integratie (berekening + SQL + tcx-parser + import-route), raakt bestaande import-code, Strava/UI volgen apart
 - v2.4.109 — Nieuw: vermogenscurve-datalaag-spec.md (TE TOETSEN) — Garmin-data blijkt al beschikbaar, Strava-scope al voldoende, kleiner dan aangenomen
 - v2.4.108 — Roadmap volledig bijgewerkt (Fase 1-2 afgerond) + FTP-geschiedenis (bewust vroeg toegevoegd) + Fase 3 uitgebreid met vermogenscurve-datalaag-plan

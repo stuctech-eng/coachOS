@@ -1,26 +1,20 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Dumbbell, TrendingUp, MessageCircle, Star } from 'lucide-react'
+import { Home, Dumbbell, TrendingUp, MessageCircle, Star, Activity } from 'lucide-react'
 import { cn } from '@/utils'
 import { useEffect, useRef } from 'react'
 
-// v2.4.93: Navigatie-architectuur v1.0 — definitieve 5-tabs-structuur.
-// Was: Home/Training/Activiteiten/Progressie/Coach/Instellingen (6 tabs).
-// Nu: Home/Coach/Trainer/Specialisten/Voortgang (5 tabs).
-// - Activiteiten → eerste sectie binnen Voortgang (was /activities,
-//   route blijft bestaan voor diepe links, niet meer in de balk)
-// - Instellingen → account-icoon vanuit Home (zie /home), niet meer in
-//   de balk
-// - Training → Trainer (label/icoon gewijzigd, route ongewijzigd)
-// - Progressie → Voortgang (label gewijzigd, route ongewijzigd)
-// - Specialisten → NIEUW, /specialisten, vervangt de vroegere "Mijn
-//   Coaches"-chips in de Coach-tab
+// v2.4.111: Activiteiten terug als eigen tab, op verzoek — de balk is
+// al horizontaal scrollbaar (overflow-x-auto), dus 6 items is prima.
+// Was in v2.4.93 verplaatst naar een sectie binnen Voortgang; nu weer
+// een eigen tab, Voortgang toont Activiteiten niet meer als sectie.
 const navItems = [
   { href: '/home',         icon: Home,          label: 'Home' },
   { href: '/chat',         icon: MessageCircle, label: 'Coach' },
   { href: '/training',     icon: Dumbbell,      label: 'Trainer' },
   { href: '/specialisten', icon: Star,          label: 'Specialisten' },
+  { href: '/activities',   icon: Activity,      label: 'Activiteiten' },
   { href: '/progressie',   icon: TrendingUp,    label: 'Voortgang' },
 ]
 

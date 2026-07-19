@@ -34,23 +34,26 @@ zijn niet langer "een extra coach naast de hoofdcoach", maar een eigen
 laag met evenveel architecturaal gewicht als Trainer en Coach. Dat
 rechtvaardigt een eigen, gelijkwaardige plek in de hoofdnavigatie.
 
-## Definitieve navigatie (5 tabs)
+## Definitieve navigatie (6 tabs) — herzien v2.4.111
 
 ```
 🏠 Home        — ongewijzigd
 🧠 Coach        — was 'Coach', route /chat, ongewijzigde route
 💪 Trainer      — was 'Training', route /training, naam + icoon gewijzigd
 🚴 Specialisten — NIEUW, eigen overzichtspagina
-📈 Voortgang    — was 'Progressie', route /progressie, naam gewijzigd + uitgebreid
+📊 Activiteiten — teruggezet als eigen tab (zie herziening hieronder)
+📈 Voortgang    — was 'Progressie', route /progressie, naam gewijzigd
 ```
 
-**Profiel/Instellingen:** geen zesde tab — bereikbaar via een
-account-icoon/menu vanuit Home, houdt de balk rustig (5 tabs, binnen de
-gangbare grens voor duim-bereik op een telefoon).
+**Profiel/Instellingen:** geen aparte tab — bereikbaar via een
+account-icoon/menu vanuit Home.
 
-**Activiteiten:** geen aparte tab meer — eerste sectie binnen
-Voortgang, want een activiteit is geen doel op zich, maar een
-gebeurtenis die bijdraagt aan de vraag "ga ik vooruit?"
+**Herziening (v2.4.111): Activiteiten weer een eigen tab.** Oorspronkelijk
+(v2.4.93) verplaatst naar een sectie binnen Voortgang — op verzoek
+teruggedraaid: de balk is al horizontaal scrollbaar (`overflow-x-auto`
+in `BottomNav`), dus een 6e tab is geen probleem, en een eigen tab werkt
+prettiger dan een sectie binnen een andere pagina. Voortgang toont
+Activiteiten niet meer.
 
 ---
 

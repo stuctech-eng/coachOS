@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.111 — Herziening: Activiteiten weer een eigen navigatietab
+**Op verzoek teruggedraaid t.o.v. v2.4.93 — de balk is al horizontaal
+scrollbaar, dus 6 tabs is geen probleem, en een eigen tab werkt
+prettiger dan een sectie binnen Voortgang.**
+
+- `src/components/layout/index.tsx` — Activiteiten terug in
+  `navItems`, tussen Specialisten en Voortgang (nu 6 tabs)
+- `src/app/progressie/page.tsx` — Activiteiten-sectie verwijderd
+  (stond bovenaan sinds v2.4.93), ongebruikte import opgeruimd
+- `src/app/activities/page.tsx` — terugknop verwijderd, is nu een
+  primaire tab zoals de andere hoofdschermen (geen "terug", net als
+  Home/Coach/Trainer/Specialisten/Voortgang)
+- `src/app/activities/[id]/page.tsx` — terugknop weer naar
+  `/activities` (was `/progressie` sinds de v2.4.94-fix)
+- `src/app/settings/garmin-activity-import/page.tsx` — "Bekijk
+  activiteiten"-knop na een import weer naar `/activities`
+- `docs/navigation-architecture-v1.md` — herziening vastgelegd,
+  document bijgewerkt naar 6 tabs
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.110 — Vermogenscurve-datalaag: Garmin-integratie ⚠️ RAAKT BESTAANDE IMPORT-CODE
 **Stap 1-3 van de spec (`vermogenscurve-datalaag-spec.md`): berekening +
 SQL + Garmin-integratie. Strava-integratie en UI volgen apart.**

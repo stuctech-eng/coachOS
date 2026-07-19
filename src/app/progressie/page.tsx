@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Dumbbell, Clock, Star, Battery, Moon, Trophy, Flame, ChevronDown, ChevronUp, BarChart2, ShieldCheck, ShieldAlert, HelpCircle, Sparkles, RefreshCw } from 'lucide-react'
 import { AppShell } from '@/components/layout'
-import { ActiviteitenSectie } from '@/components/ActiviteitenSectie'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
 import { createBrowserClient } from '@supabase/ssr'
@@ -426,14 +425,6 @@ export default function ProgressiePage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-5 pb-8">
         <h1 className="text-2xl font-bold text-white">Voortgang</h1>
-
-        {/* v2.4.93: Activiteiten — eerste sectie, Navigatie-architectuur v1.0.
-            "Een activiteit is geen doel op zich, maar een gebeurtenis die
-            bijdraagt aan de vraag 'ga ik vooruit?'" */}
-        <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Activiteiten</p>
-          <ActiviteitenSectie compact />
-        </div>
 
         {/* 1. Performance AI */}
         {performance ? (
