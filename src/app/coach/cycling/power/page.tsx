@@ -4,6 +4,7 @@ import { ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import Link from 'next/link'
+import { berekenCriticalPower, type CriticalPowerResultaat } from '@/lib/specialists/cycling-critical-power'
 
 // ── Power Center — Cycling Specialist Roadmap v1.0, Fase 1 (v2.4.118) ──
 // Bron: overleg 19 juli 2026. BEWUST GEEN nieuwe SQL, nieuwe API-routes,
@@ -18,8 +19,10 @@ import Link from 'next/link'
 // FUNDAMENT, GEEN EINDPUNT: toekomstige vermogensanalyses (NP, IF, VI,
 // TSS, CTL/ATL/TSB, klim-/sprintanalyse, extra duurpunten 10s/3min/45min)
 // krijgen later een eigen sectie hier — geen nieuwe navigatie nodig.
-// Zie docs/changelog.md v2.4.118 voor de volledige Fase 2/3-lijst van wat
-// hier BEWUST nog niet in zit.
+// v2.4.121: Critical Power-model (CP/W') toegevoegd — zie
+// src/lib/specialists/cycling-critical-power.ts.
+// Zie docs/changelog.md v2.4.118/121 voor de volledige Fase 2/3-lijst
+// van wat hier BEWUST nog niet in zit.
 
 interface VermogensZone {
   zone: number
@@ -106,6 +109,7 @@ export default function PowerCenterPage() {
 
   const wattPerKg = ftp && gewicht ? Math.round((ftp / gewicht) * 100) / 100 : null
   const maxCurveWatt = vermogenscurve.length > 0 ? Math.max(...vermogenscurve.map(p => p.watts)) : 1
+  const criticalPower: CriticalPowerResultaat | null = vermogenscurve.length > 0 ? berekenCriticalPower(vermogenscurve) : null
 
   // FTP-trend: vergelijk laatste twee metingen, zelfde patroon als
   // TrendIcoon elders in de Cycling Hub
@@ -261,7 +265,45 @@ export default function PowerCenterPage() {
           </Card>
         )}
 
-        {/* 5. Ontwikkeling — BEWUST alleen FTP-trend. "Records door de
+        {/* 5. Critical Power-model — Fase 3. Puur berekend uit de al-
+            opgehaalde vermogenscurve (2-30 min punten), geen nieuwe
+            data. Toont expliciet hoeveel punten zijn gebruikt en of
+            de fit betrouwbaar genoeg is — geen schijnzekerheid. */}
+        {!laden && vermogenscurve.length > 0 && !criticalPower && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Critical Power</p>
+            <p className="text-sm text-slate-400">Nog te weinig data in het 2-30 minuten-bereik om te berekenen. Zodra er meer ritten met inspanningen van 5-20 minuten bijkomen, verschijnt dit hier.</p>
+          </Card>
+        )}
+        {!laden && criticalPower && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Critical Power</p>
+            <p className="text-[10px] text-slate-600 mb-4">
+              Geschat uit {criticalPower.gebruikte_punten.length} punt{criticalPower.gebruikte_punten.length !== 1 ? 'en' : ''} ({criticalPower.gebruikte_punten.map(p => labelVoorDuur(p.duration_sec)).join(', ')}) — 2-parameter-model (Monod &amp; Scherrer).
+            </p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">CP</p>
+                <p className="text-2xl font-bold text-white">{criticalPower.cp}<span className="text-sm text-slate-500 font-normal"> W</span></p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">W′</p>
+                <p className="text-2xl font-bold text-white">{Math.round(criticalPower.w_prime / 1000)}<span className="text-sm text-slate-500 font-normal"> kJ</span></p>
+              </div>
+            </div>
+            {!criticalPower.betrouwbaar && (
+              <div className="flex items-start gap-1.5 p-2 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                <p className="text-[10px] text-amber-400/90 leading-relaxed">
+                  {criticalPower.gebruikte_punten.length < 3
+                    ? 'Gebaseerd op minder dan 3 punten — indicatief, nog niet betrouwbaar. Meer data in het 2-30 minuten-bereik verbetert dit.'
+                    : `Fit-kwaliteit (R²=${criticalPower.r_kwadraat}) is lager dan gewenst — de punten volgen het model niet consistent. Mogelijk waren niet alle inspanningen maximaal.`}
+                </p>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* 6. Ontwikkeling — BEWUST alleen FTP-trend. "Records door de
             tijd" en "beste maand/seizoen" bestaan nog niet als
             berekening (alleen all-time-beste wordt bijgehouden) — zie
             changelog v2.4.118, Fase 2. Geen schijndata tonen. */}

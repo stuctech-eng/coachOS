@@ -1,5 +1,45 @@
 # CoachOS — Changelog
 
+## v2.4.121 — Critical Power-model op Power Center
+**Op verzoek gebouwd vooruitlopend op voldoende datapunten — testen
+volgt later zodra er genoeg 5-20 minuten-inspanningen in de
+vermogenscurve zitten. Puur een nieuwe berekening, geen nieuwe SQL,
+geen nieuwe API-call.**
+
+- **Nieuw:** `src/lib/specialists/cycling-critical-power.ts` —
+  `berekenCriticalPower()`, klassiek 2-parameter Critical Power-model
+  (Monod &amp; Scherrer, publiek gedocumenteerd): `P(t) = CP + W'/t`,
+  via lineaire regressie op vermogen tegen 1/duur. Client-safe (geen
+  Supabase-import), werkt op vermogenscurve-data die al op Power
+  Center wordt opgehaald — geen nieuwe fetch nodig.
+- Alleen punten in het fysiologisch geldige bereik **2-30 minuten**
+  worden gebruikt (kortere inspanningen zitten te veel in anaerobe
+  capaciteit, langere onderschatten CP door vermoeidheid)
+- `src/app/coach/cycling/power/page.tsx` — nieuwe sectie "Critical
+  Power" tussen Power Zones en Ontwikkeling: toont CP (watt) en W′
+  (kJ), plus **expliciet hoeveel punten gebruikt zijn en welke**
+- **Eerlijke betrouwbaarheidsindicatie, bewust ingebouwd:** bij minder
+  dan 3 punten of een R² onder 0,9 verschijnt een duidelijke
+  amber-melding — geen quasi-precies getal tonen dat meer zekerheid
+  suggereert dan de data rechtvaardigt. Bij minder dan 2 punten in het
+  geldige bereik: nette lege staat, geen berekening geforceerd.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten
+- Rekenkern los getest met synthetische data (CP=250W, W'=20000J
+  ingebouwd) → model gaf CP=250W, W′≈20057J, R²=1.0 terug — bevestigt
+  dat de regressie correct is geïmplementeerd
+
+**Test-instructies (later, zoals afgesproken):**
+1. Met minder dan 2 punten in het 2-30 min-bereik: lege staat met
+   uitleg, geen berekening
+2. Met 2 punten: berekening verschijnt, amber-waarschuwing "minder dan
+   3 punten"
+3. Met 3+ punten en goede fit (R²≥0,9): geen waarschuwing, CP/W′ direct
+   zichtbaar
+4. Met 3+ punten maar slechte fit (bijv. een niet-maximale inspanning
+   ertussen): amber-waarschuwing met R²-waarde
+
 ## v2.4.120 — Vercel Speed Insights toegevoegd
 **Voorbereidend op het opstartsnelheid-onderzoek dat bewust is uitgesteld
 in v2.4.119 ("geen gok-en-bouw, eerst meten"). Deze levering meet alleen
