@@ -57,6 +57,19 @@ export async function POST(req: NextRequest) {
       const durationMin = parsed.duration_min ?? 0
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
+      // v2.4.112 FIX: activiteitsdatum werd altijd op VANDAAG gezet,
+      // ongeacht de daadwerkelijke datum in het TCX-bestand — een
+      // historische import (bijv. een rit van vorige maand) kwam
+      // daardoor op de verkeerde dag te staan. parsed.start_date (het
+      // <Id>-element, ISO-tijdstip) werd al gebruikt in `notes` voor
+      // duplicaat-detectie, maar nooit voor het daadwerkelijke `date`-
+      // veld. Nu wel: de activiteitsdatum wordt afgeleid uit het
+      // bestand zelf, met `today` alleen als noodgreep als het bestand
+      // geen bruikbare datum bevat.
+      const activiteitDatum = parsed.start_date
+        ? new Date(parsed.start_date).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+        : today
+
       const metrics: Record<string, unknown> = {}
       if (parsed.distance_m) metrics.distance = parsed.distance_m
       if (parsed.avg_hr) metrics.avg_hr = parsed.avg_hr
@@ -153,7 +166,7 @@ export async function POST(req: NextRequest) {
         .insert({
           user_id: user.id,
           activity_id: userActivity?.id || null,
-          date: today,
+          date: activiteitDatum,
           duration: durationMin,
           metrics,
           source: 'garmin',

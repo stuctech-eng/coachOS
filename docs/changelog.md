@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.112 — Fix: Garmin-import gebruikte altijd vandaag als datum + activiteiten wissen
+**Gemeld: twee oude (historische) activiteiten geïmporteerd, maar
+kwamen op de datum van vandaag te staan i.p.v. hun eigen datum.**
+
+### Bug gevonden en gefixt
+`src/app/api/health/garmin-activity-tcx/route.ts` — `activity_sessions.date`
+werd altijd op `today` gezet, ongeacht de daadwerkelijke datum in het
+TCX-bestand. `parsed.start_date` (het `<Id>`-element, ISO-tijdstip) werd
+al gebruikt in `notes` voor duplicaat-detectie, maar nooit voor het
+daadwerkelijke `date`-veld. **Nu:** de activiteitsdatum wordt afgeleid
+uit het bestand zelf (`activiteitDatum`), `today` blijft alleen een
+noodgreep als het bestand geen bruikbare datum bevat.
+
+**Bewust ongewijzigd:** `coach_calls.date` blijft `today` — een
+coach-evaluatie die vandaag wordt aangemaakt voor een net-geïmporteerde
+historische rit hoort logischerwijs op vandaag te staan (dat is wanneer
+de gebruiker gevraagd wordt 'm te evalueren), niet op de historische
+datum.
+
+### Activiteiten wissen — nieuw
+Om de twee verkeerd-gedateerde imports (en toekomstige fouten) op te
+kunnen ruimen zonder tussenkomst.
+- `src/app/api/activities/[id]/route.ts` — nieuwe `DELETE`-methode.
+  Bevestigt eerst ownership (`user_id`) vóór het wissen. Ruimt
+  gekoppelde `coach_call_items` eerst op (voorkomt een mogelijke
+  foreign-key-fout, ongeacht hoe die koppeling in het schema staat).
+  `cycling_power_curve` wordt automatisch meegewist via de al-bestaande
+  `on delete cascade`
+- `src/app/activities/[id]/page.tsx` — wis-knop (prullenbak-icoon)
+  naast de titel, met verplichte bevestigingsstap ("dit kan niet
+  ongedaan worden gemaakt") vóór het definitief wissen
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.111 — Herziening: Activiteiten weer een eigen navigatietab
 **Op verzoek teruggedraaid t.o.v. v2.4.93 — de balk is al horizontaal
 scrollbaar, dus 6 tabs is geen probleem, en een eigen tab werkt

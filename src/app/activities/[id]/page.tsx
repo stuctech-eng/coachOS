@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { ArrowLeft, Sparkles } from 'lucide-react'
+import { ArrowLeft, Sparkles, Trash2 } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 
 // v2.4.41: dynamic import met ssr:false — Leaflet gebruikt `window` en kan
@@ -68,6 +68,26 @@ export default function ActivityDetailPage() {
   const params = useParams()
   const router = useRouter()
   const [session, setSession] = useState<ActivitySession | null>(null)
+  // v2.4.112: wis-functionaliteit, met bevestigingsstap
+  const [wisBevestiging, setWisBevestiging] = useState(false)
+  const [wisBezig, setWisBezig] = useState(false)
+
+  async function wisActiviteit() {
+    setWisBezig(true)
+    try {
+      const res = await fetch(`/api/activities/${params.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.success) {
+        router.push('/activities')
+      } else {
+        setError(data.error || 'Wissen mislukt')
+        setWisBezig(false)
+      }
+    } catch (e) {
+      setError('Wissen mislukt: ' + (e as Error).message)
+      setWisBezig(false)
+    }
+  }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // v2.4.106: Ritanalyse-state, Fase 2f
@@ -114,8 +134,31 @@ export default function ActivityDetailPage() {
             className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center active:bg-white/10">
             <ArrowLeft size={20} className="text-slate-400" />
           </button>
-          <h1 className="text-xl font-bold text-white">{session?.activities?.name || 'Activiteit'}</h1>
+          <h1 className="text-xl font-bold text-white flex-1">{session?.activities?.name || 'Activiteit'}</h1>
+          {session && (
+            <button onClick={() => setWisBevestiging(true)}
+              className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center active:bg-red-500/20">
+              <Trash2 size={18} className="text-slate-400" />
+            </button>
+          )}
         </div>
+
+        {/* v2.4.112: bevestigingsdialoog, wissen is onomkeerbaar */}
+        {wisBevestiging && (
+          <div className="mb-4 bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
+            <p className="text-sm text-white mb-3">Deze activiteit definitief wissen? Dit kan niet ongedaan worden gemaakt.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setWisBevestiging(false)} disabled={wisBezig}
+                className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium disabled:opacity-50">
+                Annuleer
+              </button>
+              <button onClick={wisActiviteit} disabled={wisBezig}
+                className="flex-1 py-2 rounded-xl bg-red-500/20 text-red-400 text-xs font-semibold border border-red-500/30 disabled:opacity-50">
+                {wisBezig ? 'Bezig...' : 'Ja, wis definitief'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {loading && (
           <div className="space-y-3">
