@@ -1,5 +1,44 @@
 # CoachOS — Changelog
 
+## v2.4.125 — Running Specialist: Master Spec + Roadmap vastgelegd
+**Puur documentatie, geen code. Voorbereiding op het bouwen van
+Running naar het niveau van Cycling — "overleg voor bouwen", zoals
+altijd bij grote features.**
+
+- **Nieuw:** `docs/running-specialist-master-spec.md` — het volledige
+  eindbeeld, door de gebruiker aangeleverd (Dashboard, Performance
+  Center, Records, Pace Curve, Pace Zones, Trainingsbelasting,
+  Progressie, Trainingsplan, Kalender, Wedstrijden, toekomstige Garmin
+  API-uitbreidingen)
+- **Nieuw:** `docs/running-specialist-roadmap-v1.md` — gefaseerde
+  uitvoering (Fase 1 Foundation / Fase 2 Professional / Fase 3
+  Intelligence), zelfde aanpak als de Cycling-roadmap: geen ene
+  gigantische levering, kleine testbare stappen
+
+**Bevindingen bij het opstellen van de roadmap — wat al bestaat vs.
+wat nieuw is:**
+- Data Layer + Analysis Engine + Hub-UI bestaan al sinds v2.4.83
+- `tcx-parser.ts` verzamelt al: hartslag, cadans, Running Power
+  (indien sensor aanwezig), snelheid, hoogte, afstand — voor Running-
+  activiteiten net zo goed als voor Cycling
+- **Herbruikbaar in plaats van te dupliceren:** `vermogenscurve.ts` se
+  sliding-window-wiskunde werkt op elke `{tijdSec, waarde}`-reeks, dus
+  rechtstreeks toepasbaar op snelheid voor een Pace Curve; Cycling's
+  hartslagzones-berekening (`berekenHartslagZones()`) is al sport-
+  onafhankelijk en direct herbruikbaar voor Running
+- **Nog niet aanwezig, moet nieuw:** Running Profile (drempeltempo),
+  Pace Zones-berekening, Records, Pace Curve, Progress Center,
+  Grafieken, Trainingsplan, Kalender
+
+**Openstaande ontwerpbeslissingen** (vastgelegd in de roadmap, bij
+start van Fase 1 te beslissen): welk publiek pace-zone-model (Daniels
+VDOT / Pfitzinger), of trainingsdagen/beschikbare uren gedeeld worden
+tussen Cycling en Running of apart blijven, en welke recordsafstanden
+automatisch worden opgeslagen vs. alleen getoond als data het toelaat.
+
+**Vervolg:** Fase 1 (Running Foundation — Profile, Pace Zones,
+Hartslagzones, Dashboard) bouwen zodra akkoord.
+
 ## v2.4.124 — Z4-zonenaam verkort (bleef wrappen ondanks v2.4.123)
 **Gemeld met screenshot: Z4 wrapte nog steeds naar 2 regels, óók na
 volledig sluiten/heropenen van de PWA. De v2.4.123-layoutfix
