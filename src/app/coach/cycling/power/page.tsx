@@ -247,11 +247,9 @@ export default function PowerCenterPage() {
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Power Zones</p>
             <div className="flex flex-col gap-2.5">
               {vermogenszones.map(zone => (
-                <div key={zone.zone} className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm text-slate-300">Z{zone.zone} — {zone.naam}</span>
-                  </div>
-                  <span className="text-sm font-semibold text-white">
+                <div key={zone.zone} className="flex items-start justify-between gap-3">
+                  <span className="text-sm text-slate-300 flex-1 min-w-0">Z{zone.zone} — {zone.naam}</span>
+                  <span className="text-sm font-semibold text-white whitespace-nowrap flex-shrink-0">
                     {zone.van_watt}{zone.tot_watt !== null ? `–${zone.tot_watt}` : '+'} W
                   </span>
                 </div>

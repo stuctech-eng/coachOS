@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.123 — Fix: Power Zones-weergave brak bij lange zonenamen
+**Gemeld met screenshot: Z4 ("Drempel (Lactate Threshold)") wrapte naar
+2 regels, waardoor ook de wattwaarde rechts ("228–263 W") uiteenviel in
+"228–263" en "W" op aparte regels — lelijk en onduidelijk.**
+
+- `src/app/coach/cycling/power/page.tsx` — Power Zones-rij: `items-center`
+  → `items-start` (voorkomt scheve verticale uitlijning als de naam
+  wrapt), zonenaam krijgt `flex-1 min-w-0` (mag nu netjes zelf wrappen),
+  wattwaarde krijgt `whitespace-nowrap flex-shrink-0` (breekt nooit meer
+  middenin, blijft altijd op één regel rechts uitgelijnd)
+- `src/app/settings/cycling-profile/page.tsx` — zelfde fix toegepast op
+  zowel Vermogenszones als Hartslagzones (identiek patroon, zelfde
+  risico — proactief meegenomen al was dit niet expliciet gemeld)
+
+**Test-instructies:**
+1. Power Center → Power Zones-kaart → Z4 ("Drempel (Lactate
+   Threshold)") — naam mag over 2 regels lopen, wattwaarde rechts moet
+   altijd op één regel blijven staan
+2. Settings → Cycling Profile — zelfde check voor zowel Vermogenszones
+   als Hartslagzones
+
 ## v2.4.122 — Vermogenscurve uitgebreid naar 12 duurpunten
 **10s, 3min en 45min toegevoegd aan de vermogenscurve — de volledige
 klassieke power-curve-set. Kleine, geïsoleerde wijziging: alleen de

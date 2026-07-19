@@ -154,9 +154,9 @@ export default function CyclingProfielPage() {
               <p className="text-sm font-semibold text-white">Vermogenszones</p>
             </div>
             {vermogenszones.map(z => (
-              <div key={z.zone} className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">Z{z.zone} · {z.naam}</span>
-                <span className="text-white font-medium">{z.van_watt}{z.tot_watt !== null ? `–${z.tot_watt}` : '+'}W</span>
+              <div key={z.zone} className="flex items-start justify-between gap-2 text-xs">
+                <span className="text-slate-400 flex-1 min-w-0">Z{z.zone} · {z.naam}</span>
+                <span className="text-white font-medium whitespace-nowrap flex-shrink-0">{z.van_watt}{z.tot_watt !== null ? `–${z.tot_watt}` : '+'}W</span>
               </div>
             ))}
           </Card>
@@ -169,9 +169,9 @@ export default function CyclingProfielPage() {
               <p className="text-sm font-semibold text-white">Hartslagzones</p>
             </div>
             {hartslagzones.map(z => (
-              <div key={z.zone} className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">Z{z.zone} · {z.naam}</span>
-                <span className="text-white font-medium">{z.van_bpm}–{z.tot_bpm} bpm</span>
+              <div key={z.zone} className="flex items-start justify-between gap-2 text-xs">
+                <span className="text-slate-400 flex-1 min-w-0">Z{z.zone} · {z.naam}</span>
+                <span className="text-white font-medium whitespace-nowrap flex-shrink-0">{z.van_bpm}–{z.tot_bpm} bpm</span>
               </div>
             ))}
           </Card>
