@@ -1,5 +1,53 @@
 # CoachOS — Changelog
 
+## v2.4.122 — Vermogenscurve uitgebreid naar 12 duurpunten
+**10s, 3min en 45min toegevoegd aan de vermogenscurve — de volledige
+klassieke power-curve-set. Kleine, geïsoleerde wijziging: alleen de
+duur-lijst in de al-bestaande berekening, geen nieuwe SQL (geen
+CHECK-constraint op `duration_sec`), geen nieuwe API-route.**
+
+- `src/lib/vermogenscurve.ts` — `CURVE_DUREN` uitgebreid van 9 naar 12
+  punten: `5, 10, 15, 30, 60, 180, 300, 600, 1200, 1800, 2700, 3600`
+  (was: `5, 15, 30, 60, 300, 600, 1200, 1800, 3600`)
+- `docs/vermogenscurve-datalaag-spec.md` — bijgewerkt als bron van
+  waarheid (duur-lijst + SQL-commentaar)
+- Geen wijziging nodig aan `labelVoorDuur()` op Power Center of het
+  Grafieken-scherm — beide formatteren al correct voor 10s (< 60s-tak)
+  en 45min (< 3600s-tak)
+
+**⚠️ Bewuste beperking, zoals eerder afgesproken (v2.4.118-overleg):
+GEEN terugwerkende kracht.** Activiteiten geïmporteerd vóór v2.4.122
+krijgen deze drie nieuwe duurpunten niet — de ruwe seconde-voor-seconde
+vermogensdata is na het parsen niet bewaard (bewuste keuze, zie spec),
+dus niet met terugwerkende kracht herberekenbaar. Nieuwe Garmin-imports
+vanaf nu krijgen wel alle 12 punten. Gevolg: gebruikers kunnen tijdelijk
+een mix van 9- en 12-punten-curves zien totdat oudere activiteiten uit
+de geschiedenis rollen of opnieuw geïmporteerd worden.
+
+**Ook relevant voor Critical Power (v2.4.121):** het CP-model gebruikt
+alleen punten tussen 2-30 minuten (120-1800s). Het nieuwe 45min-punt
+(2700s) valt daarbuiten en wordt dus NIET meegenomen in de CP-
+berekening — dat is bewust, het model is fysiologisch alleen geldig in
+dat bereik. Het 3min-punt (180s) valt er wél binnen en kan de CP-fit
+verbeteren zodra er nieuwe data mee binnenkomt.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten
+- Rekenkern los getest met een synthetische 90-minuten-tijdreeks → alle
+  12 duurpunten correct berekend, met de verwachte afname in vermogen
+  bij langere duren
+- Rand-test met een korte 4-minuten-rit → curve stopt terecht bij 3min,
+  5min+ correct weggelaten (rit te kort)
+
+**Test-instructies:**
+1. Nieuwe Garmin-activiteit importeren (na deze deploy) → Power Center
+   → Vermogenscurve moet 12 balken tonen (was 9), inclusief 10s, 3min
+   en 45min (bij een rit lang genoeg voor 45min)
+2. Bestaande, al-geïmporteerde activiteiten: curve blijft ongewijzigd
+   op de oude 9 punten — dat is verwacht, geen bug
+3. Critical Power-sectie: 45min-punt verschijnt niet in "gebruikte
+   punten" (bewust, buiten het 2-30 min-bereik)
+
 ## v2.4.121 — Critical Power-model op Power Center
 **Op verzoek gebouwd vooruitlopend op voldoende datapunten — testen
 volgt later zodra er genoeg 5-20 minuten-inspanningen in de

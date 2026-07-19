@@ -36,8 +36,15 @@ streams expliciet opgegeven door de API zelf).
 **Output:** het beste gemiddelde vermogen over een vaste reeks
 duren, via een schuivend venster (sliding window):
 ```
-5s, 15s, 30s, 1min, 5min, 10min, 20min, 30min, 60min
+5s, 10s, 15s, 30s, 1min, 3min, 5min, 10min, 20min, 30min, 45min, 60min
 ```
+**Bijgewerkt in v2.4.122** — oorspronkelijk 9 punten (zonder 10s/3min/
+45min), uitgebreid naar de volledige klassieke power-curve-set van 12
+punten op verzoek. GEEN terugwerkende kracht: activiteiten geïmporteerd
+vóór v2.4.122 hebben deze drie nieuwe duren niet (de ruwe seconde-data
+is na het parsen niet bewaard, dus niet met terugwerkende kracht
+herberekenbaar).
+
 Voor ritten korter dan een bepaalde duur wordt die duur simpelweg
 overgeslagen (geen "beste 60 minuten" voor een rit van 40 minuten).
 
@@ -53,7 +60,7 @@ create table cycling_power_curve (
   id uuid primary key default gen_random_uuid(),
   activity_id uuid not null references activity_sessions(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
-  duration_sec integer not null,  -- 5, 15, 30, 60, 300, 600, 1200, 1800, 3600
+  duration_sec integer not null,  -- 5, 10, 15, 30, 60, 180, 300, 600, 1200, 1800, 2700, 3600
   watts integer not null,
   created_at timestamptz not null default now(),
   unique(activity_id, duration_sec)

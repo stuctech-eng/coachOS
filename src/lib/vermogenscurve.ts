@@ -20,8 +20,14 @@ export interface VermogensCurvePunt {
   watts: number
 }
 
-// Standaard duren voor de curve — vaste, gedocumenteerde set
-const CURVE_DUREN = [5, 15, 30, 60, 300, 600, 1200, 1800, 3600]
+// Standaard duren voor de curve — vaste, gedocumenteerde set.
+// v2.4.122: 10s, 3min (180s) en 45min (2700s) toegevoegd op verzoek —
+// volledige klassieke power-curve-set (12 punten i.p.v. 9). GEEN
+// terugwerkende kracht: bestaande activiteiten hebben geen ruwe
+// seconde-data meer bewaard om deze drie nieuwe duren alsnog te
+// berekenen (zie docs/vermogenscurve-datalaag-spec.md) — nieuwe
+// duurpunten verschijnen alleen bij nieuwe Garmin-imports vanaf nu.
+const CURVE_DUREN = [5, 10, 15, 30, 60, 180, 300, 600, 1200, 1800, 2700, 3600]
 
 export function berekenVermogenscurve(reeks: VermogensPunt[]): VermogensCurvePunt[] {
   if (reeks.length < 2) return []
