@@ -67,13 +67,24 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Activiteit niet gevonden' }, { status: 404 })
     }
 
-    // v2.4.112: gekoppelde coach_call_items eerst opruimen — voorkomt een
-    // mogelijke foreign-key-fout bij het verwijderen van de activiteit
-    // zelf, ongeacht hoe die koppeling in het schema is ingesteld
+    // v2.4.113: FIX — "Wissen mislukt" bleek te komen door een tweede,
+    // gemiste foreign-key: garmin_activity_imports.activity_session_id
+    // verwijst ook naar activity_sessions (zie garmin-activity-tcx/
+    // route.ts, waar dit veld wordt gezet bij een bevestigde import).
+    // coach_call_items alleen opruimen (v2.4.112) was niet genoeg.
+    // Nu: beide gekoppelde tabellen opgeruimd vóór het wissen zelf.
     try {
       await supabase.from('coach_call_items').delete().eq('activity_session_id', params.id)
     } catch (linkErr) {
       console.error('[activities DELETE] Opruimen coach_call_items mislukt (gaat door):', linkErr)
+    }
+    try {
+      // Import-record zelf niet wissen (historische waarde: wanneer/
+      // hoe geïmporteerd), alleen de verwijzing naar de nu-te-wissen
+      // activiteit loskoppelen
+      await supabase.from('garmin_activity_imports').update({ activity_session_id: null }).eq('activity_session_id', params.id)
+    } catch (linkErr) {
+      console.error('[activities DELETE] Loskoppelen garmin_activity_imports mislukt (gaat door):', linkErr)
     }
 
     const { error } = await supabase
@@ -82,11 +93,16 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       .eq('id', params.id)
       .eq('user_id', user.id)
 
-    if (error) throw error
+    if (error) {
+      // v2.4.113: foutdetail nu wél teruggegeven — "Wissen mislukt"
+      // zonder reden was niet te diagnosticeren zonder serverlogs
+      console.error('[activities DELETE] Database-fout:', error)
+      return NextResponse.json({ error: `Wissen mislukt: ${error.message || error.code || 'onbekende databasefout'}` }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Activiteit wissen fout:', error)
-    return NextResponse.json({ error: 'Wissen mislukt' }, { status: 500 })
+    return NextResponse.json({ error: `Wissen mislukt: ${(error as Error).message || 'onbekende fout'}` }, { status: 500 })
   }
 }

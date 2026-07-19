@@ -1,5 +1,24 @@
 # CoachOS — Changelog
 
+## v2.4.113 — Fix: "Wissen mislukt" — tweede, gemiste foreign-key
+**Gevonden bij test: v2.4.112 ruimde alleen `coach_call_items` op vóór
+het wissen, maar dat bleek niet de (enige) blokkade.**
+
+- `src/app/api/activities/[id]/route.ts` (DELETE)
+  - **Tweede gekoppelde tabel gevonden:** `garmin_activity_imports.
+    activity_session_id` verwijst ook naar `activity_sessions` (gezet
+    bij een bevestigde import, zie `garmin-activity-tcx/route.ts`).
+    Wordt nu losgekoppeld (`activity_session_id: null`) vóór het
+    wissen — het import-record zelf blijft bestaan (historische
+    waarde: wanneer/hoe geïmporteerd), alleen de verwijzing naar de
+    nu-te-wissen activiteit verdwijnt
+  - **Foutmelding nu specifiek** i.p.v. het generieke "Wissen mislukt"
+    zonder reden — geeft voortaan de daadwerkelijke database-foutmelding
+    terug, zodat een volgend probleem (als dat zich voordoet) meteen
+    zichtbaar is zonder serverlogs nodig te hebben
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.112 — Fix: Garmin-import gebruikte altijd vandaag als datum + activiteiten wissen
 **Gemeld: twee oude (historische) activiteiten geïmporteerd, maar
 kwamen op de datum van vandaag te staan i.p.v. hun eigen datum.**
