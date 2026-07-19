@@ -4,8 +4,9 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
-import { genereerTrainingsplan } from '@/lib/specialists/training-plan-generator'
-import { voerDailyAdjustmentUit } from '@/lib/specialists/training-plan-adjuster'
+import { genereerTrainingsplanCore } from '@/lib/specialists/training-plan-engine/core'
+import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
+import { runningAdapter } from '@/lib/specialists/training-plan-engine/running-adapter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -18,11 +19,12 @@ async function getUser() {
   return user
 }
 
-// ── Adaptive Training Plan Engine — Fase 1, API-laag ────────────────────
-// GET: haalt het actuele actieve plan op — voert EERST de Daily
-// Adjustment Layer uit (5 triggers, zie training-plan-adjuster.ts), dan
-// pas de actuele sessies teruggeven. Zo is elke keer dat de gebruiker
-// zijn plan bekijkt, het al up-to-date.
+// ── Adaptive Training Plan Engine (Running) — Fase 1, API-laag ─────────
+// Bron: overleg 19 juli 2026 — Running Adapter bovenop de gedeelde
+// Training Plan Engine Core (zie training-plan-engine/).
+// GET: haalt het actuele actieve Running-plan op — voert EERST de Daily
+// Adjustment Layer uit (5 triggers, zie training-plan-engine/adjuster-core.ts),
+// dan pas de actuele sessies teruggeven.
 // POST: genereert een volledig nieuw plan (Plan Generator).
 
 export async function GET() {
@@ -35,7 +37,7 @@ export async function GET() {
       .from('training_plans')
       .select('*')
       .eq('athlete_id', user.id)
-      .eq('sport', 'cycling')
+      .eq('sport', 'running')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -43,9 +45,9 @@ export async function GET() {
 
     if (!plan) return NextResponse.json({ plan: null, sessies: [], aanpassingen: [] })
 
-    let aanpassingen: Awaited<ReturnType<typeof voerDailyAdjustmentUit>> = []
+    let aanpassingen: Awaited<ReturnType<typeof voerDailyAdjustmentUitCore>> = []
     try {
-      aanpassingen = await voerDailyAdjustmentUit(user.id, plan.id)
+      aanpassingen = await voerDailyAdjustmentUitCore(user.id, plan.id, runningAdapter)
     } catch (adjustErr) {
       console.error('[training-plan GET] Daily Adjustment Layer mislukt:', adjustErr)
     }
@@ -72,10 +74,10 @@ export async function POST() {
 
     // Bestaand actief plan afsluiten vóór een nieuw plan wordt gemaakt —
     // nooit twee actieve plannen tegelijk. Sport-filter voorkomt dat dit
-    // per ongeluk een actief Running-plan afsluit.
-    await supabase.from('training_plans').update({ status: 'abandoned' }).eq('athlete_id', user.id).eq('sport', 'cycling').eq('status', 'active')
+    // per ongeluk een actief Cycling-plan afsluit.
+    await supabase.from('training_plans').update({ status: 'abandoned' }).eq('athlete_id', user.id).eq('sport', 'running').eq('status', 'active')
 
-    const resultaat = await genereerTrainingsplan(user.id)
+    const resultaat = await genereerTrainingsplanCore(user.id, runningAdapter)
     return NextResponse.json(resultaat)
   } catch (err) {
     console.error('[training-plan POST]', err)

@@ -1,5 +1,80 @@
 # CoachOS — Changelog
 
+## v2.4.135 — HERSTEL: ontbrekende Training Plan Engine-bestanden
+**Oorzaak van de "The string did not match the expected pattern"-fout
+op het Running Trainingsplan-scherm: `src/app/api/specialists/running/
+training-plan/route.ts` — het bestand dat de pagina als EERSTE aanroept
+— bleek niet live te staan. Bij controle bleken meerdere bestanden uit
+v2.4.132 (Training Plan Engine Core + Adapters) nooit gecommit te zijn.**
+
+**Root cause (bij mezelf, niet bij de gebruiker):** in latere sessies
+herstelde ik mijn werkstaat door de repo opnieuw te clonen + alleen de
+láátst-geleverde zip terug te zetten. Als een eerdere levering (zoals
+v2.4.132) op dat moment nog niet gecommit was door de gebruiker, ging
+die cumulatief verloren — elke volgende levering bouwde zonder het te
+weten voort op een onvolledige basis. Dit is nu volledig gereconstrueerd
+en opnieuw gevalideerd.
+
+### Ontbrekende bestanden hersteld
+- `src/lib/specialists/training-plan-engine/core.ts`
+- `src/lib/specialists/training-plan-engine/adjuster-core.ts`
+- `src/lib/specialists/training-plan-engine/cycling-adapter.ts`
+- `src/lib/specialists/training-plan-engine/running-adapter.ts`
+- `src/app/api/specialists/running/training-plan/route.ts` (**de
+  daadwerkelijke oorzaak van de fout in de screenshot** — ontbrak
+  volledig, dus `/coach/running/trainingsplan` kreeg een 404 in plaats
+  van JSON terug op zijn eerste fetch-aanroep)
+- `supabase/training_plans_sport_kolom.sql`
+
+### Extra gat gevonden en gedicht tijdens de controle
+`src/app/api/specialists/cycling/training-plan/route.ts` miste ook nog
+de `sport`-filter (was blijven staan op de oude, ongepatchte versie).
+Toegevoegd aan zowel de GET-query als de "sluit bestaand plan af"-POST-
+stap — zelfde fix als eerder al bij de Running-route en
+`cycling-rit-analyse.ts` was doorgevoerd.
+
+### Refactor nu écht afgerond
+`training-plan-generator.ts` en `training-plan-adjuster.ts` stonden nog
+als hun OUDE, zelfstandige versie (nog werkend, maar gebruikte de
+nieuwe Core niet). Nu alsnog omgezet naar de dunne wrappers zoals
+bedoeld — Cycling gebruikt vanaf nu ook daadwerkelijk dezelfde
+Core+Adapter als Running, geen tweede parallelle implementatie meer.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten, alle vier training-plan-
+  routes (cycling + running, elk met hun explain-variant) aanwezig in
+  de build-output
+- Gedrag-behoudendheid Cycling **opnieuw bevestigd** na de reconstructie:
+  108 mesocyclus-combinaties + 28 sessieverdeling-combinaties, nog
+  steeds allemaal byte-voor-byte identiek aan de oorspronkelijke
+  implementatie
+
+**⚠️ Controleer of je de SQL al eerder hebt uitgevoerd** (bij de
+v2.4.132-melding) — het commando hieronder is veilig om opnieuw te
+draaien (`IF NOT EXISTS`), dus twijfel je, voer 'm gerust nogmaals uit:
+
+```sql
+alter table training_plans add column if not exists sport text not null default 'cycling';
+
+create index if not exists idx_training_plans_athlete_sport
+  on training_plans(athlete_id, sport, status);
+
+comment on column training_plans.sport is
+  'Welke specialist dit plan beheert (cycling/running/...). Bestaande rijen krijgen automatisch cycling als default.';
+```
+
+**Test-instructies:**
+1. **Eerst de SQL controleren/uitvoeren**
+2. Running Hub → Trainingsplan → moet nu laden zonder foutmelding
+   (leeg-staat met "Genereer je trainingsplan"-knop als er nog geen
+   plan is)
+3. Cycling: trainingsplan moet zich nog steeds identiek gedragen als
+   vóór v2.4.132 — genereer een nieuw plan en vergelijk desgewenst met
+   een eerder gegenereerd plan
+4. **Belangrijkste check:** dit hele bestandenpakket in één keer
+   committen en pushen, niet gedeeltelijk — dat voorkomt precies dit
+   soort ontbrekend-bestand-problemen
+
 ## v2.4.134 — Running Trainingsplan UI (Fase 3, laatste stap) + documentatie bijgewerkt
 **Laatste van de drie afgesproken fasen (Engine ✅ → Coach-uitleglaag ✅
 → UI ✅). Hiermee is het Running Adaptive Training Plan volledig
