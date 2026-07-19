@@ -1,31 +1,51 @@
 # CoachOS — Changelog
 
-## v2.4.119 — Documentatie: Strava API-blokkade bevestigd in de praktijk
-**Puur documentatie. Bevestiging: Strava API Settings toonde `reikwijdte:
-read` i.p.v. `activity:read_all`, en `/api/strava/sync` gaf een echte
-`403` — op de bestaande code, vóórdat de Strava-vermogenscurve-code
-(nog niet gecommit) zelfs was uitgerold. Bevestigt dat dit het account-
-niveau-slot is (Strava's beleidswijziging per 30 juni 2026), geen
-scope- of code-fout.**
+## v2.4.118 — Power Center (Fase 1, Cycling Specialist Roadmap)
+**Nieuw analysecentrum dat FTP, vermogenscurve, persoonlijke records en
+Power Zones samenvoegt tot één professioneel geheel — GEEN nieuwe SQL,
+GEEN nieuwe API-routes, GEEN nieuwe berekeningen, GEEN wijzigingen aan
+de parser. Puur samenvoeging van vier al-bestaande endpoints.**
 
-- `README.md` — bestaande sectie "Strava API-toegang — externe
-  beleidswijziging" bijgewerkt:
-  - Praktijkbevestiging toegevoegd (19 juli 2026, 403 + verkeerde scope)
-  - **Garmin-alternatief geactualiseerd** — stond nog als "handmatige
-    screenshot per activiteit" (verouderd, uit een eerdere sessie vóór
-    de TCX-import bestond), nu correct beschreven als volwaardige
-    TCX-import met route/vermogenscurve/etc. — **dit is nu de praktisch
-    gebruikte databron**
-  - Status van de Strava-vermogenscurve-code (v2.4.118) toegevoegd: code correct
-    en klaar, maar niet te testen/gebruiken zolang de 403 aanhoudt —
-    geen reden om terug te draaien, geen reden om nu meer tijd erin te
-    steken
-- `docs/cycling-specialist-roadmap-v1.md` — status-header, Strava-
-  sectie en samenvattende tabel bijgewerkt: Strava-pad is "code klaar,
-  extern geblokkeerd", niet meer "nog te bouwen" of "afgerond"
+- **Nieuw:** `src/app/coach/cycling/power/page.tsx` — haalt in parallel op:
+  - `/api/specialists/cycling/grafieken` → vermogenscurve (9 duurpunten:
+    5s/15s/30s/1min/5min/10min/20min/30min/60min) + overige records
+    (afstand/hoogte/snelheid/grootste week)
+  - `/api/specialists/cycling/profile` → FTP + Power Zones (Z1-Z7,
+    Coggan-model)
+  - `/api/specialists/cycling/ftp-geschiedenis` → FTP-trend over tijd
+  - `/api/profile` → gewicht, voor W/kg (FTP ÷ gewicht)
+- Indeling: Power-overzicht (FTP + W/kg) → Vermogenscurve (grafiek) →
+  Persoonlijke records per duur (elk vermogenscurve-punt IS het
+  all-time record voor die duur) → Overige records → Power Zones →
+  Ontwikkeling (FTP-historie)
+- `src/app/coach/cycling/page.tsx` — Power Center-knop toegevoegd,
+  direct onder Progress Center
 
-**Geen code-wijziging** — dit is uitsluitend het vastleggen van de
-externe blokkade zodat een volgende sessie hier geen tijd aan verspilt.
+**⚠️ Bewust NIET in Fase 1 (voorkomt schijndata — alleen all-time-beste
+per duur wordt bijgehouden, geen tijdreeks van records):**
+- Records door de tijd, beste maand, beste seizoen
+- Normalized Power (NP), Intensity Factor (IF), Variability Index (VI)
+- TSS/CTL/ATL/TSB-integratie op deze pagina (staat al apart op
+  Grafieken-scherm, geschat op gemiddeld vermogen)
+- Extra duurpunten 10s/3min/45min (vergt parser-wijziging, geldt dan
+  alleen voor nieuwe imports — zie `docs/vermogenscurve-datalaag-spec.md`)
+- Klimanalyse, sprintanalyse
+
+**Ontwerp-principe:** het Power Center is een fundament, geen eindpunt
+— toekomstige vermogensanalyses (bovenstaande lijst) krijgen later een
+extra sectie op déze pagina, niet een nieuwe navigatie-ingang.
+
+**Test-instructies:**
+1. Ga naar Cycling Hub → Power Center
+2. Zonder FTP ingesteld: lege staat met knop naar Cycling Profile
+3. Met FTP maar zonder gewicht: W/kg toont "gewicht ontbreekt"
+4. Met FTP + gewicht: W/kg correct berekend
+5. Vermogenscurve leeg (geen Garmin-import sinds v2.4.110): sectie
+   verborgen, geen lege grafiek
+6. FTP-historie met 1 punt: geen trend-pijltje, wel de melding dat een
+   trend zichtbaar wordt bij een volgende meting
+7. FTP-historie met 2+ punten: trend-pijltje (stijgend/dalend/stabiel)
+   naast het FTP-getal in Power-overzicht
 
 ## v2.4.117 — Roadmap-document bijgewerkt: vermogenscurve Garmin-pad afgerond
 **Puur documentatie. Bevinding: het document stond nog op "🔜 Uitbreiding

@@ -266,6 +266,17 @@ export default function CyclingHubPage() {
               <span className="text-amber-400 text-lg">→</span>
             </button>
 
+            {/* v2.4.118: link naar Power Center — Fase 1, FTP/vermogenscurve/
+                records/zones samengevoegd tot één analysecentrum */}
+            <button onClick={() => router.push('/coach/cycling/power')}
+              className="w-full p-4 rounded-2xl bg-gradient-to-r from-yellow-500/20 to-yellow-500/5 border border-yellow-500/30 flex items-center justify-between active:bg-yellow-500/25">
+              <div className="text-left">
+                <p className="text-sm font-semibold text-white">Power Center</p>
+                <p className="text-xs text-slate-400">FTP, vermogenscurve, records en Power Zones</p>
+              </div>
+              <span className="text-yellow-400 text-lg">→</span>
+            </button>
+
             {/* v2.4.103: link naar Grafieken — Fase 2d */}
             <button onClick={() => router.push('/coach/cycling/grafieken')}
               className="w-full p-4 rounded-2xl bg-slate-800/70 border border-slate-700/50 flex items-center justify-between active:bg-slate-700">
