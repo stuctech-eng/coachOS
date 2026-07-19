@@ -1,5 +1,46 @@
 # CoachOS — Changelog
 
+## v2.4.130 — Running Trainingsbelasting (Fase 2, tweede levering)
+**Tweede stap van "rijtje af": Trainingsbelasting. Zelfde publiek
+gedocumenteerde Coggan-methode als Cycling (CTL 42-dagen/ATL 7-dagen
+EWMA) — enige verschil is een snelheid-gebaseerde Intensity Factor
+i.p.v. vermogen-gebaseerd. Geen nieuwe SQL.**
+
+- **Nieuw in `running-grafieken.ts`:**
+  - `berekenDrempelsnelheidKmh(vdot)` — drempelsnelheid afgeleid uit
+    VDOT, midden van de al-bestaande Threshold Pace Zone-band (84-88%
+    VO2max). Geverifieerd: bij VDOT 49,8 komt dit uit op 13,8 km/u,
+    exact binnen de eerder (v2.4.126) geverifieerde Threshold-pace-
+    range van 4:16-4:26/km.
+  - `berekenGeschatteRunningTSS()` — `IF = gem_snelheid/drempelsnelheid`,
+    `TSS = uren × IF² × 100`. Los getest: 60 minuten op precies
+    drempeltempo geeft exact TSS 100 (de definiërende eigenschap van
+    deze formule — bevestigt dat de implementatie klopt).
+  - `haalRunningCTLATLTSB()` — spiegelbeeld van de Cycling-versie,
+    zelfde 42/7-dagen-vensters. Geeft eerlijk een lege lijst terug als
+    er geen VDOT is (geen gegokte drempelsnelheid).
+- `src/app/api/specialists/running/dashboard/route.ts` —
+  `belasting`-array toegevoegd aan de response
+- `src/app/coach/running/performance/page.tsx` — Trainingsbelasting-
+  kaart toegevoegd (lijndiagram CTL/ATL + Vorm-indicator (TSB), zelfde
+  `LijnGrafiek`-component als het Cycling Grafieken-scherm)
+
+**Eerlijke beperking, expliciet in de UI:** schatting op basis van
+gemiddelde snelheid — minder nauwkeurig bij heuvelachtig terrein
+(langzamer bergop zonder dat dit meer "belasting" betekent) of
+intervaltraining (gemiddelde mist de pieken), zelfde soort beperking
+als bij Cycling's TSS-schatting.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten
+- Drempelsnelheid-formule getest tegen de al eerder geverifieerde VDOT-
+  waarde (49,8 → 13,8 km/u, consistent met eerdere Threshold-zone-berekening)
+- TSS-formule getest tegen de wiskundige referentie-eigenschap
+  (1 uur op drempeltempo = TSS 100, per definitie)
+
+**Rijtje resterend:** Progressie, Adaptief Trainingsplan, Kalender,
+Grafieken.
+
 ## v2.4.129 — Running Performance Center (Fase 2, eerste levering)
 **Eerste bouw-stap van Running Fase 2 (Professional). Zelfde aanpak als
 Cycling's Power Center (v2.4.118): een nieuw analysecentrum dat

@@ -8,6 +8,14 @@ import { isoDatum } from '@/utils'
 
 const RUNNING_ACTIVITEIT_NAMEN = ['Hardlopen']
 
+export interface DagelijkseBelasting {
+  datum: string
+  geschatte_tss: number
+  ctl: number
+  atl: number
+  tsb: number
+}
+
 export interface RunningDashboard {
   week_km: number
   maand_km: number
@@ -126,6 +134,102 @@ export async function haalRunningDashboard(userId: string): Promise<RunningDashb
     langste_duurloop: langsteDuurloop,
     snelste_training: snelsteTraining,
   }
+}
+
+// ── Trainingsbelasting — Fase 2, tweede levering ────────────────────────
+// Bron: overleg 19 juli 2026. Zelfde publiek gedocumenteerde Coggan-
+// methode als Cycling (CTL 42-dagen/ATL 7-dagen EWMA — sport-
+// onafhankelijk). Enige verschil: Intensity Factor is hier snelheid-
+// gebaseerd i.p.v. vermogen-gebaseerd.
+//
+// IF_running = gemiddelde_snelheid / drempelsnelheid  (i.p.v. watt/FTP)
+// Drempelsnelheid komt uit de al-bestaande Threshold Pace Zone
+// (midden van de 84-88%-VDOT-band) — geen nieuw profielveld nodig.
+//
+// ⚠️ EERLIJKE BEPERKING, zelfde als bij Cycling: dit is een SCHATTING
+// op basis van gemiddelde snelheid, geen Normalized Graded Pace. Minder
+// nauwkeurig bij sterk wisselend terrein (heuvels) of bij intervaltraining
+// dan bij gelijkmatige duurlopen.
+
+export function berekenDrempelsnelheidKmh(vdot: number): number {
+  // Herbruikt dezelfde VO2/%VO2max-wiskunde als running-zones.ts, hier
+  // lokaal om een circulaire import (running-zones <-> running-grafieken)
+  // te vermijden — beide zijn kleine, stabiele formules.
+  const percentVo2maxThreshold = 0.86 // midden van de Threshold-band (84-88%)
+  const vo2Threshold = percentVo2maxThreshold * vdot
+  const a = 0.000104, b = 0.182258, c = -(4.6 + vo2Threshold)
+  const vMeterPerMin = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a)
+  return Math.round((vMeterPerMin * 60 / 1000) * 10) / 10 // m/min -> km/u
+}
+
+export function berekenGeschatteRunningTSS(duurMinuten: number, gemiddeldeSnelheidKmh: number | null, drempelsnelheidKmh: number): number {
+  if (!gemiddeldeSnelheidKmh || !drempelsnelheidKmh || drempelsnelheidKmh <= 0) return 0
+  const uren = duurMinuten / 60
+  const intensityFactor = gemiddeldeSnelheidKmh / drempelsnelheidKmh
+  return Math.round(uren * intensityFactor * intensityFactor * 100)
+}
+
+export async function haalRunningCTLATLTSB(userId: string, aantalDagen: number): Promise<DagelijkseBelasting[]> {
+  const supabase = createAdminClient()
+
+  const [profielRes, activiteitenRes] = await Promise.all([
+    supabase.from('specialist_profiles').select('preferences').eq('user_id', userId).eq('specialist_type', 'running').maybeSingle(),
+    (async () => {
+      const vandaag = new Date()
+      const periodeStart = new Date(vandaag)
+      periodeStart.setDate(periodeStart.getDate() - (aantalDagen + 42))
+      return supabase
+        .from('activity_sessions')
+        .select('date, duration, metrics, activities!inner(name)')
+        .eq('user_id', userId)
+        .in('activities.name', RUNNING_ACTIVITEIT_NAMEN)
+        .gte('date', isoDatum(periodeStart))
+        .order('date', { ascending: true })
+    })(),
+  ])
+
+  const prefs = profielRes.data?.preferences as { laatste_race_afstand_m?: number; laatste_race_tijd_sec?: number } | null
+  if (!prefs?.laatste_race_afstand_m || !prefs?.laatste_race_tijd_sec) return [] // Geen VDOT — eerlijk leeg, geen gegokte drempelsnelheid
+
+  // Kleine, lokale VDOT-herberekening (zelfde formule als running-zones.ts)
+  const tijdMin = prefs.laatste_race_tijd_sec / 60
+  const vMeterPerMin = prefs.laatste_race_afstand_m / tijdMin
+  const vo2 = -4.6 + 0.182258 * vMeterPerMin + 0.000104 * vMeterPerMin ** 2
+  const percentVo2max = 0.8 + 0.1894393 * Math.exp(-0.012778 * tijdMin) + 0.2989558 * Math.exp(-0.1932605 * tijdMin)
+  const vdot = vo2 / percentVo2max
+  const drempelsnelheidKmh = berekenDrempelsnelheidKmh(vdot)
+
+  const tssPerDag: Record<string, number> = {}
+  for (const a of (activiteitenRes.data || []) as unknown as RunningActiviteitRij[]) {
+    const tss = berekenGeschatteRunningTSS(a.duration || 0, a.metrics?.avg_speed_kmh || null, drempelsnelheidKmh)
+    tssPerDag[a.date] = (tssPerDag[a.date] || 0) + tss
+  }
+
+  const vandaag = new Date()
+  const periodeStart = new Date(vandaag)
+  periodeStart.setDate(periodeStart.getDate() - (aantalDagen + 42))
+
+  const resultaat: DagelijkseBelasting[] = []
+  let ctl = 0
+  let atl = 0
+
+  for (let d = new Date(periodeStart); d <= vandaag; d.setDate(d.getDate() + 1)) {
+    const datumStr = isoDatum(d)
+    const tssVandaag = tssPerDag[datumStr] || 0
+    const tsbVoorVandaag = ctl - atl
+    ctl = ctl + (tssVandaag - ctl) / 42
+    atl = atl + (tssVandaag - atl) / 7
+
+    resultaat.push({
+      datum: datumStr,
+      geschatte_tss: tssVandaag,
+      ctl: Math.round(ctl * 10) / 10,
+      atl: Math.round(atl * 10) / 10,
+      tsb: Math.round(tsbVoorVandaag * 10) / 10,
+    })
+  }
+
+  return resultaat.slice(-aantalDagen)
 }
 
 // ── Records per afstand — Fase 1, laatste stap ──────────────────────────

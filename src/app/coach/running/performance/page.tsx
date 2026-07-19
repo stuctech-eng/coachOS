@@ -36,6 +36,7 @@ interface RunningDashboard {
   gemiddelde_cadans: number | null
   hoogtemeters: number
 }
+interface DagelijkseBelasting { datum: string; geschatte_tss: number; ctl: number; atl: number; tsb: number }
 
 const AFSTAND_LABELS: Record<number, string> = {
   100: '100m', 200: '200m', 400: '400m', 800: '800m', 1000: '1km',
@@ -57,6 +58,37 @@ function formatteerTijd(sec: number): string {
   return `${minuten}:${String(seconden).padStart(2, '0')}`
 }
 
+// Zelfde SVG-lijndiagram-component als coach/cycling/grafieken/page.tsx
+// — geen dependency, consistent met de rest van de app.
+function LijnGrafiek({ data, lijnen, hoogte = 140 }: {
+  data: DagelijkseBelasting[]
+  lijnen: Array<{ key: 'ctl' | 'atl'; kleur: string; label: string }>
+  hoogte?: number
+}) {
+  if (data.length === 0) return null
+  const breedte = 320
+  const alleWaarden = data.flatMap(d => lijnen.map(l => d[l.key]))
+  const max = Math.max(...alleWaarden, 1)
+  const min = Math.min(...alleWaarden, 0)
+  const bereik = max - min || 1
+
+  function puntenVoor(key: 'ctl' | 'atl'): string {
+    return data.map((d, i) => {
+      const x = (i / (data.length - 1 || 1)) * breedte
+      const y = hoogte - ((d[key] - min) / bereik) * hoogte
+      return `${x},${y}`
+    }).join(' ')
+  }
+
+  return (
+    <svg viewBox={`0 0 ${breedte} ${hoogte}`} className="w-full" style={{ height: hoogte }}>
+      {lijnen.map(l => (
+        <polyline key={l.key} points={puntenVoor(l.key)} fill="none" stroke={l.kleur} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      ))}
+    </svg>
+  )
+}
+
 export default function RunningPerformanceCenterPage() {
   const [laden, setLaden] = useState(true)
   const [vdot, setVdot] = useState<number | null>(null)
@@ -64,6 +96,7 @@ export default function RunningPerformanceCenterPage() {
   const [hartslagzones, setHartslagzones] = useState<HartslagZone[] | null>(null)
   const [records, setRecords] = useState<AfstandRecord[]>([])
   const [dashboard, setDashboard] = useState<RunningDashboard | null>(null)
+  const [belasting, setBelasting] = useState<DagelijkseBelasting[]>([])
 
   useEffect(() => {
     async function laadAlles() {
@@ -81,6 +114,7 @@ export default function RunningPerformanceCenterPage() {
         setHartslagzones(profielData?.hartslagzones || null)
         setRecords(dashboardData?.records || [])
         setDashboard(dashboardData?.dashboard || null)
+        setBelasting(dashboardData?.belasting || [])
       } catch {
         // Elke sectie checkt zelf op aanwezige data — geen aparte
         // globale foutstaat nodig
@@ -168,6 +202,42 @@ export default function RunningPerformanceCenterPage() {
                 )
               })}
             </div>
+          </Card>
+        )}
+
+        {/* 2b. Trainingsbelasting — Fase 2, tweede levering. Zelfde
+            Coggan-methode als Cycling, snelheid-gebaseerde Intensity
+            Factor i.p.v. vermogen-gebaseerd. */}
+        {!laden && belasting.length > 0 && (
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-slate-500 uppercase tracking-wider">Trainingsbelasting</p>
+              {belasting.length > 0 && (
+                <span className={`text-xs font-semibold ${belasting[belasting.length - 1].tsb < -10 ? 'text-red-400' : belasting[belasting.length - 1].tsb > 10 ? 'text-green-400' : 'text-slate-400'}`}>
+                  Vorm: {belasting[belasting.length - 1].tsb > 0 ? '+' : ''}{belasting[belasting.length - 1].tsb}
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-600 mb-3">Geschat op basis van gemiddelde snelheid t.o.v. je drempelsnelheid (uit VDOT) — minder nauwkeurig bij heuvelachtig terrein of intervaltraining.</p>
+            <LijnGrafiek data={belasting} lijnen={[
+              { key: 'ctl', kleur: '#3b82f6', label: 'Fitness (CTL)' },
+              { key: 'atl', kleur: '#f59e0b', label: 'Vermoeidheid (ATL)' },
+            ]} />
+            <div className="flex gap-4 mt-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <span className="text-[10px] text-slate-500">Fitness (CTL)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-[10px] text-slate-500">Vermoeidheid (ATL)</span>
+              </div>
+            </div>
+          </Card>
+        )}
+        {!laden && belasting.length === 0 && vdot && (
+          <Card className="p-5">
+            <p className="text-sm text-slate-400">Trainingsbelasting kan nog niet berekend worden — nog geen hardloopactiviteiten in de laatste periode.</p>
           </Card>
         )}
 
