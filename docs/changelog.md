@@ -1,5 +1,32 @@
 # CoachOS — Changelog
 
+## v2.4.119 — Documentatie: Strava API-blokkade bevestigd in de praktijk
+**Puur documentatie. Bevestiging: Strava API Settings toonde `reikwijdte:
+read` i.p.v. `activity:read_all`, en `/api/strava/sync` gaf een echte
+`403` — op de bestaande code, vóórdat de Strava-vermogenscurve-code
+(nog niet gecommit) zelfs was uitgerold. Bevestigt dat dit het account-
+niveau-slot is (Strava's beleidswijziging per 30 juni 2026), geen
+scope- of code-fout.**
+
+- `README.md` — bestaande sectie "Strava API-toegang — externe
+  beleidswijziging" bijgewerkt:
+  - Praktijkbevestiging toegevoegd (19 juli 2026, 403 + verkeerde scope)
+  - **Garmin-alternatief geactualiseerd** — stond nog als "handmatige
+    screenshot per activiteit" (verouderd, uit een eerdere sessie vóór
+    de TCX-import bestond), nu correct beschreven als volwaardige
+    TCX-import met route/vermogenscurve/etc. — **dit is nu de praktisch
+    gebruikte databron**
+  - Status van de Strava-vermogenscurve-code (v2.4.118) toegevoegd: code correct
+    en klaar, maar niet te testen/gebruiken zolang de 403 aanhoudt —
+    geen reden om terug te draaien, geen reden om nu meer tijd erin te
+    steken
+- `docs/cycling-specialist-roadmap-v1.md` — status-header, Strava-
+  sectie en samenvattende tabel bijgewerkt: Strava-pad is "code klaar,
+  extern geblokkeerd", niet meer "nog te bouwen" of "afgerond"
+
+**Geen code-wijziging** — dit is uitsluitend het vastleggen van de
+externe blokkade zodat een volgende sessie hier geen tijd aan verspilt.
+
 ## v2.4.117 — Roadmap-document bijgewerkt: vermogenscurve Garmin-pad afgerond
 **Puur documentatie. Bevinding: het document stond nog op "🔜 Uitbreiding
 van de Garmin/Strava-import" alsof beide nog moesten gebeuren, terwijl

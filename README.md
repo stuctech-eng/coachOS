@@ -354,10 +354,11 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 
 **Zie `docs/cycling-specialist-roadmap-v1.md` voor het volledige,
 goedgekeurde bouwplan.** ✅ **Fase 1-2 VOLLEDIG AFGEROND** (v2.4.91-108).
-FTP-geschiedenis bewust vroeg toegevoegd (v2.4.108). Twee bewuste,
-eerlijk gevlagde gaten (vermogenscurve, duur-specifieke records) —
-vergen een nieuwe datalaag, apart Fase 3-punt, losgekoppeld van de
-Adaptive Training Engine. Volgende, indien gewenst: Fase 3.
+✅ **Vermogenscurve, Garmin-pad AFGEROND** (v2.4.108-115) — actief in
+gebruik. ⚠️ **Vermogenscurve, Strava-pad: code klaar (v2.4.118) maar
+extern geblokkeerd** — zie "Strava API-toegang" hieronder, geen
+code-probleem. Resterend binnen Fase 3: duur-specifieke records in de
+UI koppelen, Critical Power-model, overige uitbreidingen.
 
 ## 🧭 Navigatie-architectuur v1.0 (GEÏMPLEMENTEERD, herzien v2.4.111)
 
@@ -378,7 +379,7 @@ scrollbaar).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.117 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.119 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -390,7 +391,7 @@ scrollbaar).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.117
+- Versie: 2.4.119
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -424,11 +425,27 @@ volledig verse, correcte OAuth-autorisatie met de juiste scope
 — een 403 na een geldige herautorisatie wijst op dit account-niveau-slot,
 niet op een scope- of tokenfout.
 
+**Bevestigd in de praktijk (19 juli 2026):** Strava API Settings toonde
+`reikwijdte: read` i.p.v. de gevraagde `activity:read_all` — en
+`/api/strava/sync` gaf daadwerkelijk 403, zónder dat er iets aan de code
+gewijzigd was. Bevestigt dat dit het account-niveau-slot is, niet een
+scope- of code-probleem.
+
 **Oplossingsrichtingen (geen van beide een code-fix):**
 1. Een Strava-abonnement afsluiten op het account achter de API-registratie
-2. Overstappen op de nieuwe Garmin-activiteit-import (v2.4.23, zie
-   Coach Call Systeem-tabel) als (deels) alternatief — vereist wel een
-   handmatige screenshot per activiteit, geen automatische sync
+2. **Garmin-activiteit-import gebruiken als primaire databron** — inmiddels
+   een volwaardige TCX-bestand-import (niet meer alleen een screenshot-
+   route): route-kaart, hoogtemeters, vermogen/hartslag/cadans, én sinds
+   v2.4.110 ook de vermogenscurve (zie Cycling Specialist Roadmap v1.0).
+   **Dit is nu de praktisch gebruikte weg** — de gebruiker is hier zelf al
+   op overgestapt vanwege de Strava-blokkade
+
+**Status van de Strava-vermogenscurve-code (v2.4.118):** de code zelf is
+correct en klaar (streams-API-aanroep, opslag in `cycling_power_curve`,
+zelfde patroon als Garmin) — maar **kan niet getest of gebruikt worden
+zolang de Strava API 403 geeft.** Geen reden om de code terug te draaien
+(hij is onschadelijk en klaar zodra Strava-toegang ooit hersteld wordt),
+wel een reden om er nu geen verdere tijd in te steken.
 
 **Zie ook:** `strava.com/settings/api` toont de huidige scope/status van
 het *developer-testtoken* — dat is **niet** hetzelfde token als wat
@@ -689,6 +706,8 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.119 — Documentatie: Strava API-blokkade bevestigd in de praktijk (403 op bestaande sync) — Garmin-alternatief geactualiseerd, geen code-wijziging
+- v2.4.118 — Vermogenscurve-datalaag: Strava-integratie (nog te committen — code klaar, maar extern geblokkeerd door Strava's beleidswijziging, zie v2.4.119)
 - v2.4.117 — Roadmap-document bijgewerkt: vermogenscurve Garmin-pad ✅ afgerond, was nog als "niet gestart" vermeld
 - v2.4.115 — Vermogenscurve-datalaag: UI afgerond (grafiek op Grafieken-scherm) — Garmin-pad volledig compleet, Strava nog open
 - v2.4.114 — Fix: Coach Call reageerde niet meer — gevolg van v2.4.112's coach_call_items-opruiming, expliciete lege-staat + auto-expire toegevoegd

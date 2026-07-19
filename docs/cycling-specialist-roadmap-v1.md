@@ -1,6 +1,6 @@
 # CoachOS Cycling Specialist Roadmap v1.0
 
-**Status: FASE 1-2 VOLLEDIG AFGEROND (v2.4.91-107) — Fase 3 gestart: vermogenscurve Garmin-pad afgerond (v2.4.108-115), Strava-pad + overige uitbreidingen nog open**
+**Status: FASE 1-2 VOLLEDIG AFGEROND (v2.4.91-107) — Fase 3 gestart: vermogenscurve Garmin-pad afgerond (v2.4.108-115), Strava-pad code klaar (v2.4.118) maar extern geblokkeerd door Strava's beleidswijziging (zie README), overige uitbreidingen nog open**
 
 Definitieve versie, na overleg. Vervangt het eerdere concept
 (`cycling-specialist-bouwplan.md`, TE TOETSEN). Aanpak: geen ene
@@ -157,7 +157,7 @@ Expliciet later, geen onderdeel van v1.0-scope:
 - Race Planner
 - Live Coaching
 
-### Vermogenscurve & duur-specifieke records — eigen datalaag, bewust losgekoppeld van de Adaptive Training Engine ✅ Garmin-pad afgerond (v2.4.110/115), 🔜 Strava resteert
+### Vermogenscurve & duur-specifieke records — eigen datalaag, bewust losgekoppeld van de Adaptive Training Engine ✅ Garmin-pad afgerond (v2.4.110/115), ⚠️ Strava-pad code klaar (v2.4.118) maar extern geblokkeerd
 
 **Vastgelegd na vervolgoverleg (v2.4.108):** dit is niet alleen een
 opslagvraagstuk, maar een **nieuwe datalaag** — de Adaptive Training
@@ -181,12 +181,23 @@ imports, én de UI-grafiek op het Grafieken-scherm (v2.4.115).
 - 🔜 Critical Power, W′-modellen — apart vervolgpunt, vergt genoeg
   datapunten over meerdere duren
 
-**Nog te doen:**
-- 🔜 **Strava-integratie** — nieuwe streams-API-aanroep in
-  `strava-activity-processor.ts`, dezelfde berekening/opslag hergebruikt
+**Status Strava-integratie — ⚠️ EXTERN GEBLOKKEERD, geen code-probleem:**
+De code zelf is klaar (v2.4.118) — nieuwe `fetchStravaVermogenStream()`
+in `strava-activity-processor.ts`, hergebruikt dezelfde
+`berekenVermogenscurve()`. Maar Strava vereist sinds 30 juni 2026 een
+betaald developer-abonnement voor Standard-tier API-toegang (zie
+README, sectie "Strava API-toegang — externe beleidswijziging"). De
+gebruiker kreeg een `403` bij zelfs de **bestaande** Strava-sync,
+bevestigd op 19 juli 2026 — dit is dus **niet getest en niet bruikbaar**
+totdat die externe blokkade is opgelost (abonnement, of Strava trekt het
+beleid in). Garmin-import is voorlopig de praktisch gebruikte databron.
+
+**Nog te doen (onafhankelijk van de Strava-blokkade):**
 - 🔜 Geen terugwerkende kracht voor activiteiten van vóór v2.4.110 (bewust,
   zie de spec)
 - 🔜 Critical Power-model (apart vervolgpunt)
+- 🔜 Duur-specifieke records in de Records-kaart koppelen (data bestaat
+  al voor Garmin-imports, UI-koppeling nog niet gemaakt)
 
 **Nu al wel gebouwd, ter voorbereiding (v2.4.108):** FTP-geschiedenis
 (`cycling_ftp_geschiedenis`) — bewust vroeg toegevoegd, zodat er vanaf nu
@@ -210,7 +221,7 @@ gebouwd wordt.
 | 2h | Master Coach-integratie | ✅ Formeel bevestigd (bestaat sinds v2.4.80) | v2.4.80 |
 | 2i | Progress Center | ✅ Afgerond, incl. FTP-geschiedenis | v2.4.107, v2.4.108 |
 | 3 | Uitbreidingen — vermogenscurve (Garmin) | ✅ Afgerond | v2.4.108-115 |
-| 3 | Uitbreidingen — vermogenscurve (Strava) | 🔜 Nog open | — |
+| 3 | Uitbreidingen — vermogenscurve (Strava) | ⚠️ Code klaar, extern geblokkeerd | v2.4.118 |
 | 3 | Uitbreidingen — Event Engine, Zwift/Wahoo, etc. | Bewust nog niet gestart | — |
 
 **Fase 1 en Fase 2 zijn volledig afgerond.** Binnen Fase 3 is het
