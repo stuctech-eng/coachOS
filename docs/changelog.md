@@ -1,5 +1,31 @@
 # CoachOS — Changelog
 
+## v2.4.108 — Roadmap-document bijgewerkt: Fase 1-2 volledig afgerond
+**Puur documentatie, geen code. `cycling-specialist-roadmap-v1.md` gaf
+tot nu toe overal "Niet gestart" — dat klopte al sinds v2.4.91 niet
+meer. Nu bijgewerkt naar de daadwerkelijke, geteste status.**
+
+- **Status-header** bijgewerkt: "Fase 1-2 volledig afgerond (v2.4.91-107)"
+- **Elke sub-fase (2a t/m 2i)** krijgt een status-markering + versienummer
+- **2g/2h formeel bevestigd** als afgerond via bestaande infrastructuur
+  (Memory Engine, Goal Engine, CoachPolicy, SpecialistSummary) — geen
+  nieuwe code nodig, dit was al gedekt vóórdat de roadmap geschreven werd
+- **Drie gaten expliciet benoemd**, die in de oorspronkelijke roadmap-
+  tekst stonden maar nooit gerealiseerd zijn (data ontbreekt, geen
+  bouwfout):
+  - Vermogenscurve (5s-60min) — vergt seconde-voor-seconde data
+  - FTP-ontwikkeling over tijd — vergt FTP-geschiedenis, bestaat niet
+  - Duur-specifieke records ("beste 5 minuten") — zelfde beperking als
+    vermogenscurve
+- **Samenvattend overzicht** volledig herschreven: elke fase nu ✅
+  met het versienummer waarin het gebouwd is, in plaats van de
+  verouderde "Niet gestart"-tabel
+
+**Waarom dit ertoe doet:** een volgende sessie (of Claude-instantie) die
+dit document leest, zou anders denken dat er nog niets gebouwd is —
+precies het soort documentatie-drift dat deze sessie steeds bewust heeft
+proberen te voorkomen.
+
 ## v2.4.107 — Cycling Specialist Roadmap Fase 2i: Progress Center
 **"Het feitelijke hart van de Cycling Hub" — consolideert bestaande data
 uit al-gebouwde bronnen tot één overzicht. Geen nieuwe berekeningen,
