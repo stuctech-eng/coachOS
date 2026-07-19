@@ -73,10 +73,44 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     // route.ts, waar dit veld wordt gezet bij een bevestigde import).
     // coach_call_items alleen opruimen (v2.4.112) was niet genoeg.
     // Nu: beide gekoppelde tabellen opgeruimd vóór het wissen zelf.
+    // v2.4.114: FIX — het wissen van coach_call_items (v2.4.112) kon een
+    // Coach Call volledig leeg achterlaten. De Coach Call-pagina toont dan
+    // niets om op te reageren (call.coach_call_items.every() op een lege
+    // lijst is vacuously true), wat aanvoelde als "kan niet meer
+    // reageren" — geen crash, maar een verwarrende lege staat. Nu: eerst
+    // de gekoppelde coach_call_id('s) vastleggen, en als een Coach Call
+    // daardoor leeg wordt, die op 'expired' zetten (dezelfde status die
+    // elders al gebruikt wordt voor niet-meer-relevante Coach Calls, zie
+    // coach-calls/route.ts).
+    let betrokkenCallIds: string[] = []
+    try {
+      const { data: teVerwijderenItems } = await supabase
+        .from('coach_call_items')
+        .select('coach_call_id')
+        .eq('activity_session_id', params.id)
+      betrokkenCallIds = [...new Set((teVerwijderenItems || []).map(i => i.coach_call_id))]
+    } catch (linkErr) {
+      console.error('[activities DELETE] Ophalen coach_call_id vóór wissen mislukt:', linkErr)
+    }
+
     try {
       await supabase.from('coach_call_items').delete().eq('activity_session_id', params.id)
     } catch (linkErr) {
       console.error('[activities DELETE] Opruimen coach_call_items mislukt (gaat door):', linkErr)
+    }
+
+    for (const callId of betrokkenCallIds) {
+      try {
+        const { count } = await supabase
+          .from('coach_call_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('coach_call_id', callId)
+        if (!count || count === 0) {
+          await supabase.from('coach_calls').update({ status: 'expired' }).eq('id', callId)
+        }
+      } catch (callErr) {
+        console.error('[activities DELETE] Opruimen lege coach_call mislukt (gaat door):', callErr)
+      }
     }
     try {
       // Import-record zelf niet wissen (historische waarde: wanneer/

@@ -123,7 +123,14 @@ export default function CoachCallPage() {
     setSavingItem(null)
   }
 
-  const allDone = call ? call.coach_call_items.every(i => i.status === 'done') : false
+  // v2.4.114: expliciete lege-staat — voorheen leunde "allDone" op
+  // every() op call.coach_call_items, wat bij een LEGE lijst altijd
+  // "waar" teruggeeft (vacuous truth). Dat kon gebeuren als alle items
+  // van een Coach Call inmiddels gewist zijn (bijv. via het wissen van
+  // de onderliggende activiteit, zie activities/[id]/route.ts). Resultaat
+  // was een verwarrende lege pagina, geen duidelijke boodschap.
+  const heeftItems = call ? call.coach_call_items.length > 0 : false
+  const allDone = call && heeftItems ? call.coach_call_items.every(i => i.status === 'done') : false
 
   if (laden) return (
     <AppShell>
@@ -137,6 +144,19 @@ export default function CoachCallPage() {
     <AppShell>
       <Card className="p-5 text-center">
         <p className="text-slate-400 text-sm">Geen openstaande evaluaties.</p>
+      </Card>
+    </AppShell>
+  )
+
+  // v2.4.114: nette boodschap i.p.v. een lege pagina, als de Coach Call
+  // wel bestaat maar (inmiddels) geen items meer heeft
+  if (!heeftItems) return (
+    <AppShell>
+      <Card className="p-5 text-center">
+        <p className="text-slate-400 text-sm">Niets meer om te evalueren voor deze Coach Call.</p>
+        <button onClick={() => router.push('/home')} className="mt-4 text-primary-400 text-sm font-medium">
+          Terug naar Home
+        </button>
       </Card>
     </AppShell>
   )

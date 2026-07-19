@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.114 — Fix: Coach Call reageert niet meer (gevolg van v2.4.112)
+**Gemeld: "kan niet meer reageren" bij Coach Call. Root cause: het
+wissen van coach_call_items (v2.4.112) liet een Coach Call soms volledig
+leeg achter — `call.coach_call_items.every()` op een lege lijst is
+"vacuously true", dus de pagina toonde alleen een "Klaar"-knop zonder
+enig item om op te reageren. Geen crash, wel een verwarrende lege staat.**
+
+- `src/app/api/activities/[id]/route.ts` (DELETE) — legt vóór het
+  wissen van `coach_call_items` de betrokken `coach_call_id`('s) vast;
+  ná het wissen wordt gecheckt of een Coach Call daardoor leeg is
+  geworden, en zo ja op `status: 'expired'` gezet — dezelfde status die
+  elders al gebruikt wordt voor niet-meer-relevante Coach Calls
+  (`coach-calls/route.ts`)
+- `src/app/coach-call/page.tsx` — expliciete lege-staat toegevoegd
+  (`heeftItems`-check), i.p.v. te vertrouwen op het "vacuous truth"-
+  gedrag van `every()` op een lege lijst. Nette boodschap + knop terug
+  naar Home, in plaats van een lege pagina
+
+**Voor de al-bestaande, al-vastzittende Coach Call** (van vóór deze
+fix) — eenmalige opschoon-SQL:
+```sql
+update coach_calls
+set status = 'expired'
+where status in ('pending', 'partial')
+  and id not in (select distinct coach_call_id from coach_call_items);
+```
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.113 — Fix: "Wissen mislukt" — tweede, gemiste foreign-key
 **Gevonden bij test: v2.4.112 ruimde alleen `coach_call_items` op vóór
 het wissen, maar dat bleek niet de (enige) blokkade.**
