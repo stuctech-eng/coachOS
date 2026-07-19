@@ -104,6 +104,27 @@ export async function POST(req: NextRequest) {
               .eq('activity_session_id', bestaandeSessie.id)
           }
 
+          // v2.4.110: vermogenscurve ook bijwerken bij een overschrijving
+          // (bijv. opnieuw uploaden na een parser-verbetering) — upsert
+          // i.p.v. insert, want de unique-constraint (activity_id,
+          // duration_sec) zou een plain insert laten falen bij een
+          // tweede keer
+          if (parsed.vermogenscurve && parsed.vermogenscurve.length > 0) {
+            try {
+              await adminSupabase.from('cycling_power_curve').upsert(
+                parsed.vermogenscurve.map(punt => ({
+                  activity_id: bestaandeSessie.id,
+                  user_id: user.id,
+                  duration_sec: punt.duration_sec,
+                  watts: punt.watts,
+                })),
+                { onConflict: 'activity_id,duration_sec' }
+              )
+            } catch (curveErr) {
+              console.error('[garmin-activity-tcx] Vermogenscurve bijwerken mislukt:', curveErr)
+            }
+          }
+
           await adminSupabase.from('garmin_activity_imports')
             .update({ status: 'confirmed', activity_session_id: bestaandeSessie.id })
             .eq('id', confirmId)
@@ -141,6 +162,24 @@ export async function POST(req: NextRequest) {
         .select('id').single()
 
       if (sessionError) throw sessionError
+
+      // v2.4.110: vermogenscurve opslaan, indien berekend. Eigen
+      // try/catch — een probleem hier mag de import nooit laten falen,
+      // de kernactiviteit is al succesvol opgeslagen op dit punt.
+      if (parsed.vermogenscurve && parsed.vermogenscurve.length > 0) {
+        try {
+          await adminSupabase.from('cycling_power_curve').insert(
+            parsed.vermogenscurve.map(punt => ({
+              activity_id: session.id,
+              user_id: user.id,
+              duration_sec: punt.duration_sec,
+              watts: punt.watts,
+            }))
+          )
+        } catch (curveErr) {
+          console.error('[garmin-activity-tcx] Vermogenscurve opslaan mislukt:', curveErr)
+        }
+      }
 
       try {
         const { data: existingCall } = await adminSupabase

@@ -1,5 +1,45 @@
 # CoachOS — Changelog
 
+## v2.4.110 — Vermogenscurve-datalaag: Garmin-integratie ⚠️ RAAKT BESTAANDE IMPORT-CODE
+**Stap 1-3 van de spec (`vermogenscurve-datalaag-spec.md`): berekening +
+SQL + Garmin-integratie. Strava-integratie en UI volgen apart.**
+
+**Aanvullende bevinding tijdens het bouwen:** het parsen gebeurt
+**client-side** in de browser (isomorfe `tcx-parser.ts`) — de server
+ontvangt alleen het al-samengevatte JSON-resultaat, nooit het ruwe
+bestand. De berekening moest daarom in de parser zelf, niet in de
+server-route. Daarnaast bleek er **geen tijdstempel per trackpoint**
+geparsed te worden — toegevoegd (`tp.Time`, verplicht TCX-veld), zodat
+de vermogenscurve een **tijd-gebaseerd** schuivend venster gebruikt in
+plaats van een aanname dat elk punt exact 1 seconde is (TCX-devices
+samplen niet altijd regelmatig).
+
+- **Nieuw:** `src/lib/vermogenscurve.ts`
+  - `berekenVermogenscurve()` — two-pointer schuivend venster over
+    daadwerkelijke tijdstempels, standaard duren
+    5s/15s/30s/1min/5min/10min/20min/30min/60min
+  - Isomorf (geen server-only imports) — herbruikbaar voor de latere
+    Strava-integratie
+- **Nieuw:** `supabase/cycling_power_curve.sql` — smalle tabel
+  (activity × duur → watt), exact zoals in de spec
+- `src/lib/tcx-parser.ts`
+  - `tp.Time` nu meegelezen per trackpoint
+  - Vermogen-met-tijdstempel apart verzameld (`vermogenMetTijd`), naast
+    de bestaande `wattsValues` (die blijft voor gemiddelde/max)
+  - `TcxParsed`-type uitgebreid met `vermogenscurve`
+- `src/app/api/health/garmin-activity-tcx/route.ts`
+  - Vermogenscurve opgeslagen in **beide** paden: nieuwe activiteit
+    (insert) én overschrijving van een bestaande (upsert, i.v.m. de
+    unique-constraint bij een tweede upload van dezelfde rit)
+  - Eigen try/catch op beide plekken — een probleem met de
+    curve-opslag mag de import zelf nooit laten falen
+
+**Bewust nog niet gedaan:** Strava-integratie (nieuwe streams-API-
+aanroep), UI (vermogenscurve-grafiek, duur-specifieke records).
+
+**Test-instructies:** zie bericht bij levering — dit raakt de bestaande
+Garmin-importflow, extra zorgvuldig testen aanbevolen.
+
 ## v2.4.109 — Nieuw document: Vermogenscurve-datalaag (compacte spec)
 **Status: TE TOETSEN. Fase 3-punt van de Cycling Specialist Roadmap.**
 

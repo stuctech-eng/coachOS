@@ -377,7 +377,7 @@ uitstelbaar (balk had 6 items, niet 5).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.109 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.110 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -389,7 +389,7 @@ uitstelbaar (balk had 6 items, niet 5).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.109
+- Versie: 2.4.110
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -688,6 +688,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.110 — Vermogenscurve-datalaag: Garmin-integratie (berekening + SQL + tcx-parser + import-route), raakt bestaande import-code, Strava/UI volgen apart
 - v2.4.109 — Nieuw: vermogenscurve-datalaag-spec.md (TE TOETSEN) — Garmin-data blijkt al beschikbaar, Strava-scope al voldoende, kleiner dan aangenomen
 - v2.4.108 — Roadmap volledig bijgewerkt (Fase 1-2 afgerond) + FTP-geschiedenis (bewust vroeg toegevoegd) + Fase 3 uitgebreid met vermogenscurve-datalaag-plan
 - v2.4.107 — Cycling Roadmap Fase 2i: Progress Center ("het hart van de Hub") — consolideert doelvoortgang/records/Memory/W-kg, geen nieuwe berekeningen

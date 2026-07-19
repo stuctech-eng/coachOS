@@ -8,6 +8,7 @@
 // gaat naar de server, nooit het volledige XML-bestand.
 
 import { XMLParser } from 'fast-xml-parser'
+import { berekenVermogenscurve, type VermogensCurvePunt } from './vermogenscurve'
 
 export interface TcxParsed {
   garmin_sport: string | null
@@ -28,6 +29,10 @@ export interface TcxParsed {
   has_gps: boolean
   creator_device: string | null
   start_date: string | null
+  // v2.4.110: vermogenscurve — beste vermogen per duur, berekend uit de
+  // trackpoint-vermogensreeks die al werd geparsed maar voorheen alleen
+  // voor gemiddelde/max werd gebruikt. Null als er geen vermogensdata is.
+  vermogenscurve: VermogensCurvePunt[] | null
 }
 
 export const ACTIVITEIT_OPTIES = ['Hardlopen', 'Fietsen (buiten)', 'Indoor Fietsen', 'Wandelen', 'Roeien', 'Krachttraining', 'Kettlebell', 'Anders']
@@ -94,6 +99,12 @@ export function parseTcx(xmlText: string): TcxParsed {
   // lang de activiteit duurde, zonder dat we tijdens het verzamelen al
   // hoeven te weten hoeveel punten er in totaal komen.
   const ruweRoute: { lat: number; lng: number }[] = []
+  // v2.4.110: vermogen-met-tijdstempel verzamelen, apart van de bestaande
+  // wattsValues (die blijft voor het bestaande gemiddelde/max-gebruik) —
+  // TCX-trackpoints hebben een verplicht <Time>-veld (ISO 8601), dat geeft
+  // een betrouwbare tijdas i.p.v. aan te nemen dat elk punt 1 seconde is.
+  const vermogenMetTijd: { tijdSec: number; watts: number }[] = []
+  let eersteTijdstempel: number | null = null
 
   for (const lap of laps) {
     const trackRaw = lap.Track
@@ -115,6 +126,18 @@ export function parseTcx(xmlText: string): TcxParsed {
         if (cad && parseInt(cad, 10) > 0) cadenceValues.push(parseInt(cad, 10))
         if (watts && parseFloat(watts) > 0) wattsValues.push(parseFloat(watts))
         if (speed && parseFloat(speed) > 0) speedValues.push(parseFloat(speed))
+
+        // v2.4.110: tijdstempel + vermogen samen vastleggen, voor de
+        // vermogenscurve-berekening. tp.Time is een verplicht TCX-veld
+        // (ISO 8601) — geeft een betrouwbare tijdas, geen aanname over
+        // een vaste sampling-interval.
+        if (tp.Time && watts && parseFloat(watts) > 0) {
+          const tijdstempel = new Date(tp.Time).getTime()
+          if (!isNaN(tijdstempel)) {
+            if (eersteTijdstempel === null) eersteTijdstempel = tijdstempel
+            vermogenMetTijd.push({ tijdSec: (tijdstempel - eersteTijdstempel) / 1000, watts: parseFloat(watts) })
+          }
+        }
 
         // Hoogtestijging/-daling: som van positieve/negatieve verschillen
         // tussen opeenvolgende trackpoints. Kleine ruis (GPS-hoogte is
@@ -146,6 +169,11 @@ export function parseTcx(xmlText: string): TcxParsed {
     : ruweRoute.length <= MAX_ROUTE_PUNTEN ? ruweRoute
     : ruweRoute.filter((_, i) => i % Math.ceil(ruweRoute.length / MAX_ROUTE_PUNTEN) === 0)
 
+  // v2.4.110: vermogenscurve berekenen uit de al-verzamelde data — geen
+  // nieuwe parsing-stap, alleen een aanvullende berekening op wat er al
+  // doorheen ging
+  const vermogenscurve = vermogenMetTijd.length >= 2 ? berekenVermogenscurve(vermogenMetTijd) : null
+
   return {
     garmin_sport: garminSport,
     duration_min: totaalTijdSec > 0 ? Math.round(totaalTijdSec / 60) : null,
@@ -165,5 +193,6 @@ export function parseTcx(xmlText: string): TcxParsed {
     has_gps: hasGps,
     creator_device: creatorDevice,
     start_date: startDate,
+    vermogenscurve,
   }
 }
