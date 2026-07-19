@@ -1,5 +1,44 @@
 # CoachOS — Changelog
 
+## v2.4.127 — Running Foundation deel 2: Dashboard
+**Tweede bouw-levering van Running Fase 1. Puur aggregatie van
+al-bestaande `activity_sessions`-data — geen nieuwe SQL, geen nieuwe
+databron.**
+
+**Geleerd van de vorige levering:** het Dashboard staat nu direct
+zichtbaar op de Running Hub zelf, los van het AI-advies (dat kan leeg
+zijn als er nog geen analyse gegenereerd is) — vorige keer was het
+enige zichtbare een instellingen-icoontje, wat verwarrend bleek.
+
+- **Nieuw:** `src/lib/specialists/running-grafieken.ts` —
+  `haalRunningDashboard()`: week/maand/jaar-kilometers, trainingen deze
+  week, gemiddelde pace/hartslag/cadans, hoogtemeters, trainingstijd,
+  langste duurloop, snelste training
+- **Nieuw:** `src/app/api/specialists/running/dashboard/route.ts`
+- `src/app/coach/running/page.tsx` — Dashboard-kaart toegevoegd, direct
+  onder de header (vóór het AI-advies), met een eigen leeg-staat-check
+  (verschijnt pas als er daadwerkelijk data is)
+
+**Eerlijke beperking, expliciet in code-comment vastgelegd:** "jaar"
+en "totaal" zijn in Fase 1 dezelfde periode (jaar-tot-nu) — een
+écht all-time totaal (over alle jaren heen) vergt een aparte,
+ongefilterde query, bewust niet nu toegevoegd om geen verwarring
+tussen twee bijna-gelijke getallen te veroorzaken.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten
+- Aggregatielogica los getest met synthetische activiteiten
+  (2 activiteiten deze week, 1 vorige maand) → week/maand/jaar-kilometers
+  en trainingen-deze-week-telling allemaal correct
+
+**Volgende, laatste stap van Running Fase 1:** automatische Records.
+Vergt een NIEUW stuk logica — niet de tijd-gebaseerde vermogenscurve-
+wiskunde hergebruikt, maar een afstand-gebaseerd algoritme (snelste
+tijd over een vaste afstand i.p.v. beste gemiddelde over een vaste
+tijd). Vergt ook een parser-uitbreiding: `tp.DistanceMeters` per
+trackpoint wordt nu nog niet vastgelegd (alleen lap-totalen), nodig
+voor een cumulatieve afstand-tijd-reeks.
+
 ## v2.4.126 — Running Foundation deel 1: Profile + Pace Zones + Hartslagzones
 **Eerste bouw-levering van de Running Specialist Roadmap Fase 1. Drie
 ontwerpbeslissingen vooraf vastgelegd (overleg 19 juli 2026): Daniels

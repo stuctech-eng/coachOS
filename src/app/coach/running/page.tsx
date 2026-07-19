@@ -25,6 +25,26 @@ interface RunningEngineResultaat {
   trainingsbelasting: { totale_minuten: number; score: 'laag' | 'gemiddeld' | 'hoog' }
 }
 
+interface RunningDashboard {
+  week_km: number
+  maand_km: number
+  jaar_km: number
+  trainingen_deze_week: number
+  gemiddelde_pace_sec_per_km: number | null
+  gemiddelde_hartslag: number | null
+  gemiddelde_cadans: number | null
+  hoogtemeters: number
+  trainingstijd_minuten: number
+  langste_duurloop: { minuten: number; datum: string } | null
+  snelste_training: { pace_sec_per_km: number; datum: string } | null
+}
+
+function formatteerPace(secPerKm: number): string {
+  const min = Math.floor(secPerKm / 60)
+  const sec = Math.round(secPerKm % 60)
+  return `${min}:${String(sec).padStart(2, '0')}`
+}
+
 function TrendIcoon({ trend }: { trend: 'stijgend' | 'stabiel' | 'dalend' }) {
   if (trend === 'stijgend') return <TrendingUp size={14} className="text-green-400" />
   if (trend === 'dalend') return <TrendingDown size={14} className="text-red-400" />
@@ -38,15 +58,17 @@ export default function RunningHubPage() {
   const [verversen, setVerversen] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
   const [dormant, setDormant] = useState(false)
+  const [dashboard, setDashboard] = useState<RunningDashboard | null>(null)
 
   async function laadAlles() {
     setLaden(true)
     setFout(null)
     try {
-      const [adviesRes, engineRes, specialistenRes] = await Promise.all([
+      const [adviesRes, engineRes, specialistenRes, dashboardRes] = await Promise.all([
         fetch('/api/specialists/running/coach', { credentials: 'include' }),
         fetch('/api/specialists/running/engine?period_days=90', { credentials: 'include' }),
         fetch('/api/specialists', { credentials: 'include' }),
+        fetch('/api/specialists/running/dashboard', { credentials: 'include' }).catch(() => null),
       ])
       const adviesData = await adviesRes.json()
       const engineDataRes = await engineRes.json()
@@ -54,6 +76,10 @@ export default function RunningHubPage() {
 
       if (adviesData?.analysis) setAdvies(adviesData.analysis)
       if (engineDataRes?.resultaat) setEngineData(engineDataRes.resultaat)
+      if (dashboardRes) {
+        const dashboardData = await dashboardRes.json()
+        if (dashboardData?.dashboard) setDashboard(dashboardData.dashboard)
+      }
 
       const runningEntry = (specialistenData.specialisten || []).find((s: { specialist_type: string }) => s.specialist_type === 'running')
       setDormant(runningEntry?.lifecycle?.state === 'DORMANT')
@@ -117,6 +143,66 @@ export default function RunningHubPage() {
             <div className="h-24 bg-slate-800/50 rounded-2xl animate-pulse" />
             <div className="h-32 bg-slate-800/50 rounded-2xl animate-pulse" />
           </div>
+        )}
+
+        {/* v2.4.127: Dashboard — Roadmap v1.0 Fase 1. Bewust los van het
+            AI-advies hieronder getoond (die kan leeg zijn als er nog geen
+            analyse gegenereerd is), zodat kengetallen altijd meteen
+            zichtbaar zijn zodra er hardloopdata is. */}
+        {!laden && dashboard && (dashboard.jaar_km > 0 || dashboard.trainingstijd_minuten > 0) && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Dashboard</p>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Week</p>
+                <p className="text-lg font-bold text-white">{dashboard.week_km}<span className="text-xs text-slate-500 font-normal"> km</span></p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Maand</p>
+                <p className="text-lg font-bold text-white">{dashboard.maand_km}<span className="text-xs text-slate-500 font-normal"> km</span></p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Jaar</p>
+                <p className="text-lg font-bold text-white">{dashboard.jaar_km}<span className="text-xs text-slate-500 font-normal"> km</span></p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Gem. pace</p>
+                <p className="text-sm font-semibold text-white">{dashboard.gemiddelde_pace_sec_per_km ? `${formatteerPace(dashboard.gemiddelde_pace_sec_per_km)}/km` : '–'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Gem. HR</p>
+                <p className="text-sm font-semibold text-white">{dashboard.gemiddelde_hartslag ? `${dashboard.gemiddelde_hartslag} bpm` : '–'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Gem. cadans</p>
+                <p className="text-sm font-semibold text-white">{dashboard.gemiddelde_cadans ? `${dashboard.gemiddelde_cadans} spm` : '–'}</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 pt-3 border-t border-coach-border">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-300">Deze week</span>
+                <span className="text-sm font-semibold text-white">{dashboard.trainingen_deze_week} training{dashboard.trainingen_deze_week !== 1 ? 'en' : ''}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-300">Hoogtemeters (jaar)</span>
+                <span className="text-sm font-semibold text-white">{dashboard.hoogtemeters} m</span>
+              </div>
+              {dashboard.langste_duurloop && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">Langste duurloop</span>
+                  <span className="text-sm font-semibold text-white">{dashboard.langste_duurloop.minuten} min</span>
+                </div>
+              )}
+              {dashboard.snelste_training && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">Snelste training</span>
+                  <span className="text-sm font-semibold text-white">{formatteerPace(dashboard.snelste_training.pace_sec_per_km)}/km</span>
+                </div>
+              )}
+            </div>
+          </Card>
         )}
 
         {!laden && fout && (
