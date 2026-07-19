@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { GeistSans } from 'geist/font/sans'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="nl" className="dark">
       <body className={GeistSans.className + ' bg-coach-dark text-slate-100 h-screen overflow-hidden'}>
         {children}
+        <SpeedInsights />
       </body>
     </html>
   )

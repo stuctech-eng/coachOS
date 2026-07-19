@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.120 — Vercel Speed Insights toegevoegd
+**Voorbereidend op het opstartsnelheid-onderzoek dat bewust is uitgesteld
+in v2.4.119 ("geen gok-en-bouw, eerst meten"). Deze levering meet alleen
+— lost nog niets op.**
+
+- `package.json` — `@vercel/speed-insights` toegevoegd (^2.0.0)
+- `src/app/layout.tsx` — `<SpeedInsights />`-component toegevoegd in de
+  root layout, na `{children}` in de `<body>`
+
+**Wat dit oplevert:** zodra dit live staat op Vercel, verzamelt Vercel
+automatisch real-world performance-metrics (Core Web Vitals, laadtijden
+per pagina) van echt gebruik — zichtbaar in het Vercel-dashboard onder
+"Speed Insights". Geen dashboard-configuratie nodig; Vercel detecteert
+de component automatisch na deploy.
+
+**Vervolg:** zodra er een paar dagen echte data binnen is, kunnen we
+gericht kijken of de eerdere hypothese klopt (meerdere parallelle
+Supabase-auth-checks per scherm) of dat er iets anders speelt — dan pas
+een fix bouwen, op basis van meting in plaats van aanname.
+
+**Test-instructies:** n.v.t. voor functionaliteit — puur monitoring,
+geen zichtbare wijziging in de app zelf. Bevestig na deploy in het
+Vercel-dashboard dat Speed Insights data begint te verzamelen.
+
 ## v2.4.119 — Zoom hersteld + app-brede navigatie-modernisering
 **Twee losstaande fixes op verzoek: pinch-to-zoom werkte nergens meer, en
 navigatie "tussen schermen" voelde traag. Geen backend-wijzigingen.**
