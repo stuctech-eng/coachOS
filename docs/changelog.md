@@ -1,5 +1,70 @@
 # CoachOS — Changelog
 
+## v2.4.126 — Running Foundation deel 1: Profile + Pace Zones + Hartslagzones
+**Eerste bouw-levering van de Running Specialist Roadmap Fase 1. Drie
+ontwerpbeslissingen vooraf vastgelegd (overleg 19 juli 2026): Daniels
+VDOT voor Pace Zones, trainingsdagen apart van Cycling, records straks
+volledig automatisch (aparte levering).**
+
+**Bevinding vooraf: Goal Engine, Memory Engine en Coach Policy waren
+al generiek** — `running/coach/route.ts` gebruikte al dezelfde
+`learning-engine.ts`/`coach-policy.ts`/`goal-engine.ts` als Cycling,
+gewoon met `specialist_type='running'`. Punten 6-8 van de oorspronkelijke
+Fase 1-lijst (koppeling Goal/Memory/Master Coach) bleken dus al klaar —
+geen nieuw werk nodig.
+
+### Daniels VDOT — geverifieerd vóór implementatie
+De VO2/%VO2max-formules (Daniels &amp; Gilbert, 1979, publiek
+gepubliceerd — niet de propriëtaire commerciële VDOT-tabellen) zijn
+vóór het bouwen extern geverifieerd tegen een onafhankelijke bron met
+dezelfde worked example: 5K in 20:00 → VDOT 49,8, exacte match. Zone-
+percentages (Easy 59-74%, Marathon ~84%, Threshold ~88%, Interval
+~98%, Repetition >100%) komen uit meerdere onafhankelijke, elkaar
+bevestigende bronnen.
+
+- **Nieuw:** `src/lib/specialists/running-zones.ts` —
+  `berekenVDOT(afstandM, tijdSec)`, `berekenPaceZones(vdot)`,
+  `formatteerPace()`. Volledig deterministisch, geen AI.
+- **Nieuw:** `src/app/api/specialists/running/profile/route.ts` —
+  GET/PUT, spiegelbeeld van cycling/profile. Slaat geen los VDOT-getal
+  op maar een recent race-resultaat (afstand + tijd + datum) — zo werkt
+  de Daniels-methode ook echt (VDOT hoort uit een prestatie te komen,
+  niet losstaand geschat)
+- **Nieuw:** `src/app/settings/running-profile/page.tsx` —
+  race-resultaat-invoer (voorkeuzeknoppen 5K/10K/Halve/Marathon + vrije
+  tijd-invoer), max hartslag, sensoren (hartslagmeter/cadanssensor/
+  hardloop-vermogensmeter), **eigen trainingsdagen/beschikbare uren**
+  (bewust los van Cycling, zoals afgesproken), live VDOT + Pace Zones-
+  preview (client-side, exact dezelfde functies als de server)
+- **Hartslagzones: hergebruikt `berekenHartslagZones()` uit
+  `cycling-zones.ts`** — geen dubbele implementatie, dat model was al
+  sport-onafhankelijk
+- `src/app/coach/running/page.tsx` — instellingen-icoon toegevoegd in
+  de header, zelfde patroon als de Cycling Hub
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten, nieuwe route en pagina
+  beide aanwezig in de build-output
+- VDOT-formule extern geverifieerd tegen een onafhankelijke bron (zie
+  boven) vóórdat er code geschreven werd
+- De daadwerkelijke productiecode (niet een losse test-kopie) los
+  uitgevoerd: `berekenVDOT(5000, 1200)` → 49,8, bevestigt dat er geen
+  overtypfout is geslopen bij het overzetten naar TypeScript
+
+**Uitdrukkelijk nog niet in deze levering** (volgt apart): Dashboard,
+automatische Records (nieuw afstand-gebaseerd curve-algoritme, andere
+wiskunde dan de tijd-gebaseerde vermogenscurve), Pace Curve, Progress
+Center, Grafieken, Trainingsplan, Kalender.
+
+**Test-instructies:**
+1. Running Hub → instellingen-icoon → Running Profile
+2. Race-resultaat invullen (bijv. 5K in 20:00) → VDOT en Pace Zones
+   moeten direct live verschijnen, zonder op te slaan
+3. Opslaan → herladen → gegevens moeten behouden blijven
+4. Max hartslag invullen → Hartslagzones moeten verschijnen
+5. Trainingsdagen instellen → controleren dat dit **niet** de Cycling-
+   trainingsdagen overschrijft (aparte specialist_profiles-rij)
+
 ## v2.4.125 — Running Specialist: Master Spec + Roadmap vastgelegd
 **Puur documentatie, geen code. Voorbereiding op het bouwen van
 Running naar het niveau van Cycling — "overleg voor bouwen", zoals
