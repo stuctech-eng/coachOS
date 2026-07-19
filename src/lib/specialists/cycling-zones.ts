@@ -31,7 +31,7 @@ const VERMOGENSZONE_DEFINITIES = [
   { zone: 1, naam: 'Actief herstel', van_pct: 0, tot_pct: 55 },
   { zone: 2, naam: 'Duurtraining', van_pct: 56, tot_pct: 75 },
   { zone: 3, naam: 'Tempo', van_pct: 76, tot_pct: 90 },
-  { zone: 4, naam: 'Drempel (Lactate Threshold)', van_pct: 91, tot_pct: 105 },
+  { zone: 4, naam: 'Drempel', van_pct: 91, tot_pct: 105 },
   { zone: 5, naam: 'VO2max', van_pct: 106, tot_pct: 120 },
   { zone: 6, naam: 'Anaerobe capaciteit', van_pct: 121, tot_pct: 150 },
   { zone: 7, naam: 'Neuromusculair vermogen', van_pct: 151, tot_pct: null },

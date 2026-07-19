@@ -1,5 +1,33 @@
 # CoachOS — Changelog
 
+## v2.4.124 — Z4-zonenaam verkort (bleef wrappen ondanks v2.4.123)
+**Gemeld met screenshot: Z4 wrapte nog steeds naar 2 regels, óók na
+volledig sluiten/heropenen van de PWA. De v2.4.123-layoutfix
+(`whitespace-nowrap`/`flex-shrink-0`) staat bevestigd correct in de
+live code — het probleem zit dieper dan alleen CSS.**
+
+- `src/lib/specialists/cycling-zones.ts` — Z4-naam verkort van
+  `'Drempel (Lactate Threshold)'` naar `'Drempel'`. De Engelse
+  toevoeging was inhoudelijk overbodig (Drempel dekt de betekenis al)
+  en was precies de reden dat de regel te lang werd om op één regel te
+  passen — dit is dus zowel een leesbaarheids- als een layoutfix.
+- Geen andere zonenamen aangepast — Z7 ("Neuromusculair vermogen") is
+  korter en past al op één regel, bevestigd in eerdere screenshots.
+
+**Nog niet opgelost, apart aandachtspunt:** de gebruiker meldde dat de
+v2.4.123-fix niet zichtbaar was ondanks een volledige app-herstart —
+mogelijk hardnekkigere PWA/Safari-caching dan verwacht
+(`skipWaiting: false` in `next.config.js`). Gevraagd om ter controle
+de pagina één keer in gewone Safari (niet de PWA) te openen, om cache
+en code-probleem uit elkaar te trekken. Als dat inderdaad caching
+blijkt te zijn, is dat een apart vervolgpunt (bijv. `skipWaiting: true`
+overwegen, met de bijbehorende trade-offs).
+
+**Test-instructies:**
+1. Power Center → Power Zones → Z4 moet nu "Z4 — Drempel" tonen,
+   228–263 W op één regel
+2. Settings → Cycling Profile → zelfde check
+
 ## v2.4.123 — Fix: Power Zones-weergave brak bij lange zonenamen
 **Gemeld met screenshot: Z4 ("Drempel (Lactate Threshold)") wrapte naar
 2 regels, waardoor ook de wattwaarde rechts ("228–263 W") uiteenviel in
