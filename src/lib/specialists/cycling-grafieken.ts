@@ -169,6 +169,42 @@ export async function haalRecords(userId: string): Promise<CyclingRecords> {
   }
 }
 
+// ── Vermogenscurve — Fase 3 (v2.4.110/115) ──────────────────────────────
+// Bron: docs/vermogenscurve-datalaag-spec.md. Haalt het all-time beste
+// vermogen per duur op — max(watts) per duration_sec, over alle
+// activiteiten heen. Puur een query op de al-berekende, al-opgeslagen
+// cycling_power_curve-tabel — geen nieuwe berekening hier.
+
+export interface VermogensCurvePunt {
+  duration_sec: number
+  watts: number
+}
+
+export async function haalVermogenscurve(userId: string): Promise<VermogensCurvePunt[]> {
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase
+    .from('cycling_power_curve')
+    .select('duration_sec, watts')
+    .eq('user_id', userId)
+    .order('duration_sec', { ascending: true })
+
+  if (error) throw error
+  if (!data || data.length === 0) return []
+
+  // All-time beste per duur — er kunnen meerdere activiteiten dezelfde
+  // duration_sec hebben, we willen het maximum daarvan
+  const besteWattsPerDuur = new Map<number, number>()
+  for (const punt of data) {
+    const huidig = besteWattsPerDuur.get(punt.duration_sec)
+    if (!huidig || punt.watts > huidig) besteWattsPerDuur.set(punt.duration_sec, punt.watts)
+  }
+
+  return Array.from(besteWattsPerDuur.entries())
+    .map(([duration_sec, watts]) => ({ duration_sec, watts }))
+    .sort((a, b) => a.duration_sec - b.duration_sec)
+}
+
 export async function haalCTLATLTSB(userId: string, aantalDagen: number): Promise<DagelijkseBelasting[]> {
   const supabase = createAdminClient()
 

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { haalWekelijkseVolumes, haalCTLATLTSB, haalRecords } from '@/lib/specialists/cycling-grafieken'
+import { haalWekelijkseVolumes, haalCTLATLTSB, haalRecords, haalVermogenscurve } from '@/lib/specialists/cycling-grafieken'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -24,16 +24,18 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url)
     const weken = parseInt(url.searchParams.get('weken') || '12', 10)
 
-    const [wekelijkseVolumes, ctlAtlTsb, records] = await Promise.all([
+    const [wekelijkseVolumes, ctlAtlTsb, records, vermogenscurve] = await Promise.all([
       haalWekelijkseVolumes(user.id, weken),
       haalCTLATLTSB(user.id, weken * 7),
       haalRecords(user.id),
+      haalVermogenscurve(user.id),
     ])
 
     return NextResponse.json({
       wekelijkse_volumes: wekelijkseVolumes,
       ctl_atl_tsb: ctlAtlTsb,
       records,
+      vermogenscurve,
       tss_is_schatting: true, // expliciet in de respons — geen NP beschikbaar
     })
   } catch (err) {

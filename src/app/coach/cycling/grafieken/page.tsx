@@ -24,6 +24,11 @@ interface DagelijkseBelasting {
   tsb: number
 }
 
+interface VermogensCurvePunt {
+  duration_sec: number
+  watts: number
+}
+
 interface CyclingRecords {
   langste_rit_km: { waarde: number; datum: string } | null
   langste_rit_minuten: { waarde: number; datum: string } | null
@@ -74,6 +79,7 @@ export default function GrafiekenPage() {
   const [volumes, setVolumes] = useState<WeekVolume[]>([])
   const [belasting, setBelasting] = useState<DagelijkseBelasting[]>([])
   const [records, setRecords] = useState<CyclingRecords | null>(null)
+  const [vermogenscurve, setVermogenscurve] = useState<VermogensCurvePunt[]>([])
 
   useEffect(() => {
     fetch('/api/specialists/cycling/grafieken?weken=12', { credentials: 'include' })
@@ -82,6 +88,7 @@ export default function GrafiekenPage() {
         setVolumes(data.wekelijkse_volumes || [])
         setBelasting(data.ctl_atl_tsb || [])
         setRecords(data.records || null)
+        setVermogenscurve(data.vermogenscurve || [])
       })
       .catch(() => {})
       .finally(() => setLaden(false))
@@ -175,6 +182,32 @@ export default function GrafiekenPage() {
                 <div className="w-2 h-2 rounded-full bg-amber-500" />
                 <span className="text-[10px] text-slate-500">Vermoeidheid (ATL)</span>
               </div>
+            </div>
+          </Card>
+        )}
+
+        {/* v2.4.115: Vermogenscurve — dicht het gat dat bij Fase 2d/2e
+            eerlijk werd opengelaten (geen NP-data voor bestaande
+            activiteiten), nu wél gevuld voor nieuwe Garmin-imports sinds
+            v2.4.110. Historische activiteiten hebben dit niet met
+            terugwerkende kracht (zoals ook in de spec vastgelegd). */}
+        {!laden && vermogenscurve.length > 0 && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Vermogenscurve</p>
+            <p className="text-[10px] text-slate-600 mb-4">All-time beste vermogen per duur, over al je Garmin-geïmporteerde ritten sinds v2.4.110 (geen terugwerkende kracht voor oudere activiteiten).</p>
+            <div className="flex items-end gap-1" style={{ height: 110 }}>
+              {vermogenscurve.map(punt => {
+                const maxWatts = Math.max(...vermogenscurve.map(p => p.watts))
+                const barHoogtePx = Math.max(4, Math.round((punt.watts / maxWatts) * 90))
+                const label = punt.duration_sec < 60 ? `${punt.duration_sec}s` : punt.duration_sec < 3600 ? `${Math.round(punt.duration_sec / 60)}m` : `${Math.round(punt.duration_sec / 3600)}u`
+                return (
+                  <div key={punt.duration_sec} className="flex-1 flex flex-col items-center justify-end gap-1" style={{ height: 110 }}>
+                    <span className="text-[9px] text-slate-400 font-medium">{punt.watts}</span>
+                    <div className="w-full bg-amber-500/70 rounded-t-sm" style={{ height: barHoogtePx }} />
+                    <span className="text-[8px] text-slate-600">{label}</span>
+                  </div>
+                )
+              })}
             </div>
           </Card>
         )}

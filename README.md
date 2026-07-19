@@ -378,7 +378,7 @@ scrollbaar).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.114 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.115 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -390,7 +390,7 @@ scrollbaar).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.114
+- Versie: 2.4.115
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -689,6 +689,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.115 — Vermogenscurve-datalaag: UI afgerond (grafiek op Grafieken-scherm) — Garmin-pad volledig compleet, Strava nog open
 - v2.4.114 — Fix: Coach Call reageerde niet meer — gevolg van v2.4.112's coach_call_items-opruiming, expliciete lege-staat + auto-expire toegevoegd
 - v2.4.113 — Fix: "Wissen mislukt" — tweede gemiste FK (garmin_activity_imports), foutmelding nu specifiek i.p.v. generiek
 - v2.4.112 — Fix: Garmin-import gebruikte altijd vandaag als datum i.p.v. de datum uit het TCX-bestand + activiteiten wissen (met bevestiging)

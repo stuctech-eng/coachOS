@@ -1,5 +1,27 @@
 # CoachOS — Changelog
 
+## v2.4.115 — Vermogenscurve-datalaag: UI (afronding van Fase 3-punt)
+**Laatste stap van de spec (`vermogenscurve-datalaag-spec.md`) — de
+data wordt sinds v2.4.110 verzameld, nu ook zichtbaar.**
+
+- `src/lib/specialists/cycling-grafieken.ts` — `haalVermogenscurve()`:
+  all-time beste vermogen per duur, `max(watts)` per `duration_sec`
+  over alle activiteiten heen. Puur een query, geen nieuwe berekening
+- `src/app/api/specialists/cycling/grafieken/route.ts` —
+  `vermogenscurve` toegevoegd aan de bestaande response
+- `src/app/coach/cycling/grafieken/page.tsx` — nieuwe grafiek-kaart,
+  vóór Records. Staafdiagram met pixel-hoogtes (niet CSS-percentages —
+  zelfde patroon als de v2.4.104-fix), leesbare duur-labels
+  (5s/15s/30s/1m/5m/10m/20m/30m/1u). **Expliciet vermeld in de UI:**
+  geen terugwerkende kracht voor activiteiten van vóór v2.4.110
+
+**Hiermee is het Fase 3-punt "vermogenscurve-datalaag" (spec → SQL →
+Garmin-integratie → UI) volledig afgerond voor het Garmin-pad.**
+Strava-integratie (zelfde onderliggende berekening, andere databron)
+staat nog open als los vervolgpunt.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.114 — Fix: Coach Call reageert niet meer (gevolg van v2.4.112)
 **Gemeld: "kan niet meer reageren" bij Coach Call. Root cause: het
 wissen van coach_call_items (v2.4.112) liet een Coach Call soms volledig
