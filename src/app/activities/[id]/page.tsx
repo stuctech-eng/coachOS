@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Sparkles } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 
 // v2.4.41: dynamic import met ssr:false — Leaflet gebruikt `window` en kan
@@ -40,6 +40,9 @@ interface ActivitySession {
   activities: { name: string } | null
 }
 
+// v2.4.106: Ritanalyse, Fase 2f — alleen voor deze specifieke sportnamen
+const CYCLING_NAMEN = ['Fietsen', 'Fietsen (buiten)', 'Indoor Fietsen']
+
 function formatDuur(min: number): string {
   if (min < 60) return `${min}m`
   const h = Math.floor(min / 60)
@@ -67,6 +70,30 @@ export default function ActivityDetailPage() {
   const [session, setSession] = useState<ActivitySession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // v2.4.106: Ritanalyse-state, Fase 2f
+  const [analyseBezig, setAnalyseBezig] = useState(false)
+  const [evaluatie, setEvaluatie] = useState<string | null>(null)
+  const [analyseFout, setAnalyseFout] = useState<string | null>(null)
+
+  async function analyseerDezeRit() {
+    if (!session) return
+    setAnalyseBezig(true)
+    setAnalyseFout(null)
+    try {
+      const res = await fetch('/api/specialists/cycling/rit-analyse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activity_id: session.id }),
+      })
+      const data = await res.json()
+      if (data.error) setAnalyseFout(data.error)
+      else setEvaluatie(data.evaluatie)
+    } catch (e) {
+      setAnalyseFout((e as Error).message)
+    } finally {
+      setAnalyseBezig(false)
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/activities/${params.id}`)
@@ -123,6 +150,26 @@ export default function ActivityDetailPage() {
                 <StatBlok label="Hoogtemeters" waarde={`↑ ${session.metrics.elevation_gain ?? session.metrics.elevation}m`} sub={session.metrics.elevation_loss ? `↓ ${session.metrics.elevation_loss}m` : undefined} />
               ) : null}
             </div>
+
+            {/* v2.4.106: Ritanalyse, Fase 2f — alleen voor fietsritten */}
+            {session.activities?.name && CYCLING_NAMEN.includes(session.activities.name) && (
+              <div className="bg-white/5 rounded-2xl p-4">
+                {!evaluatie && !analyseFout && (
+                  <button onClick={analyseerDezeRit} disabled={analyseBezig}
+                    className="w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold text-primary-400 disabled:opacity-50">
+                    <Sparkles size={16} />
+                    {analyseBezig ? 'Coach analyseert...' : 'Laat je Cycling Coach deze rit analyseren'}
+                  </button>
+                )}
+                {analyseFout && <p className="text-sm text-red-400">{analyseFout}</p>}
+                {evaluatie && (
+                  <>
+                    <p className="text-xs text-primary-400 uppercase tracking-wider mb-2">Ritanalyse</p>
+                    <p className="text-sm text-slate-200 leading-relaxed">{evaluatie}</p>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

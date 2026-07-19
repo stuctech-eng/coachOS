@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.106 — Cycling Specialist Roadmap Fase 2f: Ritanalyse
+**Zelfde patroon als de Coach-uitleglaag (Fase 2a): eerst volledig
+deterministische analyse, dan pas AI die dat omzet in leesbare
+feedback — AI beslist niets.**
+
+**⚠️ Eerlijk gevlagde beperking:** "volgens schema"-vergelijking matcht
+op **datum**, niet op een expliciete koppeling — `completed_activity_id`
+(al aanwezig sinds v2.4.96) wordt nergens automatisch ingevuld. Bij
+meerdere fietsritten op één dag kan dit dus de verkeerde geplande sessie
+raken. Bekende, geaccepteerde beperking van deze eerste versie, expliciet
+in code-comments vastgelegd.
+
+- **Nieuw:** `src/lib/specialists/cycling-rit-analyse.ts` — deterministisch:
+  - Vermogenszone (hergebruikt `berekenVermogensZones()` uit Fase 1)
+  - Hartslagzone (hergebruikt `berekenHartslagZones()`)
+  - Cadans-beoordeling (gangbare, publieke richtlijn: <70 laag, 70-95
+    normaal, >95 hoog)
+  - "Volgens schema": duur binnen 20% van het geplande — een ruwe
+    indicatie, geen exacte match-eis
+- **Nieuw:** `src/app/api/specialists/cycling/rit-analyse/route.ts` —
+  AI ontvangt de al-vastgestelde feiten, produceert alleen de
+  natuurlijke-taal-evaluatie
+- `src/app/activities/[id]/page.tsx` — nieuwe sectie, **alleen zichtbaar
+  bij fietsritten** (`activities.name` in de bekende Cycling-namen) —
+  "Laat je Cycling Coach deze rit analyseren"-knop, toont de evaluatie
+  na een tik
+
+**Fase 2f hiermee afgerond.** Volgende, per de roadmap: Fase 2g
+(Coach-verdieping) of Fase 2h (Master Coach-integratie, bevestiging/
+verdieping van het bestaande contract).
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.105 — Cycling Specialist Roadmap Fase 2e: Records
 **Bewust GEEN los "Records Center" — onderdeel van het bestaande
 Grafieken-scherm, precies zoals de roadmap voorschrijft.**
