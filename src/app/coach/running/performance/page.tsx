@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 
@@ -37,6 +37,16 @@ interface RunningDashboard {
   hoogtemeters: number
 }
 interface DagelijkseBelasting { datum: string; geschatte_tss: number; ctl: number; atl: number; tsb: number }
+interface AfstandTrendPunt { datum: string; tijd_sec: number }
+interface WekelijkseRunningTrend { week_start: string; gemiddelde_pace_sec_per_km: number | null; gemiddelde_hartslag: number | null; gemiddelde_cadans: number | null }
+
+const AFSTAND_TREND_LABELS: Record<number, string> = { 5000: '5 km', 10000: '10 km', 21097: 'Halve marathon', 42195: 'Marathon' }
+
+function TrendIcoon({ trend }: { trend: 'stijgend' | 'stabiel' | 'dalend' }) {
+  if (trend === 'stijgend') return <TrendingUp size={14} className="text-green-400" />
+  if (trend === 'dalend') return <TrendingDown size={14} className="text-red-400" />
+  return <Minus size={14} className="text-slate-400" />
+}
 
 const AFSTAND_LABELS: Record<number, string> = {
   100: '100m', 200: '200m', 400: '400m', 800: '800m', 1000: '1km',
@@ -97,6 +107,8 @@ export default function RunningPerformanceCenterPage() {
   const [records, setRecords] = useState<AfstandRecord[]>([])
   const [dashboard, setDashboard] = useState<RunningDashboard | null>(null)
   const [belasting, setBelasting] = useState<DagelijkseBelasting[]>([])
+  const [afstandTrends, setAfstandTrends] = useState<Record<number, AfstandTrendPunt[]>>({})
+  const [wekelijkseTrend, setWekelijkseTrend] = useState<WekelijkseRunningTrend[]>([])
 
   useEffect(() => {
     async function laadAlles() {
@@ -115,6 +127,8 @@ export default function RunningPerformanceCenterPage() {
         setRecords(dashboardData?.records || [])
         setDashboard(dashboardData?.dashboard || null)
         setBelasting(dashboardData?.belasting || [])
+        setAfstandTrends(dashboardData?.afstand_trends || {})
+        setWekelijkseTrend(dashboardData?.wekelijkse_trend || [])
       } catch {
         // Elke sectie checkt zelf op aanwezige data — geen aparte
         // globale foutstaat nodig
@@ -238,6 +252,62 @@ export default function RunningPerformanceCenterPage() {
         {!laden && belasting.length === 0 && vdot && (
           <Card className="p-5">
             <p className="text-sm text-slate-400">Trainingsbelasting kan nog niet berekend worden — nog geen hardloopactiviteiten in de laatste periode.</p>
+          </Card>
+        )}
+
+        {/* 2c. Progressie — Fase 2, derde levering. Afstand-trends
+            hergebruiken running_distance_records (elke poging, niet
+            alleen het record), wekelijkse trend hergebruikt hetzelfde
+            aggregatiepatroon als het Dashboard. */}
+        {!laden && Object.keys(afstandTrends).some(k => afstandTrends[Number(k)].length >= 2) && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Progressie — race-afstanden</p>
+            <p className="text-[10px] text-slate-600 mb-3">Alleen afstanden met 2+ pogingen getoond — anders geen trend te bepalen.</p>
+            <div className="flex flex-col gap-3">
+              {[5000, 10000, 21097, 42195].map(afstand => {
+                const punten = afstandTrends[afstand]
+                if (!punten || punten.length < 2) return null
+                const laatste = punten[punten.length - 1]
+                const vorige = punten[punten.length - 2]
+                const trend: 'stijgend' | 'stabiel' | 'dalend' = laatste.tijd_sec < vorige.tijd_sec ? 'stijgend' : laatste.tijd_sec > vorige.tijd_sec ? 'dalend' : 'stabiel'
+                return (
+                  <div key={afstand} className="flex items-center justify-between">
+                    <span className="text-sm text-slate-300">{AFSTAND_TREND_LABELS[afstand]}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-semibold text-white">{formatteerTijd(laatste.tijd_sec)}</span>
+                      <TrendIcoon trend={trend} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-[9px] text-slate-600 mt-3">↑ groen = sneller dan de vorige poging op deze afstand.</p>
+          </Card>
+        )}
+
+        {!laden && wekelijkseTrend.length > 1 && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Progressie — wekelijkse pace</p>
+            <p className="text-[10px] text-slate-600 mb-3">Laatste 12 weken.</p>
+            <div className="flex items-end gap-1" style={{ height: 90 }}>
+              {(() => {
+                const paces = wekelijkseTrend.filter(w => w.gemiddelde_pace_sec_per_km !== null).map(w => w.gemiddelde_pace_sec_per_km as number)
+                if (paces.length === 0) return null
+                const snelste = Math.min(...paces) // lager = sneller = hogere balk
+                const langzaamste = Math.max(...paces)
+                const bereik = langzaamste - snelste || 1
+                return wekelijkseTrend.map(w => {
+                  const pace = w.gemiddelde_pace_sec_per_km
+                  const barHoogtePx = pace !== null ? Math.max(4, Math.round((1 - (pace - snelste) / bereik) * 70) + 10) : 4
+                  return (
+                    <div key={w.week_start} className="flex-1 flex flex-col items-center justify-end gap-1" style={{ height: 90 }}>
+                      <div className={`w-full rounded-t-sm ${pace !== null ? 'bg-primary-500/70' : 'bg-slate-800'}`} style={{ height: barHoogtePx }} />
+                    </div>
+                  )
+                })
+              })()}
+            </div>
+            <p className="text-[9px] text-slate-600 mt-2">Hogere balk = sneller gemiddeld tempo die week.</p>
           </Card>
         )}
 

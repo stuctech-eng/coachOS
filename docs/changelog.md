@@ -1,5 +1,45 @@
 # CoachOS — Changelog
 
+## v2.4.131 — Running Progressie (Fase 2, derde levering)
+**Derde stap van "rijtje af": Progressie. Twee soorten trends, allebei
+zonder nieuwe SQL.**
+
+### Race-afstand-trends (5K/10K/Halve/Marathon)
+**Bevinding:** `running_distance_records` (v2.4.128) bevat al élke
+poging per activiteit, niet alleen het all-time record — een
+chronologische trend kost dus geen nieuwe query-vorm, alleen een
+andere manier van groeperen (per activiteit i.p.v. het minimum).
+
+- **Nieuw:** `haalAfstandTrends()` in `running-grafieken.ts` — alle
+  pogingen per afstand, chronologisch gesorteerd
+- UI: alleen afstanden met 2+ pogingen getoond (anders geen trend te
+  bepalen), trend-pijltje (sneller/gelijk/langzamer dan de vorige
+  poging), zelfde `TrendIcoon`-patroon als de Cycling Hub
+
+### Wekelijkse pace/hartslag/cadans-trend
+- **Nieuw:** `haalWekelijkseRunningTrend()` — zelfde aggregatiepatroon
+  als `haalWekelijkseVolumes()` (Cycling), nu voor snelheid/hartslag/
+  cadans i.p.v. kilometers
+- UI: staafdiagram laatste 12 weken, hogere balk = sneller gemiddeld
+  tempo die week
+
+**Bewust niet meegenomen:** Running Power-trend (alleen relevant met
+sensor, te weinig gebruikers om nu te bouwen) en Herstel-trend (dat IS
+al de TSB-lijn uit de Trainingsbelasting-kaart van v2.4.130 — geen
+aparte sectie nodig voor dezelfde data).
+
+- `src/app/api/specialists/running/dashboard/route.ts` —
+  `afstand_trends` en `wekelijkse_trend` toegevoegd aan de response
+- `src/app/coach/running/performance/page.tsx` — twee nieuwe kaarten,
+  direct na Trainingsbelasting
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten
+- Wekelijkse aggregatielogica los getest met synthetische activiteiten
+  (2 runs dezelfde week) → correct gemiddelde en pace-omrekening
+
+**Rijtje resterend:** Adaptief Trainingsplan, Kalender, Grafieken.
+
 ## v2.4.130 — Running Trainingsbelasting (Fase 2, tweede levering)
 **Tweede stap van "rijtje af": Trainingsbelasting. Zelfde publiek
 gedocumenteerde Coggan-methode als Cycling (CTL 42-dagen/ATL 7-dagen

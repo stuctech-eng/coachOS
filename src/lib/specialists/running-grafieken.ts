@@ -272,3 +272,97 @@ export async function haalRunningRecords(userId: string): Promise<AfstandRecord[
     .map(([afstand_m, v]) => ({ afstand_m, tijd_sec: v.tijd_sec, datum: v.datum }))
     .sort((a, b) => a.afstand_m - b.afstand_m)
 }
+
+// ── Progressie — Fase 2, derde levering ─────────────────────────────────
+// Bron: overleg 19 juli 2026. Twee soorten trends, allebei zonder nieuwe
+// SQL: (1) race-afstand-trends hergebruiken running_distance_records —
+// die tabel bevat AL elke poging per activiteit, niet alleen het
+// all-time record, dus een chronologische reeks kost geen nieuwe query-
+// vorm. (2) wekelijkse pace/cadans/hartslag-trend hergebruikt hetzelfde
+// patroon als haalWekelijkseVolumes.
+
+export interface AfstandTrendPunt {
+  datum: string
+  tijd_sec: number
+}
+
+// Master Spec noemt expliciet: 5 km, 10 km, Halve marathon, Marathon
+const PROGRESSIE_AFSTANDEN = [5000, 10000, 21097, 42195]
+
+export async function haalAfstandTrends(userId: string): Promise<Record<number, AfstandTrendPunt[]>> {
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase
+    .from('running_distance_records')
+    .select('distance_m, tijd_sec, activity_sessions!inner(date)')
+    .eq('user_id', userId)
+    .in('distance_m', PROGRESSIE_AFSTANDEN)
+
+  if (error) throw error
+  if (!data || data.length === 0) return {}
+
+  const resultaat: Record<number, AfstandTrendPunt[]> = {}
+  for (const rij of data as unknown as { distance_m: number; tijd_sec: number; activity_sessions: { date: string } | { date: string }[] }[]) {
+    const datum = Array.isArray(rij.activity_sessions) ? rij.activity_sessions[0]?.date : rij.activity_sessions?.date
+    if (!datum) continue
+    if (!resultaat[rij.distance_m]) resultaat[rij.distance_m] = []
+    resultaat[rij.distance_m].push({ datum, tijd_sec: rij.tijd_sec })
+  }
+
+  for (const afstand of Object.keys(resultaat)) {
+    resultaat[Number(afstand)].sort((a, b) => a.datum.localeCompare(b.datum))
+  }
+
+  return resultaat
+}
+
+export interface WekelijkseRunningTrend {
+  week_start: string
+  gemiddelde_pace_sec_per_km: number | null
+  gemiddelde_hartslag: number | null
+  gemiddelde_cadans: number | null
+}
+
+function maandagVanWeekProgressie(datum: Date): Date {
+  const d = new Date(datum)
+  const dagIndex = (d.getDay() + 6) % 7
+  d.setDate(d.getDate() - dagIndex)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+export async function haalWekelijkseRunningTrend(userId: string, aantalWeken: number): Promise<WekelijkseRunningTrend[]> {
+  const supabase = createAdminClient()
+  const vandaag = new Date()
+  const periodeStart = new Date(vandaag)
+  periodeStart.setDate(periodeStart.getDate() - aantalWeken * 7)
+
+  const { data: activiteiten, error } = await supabase
+    .from('activity_sessions')
+    .select('date, metrics, activities!inner(name)')
+    .eq('user_id', userId)
+    .in('activities.name', RUNNING_ACTIVITEIT_NAMEN)
+    .gte('date', isoDatum(periodeStart))
+    .order('date', { ascending: true })
+
+  if (error) throw error
+
+  const perWeek: Record<string, { speedSom: number; speedCount: number; hrSom: number; hrCount: number; cadansSom: number; cadansCount: number }> = {}
+
+  for (const a of (activiteiten || []) as unknown as RunningActiviteitRij[]) {
+    const weekKey = isoDatum(maandagVanWeekProgressie(new Date(a.date)))
+    if (!perWeek[weekKey]) perWeek[weekKey] = { speedSom: 0, speedCount: 0, hrSom: 0, hrCount: 0, cadansSom: 0, cadansCount: 0 }
+    if (a.metrics?.avg_speed_kmh) { perWeek[weekKey].speedSom += a.metrics.avg_speed_kmh; perWeek[weekKey].speedCount++ }
+    if (a.metrics?.avg_hr) { perWeek[weekKey].hrSom += a.metrics.avg_hr; perWeek[weekKey].hrCount++ }
+    if (a.metrics?.avg_cadence) { perWeek[weekKey].cadansSom += a.metrics.avg_cadence; perWeek[weekKey].cadansCount++ }
+  }
+
+  return Object.entries(perWeek)
+    .map(([week_start, w]) => ({
+      week_start,
+      gemiddelde_pace_sec_per_km: w.speedCount > 0 ? Math.round(3600 / (w.speedSom / w.speedCount)) : null,
+      gemiddelde_hartslag: w.hrCount > 0 ? Math.round(w.hrSom / w.hrCount) : null,
+      gemiddelde_cadans: w.cadansCount > 0 ? Math.round(w.cadansSom / w.cadansCount) : null,
+    }))
+    .sort((a, b) => a.week_start.localeCompare(b.week_start))
+}
