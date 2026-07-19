@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, BookOpen, Plus, Clock } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { cn } from '@/utils'
+import Link from 'next/link'
 
 interface JournalEntry {
   id: string
@@ -65,7 +65,6 @@ function formatDatum(iso: string): string {
 }
 
 export default function DagboekPage() {
-  const router = useRouter()
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [laden, setLaden] = useState(true)
   const [opslaan, setOpslaan] = useState(false)
@@ -129,12 +128,11 @@ export default function DagboekPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push('/home')}
+          <Link href={'/home'}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5"
           >
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div className="flex-1">
             <h1 className="text-xl font-bold text-white">Dagboek</h1>
             <p className="text-xs text-slate-500">Hoe was je dag?</p>

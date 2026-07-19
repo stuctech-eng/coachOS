@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { isoDatum } from '@/utils'
+import Link from 'next/link'
 
 // ── Trainingskalender — Cycling Specialist Roadmap v1.0, Fase 2b ───────
 // Maandweergave van training_plan_sessions. Hergebruikt dezelfde
@@ -45,7 +45,6 @@ const DAG_LETTERS = ['M', 'D', 'W', 'D', 'V', 'Z', 'Z']
 
 
 export default function TrainingsKalenderPage() {
-  const router = useRouter()
   const [laden, setLaden] = useState(true)
   const [sessies, setSessies] = useState<Sessie[]>([])
   const [huidigeMaand, setHuidigeMaand] = useState(() => {
@@ -106,9 +105,9 @@ export default function TrainingsKalenderPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/coach/cycling/trainingsplan')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+          <Link href={'/coach/cycling/trainingsplan'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Trainingskalender</h1>
             <p className="text-xs text-slate-500">Fietsen · Cycling Coach</p>

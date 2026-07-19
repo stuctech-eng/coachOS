@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { Bike, Footprints, Waves, Dumbbell, ChevronLeft, Sparkles } from 'lucide-react'
 import { cn } from '@/utils'
+import Link from 'next/link'
 
 interface CoachCallItem {
   id: string
@@ -54,7 +54,6 @@ function formatDuration(min: number): string {
 }
 
 export default function CoachCallPage() {
-  const router = useRouter()
   const [call, setCall] = useState<CoachCall | null>(null)
   const [ratings, setRatings] = useState<Record<string, number>>({})
   const [moods, setMoods] = useState<Record<string, number>>({})
@@ -154,9 +153,9 @@ export default function CoachCallPage() {
     <AppShell>
       <Card className="p-5 text-center">
         <p className="text-slate-400 text-sm">Niets meer om te evalueren voor deze Coach Call.</p>
-        <button onClick={() => router.push('/home')} className="mt-4 text-primary-400 text-sm font-medium">
+        <Link href={'/home'} className="mt-4 text-primary-400 text-sm font-medium">
           Terug naar Home
-        </button>
+        </Link>
       </Card>
     </AppShell>
   )
@@ -168,10 +167,10 @@ export default function CoachCallPage() {
       <div className="flex flex-col gap-4 pb-6">
         {/* Header met terug-knop */}
         <div className="flex items-center gap-3 -mb-1">
-          <button onClick={() => router.push('/home')}
+          <Link href={'/home'}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10 flex-shrink-0">
             <ChevronLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <h1 className="text-lg font-bold text-white">Coach Call</h1>
         </div>
         <div>
@@ -270,10 +269,10 @@ export default function CoachCallPage() {
         })}
 
         {allDone && (
-          <button onClick={() => router.push('/home')}
+          <Link href={'/home'}
             className="w-full py-4 bg-slate-800 text-slate-300 rounded-xl font-semibold text-base active:bg-slate-700">
             Klaar
-          </button>
+          </Link>
         )}
       </div>
     </AppShell>

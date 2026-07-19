@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
+import Link from 'next/link'
 
 // ── Running Hub — v2.4.83, tweede specialist ────────────────────────────
 // Exact spiegelbeeld van coach/cycling/page.tsx (v2.4.68/70). Bevestigt
@@ -32,7 +32,6 @@ function TrendIcoon({ trend }: { trend: 'stijgend' | 'stabiel' | 'dalend' }) {
 }
 
 export default function RunningHubPage() {
-  const router = useRouter()
   const [laden, setLaden] = useState(true)
   const [advies, setAdvies] = useState<RunningAdvies | null>(null)
   const [engineData, setEngineData] = useState<RunningEngineResultaat | null>(null)
@@ -90,9 +89,9 @@ export default function RunningHubPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/specialisten')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+          <Link href={'/specialisten'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Running Coach</h1>
             <p className="text-xs text-slate-500">Specialist-hub · laatste 90 dagen</p>

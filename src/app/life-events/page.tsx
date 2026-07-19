@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, Trash2, Calendar, ChevronRight, X, Check } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { cn } from '@/utils'
+import Link from 'next/link'
 
 interface LifeEvent {
   id: string
@@ -671,7 +671,6 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
 
 // ── Hoofdpagina ───────────────────────────────────────────────────
 export default function LifeEventsPage() {
-  const router = useRouter()
   const [events, setEvents] = useState<LifeEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [showSheet, setShowSheet] = useState(false)
@@ -741,9 +740,9 @@ export default function LifeEventsPage() {
     <AppShell showNav={false}>
       <div className="px-5 py-6 flex flex-col gap-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/settings')} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center">
+          <Link href={'/settings'} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center">
             <ArrowLeft size={20} className="text-slate-400" />
-          </button>
+          </Link>
           <h1 className="text-xl font-bold text-white flex-1">Levensgebeurtenissen</h1>
           <button onClick={() => setShowSheet(true)} className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center active:bg-primary-700">
             <Plus size={20} className="text-white" />

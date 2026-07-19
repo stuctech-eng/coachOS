@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { X, Pause, Play } from 'lucide-react'
 import { Suspense } from 'react'
+import Link from 'next/link'
 
 interface Fase { label: string; duur: number; schaal: number; kleur: string }
 
@@ -101,14 +102,14 @@ function BreathingSession() {
       <h1 className="text-2xl font-bold text-white mb-2">Goed gedaan!</h1>
       <p className="text-slate-400 mb-1">{schema.naam}</p>
       <p className="text-slate-500 text-sm mb-8">{totaalRondes} rondes · {duurMinuten} minuten</p>
-      <button onClick={() => router.push(terugUrl)} className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg active:bg-primary-700">Terug naar Training</button>
+      <Link href={terugUrl} className="w-full py-4 bg-primary-600 text-white rounded-2xl font-semibold text-lg active:bg-primary-700">Terug naar Training</Link>
     </div>
   )
 
   if (!gestart) return (
     <div className="fixed inset-0 bg-coach-dark flex flex-col px-6">
       <div className="flex items-center justify-between pt-14 pb-8">
-        <button onClick={() => router.push(terugUrl)} className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center"><X size={20} className="text-slate-400" /></button>
+        <Link href={terugUrl} className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center"><X size={20} className="text-slate-400" /></Link>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center text-center">
         <div className="w-32 h-32 rounded-full mb-8 flex items-center justify-center" style={{ background: `${cirkelKleur}15`, border: `2px solid ${cirkelKleur}40` }}>

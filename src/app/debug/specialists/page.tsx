@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { browserClient } from '@/lib/supabase'
+import Link from 'next/link'
 
 // v2.4.64 — Testschermpje herbouwd: ingebouwd inlogformulier, GEEN
 // paginanavigatie meer naar /login. Test-hypothese: het "pagina reset
@@ -124,9 +125,9 @@ export default function DebugSpecialistsPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => router.push('/debug')} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
+          <Link href={'/debug'} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div>
             <h1 className="text-lg font-bold">Debug: Specialists (Fase 1+2a)</h1>
             <p className="text-xs text-amber-400">Log hier direct in — geen aparte /login-pagina nodig</p>
@@ -154,9 +155,9 @@ export default function DebugSpecialistsPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-6">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => router.push('/debug')} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
+        <Link href={'/debug'} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
           <ArrowLeft size={18} className="text-slate-400" />
-        </button>
+        </Link>
         <div>
           <h1 className="text-lg font-bold">Debug: Specialists (Fase 1+2a)</h1>
           <p className="text-xs text-amber-400">Tijdelijk testschermpje — geen navigatie meer nodig om in te loggen</p>

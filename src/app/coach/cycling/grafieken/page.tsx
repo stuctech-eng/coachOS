@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, Info } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
+import Link from 'next/link'
 
 // ── Grafieken-scherm — Cycling Specialist Roadmap v1.0, Fase 2d ────────
 // Geen nieuwe npm-dependency — staafdiagram via CSS, lijndiagram via
@@ -74,7 +74,6 @@ function LijnGrafiek({ data, lijnen, hoogte = 140 }: {
 }
 
 export default function GrafiekenPage() {
-  const router = useRouter()
   const [laden, setLaden] = useState(true)
   const [volumes, setVolumes] = useState<WeekVolume[]>([])
   const [belasting, setBelasting] = useState<DagelijkseBelasting[]>([])
@@ -110,9 +109,9 @@ export default function GrafiekenPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/coach/cycling')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+          <Link href={'/coach/cycling'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Grafieken</h1>
             <p className="text-xs text-slate-500">Laatste 12 weken</p>
@@ -232,7 +231,7 @@ export default function GrafiekenPage() {
 
         {!laden && belasting.length === 0 && !laden && (
           <Card className="p-5">
-            <p className="text-sm text-slate-400">Geen FTP ingesteld — trainingsbelasting kan niet geschat worden. Vul je FTP in via <button onClick={() => router.push('/settings/cycling-profile')} className="text-primary-400 underline">Cycling Profile</button>.</p>
+            <p className="text-sm text-slate-400">Geen FTP ingesteld — trainingsbelasting kan niet geschat worden. Vul je FTP in via <Link href={'/settings/cycling-profile'} className="text-primary-400 underline">Cycling Profile</Link>.</p>
           </Card>
         )}
       </div>

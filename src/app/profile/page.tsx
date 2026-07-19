@@ -5,6 +5,7 @@ import { ArrowLeft, Save } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { useUserStore } from '@/store'
+import Link from 'next/link'
 
 type Gender = 'man' | 'vrouw' | 'anders' | 'zeg ik liever niet'
 type ExperienceLevel = 'beginner' | 'gemiddeld' | 'gevorderd'
@@ -107,9 +108,9 @@ export default function ProfilePage() {
       <AppShell showNav={false}>
         <div className="px-5 py-6 flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/settings')} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
+            <Link href={'/settings'} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
               <ArrowLeft size={20} className="text-slate-400" />
-            </button>
+            </Link>
             <h1 className="text-xl font-bold text-white">Profiel bewerken</h1>
           </div>
           {[1,2,3].map(i => <div key={i} className="h-24 rounded-2xl bg-coach-card animate-pulse" />)}
@@ -124,9 +125,9 @@ export default function ProfilePage() {
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/settings')} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
+          <Link href={'/settings'} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
             <ArrowLeft size={20} className="text-slate-400" />
-          </button>
+          </Link>
           <h1 className="text-xl font-bold text-white">Profiel bewerken</h1>
         </div>
 

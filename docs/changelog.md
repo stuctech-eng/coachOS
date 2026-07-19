@@ -1,5 +1,77 @@
 # CoachOS — Changelog
 
+## v2.4.119 — Zoom hersteld + app-brede navigatie-modernisering
+**Twee losstaande fixes op verzoek: pinch-to-zoom werkte nergens meer, en
+navigatie "tussen schermen" voelde traag. Geen backend-wijzigingen.**
+
+### 1. Zoom hersteld
+`src/app/layout.tsx` — `maximumScale: 1` en `userScalable: false`
+verwijderd uit de viewport-config. Deze blokkeerden pinch-to-zoom in de
+hele app. Vermoedelijk ooit bedoeld om de iOS-auto-zoom-bug op
+inputvelden te voorkomen — die bug is al apart gefixt via een globale
+CSS font-size-fix (input font-size ≥16px), dus deze instelling was
+overbodig geworden én kostte legitieme pinch-zoom (ook een
+toegankelijkheidsprobleem).
+
+### 2. Navigatie gemoderniseerd — router.push() → Link
+**Root cause gevonden:** bijna alle interne navigatie gebruikte
+`<button onClick={() => router.push(...)}>` in plaats van Next.js'
+`<Link href="...">`. Dat verschil is groot: `<Link>` laat Next.js de
+doelpagina vooraf laden (prefetch) zodra hij in beeld komt — een tik
+voelt dan instant. `router.push()` op een kale button doet dat niet;
+elke navigatie laadt pas op het moment van de tik.
+
+**Aanpak:** elke navigatie-knop die ZUIVER navigeert (geen logica
+ervoor) is omgezet naar `<Link>`. Knoppen die eerst een actie
+uitvoeren — formulier opslaan, activiteit verwijderen, inloggen/
+registreren, dan pas navigeren — zijn bewust ONGEWIJZIGD gebleven als
+`router.push()`, want `<Link>` kan geen actie vóór de navigatie
+uitvoeren.
+
+**31 bestanden gewijzigd, ~46 navigatie-knoppen omgezet naar `<Link>`:**
+- Alle Cycling Hub-schermen (Hub, Power Center, Progress Center,
+  Grafieken, Kalender, Trainingsplan), Running Hub
+- Home, Settings (incl. `Row`-component uitgebreid met een `href`-prop),
+  Profiel, Goals, Injuries, Insights, Life Events
+- Specialisten-overzicht (incl. 2 kaarten met een `key`-prop die het
+  eerste geautomatiseerde patroon misten — apart afgehandeld)
+- Archief (`startOefening`-tussenfunctie was overbodig geworden,
+  vervangen door een directe `Link` met dynamische route)
+- Settings-subpagina's (Garmin Import, Garmin Activity Import,
+  Equipment, Hoe werkt CoachOS), Debug, Reset-password, Dagboek,
+  Coach Call, Training (recovery: breathing/mobility/relaxation/walk),
+  ActiviteitenSectie-component
+
+**Bewust ongewijzigd (behouden als `router.push`)** — allemaal
+side-effect-navigatie: login/register/onboarding (formulier→submit→
+navigeer), activiteit verwijderen, profiel/equipment opslaan,
+checkin, Coach Call-afronding, `home/page.tsx`'s dynamische
+snelkoppeling (ruimt eerst scroll-state op), `training/page.tsx`'s
+starttraining-knoppen (schrijven eerst naar localStorage), en de
+`<Button>`-componentknoppen in reset-password (custom component,
+geen kale `<button>`).
+
+**Nog niet aangepakt — bewust:** de opstartsnelheid (app laadt traag
+bij openen) is een ANDER probleem met een andere, nog onbevestigde
+oorzaak (mogelijk meerdere parallelle Supabase-auth-checks per scherm).
+Dat vergt eerst meting (Vercel Speed Insights/Lighthouse), geen
+gok-en-bouw — apart vervolgpunt, geen onderdeel van deze levering.
+
+**Validatie:** `npm install` + `npx next build` lokaal gedraaid vóór
+levering — compileert zonder fouten of warnings, alle 49 pagina's,
+inclusief TypeScript-typechecking en ESLint.
+
+**Test-instructies:**
+1. Pinch-to-zoom testen op een willekeurig scherm — moet weer werken
+2. Navigeer via Cycling Hub → Power Center / Progress Center /
+   Grafieken / Trainingsplan — moet merkbaar sneller aanvoelen
+   (prefetch bij in-beeld-komen van de knop)
+3. Formulieren nog steeds testen: inloggen, registreren, profiel
+   opslaan, activiteit verwijderen — moeten nog steeds normaal werken
+   (deze zijn bewust NIET aangepast)
+4. Settings-pagina: alle rijen (Profiel, Doelen, Blessures, etc.)
+   moeten nog steeds naar de juiste pagina navigeren
+
 ## v2.4.118 — Power Center (Fase 1, Cycling Specialist Roadmap)
 **Nieuw analysecentrum dat FTP, vermogenscurve, persoonlijke records en
 Power Zones samenvoegt tot één professioneel geheel — GEEN nieuwe SQL,

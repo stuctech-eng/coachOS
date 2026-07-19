@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { parseTcx, type TcxParsed } from '@/lib/tcx-parser'
+import Link from 'next/link'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,6 @@ type Methode = 'screenshot' | 'tcx'
 type Fase = 'idle' | 'uploading' | 'preview' | 'confirming' | 'done' | 'error'
 
 export default function GarminActivityImportPage() {
-  const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const tcxFileRef = useRef<HTMLInputElement>(null)
 
@@ -199,12 +198,12 @@ export default function GarminActivityImportPage() {
           h-screen + overflow-y-auto geeft deze pagina zijn eigen,
           onafhankelijke scroll-context. */}
       <div className="flex items-center gap-3 px-4 pt-14 pb-6">
-        <button onClick={() => router.push('/settings')}
+        <Link href={'/settings'}
           className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-        </button>
+        </Link>
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Garmin Activiteit</h1>
           <p className="text-xs text-white/40 mt-0.5">Losse activiteit toevoegen</p>
@@ -377,12 +376,12 @@ export default function GarminActivityImportPage() {
               </p>
             </div>
             <div className="flex gap-2 mt-2 w-full">
-              <button onClick={() => router.push('/activities')} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
+              <Link href={'/activities'} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
                 Bekijk activiteiten
-              </button>
-              <button onClick={() => router.push('/home')} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
+              </Link>
+              <Link href={'/home'} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium">
                 Naar Home
-              </button>
+              </Link>
             </div>
           </div>
         )}

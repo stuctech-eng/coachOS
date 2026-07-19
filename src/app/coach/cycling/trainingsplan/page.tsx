@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, RefreshCw, Calendar, CheckCircle2, XCircle, ArrowRightLeft } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { isoDatum } from '@/utils'
 import { Card, Button } from '@/components/ui'
+import Link from 'next/link'
 
 // ── Trainingsplan-scherm — Adaptive Training Plan Engine, Fase 2a
 //    sub-stap 3/3 (UI) ────────────────────────────────────────────────
@@ -59,7 +59,6 @@ function StatusIcoon({ status }: { status: Sessie['status'] }) {
 }
 
 export default function TrainingsplanPage() {
-  const router = useRouter()
   const [laden, setLaden] = useState(true)
   const [genereren, setGenereren] = useState(false)
   const [plan, setPlan] = useState<Plan | null>(null)
@@ -130,9 +129,9 @@ export default function TrainingsplanPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/coach/cycling')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+          <Link href={'/coach/cycling'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Trainingsplan</h1>
             <p className="text-xs text-slate-500">Adaptief, past zich aan op je herstel</p>
@@ -217,11 +216,11 @@ export default function TrainingsplanPage() {
             </p>
 
             <div className="flex gap-2">
-              <button onClick={() => router.push('/coach/cycling/kalender')}
+              <Link href={'/coach/cycling/kalender'}
                 className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
                 <Calendar size={14} />
                 Kalender
-              </button>
+              </Link>
               <button onClick={laadPlan} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
                 <RefreshCw size={14} />
                 Ververs

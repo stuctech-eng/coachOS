@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
+import Link from 'next/link'
 
 interface Equipment {
   id: keyof EquipmentState
@@ -87,12 +88,11 @@ export default function EquipmentPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push('/settings')}
+          <Link href={'/settings'}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5"
           >
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div>
             <h1 className="text-xl font-bold text-white">Equipment</h1>
             <p className="text-xs text-slate-500">Trainer AI gebruikt dit voor sessieselectie</p>

@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, CheckCircle, Trash2, Target } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
+import Link from 'next/link'
 
 interface Goal {
   id: string
@@ -217,7 +217,6 @@ function GoalDetail({ goal, onClose, onUpdate, onAfronden, onVerwijder }: {
 }
 
 export default function GoalsPage() {
-  const router = useRouter()
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [showNieuw, setShowNieuw] = useState(false)
@@ -328,9 +327,9 @@ export default function GoalsPage() {
     <AppShell showNav={false}>
       <div className="px-5 py-6 flex flex-col gap-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/settings')} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
+          <Link href={'/settings'} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
             <ArrowLeft size={20} className="text-slate-400" />
-          </button>
+          </Link>
           <h1 className="text-xl font-bold text-white flex-1">Doelen</h1>
           <button onClick={() => setShowNieuw(true)} className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center active:bg-primary-700">
             <Plus size={20} className="text-white" />

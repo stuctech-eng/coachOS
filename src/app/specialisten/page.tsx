@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronRight, Bike, Footprints, Waves, Dumbbell, Salad } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
+import Link from 'next/link'
 
 // ── Specialisten-overzicht ───────────────────────────────────────────────
 // v2.4.93, Navigatie-architectuur v1.0. Vervangt functioneel de "Mijn
@@ -133,10 +134,10 @@ export default function SpecialistenPage() {
                 ? `Je vorige trainingsblok liep tot ${formatDatum(terugkeer.lifecycle.vorige_actieve_periode.eind)}. Zullen we het schema weer oppakken?`
                 : `Zullen we je ${terugkeer.label}-schema weer oppakken?`}
             </p>
-            <button onClick={() => router.push(`/coach/${terugkeer.specialist_type}`)}
+            <Link href={`/coach/${terugkeer.specialist_type}`}
               className="w-full py-2 rounded-xl bg-green-500/20 text-green-400 text-xs font-semibold border border-green-500/30">
               Naar {terugkeer.label}
-            </button>
+            </Link>
           </div>
         )}
 
@@ -148,7 +149,7 @@ export default function SpecialistenPage() {
                 const Icoon = SPECIALIST_ICOON[s.specialist_type] || Bike
                 const badge = lifecycleLabel(s.lifecycle?.state)
                 return (
-                  <button key={s.specialist_type} onClick={() => router.push(`/coach/${s.specialist_type}`)} className="w-full text-left">
+                  <Link key={s.specialist_type} href={`/coach/${s.specialist_type}`} className="w-full text-left">
                     <Card className="p-4 active:bg-slate-700">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
@@ -161,7 +162,7 @@ export default function SpecialistenPage() {
                         <ChevronRight size={16} className="text-slate-600" />
                       </div>
                     </Card>
-                  </button>
+                  </Link>
                 )
               })}
             </div>
@@ -175,7 +176,7 @@ export default function SpecialistenPage() {
               {beschikbaarNietActief.map(s => {
                 const Icoon = SPECIALIST_ICOON[s.specialist_type] || Bike
                 return (
-                  <button key={s.specialist_type} onClick={() => router.push(`/coach/${s.specialist_type}`)} className="w-full text-left">
+                  <Link key={s.specialist_type} href={`/coach/${s.specialist_type}`} className="w-full text-left">
                     <Card className="p-4 active:bg-slate-700 opacity-80">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
@@ -188,7 +189,7 @@ export default function SpecialistenPage() {
                         <ChevronRight size={16} className="text-slate-600" />
                       </div>
                     </Card>
-                  </button>
+                  </Link>
                 )
               })}
             </div>

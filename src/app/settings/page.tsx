@@ -1,6 +1,7 @@
 'use client'
 import { Suspense, useEffect, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { LogOut, User, Target, Info, ChevronRight, Activity, CheckCircle, XCircle, Zap, Calendar, Camera, HelpCircle, Wrench, Bug } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout'
@@ -71,7 +72,6 @@ function StravaSection() {
 
 export default function SettingsPage() {
   const { profile, user, signOut } = useAuth()
-  const router = useRouter()
   // v2.4.22: versienummer nu dynamisch uit /api/version, net als
   // hoe-werkt-het/page.tsx (v2.4.14) — was hier nog hardcoded "v1.8.5",
   // een derde losstaand versienummer naast package.json en de al-gefixte
@@ -104,8 +104,8 @@ export default function SettingsPage() {
         </Card>
 
         <Card className="p-4">
-          <button
-            onClick={() => router.push('/settings/garmin-import')}
+          <Link
+            href="/settings/garmin-import"
             className="flex items-center gap-3 w-full"
           >
             <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
@@ -116,7 +116,7 @@ export default function SettingsPage() {
               <p className="text-slate-400 text-xs">Screenshot uploaden voor dagdata</p>
             </div>
             <ChevronRight size={16} className="text-slate-600" />
-          </button>
+          </Link>
         </Card>
 
         {/* v2.4.40: "Garmin Activiteit"-kaart verwijderd — was dubbelop
@@ -125,8 +125,8 @@ export default function SettingsPage() {
             linkt. Eén duidelijke toegangsweg in plaats van twee. */}
 
         <Card className="p-4">
-          <button
-            onClick={() => router.push('/settings/equipment')}
+          <Link
+            href="/settings/equipment"
             className="flex items-center gap-3 w-full"
           >
             <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
@@ -137,22 +137,22 @@ export default function SettingsPage() {
               <p className="text-slate-400 text-xs">Beschikbare trainingsmiddelen</p>
             </div>
             <ChevronRight size={16} className="text-slate-600" />
-          </button>
+          </Link>
         </Card>
 
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Profiel</p>
           <Card>
-            <Row icon={User} label="Profiel bewerken" onClick={() => router.push('/profile')} />
+            <Row icon={User} label="Profiel bewerken" href="/profile" />
             <div className="h-px bg-coach-border mx-4" />
-            <Row icon={Target} label="Doelen beheren" onClick={() => router.push('/goals')} />
+            <Row icon={Target} label="Doelen beheren" href="/goals" />
             <div className="h-px bg-coach-border mx-4" />
-            <Row icon={Zap} label="Blessures" onClick={() => router.push('/injuries')} />
+            <Row icon={Zap} label="Blessures" href="/injuries" />
             <div className="h-px bg-coach-border mx-4" />
-            <Row icon={Calendar} label="Levensgebeurtenissen" onClick={() => router.push('/life-events')} />
+            <Row icon={Calendar} label="Levensgebeurtenissen" href="/life-events" />
             <div className="h-px bg-coach-border mx-4" />
-            <Row icon={Info} label="Inzichten" onClick={() => router.push('/insights')} />
-            <Row icon={Zap} label="Cycling Profile" onClick={() => router.push('/settings/cycling-profile')} />
+            <Row icon={Info} label="Inzichten" href="/insights" />
+            <Row icon={Zap} label="Cycling Profile" href="/settings/cycling-profile" />
           </Card>
         </div>
 
@@ -166,14 +166,14 @@ export default function SettingsPage() {
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Over</p>
           <Card>
-            <Row icon={HelpCircle} label="Hoe werkt CoachOS" onClick={() => router.push('/settings/hoe-werkt-het')} />
+            <Row icon={HelpCircle} label="Hoe werkt CoachOS" href="/settings/hoe-werkt-het" />
             <div className="h-px bg-coach-border mx-4" />
             <Row icon={Info} label="CoachOS" trailing={<span className="text-xs text-slate-500">{versie ? `v${versie}` : ''}</span>} />
           </Card>
         </div>
 
         <Card>
-          <Row icon={Bug} label="Debug diagnostiek" onClick={() => router.push('/debug')} />
+          <Row icon={Bug} label="Debug diagnostiek" href="/debug" />
         </Card>
 
         <button onClick={signOut} className="flex items-center gap-3 px-4 py-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
@@ -185,12 +185,22 @@ export default function SettingsPage() {
   )
 }
 
-function Row({ icon: Icon, label, trailing, onClick }: { icon: React.ElementType; label: string; trailing?: React.ReactNode; onClick?: () => void }) {
-  return (
-    <button onClick={onClick} className="flex items-center gap-4 px-4 py-4 w-full active:bg-slate-800">
+function Row({ icon: Icon, label, trailing, href, onClick }: { icon: React.ElementType; label: string; trailing?: React.ReactNode; href?: string; onClick?: () => void }) {
+  const inhoud = (
+    <>
       <Icon size={18} className="text-slate-400 flex-shrink-0" />
       <span className="flex-1 text-left text-sm text-slate-200">{label}</span>
-      {trailing || <ChevronRight size={16} className="text-slate-600" />}
+      {trailing || (href || onClick ? <ChevronRight size={16} className="text-slate-600" /> : null)}
+    </>
+  )
+  // v2.4.119: href geeft prefetching (sneller aanvoelende navigatie) —
+  // onClick blijft bestaan voor Rows zonder navigatie (bv. puur trailing-info)
+  if (href) {
+    return <Link href={href} className="flex items-center gap-4 px-4 py-4 w-full active:bg-slate-800">{inhoud}</Link>
+  }
+  return (
+    <button onClick={onClick} className="flex items-center gap-4 px-4 py-4 w-full active:bg-slate-800">
+      {inhoud}
     </button>
   )
 }

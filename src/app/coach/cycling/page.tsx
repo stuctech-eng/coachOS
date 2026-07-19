@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Minus, Settings } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import { isoDatum } from '@/utils'
+import Link from 'next/link'
 
 // ── Cycling Hub — eerste echte Hub-UI (Stap 5/5, referentie-implementatie) ──
 // Bron: docs/specialist-coaches.md §6 (Hub-structuur), aparte route
@@ -41,7 +41,6 @@ function TrendIcoon({ trend }: { trend: 'stijgend' | 'stabiel' | 'dalend' }) {
 }
 
 export default function CyclingHubPage() {
-  const router = useRouter()
   const [laden, setLaden] = useState(true)
   const [advies, setAdvies] = useState<CyclingAdvies | null>(null)
   const [engineData, setEngineData] = useState<CyclingEngineResultaat | null>(null)
@@ -126,17 +125,17 @@ export default function CyclingHubPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/specialisten')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+          <Link href={'/specialisten'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-white">Cycling Coach</h1>
             <p className="text-xs text-slate-500">Specialist-hub · laatste 90 dagen</p>
           </div>
           {/* v2.4.91: link naar Cycling Profile — Fase 1, Cycling Foundation */}
-          <button onClick={() => router.push('/settings/cycling-profile')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+          <Link href={'/settings/cycling-profile'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <Settings size={16} className="text-slate-400" />
-          </button>
+          </Link>
         </div>
 
         {/* v2.4.70: DORMANT — Hub blijft zichtbaar, kennis blijft
@@ -181,13 +180,13 @@ export default function CyclingHubPage() {
             {(vandaagTraining || leidendDoel) && (
               <div className="grid grid-cols-2 gap-3">
                 {vandaagTraining ? (
-                  <button onClick={() => router.push('/coach/cycling/trainingsplan')} className="text-left">
+                  <Link href={'/coach/cycling/trainingsplan'} className="text-left">
                     <Card className="p-4 h-full active:bg-slate-700">
                       <p className="text-xs text-slate-500 mb-1">Vandaag</p>
                       <p className="text-sm font-semibold text-white capitalize">{vandaagTraining.type.replace('_', ' ')}</p>
                       <p className="text-xs text-slate-600">{vandaagTraining.duration} min</p>
                     </Card>
-                  </button>
+                  </Link>
                 ) : (
                   <Card className="p-4 h-full">
                     <p className="text-xs text-slate-500 mb-1">Vandaag</p>
@@ -195,7 +194,7 @@ export default function CyclingHubPage() {
                   </Card>
                 )}
                 {leidendDoel ? (
-                  <button onClick={() => router.push('/goals')} className="text-left">
+                  <Link href={'/goals'} className="text-left">
                     <Card className="p-4 h-full active:bg-slate-700">
                       <p className="text-xs text-slate-500 mb-1">Doel</p>
                       <p className="text-sm font-semibold text-white line-clamp-1">{leidendDoel.title}</p>
@@ -203,7 +202,7 @@ export default function CyclingHubPage() {
                         {leidendDoel.dagen_resterend !== null ? `nog ${leidendDoel.dagen_resterend} dagen` : 'geen deadline'}
                       </p>
                     </Card>
-                  </button>
+                  </Link>
                 ) : (
                   <Card className="p-4 h-full">
                     <p className="text-xs text-slate-500 mb-1">Doel</p>
@@ -246,46 +245,46 @@ export default function CyclingHubPage() {
             )}
 
             {/* v2.4.99: link naar het adaptieve trainingsplan — Fase 2a sub-stap 3 */}
-            <button onClick={() => router.push('/coach/cycling/trainingsplan')}
+            <Link href={'/coach/cycling/trainingsplan'}
               className="w-full p-4 rounded-2xl bg-gradient-to-r from-primary-500/20 to-primary-500/5 border border-primary-500/30 flex items-center justify-between active:bg-primary-500/25">
               <div className="text-left">
                 <p className="text-sm font-semibold text-white">Bekijk je trainingsplan</p>
                 <p className="text-xs text-slate-400">Adaptief schema, past zich aan op je herstel</p>
               </div>
               <span className="text-primary-400 text-lg">→</span>
-            </button>
+            </Link>
 
             {/* v2.4.107: link naar Progress Center — Fase 2i, "het hart
                 van de Cycling Hub", vandaar bovenaan de snelkoppelingen */}
-            <button onClick={() => router.push('/coach/cycling/progress')}
+            <Link href={'/coach/cycling/progress'}
               className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-500/5 border border-amber-500/30 flex items-center justify-between active:bg-amber-500/25">
               <div className="text-left">
                 <p className="text-sm font-semibold text-white">Progress Center</p>
                 <p className="text-xs text-slate-400">Doel, records, W/kg en wat je coach over je weet</p>
               </div>
               <span className="text-amber-400 text-lg">→</span>
-            </button>
+            </Link>
 
             {/* v2.4.118: link naar Power Center — Fase 1, FTP/vermogenscurve/
                 records/zones samengevoegd tot één analysecentrum */}
-            <button onClick={() => router.push('/coach/cycling/power')}
+            <Link href={'/coach/cycling/power'}
               className="w-full p-4 rounded-2xl bg-gradient-to-r from-yellow-500/20 to-yellow-500/5 border border-yellow-500/30 flex items-center justify-between active:bg-yellow-500/25">
               <div className="text-left">
                 <p className="text-sm font-semibold text-white">Power Center</p>
                 <p className="text-xs text-slate-400">FTP, vermogenscurve, records en Power Zones</p>
               </div>
               <span className="text-yellow-400 text-lg">→</span>
-            </button>
+            </Link>
 
             {/* v2.4.103: link naar Grafieken — Fase 2d */}
-            <button onClick={() => router.push('/coach/cycling/grafieken')}
+            <Link href={'/coach/cycling/grafieken'}
               className="w-full p-4 rounded-2xl bg-slate-800/70 border border-slate-700/50 flex items-center justify-between active:bg-slate-700">
               <div className="text-left">
                 <p className="text-sm font-semibold text-white">Grafieken</p>
                 <p className="text-xs text-slate-400">Volume, fitness en vermoeidheid over tijd</p>
               </div>
               <span className="text-slate-500 text-lg">→</span>
-            </button>
+            </Link>
 
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Sterke punten</p>

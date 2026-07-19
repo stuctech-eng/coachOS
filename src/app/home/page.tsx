@@ -317,16 +317,16 @@ export default function HomePage() {
             {/* v2.4.93: account-icoon — Navigatie-architectuur v1.0, Stap 5.
                 Instellingen staat niet meer in de onderste navigatiebalk
                 (5-tabs-structuur), dit is nu de ingang. */}
-            <button onClick={() => router.push('/settings')} className="w-11 h-11 rounded-xl bg-coach-card flex items-center justify-center text-slate-400">
+            <Link href={'/settings'} className="w-11 h-11 rounded-xl bg-coach-card flex items-center justify-center text-slate-400">
               <CircleUserRound size={20} />
-            </button>
+            </Link>
           </div>
         </div>
 
         {/* v2.4.14: Update-probleem banner — alleen zichtbaar na een
             gedetecteerde versiewissel MET gevonden problemen */}
         {updateProbleem && (
-          <button onClick={() => router.push('/debug')} className="w-full text-left active:opacity-70">
+          <Link href={'/debug'} className="w-full text-left active:opacity-70">
             <Card className="px-5 py-4 border border-red-500/30 bg-red-500/5">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
@@ -341,12 +341,12 @@ export default function HomePage() {
                 <ChevronDown size={16} className="text-red-400/50 -rotate-90 flex-shrink-0" />
               </div>
             </Card>
-          </button>
+          </Link>
         )}
 
         {/* Coach Call */}
         {coachCall && coachCall.pending_count > 0 && (
-          <button onClick={() => router.push('/coach-call')} className="w-full text-left active:opacity-70">
+          <Link href={'/coach-call'} className="w-full text-left active:opacity-70">
             <Card className="px-5 py-4 border border-amber-500/30 bg-amber-500/5">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
@@ -363,7 +363,7 @@ export default function HomePage() {
                 </span>
               </div>
             </Card>
-          </button>
+          </Link>
         )}
 
         {/* Check-in */}
@@ -390,7 +390,7 @@ export default function HomePage() {
 
         {/* Garmin reminder */}
         {!garminImported && (
-          <button onClick={() => router.push('/settings/garmin-import')}
+          <Link href={'/settings/garmin-import'}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-left active:bg-blue-500/15 transition-colors">
             <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
               <Camera size={16} className="text-blue-400" />
@@ -400,7 +400,7 @@ export default function HomePage() {
               <p className="text-xs text-slate-500 mt-0.5">Vandaag nog geen screenshot geüpload</p>
             </div>
             <ChevronDown size={16} className="text-blue-400/50 -rotate-90 flex-shrink-0" />
-          </button>
+          </Link>
         )}
 
         {/* Coach Score */}

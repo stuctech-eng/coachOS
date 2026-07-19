@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, Info } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
+import Link from 'next/link'
 
 // ── Progress Center — Cycling Specialist Roadmap v1.0, Fase 2i ─────────
 // "Het feitelijke hart van de Cycling Hub" — consolideert bestaande data
@@ -41,7 +41,6 @@ interface MemoryItem {
 }
 
 export default function ProgressCenterPage() {
-  const router = useRouter()
   const [laden, setLaden] = useState(true)
   const [ftp, setFtp] = useState<number | null>(null)
   const [gewicht, setGewicht] = useState<number | null>(null)
@@ -77,9 +76,9 @@ export default function ProgressCenterPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/coach/cycling')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+          <Link href={'/coach/cycling'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Progress Center</h1>
             <p className="text-xs text-slate-500">Hoe je je ontwikkelt, in één overzicht</p>
@@ -177,9 +176,9 @@ export default function ProgressCenterPage() {
                     </div>
                   )}
                 </div>
-                <button onClick={() => router.push('/coach/cycling/grafieken')} className="text-xs text-primary-400 mt-3">
+                <Link href={'/coach/cycling/grafieken'} className="text-xs text-primary-400 mt-3">
                   Alle records bekijken →
-                </button>
+                </Link>
               </Card>
             )}
 

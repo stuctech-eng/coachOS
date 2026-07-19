@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import Link from 'next/link'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -53,7 +53,6 @@ function hrvStatusLabel(status: string | null): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function GarminImportPage() {
-  const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [phase, setPhase] = useState<'idle' | 'uploading' | 'preview' | 'confirming' | 'done' | 'error'>('idle')
@@ -142,14 +141,13 @@ export default function GarminImportPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-14 pb-6">
-        <button
-          onClick={() => router.push('/settings')}
+        <Link href={'/settings'}
           className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-        </button>
+        </Link>
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Garmin Import</h1>
           <p className="text-xs text-white/40 mt-0.5">Dagelijkse data via screenshot</p>
@@ -344,12 +342,11 @@ export default function GarminImportPage() {
                 </div>
               </>
             )}
-            <button
-              onClick={() => router.push('/home')}
+            <Link href={'/home'}
               className="mt-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium"
             >
               Naar Home
-            </button>
+            </Link>
           </div>
         )}
 

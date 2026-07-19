@@ -1,12 +1,12 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle, Star, RefreshCw, Activity, Moon, Footprints, ArrowLeft, Heart, Zap, Battery, ChevronDown } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { cn } from '@/utils'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { createBrowserClient } from '@supabase/ssr'
+import Link from 'next/link'
 
 interface MemoryItem {
   id: string
@@ -157,7 +157,6 @@ function GarminGrafiek({
 }
 
 export default function InsightsPage() {
-  const router = useRouter()
   const [insights, setInsights] = useState<MemoryItem[]>([])
   const [garminData, setGarminData] = useState<GarminImport[]>([])
   const [trends, setTrends] = useState<Trends | null>(null)
@@ -242,9 +241,9 @@ export default function InsightsPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => router.push('/settings')} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
+          <Link href={'/settings'} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center active:bg-slate-700">
             <ArrowLeft size={20} className="text-slate-400" />
-          </button>
+          </Link>
           <div className="flex-1">
             <h1 className="text-xl font-bold text-white">Inzichten</h1>
             <p className="text-slate-400 text-xs">Gezondheid & coach analyse</p>
@@ -330,12 +329,11 @@ export default function InsightsPage() {
                 <Zap size={32} className="text-slate-600 mx-auto mb-2" />
                 <p className="text-sm text-slate-400">Nog geen Garmin data</p>
                 <p className="text-xs text-slate-500 mt-1 mb-4">Importeer dagelijks via Instellingen → Garmin Import</p>
-                <button
-                  onClick={() => router.push('/settings/garmin-import')}
+                <Link href={'/settings/garmin-import'}
                   className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-xl text-sm border border-blue-500/20"
                 >
                   Garmin Import →
-                </button>
+                </Link>
               </Card>
             ) : (
               <div className="flex flex-col gap-3">

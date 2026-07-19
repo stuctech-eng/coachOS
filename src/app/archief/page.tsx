@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ArrowLeft, ChevronRight, Dumbbell, Zap, Wind, Footprints, Bike, Waves } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
@@ -136,10 +137,6 @@ export default function ArchiefPage() {
     setOpenCategorieen(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id])
   }
 
-  function startOefening(categorie: ArchiefCategorie, oefening: ArchiefOefening) {
-    router.push(`/archief/oefening/${oefening.id}`)
-  }
-
   const totaalOefeningen = CATEGORIEEN.reduce((a, c) => a + c.oefeningen.length, 0)
 
   return (
@@ -194,14 +191,14 @@ export default function ArchiefPage() {
                 {isOpen && (
                   <div className="flex flex-col border-t border-coach-border max-h-96 overflow-y-auto">
                     {gefilterd.map((oef, i) => (
-                      <button key={i} onClick={() => startOefening(cat, oef)}
+                      <Link key={i} href={`/archief/oefening/${oef.id}`}
                         className="w-full active:opacity-70 text-left px-4 py-3 flex items-center gap-3 border-b border-coach-border/50 last:border-0">
                         <div className="flex-1">
                           <p className="text-white text-sm">{oef.naam}</p>
                           <p className="text-slate-500 text-xs mt-0.5">{oef.sub}{oef.illustratie ? ' · 🖼️ illustratie' : ''}</p>
                         </div>
                         <ChevronRight size={14} className="text-slate-600 flex-shrink-0" />
-                      </button>
+                      </Link>
                     ))}
                   </div>
                 )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronRight, Plus, RefreshCw, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
 
 // ── ActiviteitenSectie ──────────────────────────────────────────────────
 // v2.4.93: geëxtraheerd uit de voormalige losse /activities-pagina
@@ -159,7 +160,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
       </div>
 
       <div className={compact ? 'mb-4' : 'px-4 mb-4'}>
-        <button onClick={() => router.push('/settings/garmin-activity-import')}
+        <Link href={'/settings/garmin-activity-import'}
           className="w-full bg-[#1c2128] rounded-2xl p-4 flex items-center gap-3 active:bg-[#22272e] transition-colors">
           <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
             <Plus size={20} className="text-blue-400" />
@@ -169,7 +170,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
             <p className="text-xs text-gray-400">Via Garmin screenshot of TCX-bestand</p>
           </div>
           <ChevronRight size={18} className="text-gray-600 flex-shrink-0" />
-        </button>
+        </Link>
 
         <button onClick={handleStravaSync} disabled={syncing}
           className="w-full mt-2 bg-[#1c2128] rounded-2xl p-4 flex items-center gap-3 active:bg-[#22272e] transition-colors disabled:opacity-60">
@@ -342,9 +343,9 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
           })
         )}
         {compact && gefilterd.length > 5 && (
-          <button onClick={() => router.push('/activities')} className="w-full text-center py-2 text-xs text-primary-400">
+          <Link href={'/activities'} className="w-full text-center py-2 text-xs text-primary-400">
             Alle {gefilterd.length} activiteiten bekijken →
-          </button>
+          </Link>
         )}
       </div>
     </div>

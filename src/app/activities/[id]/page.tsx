@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ArrowLeft, Sparkles, Trash2 } from 'lucide-react'
 import { AppShell } from '@/components/layout'
+import Link from 'next/link'
 
 // v2.4.41: dynamic import met ssr:false — Leaflet gebruikt `window` en kan
 // niet server-side gerenderd worden. Next.js zou anders bij build/render
@@ -130,10 +131,10 @@ export default function ActivityDetailPage() {
     <AppShell>
       <div className="text-white px-4 pt-6 pb-10">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => router.push('/activities')}
+          <Link href={'/activities'}
             className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center active:bg-white/10">
             <ArrowLeft size={20} className="text-slate-400" />
-          </button>
+          </Link>
           <h1 className="text-xl font-bold text-white flex-1">{session?.activities?.name || 'Activiteit'}</h1>
           {session && (
             <button onClick={() => setWisBevestiging(true)}

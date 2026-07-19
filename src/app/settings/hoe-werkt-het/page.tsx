@@ -1,9 +1,9 @@
 'use client'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, Brain, Dumbbell, Wind, TrendingUp, Battery, Heart, Zap, Clock, Camera, BarChart2, ChevronDown, Phone, Bike } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
+import Link from 'next/link'
 
 interface Sectie {
   id: string
@@ -258,7 +258,6 @@ function SectieKaart({ sectie }: { sectie: Sectie }) {
 }
 
 export default function HoeWerktHetPage() {
-  const router = useRouter()
   // v2.4.14: versienummer komt uit package.json (via /api/version), niet
   // meer hardcoded. package.json is de enige bron van waarheid — zie
   // README sectie "Versienummer — één bron van waarheid".
@@ -274,12 +273,11 @@ export default function HoeWerktHetPage() {
   return (
     <AppShell showNav={false}>
       <div className="flex items-center gap-3 px-4 pt-14 pb-6">
-        <button
-          onClick={() => router.push('/settings')}
+        <Link href={'/settings'}
           className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
         >
           <ArrowLeft size={18} className="text-slate-400" />
-        </button>
+        </Link>
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Hoe werkt CoachOS</h1>
           <p className="text-xs text-white/40 mt-0.5">Uitleg, logica en flow</p>

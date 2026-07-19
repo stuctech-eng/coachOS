@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { browserClient } from '@/lib/supabase'
 import { Button, Input } from '@/components/ui'
 
@@ -176,12 +177,11 @@ function ResetPasswordContent() {
             <Button onClick={aanvragen} loading={loading} fullWidth size="lg" className="mt-2">
               Reset link versturen
             </Button>
-            <button
-              onClick={() => router.push('/login')}
+            <Link href={'/login'}
               className="text-center text-sm text-slate-400 py-2"
             >
               Terug naar inloggen
-            </button>
+            </Link>
           </div>
         )}
 

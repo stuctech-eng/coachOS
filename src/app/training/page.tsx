@@ -9,6 +9,7 @@ import { cn } from '@/utils'
 import type { TrainingModule } from '@/types/training-engine'
 import { getAvailableModules } from '@/utils/equipment'
 import type { EquipmentProfile } from '@/app/api/equipment/route'
+import Link from 'next/link'
 
 interface RecoveryModule {
   type: 'breathing' | 'mobility' | 'walk' | 'relaxation'
@@ -546,7 +547,7 @@ function TrainingContent() {
         </div>
 
         {/* Archief — alle oefeningen los testen, buiten de coach om */}
-        <button onClick={() => router.push('/archief')}
+        <Link href={'/archief'}
           className="w-full active:opacity-70 text-left">
           <Card className="px-4 py-3 flex items-center gap-3 border border-coach-border">
             <div className="w-8 h-8 rounded-lg bg-slate-700/40 flex items-center justify-center flex-shrink-0">
@@ -558,7 +559,7 @@ function TrainingContent() {
             </div>
             <ChevronRight size={14} className="text-slate-600" />
           </Card>
-        </button>
+        </Link>
       </div>
     </AppShell>
   )

@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
+import Link from 'next/link'
 
 // ── Power Center — Cycling Specialist Roadmap v1.0, Fase 1 (v2.4.118) ──
 // Bron: overleg 19 juli 2026. BEWUST GEEN nieuwe SQL, nieuwe API-routes,
@@ -62,7 +62,6 @@ function TrendIcoon({ trend }: { trend: 'stijgend' | 'stabiel' | 'dalend' }) {
 }
 
 export default function PowerCenterPage() {
-  const router = useRouter()
   const [laden, setLaden] = useState(true)
   const [ftp, setFtp] = useState<number | null>(null)
   const [gewicht, setGewicht] = useState<number | null>(null)
@@ -131,9 +130,9 @@ export default function PowerCenterPage() {
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/coach/cycling')} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+          <Link href={'/coach/cycling'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
             <ArrowLeft size={18} className="text-slate-400" />
-          </button>
+          </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Power Center</h1>
             <p className="text-xs text-slate-500">FTP, vermogenscurve, records &amp; zones</p>
@@ -151,10 +150,10 @@ export default function PowerCenterPage() {
         {geenDataHelemaal && (
           <Card className="p-6 text-center">
             <p className="text-sm text-slate-400 mb-4">Nog geen FTP ingesteld en geen vermogensdata beschikbaar.</p>
-            <button onClick={() => router.push('/settings/cycling-profile')}
+            <Link href={'/settings/cycling-profile'}
               className="px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold">
               FTP instellen
-            </button>
+            </Link>
           </Card>
         )}
 
