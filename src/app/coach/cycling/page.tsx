@@ -255,6 +255,17 @@ export default function CyclingHubPage() {
               <span className="text-primary-400 text-lg">→</span>
             </button>
 
+            {/* v2.4.107: link naar Progress Center — Fase 2i, "het hart
+                van de Cycling Hub", vandaar bovenaan de snelkoppelingen */}
+            <button onClick={() => router.push('/coach/cycling/progress')}
+              className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-500/5 border border-amber-500/30 flex items-center justify-between active:bg-amber-500/25">
+              <div className="text-left">
+                <p className="text-sm font-semibold text-white">Progress Center</p>
+                <p className="text-xs text-slate-400">Doel, records, W/kg en wat je coach over je weet</p>
+              </div>
+              <span className="text-amber-400 text-lg">→</span>
+            </button>
+
             {/* v2.4.103: link naar Grafieken — Fase 2d */}
             <button onClick={() => router.push('/coach/cycling/grafieken')}
               className="w-full p-4 rounded-2xl bg-slate-800/70 border border-slate-700/50 flex items-center justify-between active:bg-slate-700">

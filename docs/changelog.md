@@ -1,5 +1,37 @@
 # CoachOS — Changelog
 
+## v2.4.107 — Cycling Specialist Roadmap Fase 2i: Progress Center
+**"Het feitelijke hart van de Cycling Hub" — consolideert bestaande data
+uit al-gebouwde bronnen tot één overzicht. Geen nieuwe berekeningen,
+puur hergebruik.**
+
+**⚠️ Eerlijk niet gebouwd:** FTP-ontwikkeling over tijd — er wordt alleen
+een huidig FTP-getal opgeslagen, geen geschiedenis. Een grafiek zou dus
+één punt tonen, geen trend. Dit vergt eerst FTP-historie bijhouden
+(nieuwe kolom/tabel) — bewust niet nu toegevoegd om geen schijngrafiek
+te tonen. Expliciet zichtbaar in de UI zelf.
+
+- **Nieuw:** `src/app/coach/cycling/progress/page.tsx` — haalt in
+  parallel op:
+  - FTP + W/kg (FTP uit Cycling Profile ÷ gewicht uit `/api/profile`,
+    dat laatste bestond al en werd hier alleen hergebruikt)
+  - Doelvoortgang (`/api/specialists/cycling/doelvoortgang`, Fase 2c)
+  - Records-samenvatting (`/api/specialists/cycling/grafieken`, Fase 2e)
+  - Memory-inzichten — alleen `status: active`-items, max 3
+  - Coach-samenvatting (laatst gegenereerde advies)
+  - Nette leeg-staat als er nog helemaal geen data is
+- `src/app/coach/cycling/page.tsx` — Progress Center-knop toegevoegd,
+  **bovenaan** de snelkoppelingen (belangrijkste plek, consistent met
+  "het hart van de Hub")
+
+**Fase 2i hiermee afgerond.** Resterend van de oorspronkelijke Fase 2-
+lijst: 2g (Coach-verdieping) en 2h (Master Coach-integratie) — beide
+grotendeels al impliciet aanwezig (Memory/Goal Engine/CoachPolicy/
+SpecialistSummary bestaan en werken al sinds eerdere fasen), eerder een
+bevestigingsronde dan nieuwe bouw.
+
+**Test-instructies:** zie bericht bij levering.
+
 ## v2.4.106 — Cycling Specialist Roadmap Fase 2f: Ritanalyse
 **Zelfde patroon als de Coach-uitleglaag (Fase 2a): eerst volledig
 deterministische analyse, dan pas AI die dat omzet in leesbare

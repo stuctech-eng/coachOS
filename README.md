@@ -353,11 +353,10 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 ## 🚴 Actieve roadmap: Cycling Specialist v1.0
 
 **Zie `docs/cycling-specialist-roadmap-v1.md` voor het volledige,
-goedgekeurde bouwplan.** ✅ Fase 1-2e (Cycling Foundation t/m Records,
-v2.4.91-105). ✅ **Fase 2f (Ritanalyse, v2.4.106) — "volgens schema"
-matcht op datum, geen expliciete koppeling (bekende beperking).**
-Volgende: Fase 2g (Coach-verdieping) of Fase 2h (Master Coach-
-integratie).
+goedgekeurde bouwplan.** ✅ Fase 1-2f (Cycling Foundation t/m
+Ritanalyse, v2.4.91-106). ✅ **Fase 2i (Progress Center, v2.4.107).**
+Resterend: 2g/2h zijn grotendeels al impliciet aanwezig (bevestiging,
+geen nieuwe bouw) — Fase 2 is daarmee vrijwel compleet.
 
 ## 🧭 Navigatie-architectuur v1.0 (VOLLEDIG GEÏMPLEMENTEERD, v2.4.93)
 
@@ -377,7 +376,7 @@ uitstelbaar (balk had 6 items, niet 5).
 | Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
 | **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
 | **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.106 | 🟡 |
+| GitHub tags aanmaken v2.0.4 t/m v2.4.107 | 🟡 |
 | Life-events pagina testen | 🟡 |
 | Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
@@ -389,7 +388,7 @@ uitstelbaar (balk had 6 items, niet 5).
 
 ## Project
 - App naam: CoachOS
-- Versie: 2.4.106
+- Versie: 2.4.107
 - App URL: https://coach-os-tau.vercel.app
 - GitHub: https://github.com/stuctech-eng/coachOS
 - Stack: Next.js 14.2.29, TypeScript, Supabase, Vercel, Claude API
@@ -688,6 +687,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
+- v2.4.107 — Cycling Roadmap Fase 2i: Progress Center ("het hart van de Hub") — consolideert doelvoortgang/records/Memory/W-kg, geen nieuwe berekeningen
 - v2.4.106 — Cycling Roadmap Fase 2f: Ritanalyse (vermogens-/hartslagzone, cadans, schema-vergelijking op datum) — AI legt uit, beslist niets
 - v2.4.105 — Cycling Roadmap Fase 2e: Records (langste rit, hoogtemeters, vermogen, snelheid, grootste week) — onderdeel van Grafieken, geen los Records Center
 - v2.4.104 — Fix: staafdiagram wekelijks volume onzichtbaar (CSS percentage-hoogte in geneste flex → pixel-hoogte)
