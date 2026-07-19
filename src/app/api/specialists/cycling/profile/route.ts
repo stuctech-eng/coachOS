@@ -130,6 +130,23 @@ export async function PUT(req: NextRequest) {
 
     if (error) throw error
 
+    // v2.4.108: FTP-geschiedenis loggen — elke keer dat FTP als
+    // onderdeel van deze update is meegestuurd, niet bij elke opslag
+    // (anders zou het loggen ook triggeren als alleen bijv.
+    // trainingsdagen wijzigen zonder dat FTP is aangeraakt)
+    if (nieuw.ftp !== undefined) {
+      try {
+        await supabase.from('cycling_ftp_geschiedenis').insert({
+          user_id: user.id,
+          ftp: nieuw.ftp,
+        })
+      } catch (historieErr) {
+        // Nooit de hele opslag laten falen als alleen de geschiedenis-
+        // logging misgaat — dat is een verrijking, geen kernfunctie
+        console.error('[specialists/cycling/profile PUT] FTP-geschiedenis loggen mislukt:', historieErr)
+      }
+    }
+
     return NextResponse.json({
       profiel: samengevoegd,
       vermogenszones: samengevoegd.ftp ? berekenVermogensZones(samengevoegd.ftp) : null,

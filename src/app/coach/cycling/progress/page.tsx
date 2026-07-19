@@ -49,6 +49,7 @@ export default function ProgressCenterPage() {
   const [records, setRecords] = useState<Records | null>(null)
   const [memoryInzichten, setMemoryInzichten] = useState<MemoryItem[]>([])
   const [coachSamenvatting, setCoachSamenvatting] = useState<string | null>(null)
+  const [ftpGeschiedenis, setFtpGeschiedenis] = useState<{ ftp: number; datum: string }[]>([])
 
   useEffect(() => {
     Promise.all([
@@ -58,13 +59,15 @@ export default function ProgressCenterPage() {
       fetch('/api/specialists/cycling/grafieken?weken=12', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/specialists/cycling/memory', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/specialists/cycling/coach', { credentials: 'include' }).then(r => r.json()).catch(() => null),
-    ]).then(([profielData, algemeenProfiel, doelData, grafiekenData, memoryData, coachData]) => {
+      fetch('/api/specialists/cycling/ftp-geschiedenis', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    ]).then(([profielData, algemeenProfiel, doelData, grafiekenData, memoryData, coachData, ftpGeschiedenisData]) => {
       if (profielData?.profiel?.ftp) setFtp(profielData.profiel.ftp)
       if (algemeenProfiel?.profile?.weight) setGewicht(algemeenProfiel.profile.weight)
       if (doelData?.leidend_doel) setLeidendDoel(doelData.leidend_doel)
       if (grafiekenData?.records) setRecords(grafiekenData.records)
       if (memoryData?.memory) setMemoryInzichten((memoryData.memory as MemoryItem[]).filter(m => m.status === 'active').slice(0, 3))
       if (coachData?.analysis?.samenvatting) setCoachSamenvatting(coachData.analysis.samenvatting)
+      if (ftpGeschiedenisData?.geschiedenis) setFtpGeschiedenis(ftpGeschiedenisData.geschiedenis)
     }).finally(() => setLaden(false))
   }, [])
 
@@ -105,14 +108,40 @@ export default function ProgressCenterPage() {
               </Card>
             </div>
 
-            <div className="flex items-start gap-1.5 px-1">
-              <Info size={11} className="text-slate-600 flex-shrink-0 mt-0.5" />
-              <p className="text-[10px] text-slate-600 leading-relaxed">
-                FTP-ontwikkeling over tijd wordt nog niet getoond — daarvoor is FTP-geschiedenis nodig, die nu nog niet wordt bijgehouden.
-              </p>
-            </div>
-
-            {/* Doelvoortgang */}
+            {/* v2.4.108: FTP-geschiedenis wordt nu bijgehouden — eerlijke
+                tussenstap: bij <2 punten is er nog geen trend te tonen,
+                wel al data die aan het verzamelen is */}
+            {ftpGeschiedenis.length >= 2 ? (
+              <Card className="p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">FTP-ontwikkeling</p>
+                <div className="flex items-end gap-1.5" style={{ height: 60 }}>
+                  {ftpGeschiedenis.map((punt, i) => {
+                    const maxFtp = Math.max(...ftpGeschiedenis.map(p => p.ftp))
+                    const minFtp = Math.min(...ftpGeschiedenis.map(p => p.ftp))
+                    const bereik = maxFtp - minFtp || 1
+                    const hoogtePx = Math.max(4, Math.round(((punt.ftp - minFtp) / bereik) * 56))
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1" style={{ height: 60 }}>
+                        <div className="w-full bg-amber-500/70 rounded-t-sm" style={{ height: hoogtePx }} />
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-[10px] text-slate-600">{new Date(ftpGeschiedenis[0].datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} · {ftpGeschiedenis[0].ftp}W</span>
+                  <span className="text-[10px] text-slate-600">{new Date(ftpGeschiedenis[ftpGeschiedenis.length - 1].datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} · {ftpGeschiedenis[ftpGeschiedenis.length - 1].ftp}W</span>
+                </div>
+              </Card>
+            ) : (
+              <div className="flex items-start gap-1.5 px-1">
+                <Info size={11} className="text-slate-600 flex-shrink-0 mt-0.5" />
+                <p className="text-[10px] text-slate-600 leading-relaxed">
+                  {ftpGeschiedenis.length === 1
+                    ? 'FTP-geschiedenis wordt vanaf nu bijgehouden — bij de volgende wijziging verschijnt hier een trend.'
+                    : 'FTP-ontwikkeling over tijd verschijnt hier zodra je FTP minstens één keer is bijgewerkt na vandaag.'}
+                </p>
+              </div>
+            )}            {/* Doelvoortgang */}
             {leidendDoel && (
               <Card className="p-4">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Doel</p>

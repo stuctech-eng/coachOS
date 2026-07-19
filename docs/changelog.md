@@ -1,30 +1,46 @@
 # CoachOS — Changelog
 
-## v2.4.108 — Roadmap-document bijgewerkt: Fase 1-2 volledig afgerond
-**Puur documentatie, geen code. `cycling-specialist-roadmap-v1.md` gaf
-tot nu toe overal "Niet gestart" — dat klopte al sinds v2.4.91 niet
-meer. Nu bijgewerkt naar de daadwerkelijke, geteste status.**
+## v2.4.108 — Roadmap volledig bijgewerkt + FTP-geschiedenis toegevoegd
+**Twee wijzigingssets samengevoegd in één levering: de eerder aangekondigde
+roadmap-statusupdate (die nog niet gecommit bleek) én FTP-geschiedenis,
+zodat er geen inconsistente tussentoestand ontstaat ongeacht commit-volgorde.**
 
-- **Status-header** bijgewerkt: "Fase 1-2 volledig afgerond (v2.4.91-107)"
-- **Elke sub-fase (2a t/m 2i)** krijgt een status-markering + versienummer
-- **2g/2h formeel bevestigd** als afgerond via bestaande infrastructuur
-  (Memory Engine, Goal Engine, CoachPolicy, SpecialistSummary) — geen
-  nieuwe code nodig, dit was al gedekt vóórdat de roadmap geschreven werd
-- **Drie gaten expliciet benoemd**, die in de oorspronkelijke roadmap-
-  tekst stonden maar nooit gerealiseerd zijn (data ontbreekt, geen
-  bouwfout):
-  - Vermogenscurve (5s-60min) — vergt seconde-voor-seconde data
-  - FTP-ontwikkeling over tijd — vergt FTP-geschiedenis, bestaat niet
-  - Duur-specifieke records ("beste 5 minuten") — zelfde beperking als
-    vermogenscurve
-- **Samenvattend overzicht** volledig herschreven: elke fase nu ✅
-  met het versienummer waarin het gebouwd is, in plaats van de
-  verouderde "Niet gestart"-tabel
+### Roadmap-document bijgewerkt naar de daadwerkelijke, geteste status
+`cycling-specialist-roadmap-v1.md` gaf tot nu toe overal "Niet gestart"
+— dat klopte al sinds v2.4.91 niet meer.
+- Status-header: "Fase 1-2 volledig afgerond (v2.4.91-107)"
+- Elke sub-fase (2a t/m 2i) krijgt een status-markering + versienummer
+- 2g/2h formeel bevestigd als afgerond via bestaande infrastructuur
+  (Memory Engine, Goal Engine, CoachPolicy, SpecialistSummary)
+- Samenvattend overzicht volledig herschreven
 
-**Waarom dit ertoe doet:** een volgende sessie (of Claude-instantie) die
-dit document leest, zou anders denken dat er nog niets gebouwd is —
-precies het soort documentatie-drift dat deze sessie steeds bewust heeft
-proberen te voorkomen.
+### FTP-geschiedenis — bewust vroeg toegevoegd
+**Strategische keuze uit vervolgoverleg:** niet pas bouwen wanneer de
+vermogenscurve-datalaag (Fase 3) er is, maar nu al — elke dag later is
+historische data die nooit meer wordt ingehaald.
+
+- **Nieuw:** `supabase/cycling_ftp_geschiedenis.sql` — één rij per keer
+  dat FTP is opgeslagen, met datum
+- `src/app/api/specialists/cycling/profile/route.ts` (PUT) — logt
+  automatisch naar de geschiedenis zodra FTP onderdeel is van een update
+  (niet bij elke opslag — alleen als FTP daadwerkelijk is meegestuurd).
+  Eigen try/catch: falen van de logging blokkeert nooit de kernopslag
+- **Nieuw:** `src/app/api/specialists/cycling/ftp-geschiedenis/route.ts`
+  — GET, geeft de volledige geschiedenis terug
+- `src/app/coach/cycling/progress/page.tsx` — toont nu een echte
+  FTP-trend (eenvoudig staafdiagram) zodra er 2+ punten zijn. Bij 0-1
+  punten: eerlijke tekst dat de geschiedenis wordt opgebouwd, geen lege
+  belofte
+
+### Fase 3 uitgebreid met een concreet, apart punt: vermogenscurve-datalaag
+Vastgelegd, volgens het vervolgoverleg: dit is een **nieuwe datalaag**
+(gedetailleerde Garmin/Strava-vermogensdata, nieuwe tabellen, een eigen
+analyse-engine) — bewust **losgekoppeld** van de Adaptive Training
+Engine, die blijft er volledig onafhankelijk van. Ontgrendelt bij
+realisatie: vermogenscurve, beste 30/60/90/180 min, Critical Power,
+W′-modellen.
+
+**Test-instructies:** zie bericht bij levering.
 
 ## v2.4.107 — Cycling Specialist Roadmap Fase 2i: Progress Center
 **"Het feitelijke hart van de Cycling Hub" — consolideert bestaande data

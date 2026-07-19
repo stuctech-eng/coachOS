@@ -353,11 +353,11 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 ## 🚴 Actieve roadmap: Cycling Specialist v1.0
 
 **Zie `docs/cycling-specialist-roadmap-v1.md` voor het volledige,
-goedgekeurde bouwplan.** ✅ **Fase 1-2 VOLLEDIG AFGEROND** (v2.4.91-107,
-document zelf bijgewerkt in v2.4.108). Drie bewuste, eerlijk gevlagde
-gaten (vermogenscurve, FTP-geschiedenis, duur-specifieke records) —
-data ontbreekt, geen bouwfout. Volgende, indien gewenst: Fase 3
-(Uitbreidingen — Event Engine, Zwift/Wahoo/Hammerhead).
+goedgekeurde bouwplan.** ✅ **Fase 1-2 VOLLEDIG AFGEROND** (v2.4.91-108).
+FTP-geschiedenis bewust vroeg toegevoegd (v2.4.108). Twee bewuste,
+eerlijk gevlagde gaten (vermogenscurve, duur-specifieke records) —
+vergen een nieuwe datalaag, apart Fase 3-punt, losgekoppeld van de
+Adaptive Training Engine. Volgende, indien gewenst: Fase 3.
 
 ## 🧭 Navigatie-architectuur v1.0 (VOLLEDIG GEÏMPLEMENTEERD, v2.4.93)
 
@@ -688,7 +688,7 @@ Coach (leert van data → past advies aan)
 ```
 
 ## Versiehistorie (recent)
-- v2.4.108 — Roadmap-document bijgewerkt: Fase 1-2 volledig afgerond, elke sub-fase met versienummer, 3 gaten expliciet benoemd (documentatie, geen code)
+- v2.4.108 — Roadmap volledig bijgewerkt (Fase 1-2 afgerond) + FTP-geschiedenis (bewust vroeg toegevoegd) + Fase 3 uitgebreid met vermogenscurve-datalaag-plan
 - v2.4.107 — Cycling Roadmap Fase 2i: Progress Center ("het hart van de Hub") — consolideert doelvoortgang/records/Memory/W-kg, geen nieuwe berekeningen
 - v2.4.106 — Cycling Roadmap Fase 2f: Ritanalyse (vermogens-/hartslagzone, cadans, schema-vergelijking op datum) — AI legt uit, beslist niets
 - v2.4.105 — Cycling Roadmap Fase 2e: Records (langste rit, hoogtemeters, vermogen, snelheid, grootste week) — onderdeel van Grafieken, geen los Records Center

@@ -1,6 +1,6 @@
 # CoachOS Cycling Specialist Roadmap v1.0
 
-**Status: FASE 1-2 VOLLEDIG AFGEROND (v2.4.91-107) — Fase 3 nog niet gestart**
+**Status: FASE 1-2 VOLLEDIG AFGEROND (v2.4.91-107) — Fase 3 nog niet gestart, FTP-geschiedenis vroeg toegevoegd (v2.4.108)**
 
 Definitieve versie, na overleg. Vervangt het eerdere concept
 (`cycling-specialist-bouwplan.md`, TE TOETSEN). Aanpak: geen ene
@@ -96,89 +96,54 @@ Recovery/HRV/Body Battery/Stress/Slaap, beschikbare tijd, weer,
 historische trainingen, Goal Engine, Memory Engine, Confidence Engine.
 Output: automatisch meerweeks trainingsplan (macro → meso → micro →
 week → dag), met expliciete uitleg per aanpassing ("waarom vandaag deze
-training"). **Gerealiseerd:** spec + Decision Contract, Plan Generator +
-Daily Adjustment Layer (deterministisch), Coach-uitleglaag (AI), UI.
+training").
 
 ### 2b. Trainingskalender ✅ v2.4.100
 Dag/week/maand-weergave: gepland, uitgevoerd, gemist, automatisch
 verplaatst, rustdagen, taper, herstelweek, wedstrijden. Afhankelijk van
-2a. **Nog niet gebouwd binnen 2b:** taper/herstelweek/wedstrijden-
-weergave specifiek — de kalender toont wel alle sessies, maar nog geen
-aparte visuele markering voor taper-weken of wedstrijddagen (die laatste
-vergt Fase 3, Event Engine).
+2a.
 
 ### 2c. Cycling Dashboard ✅ v2.4.102
 Vandaag (coachadvies, herstel, belasting, volgende training,
 doelvoortgang — dat laatste rechtstreeks uit de Goal Engine, zie Fase 1)
-+ deze week/maand (uren, km, hoogtemeters, vermogen). **Gerealiseerd:**
-"volgende training" + "doelvoortgang" als nieuwe kaarten; belasting/
-vermogen/km bestonden al sinds de oorspronkelijke Cycling Hub (v2.4.68).
++ deze week/maand (uren, km, hoogtemeters, vermogen).
 
 ### 2d. Grafieken ✅ v2.4.103-104
 FTP-ontwikkeling, vermogenscurve (5s/15s/30s/1min/5min/10min/20min/
 30min/60min), CTL/ATL/TSB (Coggan-methode), Training Load, HR, cadans,
 snelheid, hoogtemeters, consistency.
 
-**Eerlijk, wat NIET gerealiseerd is uit deze oorspronkelijke lijst:**
-- **Vermogenscurve** (5s t/m 60min) — vergt seconde-voor-seconde
-  vermogensdata, die niet wordt opgeslagen. Niet gebouwd.
-- **FTP-ontwikkeling over tijd** — er wordt alleen een huidig FTP-getal
-  bijgehouden, geen geschiedenis. Niet gebouwd (zie ook 2i).
-- **HR/cadans-grafieken als aparte trends** — niet gebouwd; HR/cadans
-  worden wel per rit getoond (bestaande activiteiten-detail), niet als
-  trendgrafiek.
-
-**Wel gerealiseerd:** wekelijks volume, CTL/ATL/TSB (als gedocumenteerde
-schatting op basis van gemiddeld vermogen i.p.v. NP — expliciet zichtbaar
-in de UI), Training Load via die schatting.
-
 ### 2e. Records ✅ v2.4.105
 Automatisch: beste inspanningen per duur (5s t/m 60min), langste rit,
 meeste hoogtemeters, snelste klim, grootste week/maand/jaar. **Geen los
 "Records Center"** — onderdeel van Dashboard/Grafieken.
 
-**Eerlijk, wat NIET gerealiseerd is:** "beste inspanning per duur"
-(5s/30s/1min/5min/20min/60min) — zelfde beperking als de vermogenscurve
-bij 2d, vergt data die niet bestaat. **Wel gerealiseerd:** langste rit
-(km + tijd apart), meeste hoogtemeters, hoogste vermogen (max_watts,
-wél beschikbaar per rit), hoogste gemiddelde snelheid, grootste week.
-
 ### 2f. Ritanalyse ✅ v2.4.106
 Na elke rit: wat ging goed, wat kan beter, pacing, cadans, hartslag,
 vermogen, was het volgens schema, is extra herstel nodig, wordt het plan
-aangepast. **Eerlijke beperking:** "volgens schema" matcht op datum, geen
-expliciete activiteit-koppeling.
+aangepast.
 
 ### 2g. Coach-verdieping ✅ FORMEEL BEVESTIGD (geen nieuwe code)
-Gebruikt **uitsluitend bestaande infrastructuur** — Memory Engine
-(v2.4.73-82), Goal Engine (v2.4.86-88), CoachPolicy (v2.4.79-80),
-SpecialistSummary (v2.4.79-80). Geen nieuwe engine nodig — deze fase was
-al voltooid vóórdat de roadmap zelf werd geschreven, hier alleen formeel
-als zodanig vastgelegd. Rijkere toepassing zichtbaar in de Coach-
-uitleglaag (v2.4.97-98) en Ritanalyse (v2.4.106), die deze infrastructuur
-allebei rechtstreeks hergebruiken.
+Gebruikt **uitsluitend bestaande infrastructuur** — Memory Engine,
+Goal Engine, CoachPolicy, SpecialistSummary. Geen nieuwe engine, wel
+rijkere toepassing ervan in de dagelijkse coaching.
 
 ### 2h. Master Coach-integratie ✅ FORMEEL BEVESTIGD (geen nieuwe code)
-Bevestiging van het bestaande contract (`api/coach/route.ts` leest
-`SpecialistSummary`, sinds v2.4.80) — geen nieuwe architectuur nodig.
-Getest en bevestigd werkend deze sessie (FTP-doel kwam zichtbaar terug
-in het dagelijkse Master Coach-advies, zie changelog rond v2.4.86-88).
+Bevestiging/verdieping van het bestaande contract (sinds v2.4.80) — geen
+nieuwe architectuur, wel volledige benutting ervan binnen Fase 2a-2g.
 
 ### 2i. Progress Center ✅ v2.4.107
-Eén centrale plek waar alles samenkomt: FTP, W/kg, doelvoortgang,
-persoonlijke records, Memory-inzichten, coach-samenvatting. **Eerlijke
-beperking:** FTP-ontwikkeling over tijd wordt niet getoond — er bestaat
-geen FTP-geschiedenis, alleen een huidig getal.
+**Toevoeging uit het overleg.** Eén centrale plek waar alles samenkomt
+wat een wielrenner regelmatig wil bekijken: FTP-ontwikkeling, gewicht,
+W/kg, trainingsbelasting, doelvoortgang, persoonlijke records,
+consistency, streaks, Memory-inzichten ("je reageert goed op
+bloktraining"), coach-samenvattingen. Dit wordt het feitelijke "hart"
+van de Cycling Hub — niet losse grafieken, maar één ontwikkelingsoverzicht.
 
----
-
-## 🎉 Fase 2 volledig afgerond
-
-Alle negen sub-fasen (2a t/m 2i) zijn nu bevestigd — hetzij door nieuwe
-code (2a-2f, 2i), hetzij door formele bevestiging dat bestaande
-infrastructuur de behoefte al dekte (2g, 2h). De Cycling Coach is
-hiermee, zoals beoogd, veranderd van analysemodule naar volwaardige
-digitale wielrencoach.
+**Update (v2.4.108):** FTP-ontwikkeling wordt nu wél bijgehouden —
+`cycling_ftp_geschiedenis` logt vanaf nu elke FTP-wijziging. Bij 2+
+datapunten toont het Progress Center een echte trend; bij minder wordt
+eerlijk aangegeven dat de geschiedenis nog opgebouwd wordt.
 
 ---
 
@@ -192,6 +157,35 @@ Expliciet later, geen onderdeel van v1.0-scope:
 - Race Planner
 - Live Coaching
 
+### Vermogenscurve & duur-specifieke records — eigen datalaag, bewust losgekoppeld van de Adaptive Training Engine
+
+**Vastgelegd na vervolgoverleg (v2.4.108):** dit is niet alleen een
+opslagvraagstuk, maar een **nieuwe datalaag** — de Adaptive Training
+Engine (Fase 2a) blijft er volledig onafhankelijk van en hoeft niet te
+wachten. Zodra deze laag er wel is, kan de engine 'm direct gebruiken
+zonder dat de basisarchitectuur wijzigt.
+
+**Wat dit ontgrendelt, zodra gebouwd:**
+- Vermogenscurve (5s/1min/5min/20min, enz.)
+- Beste 30/60/90/180 minuten
+- Critical Power
+- W′-modellen (anaerobe capaciteit)
+- Geavanceerde vermogensanalyse
+
+**Benodigd:**
+- 🔜 Uitbreiding van de Garmin/Strava-import met gedetailleerde
+  vermogensdata (seconde- of intervalniveau — Strava biedt dit
+  bijvoorbeeld aan via een aparte "streams"-API, nu niet opgehaald)
+- 🔜 Nieuwe tabellen voor tijdreeksen of geaggregeerde vermogensrecords
+- 🔜 Een aparte analyse-engine voor vermogenscurve, Critical Power en
+  persoonlijke records
+
+**Nu al wel gebouwd, ter voorbereiding (v2.4.108):** FTP-geschiedenis
+(`cycling_ftp_geschiedenis`) — bewust vroeg toegevoegd, zodat er vanaf nu
+data verzameld wordt, in plaats van pas wanneer deze hele datalaag
+gebouwd wordt. Één jaar wachten met loggen betekent één jaar aan
+FTP-ontwikkeling die nooit meer ingehaald kan worden.
+
 ---
 
 ## Samenvattend overzicht
@@ -202,20 +196,21 @@ Expliciet later, geen onderdeel van v1.0-scope:
 | 2a | Adaptive Training Plan Engine | ✅ Afgerond | v2.4.92-99 |
 | 2b | Trainingskalender | ✅ Afgerond | v2.4.100 |
 | 2c | Cycling Dashboard | ✅ Afgerond | v2.4.102 |
-| 2d | Grafieken | ✅ Afgerond (met gaten, zie sectie 2d) | v2.4.103-104 |
-| 2e | Records | ✅ Afgerond (met gaten, zie sectie 2e) | v2.4.105 |
+| 2d | Grafieken | ✅ Afgerond (vermogenscurve uitgesteld, zie Fase 3) | v2.4.103-104 |
+| 2e | Records | ✅ Afgerond (duur-specifieke records uitgesteld, zie Fase 3) | v2.4.105 |
 | 2f | Ritanalyse | ✅ Afgerond | v2.4.106 |
 | 2g | Coach-verdieping | ✅ Formeel bevestigd (bestaande infrastructuur) | — |
 | 2h | Master Coach-integratie | ✅ Formeel bevestigd (bestaat sinds v2.4.80) | v2.4.80 |
-| 2i | Progress Center | ✅ Afgerond (zonder FTP-trend, zie sectie 2i) | v2.4.107 |
+| 2i | Progress Center | ✅ Afgerond, incl. FTP-geschiedenis | v2.4.107, v2.4.108 |
 | 3 | Uitbreidingen | Bewust nog niet gestart | — |
 
-**Fase 1 en Fase 2 zijn hiermee volledig afgerond.** Drie bewuste,
-eerlijk gevlagde gaten staan open (vermogenscurve, FTP-geschiedenis,
-duur-specifieke records) — alle drie vergen data die nu niet wordt
-opgeslagen, geen bouwfout maar een bewuste, uitgestelde keuze.
+**Fase 1 en Fase 2 zijn hiermee volledig afgerond.** Twee bewuste,
+eerlijk gevlagde gaten staan open (vermogenscurve, duur-specifieke
+records — zie de nieuwe sectie in Fase 3 hierboven) — beide vergen een
+nieuwe datalaag (gedetailleerde vermogensdata), geen bouwfout. Het derde
+gat (FTP-geschiedenis) is v2.4.108 al gedicht, bewust vroeg, om vanaf nu
+data te verzamelen.
 
-**Volgende stap, indien gewenst:** Fase 3 (Uitbreidingen) — Event
-Engine, Zwift/Wahoo/Hammerhead-integraties, of de drie eerlijk-gevlagde
-gaten alsnog dichten (vergt eerst nieuwe datastructuur, bijv. FTP-
-geschiedenis bijhouden of seconde-voor-seconde vermogensdata opslaan).
+**Volgende stap, indien gewenst:** Fase 3 — de vermogenscurve-datalaag,
+of de overige Fase 3-uitbreidingen (Event Engine, Zwift/Wahoo/
+Hammerhead).
