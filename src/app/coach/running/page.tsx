@@ -251,6 +251,21 @@ export default function RunningHubPage() {
           </Card>
         )}
 
+        {/* v2.4.129: link naar Performance Center — Fase 2, eerste
+            levering. Bewust hier geplaatst (niet verstopt achter het
+            AI-advies) — geleerd van eerdere feedback dat een nieuwe
+            functie direct zichtbaar moet zijn. */}
+        {!laden && (dashboard || records.length > 0) && (
+          <Link href="/coach/running/performance"
+            className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-500/5 border border-amber-500/30 flex items-center justify-between active:bg-amber-500/25">
+            <div className="text-left">
+              <p className="text-sm font-semibold text-white">Performance Center</p>
+              <p className="text-xs text-slate-400">VDOT, Pace Curve, records en zones</p>
+            </div>
+            <span className="text-amber-400 text-lg">→</span>
+          </Link>
+        )}
+
         {!laden && fout && (
           <Card className="p-5 bg-red-500/5 border-red-500/20">
             <p className="text-sm text-red-400">{fout}</p>

@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.129 — Running Performance Center (Fase 2, eerste levering)
+**Eerste bouw-stap van Running Fase 2 (Professional). Zelfde aanpak als
+Cycling's Power Center (v2.4.118): een nieuw analysecentrum dat
+uitsluitend al-bestaande data samenvoegt — GEEN nieuwe SQL, GEEN
+nieuwe berekeningen.**
+
+- **Nieuw:** `src/app/coach/running/performance/page.tsx` — haalt in
+  parallel op:
+  - `/api/specialists/running/profile` → VDOT, Pace Zones, Hartslagzones
+  - `/api/specialists/running/dashboard` → Dashboard-kengetallen + Records
+- **Pace Curve is geen nieuwe data** — de Records-data (afstandscurve,
+  v2.4.128) nu ook als grafiek getoond (staafdiagram, zelfde visuele
+  taal als de Cycling-vermogenscurve), naast de bestaande lijstweergave.
+  "Persoonlijke records" en "Pace Curve" uit de Master Spec zijn
+  inhoudelijk dezelfde onderliggende data, twee weergaven ervan.
+- Indeling: Overzicht (VDOT + gem. pace) → Pace Curve (grafiek) →
+  Persoonlijke records (lijst) → Pace Zones → Hartslagzones → Cadans
+  &amp; hoogte (hergebruikt uit het Dashboard)
+- `src/app/coach/running/page.tsx` — Performance Center-link
+  toegevoegd, **bewust vóór de AI-advies-sectie geplaatst** (niet
+  verstopt achter een mogelijk-lege staat) — direct leerpunt van
+  eerdere feedback dat een nieuwe functie meteen zichtbaar moet zijn
+
+**Gevalideerd vóór levering:** `npx next build` — compileert zonder
+fouten, nieuwe route aanwezig in de build-output.
+
+**Ontwerp-principe, zelfde als bij Cycling:** dit is een fundament,
+geen eindpunt — Trainingsbelasting, Progressie en andere Fase 2/3-
+onderdelen krijgen later een eigen sectie hier, geen nieuwe
+navigatie-ingang.
+
+**Test-instructies:**
+1. Running Hub → Performance Center-knop (geel, na de Records-kaart)
+2. Zonder race-resultaat/data: lege staat met knop naar Running Profile
+3. Met data: Pace Curve-grafiek toont dezelfde afstanden als de
+   Records-kaart op de Hub, nu als staafdiagram
+
 ## v2.4.128 — Running Foundation deel 3 (laatste): Automatische Records
 **Derde en laatste bouw-levering van Running Fase 1. Grootste stuk van
 de drie — nieuw stuk wiskunde (afstand-gebaseerd i.p.v. tijd-gebaseerd),
