@@ -252,7 +252,14 @@ uitgebreide regels verderop in dit document.
 Hub-UI ✅ — Cycling-referentie-implementatie volledig afgerond (v2.4.68).
 Memory Engine 5/5 sub-stappen ✅ VOLLEDIG AFGEROND. Coach Policy-contract
 volledig gesloten ✅ (v2.4.79-80). Running toegevoegd als tweede
-specialist ✅ (v2.4.83) — bevestigt herbruikbaarheid van de architectuur.**
+specialist ✅ (v2.4.83). **Running Fase 1 (Foundation) + Fase 2
+(Performance Center/Trainingsbelasting/Progressie) volledig afgerond
+(v2.4.126-131).** **Training Plan Engine gerefactored naar een
+Core+Adapter-platformcomponent (v2.4.132-133)** — Cycling en Running
+delen nu dezelfde periodiserings-/mesocyclus-/adaptieve-aanpassingen-
+logica, bewezen gedrag-behoudend voor Cycling (108+28 test-combinaties
+identiek vóór/na de refactor). Fase 3 (UI) van het Running-trainingsplan
+nog open.**
 
 Uitbreiding van CoachOS van één brede coach naar een platform met
 gespecialiseerde coaches (Cycling, Running, Rowing, Strength, ...) onder
@@ -355,10 +362,44 @@ daarna is hergebruik voor andere sporten eenvoudiger.
 **Zie `docs/cycling-specialist-roadmap-v1.md` voor het volledige,
 goedgekeurde bouwplan.** ✅ **Fase 1-2 VOLLEDIG AFGEROND** (v2.4.91-108).
 ✅ **Vermogenscurve, Garmin-pad AFGEROND** (v2.4.108-115) — actief in
-gebruik. ⚠️ **Vermogenscurve, Strava-pad: code klaar (v2.4.118) maar
-extern geblokkeerd** — zie "Strava API-toegang" hieronder, geen
-code-probleem. Resterend binnen Fase 3: duur-specifieke records in de
-UI koppelen, Critical Power-model, overige uitbreidingen.
+gebruik, uitgebreid naar 12 duurpunten (v2.4.122). ✅ **Critical Power-
+model** (v2.4.121). ⚠️ **Vermogenscurve, Strava-pad: code klaar
+(v2.4.118) maar extern geblokkeerd** — zie "Strava API-toegang"
+hieronder, geen code-probleem.
+
+## 🏃 Actieve roadmap: Running Specialist v1.0
+
+**Zie `docs/running-specialist-roadmap-v1.md` (gefaseerd bouwplan) en
+`docs/running-specialist-master-spec.md` (volledig eindbeeld) voor de
+details.**
+
+✅ **Fase 1 (Foundation) VOLLEDIG AFGEROND** (v2.4.126-128): Running
+Profile (race-resultaat-invoer, geen los VDOT-getal), Pace Zones
+(Daniels/Gilbert VDOT-model — publiek gepubliceerde formules, extern
+geverifieerd tegen een onafhankelijke bron), Hartslagzones (hergebruikt
+Cycling's `berekenHartslagZones()`, geen dubbele implementatie),
+Dashboard (week/maand/jaar-km, gem. pace/hartslag/cadans), automatische
+Records (nieuw afstand-gebaseerd curve-algoritme, spiegelbeeld van de
+tijd-gebaseerde vermogenscurve — `afstandscurve.ts`).
+
+✅ **Fase 2 (Professional) grotendeels afgerond** (v2.4.129-131):
+Performance Center (VDOT, Pace Curve-grafiek, records, zones — zelfde
+opzet als Cycling's Power Center), Trainingsbelasting (TSS/CTL/ATL/TSB,
+snelheid-gebaseerde Intensity Factor i.p.v. vermogen-gebaseerd),
+Progressie (race-afstand-trends + wekelijkse pace-trend).
+
+✅ **Adaptief Trainingsplan, Fase 1+2 van 3 afgerond** (v2.4.132-133):
+Plan Generator + Daily Adjustment Layer + Coach-uitleglaag, gebouwd
+als **Running Adapter bovenop de gedeelde Training Plan Engine Core**
+(zie `src/lib/specialists/training-plan-engine/`) — geen tweede,
+losstaande engine. Sessietypen: Easy Run/Interval/Herstel/Tempo/Lange
+duurloop. **Fase 3 (UI — kalender, weekoverzicht) nog open.**
+
+**Bewust nog niet gebouwd:** Kalender, uitgebreide Grafieken-pagina
+(los scherm zoals Cycling heeft), Wedstrijdplanning, extra duurpunten
+(10s/3min/45min bestaan al bij Cycling, nog niet bij Running's
+afstandscurve — andere set doelafstanden, geen directe 1-op-1-vertaling).
+
 
 ## 🧭 Navigatie-architectuur v1.0 (GEÏMPLEMENTEERD, herzien v2.4.111)
 
@@ -372,6 +413,7 @@ scrollbaar).
 
 | Item | Prioriteit |
 |------|-----------|
+| **Running Adaptief Trainingsplan Fase 3 (UI)** — kalenderweergave, weekoverzicht, Coach-uitleg prominent tonen, zelfde patroon als Cycling's `trainingsplan/page.tsx` (v2.4.99) | 🟡 |
 | **✅ `docs/specialist-api.md` gereconstrueerd + extern gereviewd + aangescherpt (v2.4.71-72)** — versieclaims geverifieerd (HTTP 200 op alle documenten/kerncode + live sessietests). Vijf inhoudelijke verbeteringen doorgevoerd na review. | ✅ Afgerond |
 | **Service worker weer op `skipWaiting: false` gezet (v2.4.65, was volledig `disable: true` in v2.4.63)** — test of het reset-probleem terugkeert nu tests via de bestaande `/debug`-pagina lopen (geen navigatie meer). Root cause nooit 100% bevestigd. Komt het terug: service worker is alsnog (mede)schuldig, dan opnieuw `disable: true` overwegen. | 🟡 |
 | **Testen: neemt de coach gewicht/tempo-afwijking (v2.4.51-53) daadwerkelijk mee in zijn geschreven advies?** De data komt gegarandeerd in de prompt terecht (code, geen AI-gok), maar of Sonnet het ook elke keer expliciet benoemt is niet gegarandeerd — instructie staat nu als "je mag dit benoemen" (optioneel), niet dwingend. Test door bewust af te wijken tijdens een kettlebell-training en het volgende coach-advies te checken. Reminder gezet voor 10 juli. Indien coach het niet consistent noemt: instructie in `coach/route.ts` aanscherpen naar een dwingender "je MOET dit noemen als relevant". | 🟡 |

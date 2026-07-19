@@ -266,6 +266,21 @@ export default function RunningHubPage() {
           </Link>
         )}
 
+        {/* v2.4.134: link naar Trainingsplan — Fase 3, laatste stap van
+            de Running Adaptive Training Plan-roadmap. Altijd zichtbaar
+            (niet data-afhankelijk) — ook zonder eerdere activiteiten kun
+            je een plan genereren zodra je Running Profile is ingevuld. */}
+        {!laden && (
+          <Link href="/coach/running/trainingsplan"
+            className="w-full p-4 rounded-2xl bg-gradient-to-r from-primary-500/20 to-primary-500/5 border border-primary-500/30 flex items-center justify-between active:bg-primary-500/25">
+            <div className="text-left">
+              <p className="text-sm font-semibold text-white">Trainingsplan</p>
+              <p className="text-xs text-slate-400">Adaptief schema, past zich aan op je herstel</p>
+            </div>
+            <span className="text-primary-400 text-lg">→</span>
+          </Link>
+        )}
+
         {!laden && fout && (
           <Card className="p-5 bg-red-500/5 border-red-500/20">
             <p className="text-sm text-red-400">{fout}</p>

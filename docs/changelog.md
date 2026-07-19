@@ -1,5 +1,55 @@
 # CoachOS — Changelog
 
+## v2.4.134 — Running Trainingsplan UI (Fase 3, laatste stap) + documentatie bijgewerkt
+**Laatste van de drie afgesproken fasen (Engine ✅ → Coach-uitleglaag ✅
+→ UI ✅). Hiermee is het Running Adaptive Training Plan volledig
+afgerond, op dezelfde Core+Adapter-architectuur als Cycling. Daarnaast,
+op verzoek: README en de in-app "Hoe werkt CoachOS"-pagina bijgewerkt
+zodat de documentatie de huidige staat weerspiegelt.**
+
+### UI
+- **Nieuw:** `src/app/coach/running/trainingsplan/page.tsx` —
+  spiegelbeeld van `coach/cycling/trainingsplan` (v2.4.99): "Vandaag"
+  prominent met AI-uitleg, komende trainingen met status-iconen,
+  eerlijke uitleg dat verder dan de rolling horizon nog geen concrete
+  dagen gepland zijn
+- **Bewust géén Kalender-knop** (in tegenstelling tot de Cycling-versie)
+  — die pagina bestaat nog niet voor Running, geen dode link naar iets
+  dat niet werkt
+- `src/app/coach/running/page.tsx` — Trainingsplan-link toegevoegd,
+  direct na Performance Center, altijd zichtbaar
+
+### Documentatie bijgewerkt
+- **`README.md`**: Specialist Coach Platform-status bijgewerkt (Running
+  Fase 1+2 afgerond, Training Plan Engine Core+Adapter-refactor
+  vermeld), nieuwe "🏃 Actieve roadmap: Running Specialist v1.0"-sectie
+  toegevoegd (spiegelt de bestaande Cycling-sectie), Openstaand-tabel
+  bijgewerkt met het laatste resterende punt (Running Kalender)
+- **`src/app/settings/hoe-werkt-het/page.tsx`**: de Specialisten-sectie
+  zei nog letterlijk *"Op dit moment bestaat de Cycling Coach"* — dat
+  klopte niet meer sinds v2.4.83 (Running) en zeker niet meer na
+  vandaag's uitbreidingen. Bijgewerkt: noemt nu beide coaches, legt
+  Performance Center en het adaptieve trainingsplan uit op
+  sport-neutrale wijze (vermogen/Power Zones bij Cycling, tempo/Pace
+  Zones bij Running)
+
+**Gevalideerd vóór levering:** `npx next build` — compileert zonder
+fouten of warnings, nieuwe route aanwezig in de build-output.
+
+**Hiermee is de Running Specialist Roadmap Fase 1 + Fase 2 (grotendeels)
++ het volledige Adaptive Training Plan (Fase 1-3) afgerond.** Nog open:
+Running Kalender, uitgebreide Grafieken-pagina, Wedstrijdplanning.
+
+**Test-instructies:**
+1. Running Hub → Trainingsplan-knop (primaire kleur, na Performance
+   Center)
+2. Zonder trainingsdagen ingesteld: nette foutmelding die naar Running
+   Profile verwijst
+3. Met trainingsdagen: "Genereer je trainingsplan"-knop → plan met
+   Easy Run/Interval/Herstel/Tempo/Lange duurloop-sessies
+4. Instellingen → Hoe werkt CoachOS → Specialisten-sectie noemt nu
+   beide coaches
+
 ## v2.4.133 — Coach-uitleglaag (Running Fase 2) + derde sport-filter-gat gedicht
 **Tweede stap van de drie afgesproken fasen (Engine ✅ → Coach-uitleglaag
 ✅ → UI). Spiegelbeeld van Cycling's v2.4.97.**
