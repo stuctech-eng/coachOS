@@ -1,5 +1,20 @@
 # CoachOS — Changelog
 
+## v2.4.117 — Roadmap-document bijgewerkt: vermogenscurve Garmin-pad afgerond
+**Puur documentatie. Bevinding: het document stond nog op "🔜 Uitbreiding
+van de Garmin/Strava-import" alsof beide nog moesten gebeuren, terwijl
+het Garmin-pad al sinds v2.4.115 volledig live staat.**
+
+- Status-header bijgewerkt: Fase 3 vermogenscurve Garmin-pad ✅, Strava
+  + overige uitbreidingen nog open
+- Vermogenscurve-sectie herschreven: wat al werkt (berekening, opslag,
+  UI-grafiek) vs. wat nog resteert (Strava-streams-integratie, duur-
+  specifieke records in de Records-kaart, Critical Power-model)
+- Samenvattende tabel: Fase 3 opgesplitst in losse, traceerbare rijen
+  i.p.v. één "bewust nog niet gestart"-rij die niet meer klopte
+
+**Test-instructies:** n.v.t. — documentatie-only.
+
 ## v2.4.115 — Vermogenscurve-datalaag: UI (afronding van Fase 3-punt)
 **Laatste stap van de spec (`vermogenscurve-datalaag-spec.md`) — de
 data wordt sinds v2.4.110 verzameld, nu ook zichtbaar.**

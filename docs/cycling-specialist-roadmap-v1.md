@@ -1,6 +1,6 @@
 # CoachOS Cycling Specialist Roadmap v1.0
 
-**Status: FASE 1-2 VOLLEDIG AFGEROND (v2.4.91-107) — Fase 3 nog niet gestart, FTP-geschiedenis vroeg toegevoegd (v2.4.108)**
+**Status: FASE 1-2 VOLLEDIG AFGEROND (v2.4.91-107) — Fase 3 gestart: vermogenscurve Garmin-pad afgerond (v2.4.108-115), Strava-pad + overige uitbreidingen nog open**
 
 Definitieve versie, na overleg. Vervangt het eerdere concept
 (`cycling-specialist-bouwplan.md`, TE TOETSEN). Aanpak: geen ene
@@ -157,7 +157,7 @@ Expliciet later, geen onderdeel van v1.0-scope:
 - Race Planner
 - Live Coaching
 
-### Vermogenscurve & duur-specifieke records — eigen datalaag, bewust losgekoppeld van de Adaptive Training Engine
+### Vermogenscurve & duur-specifieke records — eigen datalaag, bewust losgekoppeld van de Adaptive Training Engine ✅ Garmin-pad afgerond (v2.4.110/115), 🔜 Strava resteert
 
 **Vastgelegd na vervolgoverleg (v2.4.108):** dit is niet alleen een
 opslagvraagstuk, maar een **nieuwe datalaag** — de Adaptive Training
@@ -165,26 +165,33 @@ Engine (Fase 2a) blijft er volledig onafhankelijk van en hoeft niet te
 wachten. Zodra deze laag er wel is, kan de engine 'm direct gebruiken
 zonder dat de basisarchitectuur wijzigt.
 
-**Wat dit ontgrendelt, zodra gebouwd:**
-- Vermogenscurve (5s/1min/5min/20min, enz.)
-- Beste 30/60/90/180 minuten
-- Critical Power
-- W′-modellen (anaerobe capaciteit)
-- Geavanceerde vermogensanalyse
+**Update (v2.4.109-115):** twee haalbaarheidsbevindingen maakten dit
+kleiner dan hierboven aangenomen — Garmin-data (TCX) bleek al
+beschikbaar via de bestaande parser, alleen weggegooid; Strava's
+bestaande OAuth-scope bleek al voldoende voor de streams-API. **Het
+Garmin-pad is inmiddels volledig afgerond:** berekening
+(`src/lib/vermogenscurve.ts`), SQL (`cycling_power_curve`), parser-
+integratie (`tcx-parser.ts`), opslag bij zowel nieuwe als overschreven
+imports, én de UI-grafiek op het Grafieken-scherm (v2.4.115).
 
-**Benodigd:**
-- 🔜 Uitbreiding van de Garmin/Strava-import met gedetailleerde
-  vermogensdata (seconde- of intervalniveau — Strava biedt dit
-  bijvoorbeeld aan via een aparte "streams"-API, nu niet opgehaald)
-- 🔜 Nieuwe tabellen voor tijdreeksen of geaggregeerde vermogensrecords
-- 🔜 Een aparte analyse-engine voor vermogenscurve, Critical Power en
-  persoonlijke records
+**Wat dit al ontgrendelt, voor Garmin-imports sinds v2.4.110:**
+- ✅ Vermogenscurve (5s t/m 60min) — zichtbaar op het Grafieken-scherm
+- 🔜 Duur-specifieke records (bijv. "beste 5 minuten" apart getoond in
+  de Records-kaart) — data bestaat nu, UI-koppeling nog niet gemaakt
+- 🔜 Critical Power, W′-modellen — apart vervolgpunt, vergt genoeg
+  datapunten over meerdere duren
+
+**Nog te doen:**
+- 🔜 **Strava-integratie** — nieuwe streams-API-aanroep in
+  `strava-activity-processor.ts`, dezelfde berekening/opslag hergebruikt
+- 🔜 Geen terugwerkende kracht voor activiteiten van vóór v2.4.110 (bewust,
+  zie de spec)
+- 🔜 Critical Power-model (apart vervolgpunt)
 
 **Nu al wel gebouwd, ter voorbereiding (v2.4.108):** FTP-geschiedenis
 (`cycling_ftp_geschiedenis`) — bewust vroeg toegevoegd, zodat er vanaf nu
 data verzameld wordt, in plaats van pas wanneer deze hele datalaag
-gebouwd wordt. Één jaar wachten met loggen betekent één jaar aan
-FTP-ontwikkeling die nooit meer ingehaald kan worden.
+gebouwd wordt.
 
 ---
 
@@ -202,15 +209,17 @@ FTP-ontwikkeling die nooit meer ingehaald kan worden.
 | 2g | Coach-verdieping | ✅ Formeel bevestigd (bestaande infrastructuur) | — |
 | 2h | Master Coach-integratie | ✅ Formeel bevestigd (bestaat sinds v2.4.80) | v2.4.80 |
 | 2i | Progress Center | ✅ Afgerond, incl. FTP-geschiedenis | v2.4.107, v2.4.108 |
-| 3 | Uitbreidingen | Bewust nog niet gestart | — |
+| 3 | Uitbreidingen — vermogenscurve (Garmin) | ✅ Afgerond | v2.4.108-115 |
+| 3 | Uitbreidingen — vermogenscurve (Strava) | 🔜 Nog open | — |
+| 3 | Uitbreidingen — Event Engine, Zwift/Wahoo, etc. | Bewust nog niet gestart | — |
 
-**Fase 1 en Fase 2 zijn hiermee volledig afgerond.** Twee bewuste,
-eerlijk gevlagde gaten staan open (vermogenscurve, duur-specifieke
-records — zie de nieuwe sectie in Fase 3 hierboven) — beide vergen een
-nieuwe datalaag (gedetailleerde vermogensdata), geen bouwfout. Het derde
-gat (FTP-geschiedenis) is v2.4.108 al gedicht, bewust vroeg, om vanaf nu
-data te verzamelen.
+**Fase 1 en Fase 2 zijn volledig afgerond.** Binnen Fase 3 is het
+vermogenscurve-punt deels afgerond: het Garmin-pad (berekening, opslag,
+UI) staat live sinds v2.4.115. Duur-specifieke records in de Records-
+kaart en het Strava-pad zijn de directe vervolgstappen als dit
+opgepakt wordt.
 
-**Volgende stap, indien gewenst:** Fase 3 — de vermogenscurve-datalaag,
-of de overige Fase 3-uitbreidingen (Event Engine, Zwift/Wahoo/
-Hammerhead).
+**Volgende stap, indien gewenst:** Strava-vermogenscurve (zelfde
+berekening, nieuwe databron), duur-specifieke records afmaken, of een
+van de overige Fase 3-uitbreidingen (Event Engine, Zwift/Wahoo/
+Hammerhead, tweede specialist verdiepen).
