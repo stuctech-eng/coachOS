@@ -9,6 +9,7 @@
 
 import { XMLParser } from 'fast-xml-parser'
 import { berekenVermogenscurve, type VermogensCurvePunt } from './vermogenscurve'
+import { berekenAfstandscurve, type AfstandsCurvePunt } from './afstandscurve'
 
 export interface TcxParsed {
   garmin_sport: string | null
@@ -33,6 +34,11 @@ export interface TcxParsed {
   // trackpoint-vermogensreeks die al werd geparsed maar voorheen alleen
   // voor gemiddelde/max werd gebruikt. Null als er geen vermogensdata is.
   vermogenscurve: VermogensCurvePunt[] | null
+  // v2.4.128: afstandscurve — snelste tijd per doelafstand (100m t/m
+  // marathon), voor Running Records. Zelfde principe als vermogenscurve
+  // maar dan andersom (afstand vast, tijd variabel i.p.v. tijd vast,
+  // vermogen variabel). Null als er geen cumulatieve afstand-data is.
+  afstandscurve: AfstandsCurvePunt[] | null
 }
 
 export const ACTIVITEIT_OPTIES = ['Hardlopen', 'Fietsen (buiten)', 'Indoor Fietsen', 'Wandelen', 'Roeien', 'Krachttraining', 'Kettlebell', 'Anders']
@@ -105,6 +111,11 @@ export function parseTcx(xmlText: string): TcxParsed {
   // een betrouwbare tijdas i.p.v. aan te nemen dat elk punt 1 seconde is.
   const vermogenMetTijd: { tijdSec: number; watts: number }[] = []
   let eersteTijdstempel: number | null = null
+  // v2.4.128: afstand-met-tijd verzamelen, voor de afstandscurve (Running
+  // Records). Zelfde patroon als vermogenMetTijd hierboven — TCX-
+  // trackpoints hebben een verplicht <DistanceMeters>-veld, cumulatief
+  // sinds de start van de activiteit (niet per lap).
+  const afstandMetTijd: { tijdSec: number; afstandM: number }[] = []
 
   for (const lap of laps) {
     const trackRaw = lap.Track
@@ -136,6 +147,21 @@ export function parseTcx(xmlText: string): TcxParsed {
           if (!isNaN(tijdstempel)) {
             if (eersteTijdstempel === null) eersteTijdstempel = tijdstempel
             vermogenMetTijd.push({ tijdSec: (tijdstempel - eersteTijdstempel) / 1000, watts: parseFloat(watts) })
+          }
+        }
+
+        // v2.4.128: tijdstempel + cumulatieve afstand vastleggen, voor de
+        // afstandscurve-berekening (Running Records). Los van het
+        // watts-blok hierboven — eersteTijdstempel wordt hier gedeeld
+        // zodat beide reeksen dezelfde tijd-nul-referentie gebruiken.
+        if (tp.Time && tp.DistanceMeters !== undefined) {
+          const afstandCum = parseFloat(tp.DistanceMeters)
+          if (!isNaN(afstandCum)) {
+            const tijdstempel = new Date(tp.Time).getTime()
+            if (!isNaN(tijdstempel)) {
+              if (eersteTijdstempel === null) eersteTijdstempel = tijdstempel
+              afstandMetTijd.push({ tijdSec: (tijdstempel - eersteTijdstempel) / 1000, afstandM: afstandCum })
+            }
           }
         }
 
@@ -173,6 +199,8 @@ export function parseTcx(xmlText: string): TcxParsed {
   // nieuwe parsing-stap, alleen een aanvullende berekening op wat er al
   // doorheen ging
   const vermogenscurve = vermogenMetTijd.length >= 2 ? berekenVermogenscurve(vermogenMetTijd) : null
+  // v2.4.128: zelfde principe voor de afstandscurve
+  const afstandscurve = afstandMetTijd.length >= 2 ? berekenAfstandscurve(afstandMetTijd) : null
 
   return {
     garmin_sport: garminSport,
@@ -194,5 +222,6 @@ export function parseTcx(xmlText: string): TcxParsed {
     creator_device: creatorDevice,
     start_date: startDate,
     vermogenscurve,
+    afstandscurve,
   }
 }

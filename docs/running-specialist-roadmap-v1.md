@@ -1,10 +1,8 @@
 # CoachOS Running Specialist Roadmap v1.0
 
-**Status: FASE 0 — ontwerp, nog geen code. Vervangt/vult aan op
-`docs/running-specialist-master-spec.md` (het volledige eindbeeld,
-aangeleverd 19 juli 2026). Aanpak identiek aan de Cycling-roadmap: geen
-ene gigantische oplevering, een reeks afgeronde fases, elke fase direct
-bruikbaar.**
+**Status: FASE 1 VOLLEDIG AFGEROND (v2.4.126-128) — Profile, Pace Zones
+(Daniels VDOT), Hartslagzones, Dashboard, automatische Records. Fase 2
+(Professional) nog niet gestart.**
 
 ---
 

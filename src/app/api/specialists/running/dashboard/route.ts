@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { haalRunningDashboard } from '@/lib/specialists/running-grafieken'
+import { haalRunningDashboard, haalRunningRecords } from '@/lib/specialists/running-grafieken'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -21,8 +21,11 @@ export async function GET() {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 
-    const dashboard = await haalRunningDashboard(user.id)
-    return NextResponse.json({ dashboard })
+    const [dashboard, records] = await Promise.all([
+      haalRunningDashboard(user.id),
+      haalRunningRecords(user.id),
+    ])
+    return NextResponse.json({ dashboard, records })
   } catch (err) {
     console.error('[specialists/running/dashboard]', err)
     return NextResponse.json({ error: 'Ophalen mislukt' }, { status: 500 })

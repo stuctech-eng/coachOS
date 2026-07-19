@@ -1,5 +1,104 @@
 # CoachOS — Changelog
 
+## v2.4.128 — Running Foundation deel 3 (laatste): Automatische Records
+**Derde en laatste bouw-levering van Running Fase 1. Grootste stuk van
+de drie — nieuw stuk wiskunde (afstand-gebaseerd i.p.v. tijd-gebaseerd),
+plus een parser-uitbreiding en een nieuwe tabel.**
+
+**⚠️ ACTIE VEREIST VÓÓR DEPLOY: voer eerst de SQL hieronder uit in
+Supabase.** Zonder de tabel faalt het opslaan van records stil (eigen
+try/catch, breekt de import zelf niet) — records blijven dan leeg.
+
+```sql
+create table if not exists running_distance_records (
+  id uuid primary key default gen_random_uuid(),
+  activity_id uuid not null references activity_sessions(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  distance_m integer not null,
+  tijd_sec integer not null,
+  created_at timestamptz not null default now(),
+  unique(activity_id, distance_m)
+);
+
+create index if not exists idx_running_distance_records_user_distance
+  on running_distance_records(user_id, distance_m, tijd_sec asc);
+
+comment on table running_distance_records is
+  'Snelste tijd per doelafstand, per activiteit. Smal (activity x afstand -> tijd), geen ruwe tijdreeks. "All-time snelste 5km" = min(tijd_sec) where distance_m=5000 for user. Zie docs/running-specialist-roadmap-v1.md.';
+
+alter table running_distance_records enable row level security;
+
+drop policy if exists "Gebruiker kan eigen records lezen" on running_distance_records;
+create policy "Gebruiker kan eigen records lezen"
+  on running_distance_records for select using (auth.uid() = user_id);
+-- Geen insert/update/delete-policy voor gewone gebruikers — wordt
+-- uitsluitend server-side gevuld, zelfde patroon als cycling_power_curve.
+```
+Ook vastgelegd als los bestand: `supabase/running_distance_records.sql`
+(zelfde conventie als `supabase/cycling_power_curve.sql`).
+
+**Correctie t.o.v. de eerste versie van deze changelog-entry (gemeld
+via Supabase's eigen SQL-editor-waarschuwing):** RLS ontbrak in de
+oorspronkelijke SQL. Bij het corrigeren bleek `cycling_power_curve`
+zelf al een preciezer patroon te hanteren dan mijn eerste RLS-poging
+(alleen een SELECT-policy, want schrijven gebeurt uitsluitend
+server-side via de admin-client die RLS toch al omzeilt — een bredere
+insert/update-policy voor gewone gebruikers was overbodig). Nu
+consistent gelijkgetrokken met dat bestaande patroon.
+
+### Nieuwe wiskunde: afstandscurve (spiegelbeeld van de vermogenscurve)
+Vermogenscurve zoekt "beste GEMIDDELDE over een vaste TIJD". Records-
+per-afstand vergt het omgekeerde: "snelste TIJD over een vaste AFSTAND"
+— vast en variabel zijn omgedraaid, dus een nieuw (maar verwant)
+schuivend-venster-algoritme.
+
+- **Nieuw:** `src/lib/afstandscurve.ts` — `berekenAfstandscurve()`,
+  isomorf, O(n) two-pointer-sliding-window. Standaard-doelafstanden:
+  100m t/m marathon (15 afstanden, Master Spec-lijst minus de dubbele
+  "1 km"-rij). "Ultra" heeft geen vaste afstand, blijft "langste
+  duurloop" op het Dashboard.
+- `src/lib/tcx-parser.ts` — trackpoint-loop uitgebreid met
+  `tp.DistanceMeters` + `tp.Time` (cumulatieve afstand sinds start,
+  verplicht TCX-veld) → `afstandscurve` toegevoegd aan `TcxParsed`
+- `src/app/api/health/garmin-activity-tcx/route.ts` — afstandscurve
+  opslaan bij zowel nieuwe import als overschrijving, **bewust alleen
+  voor `activityLabel === 'Hardlopen'`** (distance-records zijn een
+  Running-specifiek concept, geen zin voor Fietsen)
+- **Nieuw:** `haalRunningRecords()` in `running-grafieken.ts` — all-time
+  snelste tijd per afstand, over alle activiteiten heen
+- **Nieuw:** records toegevoegd aan `/api/specialists/running/dashboard`
+- `src/app/coach/running/page.tsx` — Records-kaart, direct na Dashboard.
+  **Alleen afstanden tonen waar data voor is** — geen lege rijen voor
+  100m/200m/400m, die realistisch alleen verschijnen bij baan-precisie
+  GPS of een footpod (expliciet zo benoemd in de UI, geen overclaiming)
+
+**Gevalideerd vóór levering — drie lagen:**
+1. `npx next build` — compileert zonder fouten
+2. Het afstandscurve-algoritme los getest: constant tempo (5 m/s) gaf
+   exact de verwachte tijden; een variabele inspanning (snel-dan-
+   langzaam) vond correct het snelste venster
+3. **Volledige integratietest**: de daadwerkelijke productie-
+   `parseTcx()` (via `tsc` gecompileerd, geen losse kopie) gedraaid
+   tegen een synthetisch TCX-bestand — 2400m bij constant 4 m/s gaf
+   exact de juiste tijd per afstand (100m in 25s t/m 1609m in 403s),
+   én liet correct 3km+ weg omdat de testrit daarvoor te kort was
+
+**Hiermee is Running Fase 1 (Foundation) volledig afgerond:** Profile,
+Pace Zones (Daniels VDOT), Hartslagzones, Dashboard, automatische
+Records. Fase 2 (Professional — Pace Curve-weergave, Progress Center,
+Trainingsbelasting, Adaptief Trainingsplan, Kalender, Grafieken) volgt
+als aparte roadmap-stap.
+
+**Test-instructies:**
+1. **Eerst de SQL hierboven uitvoeren in Supabase**
+2. Een hardloopactiviteit importeren (nieuw, na deze deploy)
+3. Running Hub → Records-kaart moet verschijnen met tijden per afstand
+   die daadwerkelijk in de rit voorkwamen
+4. Kortere afstanden dan de rit zelf: geen record (bijv. bij een
+   3km-rit geen 5km-record)
+5. Dezelfde activiteit opnieuw importeren (overschrijven) → records
+   moeten bijwerken, niet dupliceren (upsert-gedrag)
+
 ## v2.4.127 — Running Foundation deel 2: Dashboard
 **Tweede bouw-levering van Running Fase 1. Puur aggregatie van
 al-bestaande `activity_sessions`-data — geen nieuwe SQL, geen nieuwe

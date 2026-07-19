@@ -127,3 +127,44 @@ export async function haalRunningDashboard(userId: string): Promise<RunningDashb
     snelste_training: snelsteTraining,
   }
 }
+
+// ── Records per afstand — Fase 1, laatste stap ──────────────────────────
+// Bron: overleg 19 juli 2026. Query op running_distance_records — puur
+// het minimum (snelste tijd) per afstand, over alle activiteiten heen.
+// Geen berekening hier, dat gebeurt al bij import (tcx-parser.ts +
+// afstandscurve.ts).
+
+export interface AfstandRecord {
+  afstand_m: number
+  tijd_sec: number
+  datum: string
+}
+
+export async function haalRunningRecords(userId: string): Promise<AfstandRecord[]> {
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase
+    .from('running_distance_records')
+    .select('distance_m, tijd_sec, activity_id, activity_sessions!inner(date)')
+    .eq('user_id', userId)
+    .order('distance_m', { ascending: true })
+
+  if (error) throw error
+  if (!data || data.length === 0) return []
+
+  // Eén afstand kan meerdere rijen hebben (van verschillende
+  // activiteiten) — hier het all-time snelste per afstand eruit halen
+  const besteTijdPerAfstand = new Map<number, { tijd_sec: number; datum: string }>()
+  for (const rij of data as unknown as { distance_m: number; tijd_sec: number; activity_sessions: { date: string } | { date: string }[] }[]) {
+    const datum = Array.isArray(rij.activity_sessions) ? rij.activity_sessions[0]?.date : rij.activity_sessions?.date
+    if (!datum) continue
+    const huidig = besteTijdPerAfstand.get(rij.distance_m)
+    if (!huidig || rij.tijd_sec < huidig.tijd_sec) {
+      besteTijdPerAfstand.set(rij.distance_m, { tijd_sec: rij.tijd_sec, datum })
+    }
+  }
+
+  return Array.from(besteTijdPerAfstand.entries())
+    .map(([afstand_m, v]) => ({ afstand_m, tijd_sec: v.tijd_sec, datum: v.datum }))
+    .sort((a, b) => a.afstand_m - b.afstand_m)
+}

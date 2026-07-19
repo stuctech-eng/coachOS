@@ -39,6 +39,28 @@ interface RunningDashboard {
   snelste_training: { pace_sec_per_km: number; datum: string } | null
 }
 
+interface AfstandRecord {
+  afstand_m: number
+  tijd_sec: number
+  datum: string
+}
+
+// Leesbare labels voor de standaard-doelafstanden — zelfde lijst als
+// afstandscurve.ts::STANDAARD_DOELAFSTANDEN
+const AFSTAND_LABELS: Record<number, string> = {
+  100: '100 m', 200: '200 m', 400: '400 m', 800: '800 m', 1000: '1 km',
+  1609: '1 mile', 3000: '3 km', 5000: '5 km', 10000: '10 km', 15000: '15 km',
+  16093: '10 mile', 21097: 'Halve marathon', 25000: '25 km', 30000: '30 km', 42195: 'Marathon',
+}
+
+function formatteerTijd(sec: number): string {
+  const uren = Math.floor(sec / 3600)
+  const minuten = Math.floor((sec % 3600) / 60)
+  const seconden = Math.round(sec % 60)
+  if (uren > 0) return `${uren}:${String(minuten).padStart(2, '0')}:${String(seconden).padStart(2, '0')}`
+  return `${minuten}:${String(seconden).padStart(2, '0')}`
+}
+
 function formatteerPace(secPerKm: number): string {
   const min = Math.floor(secPerKm / 60)
   const sec = Math.round(secPerKm % 60)
@@ -59,6 +81,7 @@ export default function RunningHubPage() {
   const [fout, setFout] = useState<string | null>(null)
   const [dormant, setDormant] = useState(false)
   const [dashboard, setDashboard] = useState<RunningDashboard | null>(null)
+  const [records, setRecords] = useState<AfstandRecord[]>([])
 
   async function laadAlles() {
     setLaden(true)
@@ -79,6 +102,7 @@ export default function RunningHubPage() {
       if (dashboardRes) {
         const dashboardData = await dashboardRes.json()
         if (dashboardData?.dashboard) setDashboard(dashboardData.dashboard)
+        if (dashboardData?.records) setRecords(dashboardData.records)
       }
 
       const runningEntry = (specialistenData.specialisten || []).find((s: { specialist_type: string }) => s.specialist_type === 'running')
@@ -201,6 +225,28 @@ export default function RunningHubPage() {
                   <span className="text-sm font-semibold text-white">{formatteerPace(dashboard.snelste_training.pace_sec_per_km)}/km</span>
                 </div>
               )}
+            </div>
+          </Card>
+        )}
+
+        {/* v2.4.128: Records — Roadmap v1.0 Fase 1, laatste stap. Alleen
+            afstanden tonen waar daadwerkelijk data voor is — geen lege
+            rijen voor bijv. 100m/200m die de meeste gebruikers nooit met
+            genoeg GPS-nauwkeurigheid zullen halen. */}
+        {!laden && records.length > 0 && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Records</p>
+            <p className="text-[10px] text-slate-600 mb-3">Snelste tijd per afstand, over al je Garmin-geïmporteerde runs sinds v2.4.128. Korte afstanden (100-400m) verschijnen alleen bij baan-precisie GPS of een footpod.</p>
+            <div className="flex flex-col gap-2.5">
+              {records.map(r => (
+                <div key={r.afstand_m} className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">{AFSTAND_LABELS[r.afstand_m] || `${r.afstand_m} m`}</span>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-white">{formatteerTijd(r.tijd_sec)}</p>
+                    <p className="text-[10px] text-slate-600">{new Date(r.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </Card>
         )}

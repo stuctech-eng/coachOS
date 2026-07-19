@@ -138,6 +138,25 @@ export async function POST(req: NextRequest) {
             }
           }
 
+          // v2.4.128: afstandscurve bijwerken bij overschrijving — alleen
+          // voor Hardlopen, zelfde upsert-reden als vermogenscurve
+          // hierboven
+          if (activityLabel === 'Hardlopen' && parsed.afstandscurve && parsed.afstandscurve.length > 0) {
+            try {
+              await adminSupabase.from('running_distance_records').upsert(
+                parsed.afstandscurve.map(punt => ({
+                  activity_id: bestaandeSessie.id,
+                  user_id: user.id,
+                  distance_m: punt.afstand_m,
+                  tijd_sec: punt.tijd_sec,
+                })),
+                { onConflict: 'activity_id,distance_m' }
+              )
+            } catch (curveErr) {
+              console.error('[garmin-activity-tcx] Afstandscurve bijwerken mislukt:', curveErr)
+            }
+          }
+
           await adminSupabase.from('garmin_activity_imports')
             .update({ status: 'confirmed', activity_session_id: bestaandeSessie.id })
             .eq('id', confirmId)
@@ -191,6 +210,24 @@ export async function POST(req: NextRequest) {
           )
         } catch (curveErr) {
           console.error('[garmin-activity-tcx] Vermogenscurve opslaan mislukt:', curveErr)
+        }
+      }
+
+      // v2.4.128: afstandscurve opslaan, indien berekend — alleen voor
+      // Hardlopen (distance records zijn een Running-specifiek concept).
+      // Eigen try/catch, zelfde reden als vermogenscurve hierboven.
+      if (activityLabel === 'Hardlopen' && parsed.afstandscurve && parsed.afstandscurve.length > 0) {
+        try {
+          await adminSupabase.from('running_distance_records').insert(
+            parsed.afstandscurve.map(punt => ({
+              activity_id: session.id,
+              user_id: user.id,
+              distance_m: punt.afstand_m,
+              tijd_sec: punt.tijd_sec,
+            }))
+          )
+        } catch (curveErr) {
+          console.error('[garmin-activity-tcx] Afstandscurve opslaan mislukt:', curveErr)
         }
       }
 
