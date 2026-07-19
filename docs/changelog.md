@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.109 — Nieuw document: Vermogenscurve-datalaag (compacte spec)
+**Status: TE TOETSEN. Fase 3-punt van de Cycling Specialist Roadmap.**
+
+**Twee haalbaarheidsbevindingen die de scope kleiner maken dan
+aangenomen in de roadmap:**
+1. **Garmin:** `tcx-parser.ts` verzamelt al een chronologische
+   seconde-voor-seconde `wattsValues`-array per trackpoint — berekent
+   daar alleen gemiddelde/max uit en gooit de rest weg. **Geen nieuwe
+   import-uitbreiding nodig**, alleen een aanvullende berekening
+2. **Strava:** bestaande OAuth-scope (`activity:read_all`,
+   `strava/auth/route.ts`) is al voldoende voor de streams-API. **Geen
+   nieuwe autorisatie nodig** bij al-gekoppelde gebruikers
+
+- **Nieuw:** `docs/vermogenscurve-datalaag-spec.md`
+  - Gedeelde, deterministische berekening: schuivend venster over
+    5s/15s/30s/1min/5min/10min/20min/30min/60min
+  - **Opslag:** smalle `cycling_power_curve`-tabel (activity × duur →
+    watt), niet breed — maakt "all-time beste 5 minuten" een simpele
+    query, precies wat records en het toekomstige Critical Power-model
+    nodig hebben. Geen ruwe tijdreeks opgeslagen, alleen de
+    samengevatte beste-inspanningen
+  - Integratiepunten: `tcx-parser.ts` (Garmin, kleinste wijziging) +
+    nieuwe streams-aanroep in `strava-activity-processor.ts`
+  - **Eerlijk benoemd wat dit niet oplost:** geen terugwerkende
+    vermogenscurve voor al-gesynchroniseerde activiteiten, Critical
+    Power-model zelf is een apart vervolgpunt
+  - Bouwvolgorde: berekeningsfunctie → SQL → Garmin-integratie (laagste
+    risico) → Strava-integratie → UI
+
+**⚠️ Raakt bij implementatie bestaande, actieve import-code** (Garmin-
+en Strava-sync) — vergt dezelfde zorgvuldigheid als elke andere
+wijziging aan bestaande productiecode.
+
+**Volgende stap, na goedkeuring:** implementatie, startend met de
+Garmin-integratie (laagste risico, data al beschikbaar).
+
 ## v2.4.108 — Roadmap volledig bijgewerkt + FTP-geschiedenis toegevoegd
 **Twee wijzigingssets samengevoegd in één levering: de eerder aangekondigde
 roadmap-statusupdate (die nog niet gecommit bleek) én FTP-geschiedenis,
