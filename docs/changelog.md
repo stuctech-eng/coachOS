@@ -1,5 +1,135 @@
 # CoachOS — Changelog
 
+## v2.4.133 — Coach-uitleglaag (Running Fase 2) + derde sport-filter-gat gedicht
+**Tweede stap van de drie afgesproken fasen (Engine ✅ → Coach-uitleglaag
+✅ → UI). Spiegelbeeld van Cycling's v2.4.97.**
+
+### Coach-uitleglaag
+- **Nieuw:** `src/app/api/specialists/running/training-plan/explain/route.ts`
+  — leest de sessie van vandaag + actuele CoachPolicy, AI zet dit om in
+  een korte menselijke uitleg. **AI beslist niets** — type, duur en
+  reden liggen al vast (Decision Contract, sectie 5), de AI vertaalt
+  alleen naar natuurlijke taal.
+- Leesbare Nederlandse labels voor de Running-sessietypen in de
+  fallback-tekst (`easy_run` → "rustige duurloop", `lange_duurloop` →
+  "lange duurloop", etc.) — de ruwe underscore-namen zijn niet
+  gebruikersvriendelijk als er geen AI-respons komt.
+- `REASON_CODE_UITLEG` **verplaatst naar de gedeelde Core**
+  (`training-plan-engine/types.ts`) — beschrijft de beslissingsmechaniek
+  (waarom een sessie is aangepast), niet iets sportspecifieks, dus geen
+  reden voor duplicatie tussen de Cycling- en Running-uitleglaag.
+  Cycling's route hergebruikt nu dezelfde constante.
+
+### Derde sport-filter-gat gevonden en gedicht
+Bij het doorzoeken van alle plekken die `training_plans` bevragen bleek
+**`cycling-rit-analyse.ts`** ook zonder sport-filter te werken — een
+fietsrit werd vergeleken met "de geplande sessie van vandaag" uit **elk**
+actief plan van de gebruiker, ongeacht sport. Met een actief Running-
+plan ernaast had dit een fietsrit tegen een hardloop-sessie kunnen
+afzetten (bijv. "volgens schema"-check tegen een `interval`-hardloop-
+sessie i.p.v. de bedoelde cycling-sessie). Sport-filter toegevoegd.
+
+**Alle plekken die `training_plans` bevragen zijn nu gecontroleerd en
+sport-gefilterd:** beide `training-plan/route.ts`, beide
+`training-plan/explain/route.ts`, `training-plan-engine/core.ts` +
+`adjuster-core.ts` (al plan-id-scoped, dus impliciet veilig), en nu ook
+`cycling-rit-analyse.ts`.
+
+**Gevalideerd vóór levering:** `npx next build` — compileert zonder
+fouten of warnings, beide explain-routes aanwezig in de build-output.
+
+**Rijtje resterend:** UI (Fase 3) — kalenderweergave, weekoverzicht,
+Coach-uitleg prominent getoond, zelfde patroon als Cycling's
+trainingsplan-scherm (v2.4.99).
+
+## v2.4.132 — Training Plan Engine: Core + Adapter-architectuur (Fase 1/3)
+**Grootste en meest risicovolle levering van vandaag: een REFACTOR van
+de bestaande, live, werkende Cycling Adaptive Training Plan Engine —
+niet zomaar een nieuwe feature. Op uitdrukkelijk verzoek: in plaats van
+een tweede, bijna-identieke `running-training-plan-generator.ts` te
+dupliceren, is de gedeelde logica nu een platformcomponent geworden.**
+
+### Architectuur
+```
+src/lib/specialists/training-plan-engine/
+├── types.ts            — TrainingPlanSportAdapter-contract
+├── core.ts              — Plan Generator (periodisering, mesocycli, rolling horizon)
+├── adjuster-core.ts     — Daily Adjustment Layer (5 triggers)
+├── cycling-adapter.ts   — FTP-profiel, duurtraining/interval/herstel/lange_duurtraining
+└── running-adapter.ts   — VDOT-profiel, easy_run/interval/herstel/tempo/lange_duurloop
+```
+**Ontwerpregel, letterlijk vastgelegd in de code-comments:** de Training
+Plan Engine is een platformcomponent, geen Cycling-component. Alle
+periodisering/mesocycli/deload/adaptieve-aanpassingen-logica hoort in
+de Core; sportverschillen komen uitsluitend via een adapter.
+
+### Bevinding die de aanpak vereenvoudigde
+`training_plan_sessions.sport` bestond al, met de commentaar "voor
+toekomstige multi-sport-plannen" — de tabellen waren dus al zo
+ontworpen. **Eén gat gevonden en gedicht:** `training_plans` zelf had
+GEEN sport-kolom, waardoor het aanmaken van een Running-plan een actief
+Cycling-plan had kunnen afsluiten (en andersom) — de "sluit bestaand
+actief plan af"-query filterde alleen op `athlete_id`+`status`. SQL
+hieronder lost dit op.
+
+### ⚠️ ACTIE VEREIST VÓÓR DEPLOY
+```sql
+alter table training_plans add column if not exists sport text not null default 'cycling';
+
+create index if not exists idx_training_plans_athlete_sport
+  on training_plans(athlete_id, sport, status);
+
+comment on column training_plans.sport is
+  'Welke specialist dit plan beheert (cycling/running/...). Bestaande rijen krijgen automatisch cycling als default.';
+```
+Bestaande Cycling-plannen krijgen automatisch `sport='cycling'` via de
+DEFAULT — geen dataverlies, geen handmatige migratie nodig.
+
+### Cycling: ONGEWIJZIGD gedrag, bewezen
+`src/lib/specialists/training-plan-generator.ts` en
+`training-plan-adjuster.ts` zijn nu dunne wrappers rond de Core met de
+Cycling Adapter — **zelfde functienamen, zelfde signatuur**, dus
+`api/specialists/cycling/training-plan/route.ts` hoefde alleen een
+sport-filter te krijgen (zie hierboven), verder ongewijzigd.
+
+**Vóór levering bewezen gedrag-behoudend:** de pure kernfuncties
+(`bepaalMesocycli`, sessietype-verdeling) los getest, oude
+implementatie tegen de daadwerkelijke nieuwe gecompileerde code, over
+**108 mesocyclus-combinaties** (12 weekwaarden × 9 uurwaarden) **+ 28
+sessieverdeling-combinaties** (7 dagaantallen × 4 mesocyclus-typen) —
+elke combinatie gaf byte-voor-byte identieke JSON-output.
+
+### Running: nieuw, bovenop dezelfde Core
+- **Nieuw:** `src/app/api/specialists/running/training-plan/route.ts`
+  — spiegelbeeld van de Cycling-route, gebruikt `runningAdapter`
+- Sessietypen uit de Master Spec: Easy Run, Interval, Herstel, Tempo,
+  Lange duurloop — zelfde verdeel-structuur als Cycling (aantal
+  trainingsdagen → vaste volgorde), andere vocabulaire
+- Profiel/analyse-databronnen: Running Profile
+  (`specialist_type='running'`) + `analyseerRunning()` i.p.v. de
+  Cycling-equivalenten
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- Gedrag-behoudendheid Cycling: zie hierboven (108+28 combinaties)
+- Beide nieuwe/aangepaste routes aanwezig in de build-output
+
+**Nog niet in deze levering (Fase 2/3, zoals afgesproken):** Coach-
+uitleglaag (waarom dit schema, waarom rust/interval) en de UI
+(kalender, weekoverzicht, versleepbare trainingen) — die volgen apart,
+zelfde volgorde als destijds bij Cycling.
+
+**Test-instructies:**
+1. **Eerst de SQL hierboven uitvoeren in Supabase**
+2. Cycling: genereer een trainingsplan zoals altijd — moet zich exact
+   hetzelfde gedragen als vóór deze update
+3. Running: `POST /api/specialists/running/training-plan` — moet een
+   plan aanmaken met Running-sessietypen (easy_run/interval/herstel/
+   tempo/lange_duurloop)
+4. Beide tegelijk: genereer eerst een Cycling-plan, dan een Running-
+   plan — controleer dat het Cycling-plan `status='active'` blijft
+   (niet per ongeluk afgesloten)
+
 ## v2.4.131 — Running Progressie (Fase 2, derde levering)
 **Derde stap van "rijtje af": Progressie. Twee soorten trends, allebei
 zonder nieuwe SQL.**

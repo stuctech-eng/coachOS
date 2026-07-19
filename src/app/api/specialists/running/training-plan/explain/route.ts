@@ -20,25 +20,19 @@ async function getUser() {
   return user
 }
 
-// ── Coach-uitleglaag — Adaptive Training Plan Engine, Fase 2 ────────────
-// Bron: docs/adaptive-training-plan-decision-contract-v1.md, sectie 5:
-// "AI ontvangt: decision + reason code + context. AI produceert: de
-// menselijke uitleg. AI beslist NIETS."
+// ── Coach-uitleglaag (Running) — Adaptive Training Plan Engine, Fase 2 ─
+// Bron: overleg 19 juli 2026, spiegelbeeld van de Cycling-uitleglaag
+// (v2.4.97) — zelfde Decision Contract-principe, sectie 5: "AI ontvangt:
+// decision + reason code + context. AI produceert: de menselijke
+// uitleg. AI beslist NIETS."
 //
 // Leest de sessie van vandaag (type, duur, reason code indien
 // aangepast) + de actuele CoachPolicy, en laat de AI dat omzetten in
-// natuurlijke taal — exact het voorbeeld uit de hoofdspec:
-// "Vandaag: D1 duurtraining, 75 minuten... Waarom? ✔ Herstel voldoende"
+// natuurlijke taal.
 //
-// v2.4.97-verbetering t.o.v. de test-bevinding: de stille volume-
-// reductie (CoachPolicy volumeAdjustmentPct, die al werd toegepast in
-// Fase 1 maar niet werd uitgelegd) wordt nu EXPLICIET als context
-// meegegeven — de AI kan 'm dus benoemen, in plaats van dat 'ie
-// onvermeld blijft.
-//
-// v2.4.133: REASON_CODE_UITLEG verhuisd naar training-plan-engine/types.ts
-// (gedeeld met de Running-uitleglaag — beschrijft de beslissingsmechaniek,
-// niet iets Cycling-specifieks, dus geen reden voor duplicatie).
+// REASON_CODE_UITLEG komt uit training-plan-engine/types.ts (gedeeld
+// met Cycling — beschrijft de beslissingsmechaniek, niet iets
+// sportspecifieks, dus geen reden voor duplicatie).
 
 export async function GET() {
   try {
@@ -52,7 +46,7 @@ export async function GET() {
       .from('training_plans')
       .select('id')
       .eq('athlete_id', user.id)
-      .eq('sport', 'cycling')
+      .eq('sport', 'running')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -92,7 +86,7 @@ export async function GET() {
 ${getCoachTone(2)}
 ${CORE_SAFETY_RULE}
 
-Je bent de Cycling Coach en legt een al-vastgestelde trainingsbeslissing
+Je bent de Running Coach en legt een al-vastgestelde trainingsbeslissing
 uit aan de gebruiker. BELANGRIJK: de beslissing zelf staat al vast —
 type training, duur, en de reden ervoor zijn AL BEPAALD door
 deterministische logica (Plan Generator + Daily Adjustment Layer). Jij
@@ -118,7 +112,11 @@ dat naar gewone taal. Wees eerlijk en concreet, geen vage algemeenheden.
 Reageer ALLEEN in dit JSON-formaat:
 { "uitleg": "je tekst hier" }`
 
-    let uitleg = `${sessie.type === 'herstel' ? 'Een rustige hersteldag vandaag' : `${sessie.duration} minuten ${sessie.type}`} — ga ervoor!`
+    const RUNNING_TYPE_LABELS: Record<string, string> = {
+      easy_run: 'rustige duurloop', interval: 'intervaltraining', herstel: 'hersteltraining',
+      tempo: 'tempotraining', lange_duurloop: 'lange duurloop',
+    }
+    let uitleg = `${sessie.type === 'herstel' ? 'Een rustige hersteldag vandaag' : `${sessie.duration} minuten ${RUNNING_TYPE_LABELS[sessie.type] || sessie.type}`} — ga ervoor!`
 
     try {
       const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -148,7 +146,7 @@ Reageer ALLEEN in dit JSON-formaat:
         }
       }
     } catch (aiErr) {
-      console.error('[training-plan/explain] AI-call mislukt, fallback gebruikt:', aiErr)
+      console.error('[running/training-plan/explain] AI-call mislukt, fallback gebruikt:', aiErr)
     }
 
     await supabase
@@ -158,7 +156,7 @@ Reageer ALLEEN in dit JSON-formaat:
 
     return NextResponse.json({ sessie, uitleg })
   } catch (err) {
-    console.error('[training-plan/explain]', err)
+    console.error('[running/training-plan/explain]', err)
     return NextResponse.json({ error: 'Uitleg genereren mislukt' }, { status: 500 })
   }
 }

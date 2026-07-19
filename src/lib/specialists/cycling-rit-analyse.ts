@@ -71,6 +71,7 @@ export async function analyseerRit(userId: string, activiteitId: string): Promis
     .from('training_plans')
     .select('id')
     .eq('athlete_id', userId)
+    .eq('sport', 'cycling')
     .eq('status', 'active')
   const planIds = (actievePlannen || []).map(p => p.id)
 
