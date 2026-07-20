@@ -400,6 +400,49 @@ duurloop. **Fase 3 (UI — kalender, weekoverzicht) nog open.**
 (10s/3min/45min bestaan al bij Cycling, nog niet bij Running's
 afstandscurve — andere set doelafstanden, geen directe 1-op-1-vertaling).
 
+## 💚 Morning Health & Performance Repository (v2.4.137-140)
+
+**Platformbrede uitbreiding, niet Cycling/Running-specifiek.** Op
+verzoek gebouwd na uitgebreid architectuuroverleg — twee gescheiden
+domeinen, geen afgeleide waarden opgeslagen, generieke Vision Engine.
+
+- **`morning_health_metrics`** — HRV (ochtendwaarde + Garmin 7d-gem.
+  apart), rusthartslag, Body Battery, slaap, stress, ademhaling. Eén
+  rij per dag, `source_type`/`import_method` voor toekomstige bronnen
+  (apple_health/whoop/polar/fitbit/coros/suunto/future_api).
+- **`performance_snapshots`** — Training Readiness, trainingslast
+  (acuut/chronisch + verhouding), trainingsstatus, focus lading,
+  VO2max, Endurance Score. `hill_score`/`recovery_time_hours`/
+  `race_predictor` alvast aanwezig (NULL-baar) voor toekomstige
+  Garmin-widgets.
+- **Bewust GEEN baseline/trend/status-kolommen** — afgeleide waarden,
+  berekend live door de **Health Analysis Engine**
+  (`src/lib/specialists/health-analysis-engine.ts`), nooit opgeslagen.
+  Voorkomt migraties als de trend-regel (nu 7 dagen) ooit verandert.
+- **Vision Engine** (`src/lib/vision-engine/`) — generiek contract
+  + gedeelde comprimeer/AI-call/parse-Core, losse parsers per scherm
+  (`garmin-health-parser.ts`, `garmin-performance-parser.ts`). AI doet
+  uitsluitend OCR, nooit interpretatie. Twee screenshots in één
+  upload (`/api/health/vision-import`) — bestaande `garmin_imports`
+  (15+ lezers: Coach AI, Trends, Predictions, Status, Memory, Home,
+  Insights, Training-flows) blijft ONGEWIJZIGD gevoed, dit is een
+  aanvulling, geen vervanging.
+- **HRV-veld in de Check-in**, optioneel met expliciete Overslaan-knop
+  — schrijft naar dezelfde tabel, merget met een eventuele
+  screenshot-import van diezelfde dag.
+- **Coach-integratie (v2.4.140):** HRV-trend (baseline-relatief) +
+  Performance Snapshot-kerncijfers zijn nu extra INPUT voor het
+  dagelijkse Coach-advies (`src/app/api/coach/route.ts`, additief
+  context-blok, zelfde patroon als de bestaande Garmin-context) —
+  **CoachPolicy en `buildDailyCoachPrompt` blijven ongewijzigd**, dit
+  is bewust geen nieuwe beslissingslogica.
+
+**Nog niet gebouwd:** Apple Health/WHOOP/Polar-parsers (geen
+screenshot-voorbeeld om tegen te testen — komt bij concrete
+aanleiding), Coach Recovery Engine/Coach Performance Engine als
+losse, uitgebreidere modules (het huidige context-blok is een eerste,
+lichte integratie).
+
 
 ## 🧭 Navigatie-architectuur v1.0 (GEÏMPLEMENTEERD, herzien v2.4.111)
 

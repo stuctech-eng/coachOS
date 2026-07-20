@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.140 — Coach-integratie Morning Health/Performance + documentatie bijgewerkt
+**Maakt het Morning Health/Performance-blok af: de nieuwe data wordt nu
+daadwerkelijk gebruikt in het dagelijkse Coach-advies, en README + de
+in-app uitlegpagina zijn bijgewerkt. Vanaf nu standaard onderdeel van
+elke feature-levering (vastgelegd als geheugen-regel), niet pas na een
+apart verzoek.**
+
+### Coach-integratie
+- `src/app/api/coach/route.ts` — nieuw `morningHealthContext`-blok,
+  **zelfde additief-patroon als de bestaande `garminContext`** (losse
+  string die aan de system-prompt wordt geplakt). Bevat: HRV-trend
+  (baseline-relatief, via de Health Analysis Engine) + Training
+  Readiness, Trainingsstatus, Belastingsverhouding, VO2max uit
+  `performance_snapshots` van vandaag.
+- **CoachPolicy en `buildDailyCoachPrompt` blijven volledig
+  ongewijzigd** — dit is extra input voor de AI, geen nieuwe
+  beslissingslogica. Eigen try/catch — een probleem hier mag het
+  dagadvies nooit laten falen.
+
+### Documentatie bijgewerkt
+- **README.md** — nieuwe sectie "💚 Morning Health &amp; Performance
+  Repository" met de volledige architectuur (twee tabellen, Vision
+  Engine, Health Analysis Engine, Coach-integratie), wat bewust nog
+  niet gebouwd is (Apple Health/WHOOP/Polar-parsers)
+- **`hoe-werkt-het/page.tsx`** — de Garmin Import-sectie beschreef nog
+  het oude één-foto-met-bevestigstap-model; bijgewerkt naar de huidige
+  twee-foto's-direct-opslaan-flow, inclusief het handmatige HRV-veld in
+  de Check-in en de nieuwe Coach-integratie. Coach AI-sectie genoemd
+  dat HRV-trend en Performance-cijfers nu ook meetellen.
+
+**Geheugen-regel toegevoegd:** README.md en "Hoe werkt CoachOS" voortaan
+altijd bijwerken bij een feature-update, standaard onderdeel van de
+levering.
+
+**Gevalideerd vóór levering:** `npx next build` — compileert zonder
+fouten of warnings.
+
+**Test-instructies:**
+1. Een dag met HRV-trend en/of Performance-data → Coach-advies opvragen
+   → controleer (evt. via logging) dat het context-blok is meegestuurd
+2. Zonder HRV-trend/Performance-data → Coach-advies moet nog steeds
+   normaal werken (geen lege/kapotte context)
+3. Instellingen → Hoe werkt CoachOS → Garmin Import-sectie moet de
+   nieuwe twee-foto-flow beschrijven
+
 ## v2.4.139 — Fix: "Garmin data importeren"-kaart verdween niet na upload
 **Gemeld: na het invullen van beide screenshots bleef de reminder-kaart
 op Home staan, alsof er niets geïmporteerd was.**

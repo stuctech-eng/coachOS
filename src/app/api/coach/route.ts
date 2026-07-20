@@ -11,6 +11,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 import { beslisTussenSpecialisten } from '@/lib/specialists/decision-engine'
 import { haalGoalsMetProgress } from '@/lib/specialists/goal-engine'
+import { haalHrvTrend } from '@/lib/specialists/health-analysis-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -379,6 +380,39 @@ export async function POST() {
       ].filter(Boolean).join('\n')
     }
 
+    // ── Morning Health-trend + Performance Snapshot — v2.4.140 ──────────
+    // Bron: overleg 20 juli 2026. Zelfde additief-context-patroon als
+    // garminContext hierboven — CoachPolicy en buildDailyCoachPrompt
+    // blijven ongewijzigd, dit is puur extra INPUT voor de AI, geen
+    // nieuwe beslissingslogica. HRV-trend komt uit de Health Analysis
+    // Engine (baseline-relatief, niet de absolute drempelwaarde die de
+    // recovery-score elders gebruikt — zie health-analysis-engine.ts
+    // voor de toelichting op dat bewuste onderscheid).
+    let morningHealthContext = ''
+    try {
+      const [hrvTrend, performanceRes] = await Promise.all([
+        haalHrvTrend(user.id),
+        supabase.from('performance_snapshots').select('*').eq('user_id', user.id).eq('date', today).maybeSingle(),
+      ])
+      const perf = performanceRes.data
+
+      const regels = [
+        hrvTrend?.trend ? `HRV-trend t.o.v. eigen 7-daags gemiddelde: ${hrvTrend.trend} (${hrvTrend.verschil_pct! > 0 ? '+' : ''}${hrvTrend.verschil_pct}%)` : '',
+        perf?.training_readiness !== null && perf?.training_readiness !== undefined ? `Training Readiness: ${perf.training_readiness}${perf.training_readiness_label ? ` (${perf.training_readiness_label})` : ''}` : '',
+        perf?.training_status_label ? `Trainingsstatus: ${perf.training_status_label}` : '',
+        perf?.load_ratio !== null && perf?.load_ratio !== undefined ? `Belastingsverhouding (acuut/chronisch): ${perf.load_ratio}` : '',
+        perf?.vo2max !== null && perf?.vo2max !== undefined ? `VO2max: ${perf.vo2max}` : '',
+      ].filter(Boolean)
+
+      if (regels.length > 0) {
+        morningHealthContext = `\n\nMorning Health & Performance:\n${regels.join('\n')}`
+      }
+    } catch (mhErr) {
+      // Nooit het hele coach-advies laten falen op deze context — dit is
+      // een aanvulling, geen kernfunctionaliteit
+      console.error('[coach] Morning Health-context ophalen mislukt:', mhErr)
+    }
+
     const recenteActiviteiten: string[] = (activiteitenRes.data || []).map(a => {
       const activiteit = a.activities as { name: string } | { name: string }[] | null
       const naam = (Array.isArray(activiteit) ? activiteit[0]?.name : activiteit?.name) || 'Activiteit'
@@ -565,7 +599,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (weerContext || '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + (specialistContext || '') + trainerInstructiePrompt
+    ) + garminContext + morningHealthContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (weerContext || '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + (specialistContext || '') + trainerInstructiePrompt
 
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
