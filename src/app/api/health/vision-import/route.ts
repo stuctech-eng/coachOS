@@ -68,7 +68,15 @@ export async function POST(req: NextRequest) {
         // Bestaande garmin_imports blijft gevoed — 15+ bestaande lezers
         // (Coach AI, Trends, Predictions, Status, Memory, Home, Insights,
         // Training-flows) mogen hier niets van merken
-        const status = flags.some(f => f.severity === 'error') ? 'flagged' : 'pending'
+        // v2.4.139-fix: status altijd 'confirmed' — deze route heeft
+        // bewust geen apart bevestigstapje (v2.4.137-keuze), dus opslaan
+        // IS het bevestigen. Zonder deze fix bleef de Home-kaart
+        // "Garmin data importeren" altijd zichtbaar, want die check kijkt
+        // specifiek naar status==='confirmed' (zie home/page.tsx).
+        // validation_flags blijft gewoon apart opgeslagen voor wie
+        // afwijkende waarden wil nakijken — dat hoeft de reminder-kaart
+        // niet te blokkeren.
+        const status = 'confirmed'
         await supabase.from('garmin_imports').upsert({
           user_id: user.id, date: vandaag,
           raw_vision_response: raw_response, parsed_data: parsed,

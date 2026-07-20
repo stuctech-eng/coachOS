@@ -1,5 +1,32 @@
 # CoachOS — Changelog
 
+## v2.4.139 — Fix: "Garmin data importeren"-kaart verdween niet na upload
+**Gemeld: na het invullen van beide screenshots bleef de reminder-kaart
+op Home staan, alsof er niets geïmporteerd was.**
+
+**Oorzaak:** Home checkt of er een `garmin_imports`-rij bestaat met
+`status='confirmed'` om de kaart te verbergen (bestaande logica,
+ongewijzigd). De nieuwe Vision Import-route (v2.4.137) slaat bewust
+direct op zonder apart bevestigstapje, maar zette de status nog op
+`'pending'`/`'flagged'` — nooit `'confirmed'`. Daardoor verdween de
+kaart nooit.
+
+- `src/app/api/health/vision-import/route.ts` — status altijd
+  `'confirmed'` bij een geslaagde Health-import. `validation_flags`
+  blijft gewoon apart opgeslagen voor wie afwijkende waarden wil
+  nakijken — dat hoeft de reminder-kaart niet te blokkeren.
+
+**Bevestigd gedrag na deze fix:** kaart verdwijnt zodra je vandaag een
+Health-screenshot hebt geüpload, en verschijnt de volgende ochtend
+automatisch weer (bestaande datumcheck op Home, ongewijzigd).
+
+**Gevalideerd:** `npx next build` met schone cache — compileert zonder
+fouten of warnings.
+
+**Test-instructies:**
+1. Garmin Import → Health-foto uploaden → Verwerken
+2. Terug naar Home → kaart "Garmin data importeren" moet weg zijn
+
 ## v2.4.138 — Fix: Garmin Import scrolde niet + Focus lading niet zichtbaar
 **Gemeld met screenshot: "kan niet opslaan" bleek een scroll-bug — de
 body heeft app-breed `overflow-hidden` staan, en deze nieuwe pagina
