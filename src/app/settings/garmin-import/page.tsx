@@ -27,6 +27,9 @@ interface PerformanceParsed {
   chronic_load: number | null
   load_ratio: number | null
   training_status_label: string | null
+  load_focus_low: number | null
+  load_focus_moderate: number | null
+  load_focus_high: number | null
   vo2max: number | null
   endurance_score: number | null
 }
@@ -111,7 +114,7 @@ export default function GarminImportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="h-screen overflow-y-auto scroll-area bg-[#0a0a0a] text-white">
       <div className="flex items-center gap-3 px-4 pt-14 pb-6">
         <Link href={'/settings'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -124,7 +127,7 @@ export default function GarminImportPage() {
         </div>
       </div>
 
-      <div className="px-4 space-y-4 pb-10">
+      <div className="px-4 space-y-4 pb-10 safe-bottom">
         {phase === 'idle' && (
           <>
             <p className="text-xs text-white/30 px-1">📸 Best moment: 07:30–08:00 na Garmin sync. Beide foto&apos;s zijn optioneel — upload wat je hebt.</p>
@@ -183,6 +186,7 @@ export default function GarminImportPage() {
                 <DataRow label="Training Readiness" value={resultaat.performance.parsed?.training_readiness !== null && resultaat.performance.parsed?.training_readiness !== undefined ? `${resultaat.performance.parsed.training_readiness}` : '–'} sub={resultaat.performance.parsed?.training_readiness_label ?? undefined} />
                 <DataRow label="Trainingslast" value={resultaat.performance.parsed?.acute_load !== null && resultaat.performance.parsed?.acute_load !== undefined ? `${resultaat.performance.parsed.acute_load}/${resultaat.performance.parsed.chronic_load}` : '–'} sub={resultaat.performance.parsed?.load_ratio !== null && resultaat.performance.parsed?.load_ratio !== undefined ? `verhouding ${resultaat.performance.parsed.load_ratio}` : undefined} />
                 <DataRow label="Trainingsstatus" value={resultaat.performance.parsed?.training_status_label ?? '–'} />
+                <DataRow label="Focus lading" value={resultaat.performance.parsed && (resultaat.performance.parsed.load_focus_low !== null || resultaat.performance.parsed.load_focus_moderate !== null || resultaat.performance.parsed.load_focus_high !== null) ? `${resultaat.performance.parsed.load_focus_low ?? '–'} / ${resultaat.performance.parsed.load_focus_moderate ?? '–'} / ${resultaat.performance.parsed.load_focus_high ?? '–'}` : '–'} sub="laag / gemiddeld / hoog" />
                 <DataRow label="VO2max" value={resultaat.performance.parsed?.vo2max !== null && resultaat.performance.parsed?.vo2max !== undefined ? `${resultaat.performance.parsed.vo2max}` : '–'} />
                 <DataRow label="Endurance Score" value={resultaat.performance.parsed?.endurance_score !== null && resultaat.performance.parsed?.endurance_score !== undefined ? `${resultaat.performance.parsed.endurance_score}` : '–'} last />
               </div>

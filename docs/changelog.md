@@ -1,5 +1,27 @@
 # CoachOS — Changelog
 
+## v2.4.138 — Fix: Garmin Import scrolde niet + Focus lading niet zichtbaar
+**Gemeld met screenshot: "kan niet opslaan" bleek een scroll-bug — de
+body heeft app-breed `overflow-hidden` staan, en deze nieuwe pagina
+(v2.4.137) miste de vereiste scrollbare wrapper. Met twee kaarten +
+bevestiging + knoppen paste de inhoud niet meer op één scherm, dus de
+"Opgeslagen"-melding en de knoppen waren onbereikbaar — het leek
+alsof opslaan niet werkte, maar dat deed het waarschijnlijk wel.**
+
+- `src/app/settings/garmin-import/page.tsx`:
+  - `min-h-screen` → `h-screen overflow-y-auto scroll-area` op de
+    buitenste wrapper — zelfde patroon als elders in de app
+  - `safe-bottom` toegevoegd zodat de laatste knop niet achter de
+    home-indicator verdwijnt
+  - **Focus lading** was al geparsed en opgeslagen (`performance_snapshots`),
+    maar stond niet in de resultatenlijst — toegevoegd (laag/gemiddeld/
+    hoog)
+
+**Test-instructies:**
+1. Garmin Import → beide foto's → Verwerken → resultatenscherm moet nu
+   scrollbaar zijn, "Opgeslagen"-melding en knoppen moeten bereikbaar zijn
+2. Focus lading moet nu in de Performance-kaart staan
+
 ## v2.4.137 — Morning Health + Performance Repository, Vision Engine
 **Vervangt het ontwerp van v2.4.136 (die niet gepusht was) volledig.
 Grote, meerdelige levering na uitgebreid architectuuroverleg: geen
