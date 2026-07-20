@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.141 — Morning Health-context ook naar de specialist-coaches
+**Direct meegepakt zodat het niet vergeten wordt: Cycling Coach en
+Running Coach krijgen nu dezelfde HRV-trend/Performance-context als de
+Master Coach (v2.4.140) — daarvoor kregen alleen het algemene
+dagadvies dit te zien, niet de specialisten.**
+
+- `src/app/api/specialists/running/coach/route.ts` +
+  `src/app/api/specialists/cycling/coach/route.ts` — nieuw
+  `morningHealthContext`-blok, zelfde additief-patroon als het
+  bestaande `memoryContext`/`doelenContext` in diezelfde bestanden
+- **CoachPolicy blijft ongewijzigd** — `genereerCoachPolicy()` is al
+  sport-onafhankelijk en wordt hier niet aangeraakt, dit is puur extra
+  tekst in de prompt
+- README bijgewerkt: Coach-integratie-regel vermeldt nu ook de
+  specialist-coaches
+
+**Gevalideerd vóór levering:** `npx next build` — compileert zonder
+fouten of warnings.
+
+**Test-instructies:**
+1. Cycling Hub / Running Hub → advies opvragen op een dag met HRV-trend
+   en/of Performance-data → context moet meegestuurd zijn
+2. Zonder die data → specialist-advies moet nog gewoon normaal werken
+
 ## v2.4.140 — Coach-integratie Morning Health/Performance + documentatie bijgewerkt
 **Maakt het Morning Health/Performance-blok af: de nieuwe data wordt nu
 daadwerkelijk gebruikt in het dagelijkse Coach-advies, en README + de

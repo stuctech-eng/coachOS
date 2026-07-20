@@ -8,6 +8,8 @@ import { analyseerRunning } from '@/lib/specialists/running-analysis'
 import { verwerkKandidaatInzicht, haalMemoryOp } from '@/lib/specialists/learning-engine'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 import { haalGoalsMetProgress } from '@/lib/specialists/goal-engine'
+import { haalHrvTrend } from '@/lib/specialists/health-analysis-engine'
+import { isoDatum } from '@/utils'
 import { COACH_CORE_IDENTITY, CORE_SAFETY_RULE, getCoachTone } from '@/core/prompts/coach-personality'
 
 async function getUser() {
@@ -117,6 +119,30 @@ export async function POST(req: NextRequest) {
       console.error('[specialists/running/coach] Memory ophalen mislukt, prompt gaat door zonder:', memErr)
     }
 
+    // ── Morning Health-trend + Performance Snapshot — v2.4.141 ──────────
+    // Bron: overleg 20 juli 2026. Zelfde additief-context-patroon als
+    // memoryContext/doelenContext hierboven — geen wijziging aan
+    // CoachPolicy of de kernstructuur van de prompt.
+    let morningHealthContext = ''
+    try {
+      const vandaag = isoDatum(new Date())
+      const [hrvTrend, performanceRes] = await Promise.all([
+        haalHrvTrend(user.id),
+        supabase.from('performance_snapshots').select('*').eq('user_id', user.id).eq('date', vandaag).maybeSingle(),
+      ])
+      const perf = performanceRes.data
+      const regels = [
+        hrvTrend?.trend ? `HRV-trend t.o.v. eigen 7-daags gemiddelde: ${hrvTrend.trend} (${hrvTrend.verschil_pct! > 0 ? '+' : ''}${hrvTrend.verschil_pct}%)` : '',
+        perf?.training_readiness !== null && perf?.training_readiness !== undefined ? `Training Readiness: ${perf.training_readiness}${perf.training_readiness_label ? ` (${perf.training_readiness_label})` : ''}` : '',
+        perf?.training_status_label ? `Trainingsstatus: ${perf.training_status_label}` : '',
+        perf?.load_ratio !== null && perf?.load_ratio !== undefined ? `Belastingsverhouding (acuut/chronisch): ${perf.load_ratio}` : '',
+        perf?.vo2max !== null && perf?.vo2max !== undefined ? `VO2max: ${perf.vo2max}` : '',
+      ].filter(Boolean)
+      if (regels.length > 0) morningHealthContext = `\nMorning Health & Performance:\n${regels.join('\n')}`
+    } catch (mhErr) {
+      console.error('[specialists/running/coach] Morning Health-context ophalen mislukt:', mhErr)
+    }
+
     // ── v2.4.86: Goal Engine — vervangt de eerdere, lichte doelen-fetch.
     // Haalt zowel global-doelen (Master Coach-niveau, bijv. "afvallen")
     // als specialist-specifieke doelen (bijv. FTP-target) op, elk met
@@ -181,6 +207,7 @@ ${reden.join('\n')}
 ${policyContext}
 ${doelenContext}
 ${memoryContext}
+${morningHealthContext}
 
 Geef een persoonlijk, motiverend maar eerlijk hardloop-advies. Schrijf in
 het Nederlands. Wees concreet — gebruik de cijfers, verzin niets.

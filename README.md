@@ -430,12 +430,14 @@ domeinen, geen afgeleide waarden opgeslagen, generieke Vision Engine.
 - **HRV-veld in de Check-in**, optioneel met expliciete Overslaan-knop
   — schrijft naar dezelfde tabel, merget met een eventuele
   screenshot-import van diezelfde dag.
-- **Coach-integratie (v2.4.140):** HRV-trend (baseline-relatief) +
+- **Coach-integratie (v2.4.140-141):** HRV-trend (baseline-relatief) +
   Performance Snapshot-kerncijfers zijn nu extra INPUT voor het
-  dagelijkse Coach-advies (`src/app/api/coach/route.ts`, additief
-  context-blok, zelfde patroon als de bestaande Garmin-context) —
-  **CoachPolicy en `buildDailyCoachPrompt` blijven ongewijzigd**, dit
-  is bewust geen nieuwe beslissingslogica.
+  dagelijkse Coach-advies (`src/app/api/coach/route.ts`) **én voor
+  beide specialist-coaches** (`api/specialists/cycling/coach/route.ts`,
+  `api/specialists/running/coach/route.ts`) — additief context-blok,
+  zelfde patroon als de bestaande Garmin-context/memoryContext/
+  doelenContext. **CoachPolicy en `buildDailyCoachPrompt` blijven
+  ongewijzigd**, dit is bewust geen nieuwe beslissingslogica.
 
 **Nog niet gebouwd:** Apple Health/WHOOP/Polar-parsers (geen
 screenshot-voorbeeld om tegen te testen — komt bij concrete
