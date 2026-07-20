@@ -1,5 +1,83 @@
 # CoachOS — Changelog
 
+## v2.4.137 — Morning Health + Performance Repository, Vision Engine
+**Vervangt het ontwerp van v2.4.136 (die niet gepusht was) volledig.
+Grote, meerdelige levering na uitgebreid architectuuroverleg: geen
+afgeleide waarden opslaan, generieke Vision Engine i.p.v. Garmin-
+specifieke code, twee screenshots in één upload.**
+
+**⚠️ ACTIE VEREIST VÓÓR DEPLOY — zie `supabase/morning_health_and_performance.sql`
+voor de volledige SQL (twee tabellen + RLS-policies).**
+
+### Architectuurkeuzes, zoals besproken
+- **Geen baseline/trend/status-kolommen** — afgeleide waarden, berekend
+  live door de nieuwe Health Analysis Engine
+  (`src/lib/specialists/health-analysis-engine.ts`), nooit opgeslagen.
+  Verandert de trend-regel ooit (bijv. 7→14 dagen), dan is er geen
+  historische migratie nodig.
+- **Generieke Vision Engine** (`src/lib/vision-engine/`) i.p.v.
+  Garmin-specifieke code in de route zelf — `types.ts` (contract),
+  `core.ts` (gedeelde comprimeer/AI-call/parse-logica), losse parsers
+  per scherm. Nu twee parsers: `garmin-health-parser.ts` en
+  `garmin-performance-parser.ts`. Apple Health/WHOOP/Polar-parsers
+  bewust NIET gebouwd — geen screenshot-voorbeeld om tegen te testen,
+  komt later bij een concrete aanleiding.
+- **AI doet alleen OCR** — de prompts vragen uitsluitend om de kale
+  cijfers, nooit om interpretatie. Die interpretatie zit in de Health
+  Analysis Engine en straks de Coach, niet in de Vision-laag.
+- **`source_type`/`import_method`** uitgebreid zoals gevraagd:
+  garmin_connect/apple_health/manual/whoop/polar/fitbit/coros/suunto/
+  future_api, resp. vision/api/manual/sync.
+- **`performance_snapshots` alvast breed opgezet** — hill_score,
+  recovery_time_hours, race_predictor zijn NULL-baar en aanwezig, ook al
+  stonden ze niet op het aangeleverde screenshot. Voorkomt een latere
+  tabelwijziging zodra een screenshot met die widgets beschikbaar komt.
+- **CoachPolicy/recovery-engine.ts ongewijzigd** — nieuwe data is input,
+  geen policy-wijziging.
+
+### Twee foto's, één upload
+- **Nieuw:** `src/app/api/health/vision-import/route.ts` — accepteert
+  Health- en Performance-foto in één multipart POST, twee losse Vision-
+  calls (niet één alles-in-één-prompt — hogere herkenningsbetrouwbaarheid
+  per scherm)
+- Health-foto blijft ALTIJD ook `garmin_imports` vullen (ongewijzigd,
+  15+ bestaande lezers: Coach AI, Trends, Predictions, Status, Memory,
+  Home, Insights, Training-flows) + nieuw naar `morning_health_metrics`
+- Performance-foto is uitsluitend nieuw → `performance_snapshots`
+- **Vereenvoudiging t.o.v. de oude garmin-vision-route:** geen apart
+  "bevestig eerst"-stapje — direct opslaan na parsen
+- `src/app/settings/garmin-import/page.tsx` — herschreven: twee foto-
+  vakken, één "Verwerken"-knop. Oude route (`/api/health/garmin-vision`)
+  blijft ongewijzigd bestaan, geen risico voor wat al werkte
+
+### HRV-veld in de Check-in (herzien t.o.v. v2.4.136)
+- `src/app/api/hrv/route.ts` — schrijft nu naar `morning_health_metrics`
+  i.p.v. het vervangen `hrv_measurements`, merget met een eventueel
+  al-bestaande rij van vandaag (bijv. al een Health-screenshot
+  geüpload) i.p.v. blind te overschrijven
+- `src/app/checkin/page.tsx` — HRV-veld met **expliciete
+  "Overslaan"-knop** (op verzoek — was eerst impliciet leeg-laten)
+
+**Bewuste beperking, benoemd in de code:** bij gemengde bronnen op
+dezelfde dag (bijv. eerst handmatig HRV, later een Health-screenshot)
+weerspiegelt `source_type` de laatste schrijfactie voor de hele rij,
+niet per veld afzonderlijk — voor een eerste versie een aanvaardbare
+vereenvoudiging.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- Health Analysis Engine-trendlogica los getest, inclusief correcte
+  filtering van ontbrekende (null) metingen uit het gemiddelde
+
+**Test-instructies:**
+1. **Eerst de SQL uitvoeren**
+2. Garmin Import → beide foto's kiezen → Verwerken → beide resultaten
+   moeten verschijnen
+3. Check-in → HRV invullen → Overslaan-knop test → "Toch invullen"
+   moet het veld weer tonen
+4. Bevestig dat `garmin_imports` nog steeds gevuld wordt (bestaande
+   Coach AI-functionaliteit mag niet breken)
+
 ## v2.4.135 — HERSTEL: ontbrekende Training Plan Engine-bestanden
 **Oorzaak van de "The string did not match the expected pattern"-fout
 op het Running Trainingsplan-scherm: `src/app/api/specialists/running/

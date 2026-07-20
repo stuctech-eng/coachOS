@@ -1,214 +1,157 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ── Garmin Import — twee screenshots, één upload ─────────────────────────
+// Bron: overleg 20 juli 2026. Vervangt de oude single-photo-flow met een
+// bevestig-stap door een eenvoudigere directe-opslag-flow met twee
+// foto-vakken. De oude route (/api/health/garmin-vision) blijft
+// ongewijzigd bestaan — deze pagina praat nu met de nieuwe
+// /api/health/vision-import.
 
-interface ValidationFlag {
-  field: string
-  value: number | null
-  reason: string
-  severity: 'warning' | 'error'
-}
+interface ValidationFlag { field: string; value: number | null; reason: string; severity: 'warning' | 'error' }
 
-interface GarminParsed {
+interface HealthParsed {
   resting_hr: number | null
   body_battery: { current: number | null; charged: number | null; spent: number | null }
   sleep: { score: number | null; duration_minutes: number | null }
   hrv: { avg_7d_ms: number | null; status: string | null }
   stress: number | null
-  breathing: { current_brpm: number | null; avg_awake_brpm: number | null; avg_sleep_brpm: number | null }
+  breathing: { current_brpm: number | null }
+}
+interface PerformanceParsed {
+  training_readiness: number | null
+  training_readiness_label: string | null
+  acute_load: number | null
+  chronic_load: number | null
+  load_ratio: number | null
+  training_status_label: string | null
+  vo2max: number | null
+  endurance_score: number | null
 }
 
-interface ImportResult {
-  import_id: string
-  parsed: GarminParsed
-  validation_flags: ValidationFlag[]
-  confidence_score: number
-  status: 'pending' | 'flagged'
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+interface VisionResultaat<T> { parsed?: T; confidence?: number; flags?: ValidationFlag[]; error?: string }
+interface ImportResponse { health?: VisionResultaat<HealthParsed>; performance?: VisionResultaat<PerformanceParsed> }
 
 function formatDuration(minutes: number | null): string {
   if (!minutes) return '–'
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return `${h}u ${m}m`
+  return `${Math.floor(minutes / 60)}u ${minutes % 60}m`
 }
 
-function hrvStatusLabel(status: string | null): string {
-  if (!status) return '–'
-  const map: Record<string, string> = {
-    balanced: 'Evenwichtig',
-    low: 'Laag',
-    high: 'Hoog',
-    unbalanced: 'Ongebalanceerd',
-  }
-  return map[status] ?? status
+function UploadVak({ titel, beschrijving, velden, bestand, onKies, inputRef }: {
+  titel: string; beschrijving: string; velden: string[]
+  bestand: File | null; onKies: (f: File) => void; inputRef: React.RefObject<HTMLInputElement>
+}) {
+  return (
+    <div className="rounded-2xl bg-white/5 border border-white/8 p-4 space-y-3">
+      <div>
+        <p className="text-sm font-medium">{titel}</p>
+        <p className="text-xs text-white/40 mt-0.5">{beschrijving}</p>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {velden.map(v => <span key={v} className="text-[10px] rounded-full bg-white/5 px-2 py-1 text-white/50">{v}</span>)}
+      </div>
+      <button
+        onClick={() => inputRef.current?.click()}
+        className={`w-full rounded-xl py-3 text-sm font-medium transition-colors ${bestand ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-white/5 hover:bg-white/10 text-white/70'}`}
+      >
+        {bestand ? `✓ ${bestand.name}` : 'Screenshot kiezen'}
+      </button>
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) onKies(f) }} />
+    </div>
+  )
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function GarminImportPage() {
-  const fileRef = useRef<HTMLInputElement>(null)
+  const healthRef = useRef<HTMLInputElement>(null)
+  const performanceRef = useRef<HTMLInputElement>(null)
 
-  const [phase, setPhase] = useState<'idle' | 'uploading' | 'preview' | 'confirming' | 'done' | 'error'>('idle')
-  const [result, setResult] = useState<ImportResult | null>(null)
+  const [healthFile, setHealthFile] = useState<File | null>(null)
+  const [performanceFile, setPerformanceFile] = useState<File | null>(null)
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
+  const [resultaat, setResultaat] = useState<ImportResponse | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [alreadyConfirmed, setAlreadyConfirmed] = useState(false)
-  const [preview, setPreview] = useState<string | null>(null)
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  )
-
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const objectUrl = URL.createObjectURL(file)
-    setPreview(objectUrl)
+  async function verwerk() {
+    if (!healthFile && !performanceFile) return
     setPhase('uploading')
     setErrorMsg(null)
 
     const formData = new FormData()
-    formData.append('image', file)
+    if (healthFile) formData.append('health_image', healthFile)
+    if (performanceFile) formData.append('performance_image', performanceFile)
 
     try {
-      const res = await fetch('/api/health/garmin-vision', {
-        method: 'POST',
-        body: formData,
-      })
+      const res = await fetch('/api/health/vision-import', { method: 'POST', body: formData })
       const data = await res.json()
-
-      if (res.status === 409 && data.already_confirmed) {
-        setAlreadyConfirmed(true)
-        setPhase('done')
-        return
-      }
-
       if (!res.ok) {
         setErrorMsg(data.error ?? 'Er ging iets mis.')
         setPhase('error')
         return
       }
-
-      setResult(data)
-      setPhase('preview')
+      setResultaat(data)
+      setPhase('done')
+      fetch('/api/status', { method: 'POST', credentials: 'include' }).catch(() => {})
     } catch {
       setErrorMsg('Verbindingsfout. Probeer opnieuw.')
       setPhase('error')
     }
   }
 
-  async function handleConfirm() {
-    if (!result) return
-    setPhase('confirming')
-
-    const formData = new FormData()
-    formData.append('confirm_id', result.import_id)
-
-    try {
-      const res = await fetch('/api/health/garmin-vision', {
-        method: 'POST',
-        body: formData,
-      })
-      if (!res.ok) throw new Error()
-      // Herbereken Coach Score met nieuwe Garmin data
-      fetch('/api/status', { method: 'POST', credentials: 'include' }).catch(() => {})
-      setPhase('done')
-    } catch {
-      setErrorMsg('Bevestigen mislukt. Probeer opnieuw.')
-      setPhase('error')
-    }
-  }
-
-  function handleRetry() {
+  function reset() {
     setPhase('idle')
-    setResult(null)
+    setResultaat(null)
     setErrorMsg(null)
-    setPreview(null)
-    setAlreadyConfirmed(false)
-    if (fileRef.current) fileRef.current.value = ''
+    setHealthFile(null)
+    setPerformanceFile(null)
+    if (healthRef.current) healthRef.current.value = ''
+    if (performanceRef.current) performanceRef.current.value = ''
   }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-14 pb-6">
-        <Link href={'/settings'}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
-        >
+        <Link href={'/settings'} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
         </Link>
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Garmin Import</h1>
-          <p className="text-xs text-white/40 mt-0.5">Dagelijkse data via screenshot</p>
+          <p className="text-xs text-white/40 mt-0.5">Dagelijkse data via screenshots</p>
         </div>
       </div>
 
       <div className="px-4 space-y-4 pb-10">
-
-        {/* ── Idle ────────────────────────────────────────────────────── */}
         {phase === 'idle' && (
           <>
-            <div className="rounded-2xl bg-white/5 border border-white/8 p-5 space-y-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Hoe werkt het</p>
-                <p className="text-sm text-white/50 leading-relaxed">
-                  Open Garmin Connect → &quot;In één oogopslag&quot; → screenshot → upload hier.
-                  Coach AI leest automatisch je herstel- en activiteitsdata uit.
-                </p>
-              </div>
+            <p className="text-xs text-white/30 px-1">📸 Best moment: 07:30–08:00 na Garmin sync. Beide foto&apos;s zijn optioneel — upload wat je hebt.</p>
 
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                {['Rusthartslag', 'Body Battery', 'Slaap', 'HRV (7d gem.)', 'Stress', 'Ademhaling'].map((label) => (
-                  <div key={label} className="rounded-lg bg-white/5 px-2.5 py-2 text-white/60 text-center">
-                    {label}
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-xs text-white/30">
-                📸 Best moment: 07:30–08:00 na Garmin sync
-              </p>
-            </div>
+            <UploadVak
+              titel="Health Snapshot" beschrijving='Garmin Connect → "In één oogopslag" (Health-widgets)'
+              velden={['Rusthartslag', 'Body Battery', 'Slaap', 'HRV (7d gem.)', 'Stress', 'Ademhaling']}
+              bestand={healthFile} onKies={setHealthFile} inputRef={healthRef}
+            />
+            <UploadVak
+              titel="Performance Snapshot" beschrijving='Garmin Connect → "In één oogopslag" (Performance-widgets)'
+              velden={['Training Readiness', 'Trainingslast', 'Trainingsstatus', 'Focus lading', 'VO2max', 'Endurance Score']}
+              bestand={performanceFile} onKies={setPerformanceFile} inputRef={performanceRef}
+            />
 
             <button
-              onClick={() => fileRef.current?.click()}
-              className="w-full rounded-2xl bg-blue-500 hover:bg-blue-400 active:scale-[0.98] transition-all py-4 text-sm font-semibold flex items-center justify-center gap-2"
+              onClick={verwerk}
+              disabled={!healthFile && !performanceFile}
+              className="w-full rounded-2xl bg-blue-500 hover:bg-blue-400 active:scale-[0.98] disabled:opacity-30 disabled:active:scale-100 transition-all py-4 text-sm font-semibold"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              Screenshot uploaden
+              Verwerken
             </button>
-
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
           </>
         )}
 
-        {/* ── Uploading ───────────────────────────────────────────────── */}
         {phase === 'uploading' && (
           <div className="rounded-2xl bg-white/5 border border-white/8 p-8 flex flex-col items-center gap-4">
-            {preview && (
-              <img src={preview} alt="preview" className="w-24 h-24 rounded-xl object-cover opacity-50" />
-            )}
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-white/60">Garmin data uitlezen…</p>
@@ -216,148 +159,57 @@ export default function GarminImportPage() {
           </div>
         )}
 
-        {/* ── Preview ─────────────────────────────────────────────────── */}
-        {phase === 'preview' && result && (
+        {phase === 'done' && resultaat && (
           <>
-            <div className={`rounded-xl px-4 py-3 flex items-center gap-3 ${
-              result.confidence_score >= 80
-                ? 'bg-green-500/10 border border-green-500/20'
-                : result.confidence_score >= 60
-                ? 'bg-amber-500/10 border border-amber-500/20'
-                : 'bg-red-500/10 border border-red-500/20'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                result.confidence_score >= 80 ? 'bg-green-400' :
-                result.confidence_score >= 60 ? 'bg-amber-400' : 'bg-red-400'
-              }`} />
-              <p className="text-sm">
-                Betrouwbaarheid: <span className="font-semibold">{result.confidence_score}%</span>
-                {result.status === 'flagged' && (
-                  <span className="text-amber-400 ml-2">— controleer gemarkeerde waarden</span>
-                )}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white/5 border border-white/8 divide-y divide-white/5">
-              <DataRow
-                label="Rusthartslag"
-                value={result.parsed.resting_hr ? `${result.parsed.resting_hr} bpm` : '–'}
-                flagged={result.validation_flags.some(f => f.field === 'resting_hr')}
-              />
-              <DataRow
-                label="Body Battery"
-                value={result.parsed.body_battery.current !== null ? `${result.parsed.body_battery.current}` : '–'}
-                sub={result.parsed.body_battery.charged !== null
-                  ? `+${result.parsed.body_battery.charged} opgeladen · -${result.parsed.body_battery.spent} verbruikt`
-                  : undefined}
-                flagged={result.validation_flags.some(f => f.field.startsWith('body_battery'))}
-              />
-              <DataRow
-                label="Slaap"
-                value={result.parsed.sleep.score !== null ? `Score ${result.parsed.sleep.score}` : '–'}
-                sub={formatDuration(result.parsed.sleep.duration_minutes)}
-                flagged={result.validation_flags.some(f => f.field.startsWith('sleep'))}
-              />
-              <DataRow
-                label="HRV (7d gem.)"
-                value={result.parsed.hrv.avg_7d_ms !== null ? `${result.parsed.hrv.avg_7d_ms} ms` : '–'}
-                sub={hrvStatusLabel(result.parsed.hrv.status)}
-                flagged={result.validation_flags.some(f => f.field === 'hrv.avg_7d_ms')}
-              />
-              <DataRow
-                label="Stress"
-                value={result.parsed.stress !== null ? `${result.parsed.stress}` : '–'}
-                sub={result.parsed.stress !== null ? (result.parsed.stress <= 25 ? 'Laag' : result.parsed.stress <= 50 ? 'Licht' : result.parsed.stress <= 75 ? 'Matig' : 'Hoog') : undefined}
-                flagged={result.validation_flags.some(f => f.field === 'stress')}
-              />
-              <DataRow
-                label="Ademhaling"
-                value={result.parsed.breathing.current_brpm !== null ? `${result.parsed.breathing.current_brpm} brpm` : '–'}
-                sub={result.parsed.breathing.avg_sleep_brpm !== null ? `slaap: ${result.parsed.breathing.avg_sleep_brpm} brpm` : undefined}
-                flagged={result.validation_flags.some(f => f.field.startsWith('breathing'))}
-                last
-              />
-            </div>
-
-            {result.validation_flags.length > 0 && (
-              <div className="rounded-2xl bg-amber-500/5 border border-amber-500/15 p-4 space-y-2">
-                <p className="text-xs font-medium text-amber-400">Opmerkingen</p>
-                {result.validation_flags.map((flag, i) => (
-                  <p key={i} className="text-xs text-white/50">
-                    <span className="text-white/70">{flag.field}:</span> {flag.reason}
-                  </p>
-                ))}
+            {resultaat.health && !resultaat.health.error && (
+              <div className="rounded-2xl bg-white/5 border border-white/8 divide-y divide-white/5">
+                <p className="text-xs font-medium text-white/50 px-4 py-3">Health — betrouwbaarheid {resultaat.health.confidence}%</p>
+                <DataRow label="Rusthartslag" value={resultaat.health.parsed?.resting_hr ? `${resultaat.health.parsed.resting_hr} bpm` : '–'} />
+                <DataRow label="Body Battery" value={resultaat.health.parsed?.body_battery.current !== null && resultaat.health.parsed?.body_battery.current !== undefined ? `${resultaat.health.parsed.body_battery.current}` : '–'} />
+                <DataRow label="Slaap" value={resultaat.health.parsed?.sleep.score !== null && resultaat.health.parsed?.sleep.score !== undefined ? `Score ${resultaat.health.parsed.sleep.score}` : '–'} sub={formatDuration(resultaat.health.parsed?.sleep.duration_minutes ?? null)} />
+                <DataRow label="HRV (7d gem.)" value={resultaat.health.parsed?.hrv.avg_7d_ms ? `${resultaat.health.parsed.hrv.avg_7d_ms} ms` : '–'} />
+                <DataRow label="Stress" value={resultaat.health.parsed?.stress !== null && resultaat.health.parsed?.stress !== undefined ? `${resultaat.health.parsed.stress}` : '–'} last />
+              </div>
+            )}
+            {resultaat.health?.error && (
+              <div className="rounded-2xl bg-red-500/5 border border-red-500/20 p-4">
+                <p className="text-sm text-red-400">Health-foto: {resultaat.health.error}</p>
               </div>
             )}
 
-            <button
-              onClick={handleConfirm}
-              className="w-full rounded-2xl bg-blue-500 hover:bg-blue-400 active:scale-[0.98] transition-all py-4 text-sm font-semibold"
-            >
-              Bevestigen & opslaan
-            </button>
+            {resultaat.performance && !resultaat.performance.error && (
+              <div className="rounded-2xl bg-white/5 border border-white/8 divide-y divide-white/5">
+                <p className="text-xs font-medium text-white/50 px-4 py-3">Performance — betrouwbaarheid {resultaat.performance.confidence}%</p>
+                <DataRow label="Training Readiness" value={resultaat.performance.parsed?.training_readiness !== null && resultaat.performance.parsed?.training_readiness !== undefined ? `${resultaat.performance.parsed.training_readiness}` : '–'} sub={resultaat.performance.parsed?.training_readiness_label ?? undefined} />
+                <DataRow label="Trainingslast" value={resultaat.performance.parsed?.acute_load !== null && resultaat.performance.parsed?.acute_load !== undefined ? `${resultaat.performance.parsed.acute_load}/${resultaat.performance.parsed.chronic_load}` : '–'} sub={resultaat.performance.parsed?.load_ratio !== null && resultaat.performance.parsed?.load_ratio !== undefined ? `verhouding ${resultaat.performance.parsed.load_ratio}` : undefined} />
+                <DataRow label="Trainingsstatus" value={resultaat.performance.parsed?.training_status_label ?? '–'} />
+                <DataRow label="VO2max" value={resultaat.performance.parsed?.vo2max !== null && resultaat.performance.parsed?.vo2max !== undefined ? `${resultaat.performance.parsed.vo2max}` : '–'} />
+                <DataRow label="Endurance Score" value={resultaat.performance.parsed?.endurance_score !== null && resultaat.performance.parsed?.endurance_score !== undefined ? `${resultaat.performance.parsed.endurance_score}` : '–'} last />
+              </div>
+            )}
+            {resultaat.performance?.error && (
+              <div className="rounded-2xl bg-red-500/5 border border-red-500/20 p-4">
+                <p className="text-sm text-red-400">Performance-foto: {resultaat.performance.error}</p>
+              </div>
+            )}
 
-            <button
-              onClick={handleRetry}
-              className="w-full rounded-xl bg-white/5 hover:bg-white/8 transition-colors py-3 text-sm text-white/50"
-            >
-              Opnieuw uploaden
+            <div className="rounded-2xl bg-green-500/5 border border-green-500/20 p-4 text-center">
+              <p className="text-sm text-green-400">Opgeslagen — Coach AI gebruikt deze data.</p>
+            </div>
+
+            <button onClick={reset} className="w-full rounded-xl bg-white/5 hover:bg-white/8 transition-colors py-3 text-sm text-white/50">
+              Nog een screenshot
             </button>
+            <Link href={'/home'} className="block w-full text-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors py-3 text-sm font-medium">
+              Naar Home
+            </Link>
           </>
         )}
 
-        {/* ── Confirming ──────────────────────────────────────────────── */}
-        {phase === 'confirming' && (
-          <div className="rounded-2xl bg-white/5 border border-white/8 p-8 flex items-center justify-center gap-3">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-white/60">Opslaan…</p>
-          </div>
-        )}
-
-        {/* ── Done ────────────────────────────────────────────────────── */}
-        {phase === 'done' && (
-          <div className="rounded-2xl bg-white/5 border border-white/8 p-8 flex flex-col items-center gap-4 text-center">
-            {alreadyConfirmed ? (
-              <>
-                <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-semibold">Al geïmporteerd vandaag</p>
-                  <p className="text-sm text-white/50 mt-1">Je Garmin data van vandaag is al opgeslagen.</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-semibold">Opgeslagen</p>
-                  <p className="text-sm text-white/50 mt-1">Coach AI gebruikt deze data voor je dagplan.</p>
-                </div>
-              </>
-            )}
-            <Link href={'/home'}
-              className="mt-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-6 py-2.5 text-sm font-medium"
-            >
-              Naar Home
-            </Link>
-          </div>
-        )}
-
-        {/* ── Error ───────────────────────────────────────────────────── */}
         {phase === 'error' && (
           <div className="rounded-2xl bg-red-500/5 border border-red-500/20 p-6 space-y-4">
             <p className="text-sm text-red-400">{errorMsg}</p>
-            <button
-              onClick={handleRetry}
-              className="w-full rounded-xl bg-white/5 hover:bg-white/8 transition-colors py-3 text-sm text-white/70"
-            >
+            <button onClick={reset} className="w-full rounded-xl bg-white/5 hover:bg-white/8 transition-colors py-3 text-sm text-white/70">
               Opnieuw proberen
             </button>
           </div>
@@ -367,29 +219,10 @@ export default function GarminImportPage() {
   )
 }
 
-// ─── DataRow ──────────────────────────────────────────────────────────────────
-
-function DataRow({
-  label,
-  value,
-  sub,
-  flagged = false,
-  last = false,
-}: {
-  label: string
-  value: string
-  sub?: string
-  flagged?: boolean
-  last?: boolean
-}) {
+function DataRow({ label, value, sub, last = false }: { label: string; value: string; sub?: string; last?: boolean }) {
   return (
     <div className={`flex items-center justify-between px-4 py-3.5 ${last ? '' : ''}`}>
-      <div className="flex items-center gap-2">
-        {flagged && (
-          <div className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-        )}
-        <span className={`text-sm ${flagged ? 'text-white/70' : 'text-white/50'}`}>{label}</span>
-      </div>
+      <span className="text-sm text-white/50">{label}</span>
       <div className="text-right">
         <p className="text-sm font-medium">{value}</p>
         {sub && <p className="text-xs text-white/35 mt-0.5">{sub}</p>}
