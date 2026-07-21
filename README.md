@@ -509,12 +509,37 @@ inclusief een bewust tegenstrijdig geval), Consistency (4). Alle
 wiskundige aannames (EWMA-lineariteit) vooraf numeriek geverifieerd,
 niet als aanname de code in.
 
-**Bewust nog niet gebouwd** (volgt in Fase 2): Dashboard-UI,
+**Bewust nog niet gebouwd** (volgt later): Dashboard-UI,
 CoachPolicy-koppeling van de nieuwe laag zelf (CoachPolicy gebruikt
 nog steeds rechtstreeks de oude `recovery-engine.ts`, niet de nieuwe
 wrapper — bewuste keuze om niets
 te breken). Levensgebeurtenis-penalty zit nog niet in de data-adapter
 (`lifeEventPenalty: 0` hardcoded, expliciet benoemd in de code).
+
+### Fase 2 (v2.4.156-157) — VOLLEDIG AFGEROND
+
+Geen "nog niet beschikbaar totdat er 90 dagen data is" — elke score
+bestaat vanaf dag 1, met een eerlijke Confidence erbij:
+
+- **Endurance Index** — VO2max + CTL + Consistency, gelijk gewogen.
+  Ontbrekende VO2max trekt het gemiddelde niet omlaag (geen 0 invullen).
+- **Sprint Score** — leunt volledig op de al-bestaande vermogenscurve,
+  geen nieuwe databron. Absoluut vermogen, niet W/kg-genormaliseerd
+  (v1-beperking, expliciet benoemd).
+- **Efficiency Score** — Efficiency Factor (vermogen÷hartslag), publiek
+  gedocumenteerd concept, geen propriëtaire namaak. Bewust Cycling-only
+  in v1.
+- **Climbing Score** — hoogtemeters + W/kg. Klim-segmentatie
+  (stijgingspercentage/klimduur) bestaat nergens in CoachOS, zelfde
+  beperking als eerder bij Running's "beste klim" (v2.4.128).
+- **Progress Score** — vergelijkt laatste 14 dagen met de 14 daarvoor
+  via de History Engine. Detecteert zelf wanneer er nog te weinig
+  geschiedenis is en verlaagt dan actief de Confidence, i.p.v. een
+  misleidend cijfer te tonen.
+
+Elke engine los getest vóór levering (zie changelog v2.4.156-157 voor
+de exacte scenario's). Resterend: **Fase 3** (Race Predictor, Athlete
+Profile, e.d.) — vergt écht maanden historie, blijft bewust liggen.
 
 
 

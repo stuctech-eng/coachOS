@@ -165,6 +165,29 @@ export default function PerformanceEngineDebugPage() {
               </div>
             </Card>
 
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="p-4">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Sprint</p>
+                <p className="text-lg font-bold text-white">{data.sprint.value.score}</p>
+                <p className="text-[10px] text-slate-500">{data.sprint.value.peak_watts ? `${data.sprint.value.peak_watts}W @ ${data.sprint.value.duration_sec}s` : 'geen data'}</p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Efficiency</p>
+                <p className="text-lg font-bold text-white">{data.efficiency.value.score}</p>
+                <p className="text-[10px] text-slate-500">{data.efficiency.value.gemiddelde_ef ? `EF ${data.efficiency.value.gemiddelde_ef}` : 'geen data'}</p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Climbing</p>
+                <p className="text-lg font-bold text-white">{data.climbing.value.score}</p>
+                <p className="text-[10px] text-slate-500">{data.climbing.value.hoogtemeters_30d}m · {data.climbing.value.watt_per_kg ?? '–'} W/kg</p>
+              </Card>
+              <Card className="p-4">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Progress</p>
+                <p className="text-lg font-bold text-white">{data.progress.value.percentageVerandering !== null ? `${data.progress.value.percentageVerandering > 0 ? '+' : ''}${data.progress.value.percentageVerandering}%` : '–'}</p>
+                <p className="text-[10px] text-slate-500">{data.progress.value.richting} ({data.progress.value.bronEngine})</p>
+              </Card>
+            </div>
+
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Engine Registry</p>
               {data.registry.map((e: any) => (

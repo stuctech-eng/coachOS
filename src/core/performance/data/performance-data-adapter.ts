@@ -97,6 +97,54 @@ export async function getVo2max(userId: string): Promise<number | null> {
   return data?.vo2max ?? null
 }
 
+// v2.4.157 (Efficiency Score): gemiddelde watt/hartslag-verhouding
+// (Efficiency Factor, publiek gedocumenteerd concept) over recente
+// Cycling-activiteiten met zowel vermogen als hartslag geregistreerd.
+export async function getEfficiencyFactorData(userId: string, aantalDagen: number): Promise<{ avg_watts: number; avg_hr: number }[]> {
+  const supabase = createAdminClient()
+  const vanaf = new Date()
+  vanaf.setDate(vanaf.getDate() - aantalDagen)
+
+  const { data } = await supabase
+    .from('activity_sessions')
+    .select('metrics, activities!inner(name)')
+    .eq('user_id', userId)
+    .eq('activities.name', 'Fietsen')
+    .gte('date', isoDatum(vanaf))
+
+  return (data || [])
+    .map((r: { metrics: { avg_watts?: number; avg_hr?: number } | null }) => r.metrics)
+    .filter((m): m is { avg_watts: number; avg_hr: number } => !!m?.avg_watts && !!m?.avg_hr)
+}
+
+// v2.4.157 (Climbing Score): totale hoogtemeters in de periode, over
+// Cycling-activiteiten.
+export async function getHoogtemeters(userId: string, aantalDagen: number): Promise<number> {
+  const supabase = createAdminClient()
+  const vanaf = new Date()
+  vanaf.setDate(vanaf.getDate() - aantalDagen)
+
+  const { data } = await supabase
+    .from('activity_sessions')
+    .select('metrics, activities!inner(name)')
+    .eq('user_id', userId)
+    .eq('activities.name', 'Fietsen')
+    .gte('date', isoDatum(vanaf))
+
+  return (data || []).reduce((som: number, r: { metrics: { elevation_gain_m?: number } | null }) => som + (r.metrics?.elevation_gain_m || 0), 0)
+}
+
+// v2.4.157 (Climbing Score): FTP + gewicht, voor W/kg
+export async function getFtpEnGewicht(userId: string): Promise<{ ftp: number | null; gewicht: number | null }> {
+  const supabase = createAdminClient()
+  const [profielRes, algemeenRes] = await Promise.all([
+    supabase.from('specialist_profiles').select('preferences').eq('user_id', userId).eq('specialist_type', 'cycling').maybeSingle(),
+    supabase.from('profiles').select('weight').eq('user_id', userId).maybeSingle(),
+  ])
+  const prefs = profielRes.data?.preferences as { ftp?: number } | null
+  return { ftp: prefs?.ftp ?? null, gewicht: algemeenRes.data?.weight ?? null }
+}
+
 // v2.4.154 (Consistency Engine): apart van de rijke PerformanceContext
 // hierboven — dit is fijnmaziger (per-week data over meerdere weken),
 // past niet netjes in één plat contextobject. Blijft wel in de data/-

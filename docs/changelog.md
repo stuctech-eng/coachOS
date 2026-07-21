@@ -1,5 +1,66 @@
 # CoachOS — Changelog
 
+## v2.4.157 — Performance Platform Fase 2 compleet: Sprint, Efficiency, Climbing, Progress
+**Op verzoek in één levering: de resterende vier Fase 2-engines.
+Hiermee is heel Fase 2 afgerond.**
+
+### Sprint Score
+`sprint-engine.ts` — leunt volledig op de al-bestaande vermogenscurve
+(`cycling_power_curve`, geen nieuwe databron). Kortste beschikbare duur
+≤30s geldt als piek-sprintvermogen. **Eerlijke beperking:** absoluut
+vermogen, niet W/kg-genormaliseerd (bewust simpel voor v1).
+
+### Efficiency Score
+`efficiency-engine.ts` — Efficiency Factor (gemiddeld vermogen ÷
+gemiddelde hartslag), een publiek gedocumenteerd, wijdverspreid
+concept in de duursportwereld, geen propriëtaire formule nagemaakt.
+**Bewust alleen Cycling in v1** — Running-efficiency (verticale
+oscillatie, grondcontacttijd) wordt nergens uitgelezen uit TCX, zou een
+onvolledig cijfer geven.
+
+### Climbing Score
+`climbing-engine.ts` — hoogtemeters (30 dagen) + W/kg (uit FTP +
+gewicht, al bestaande data). **Eerlijke beperking:** stijgingspercentage/
+klimduur/klimfrequentie vergen klim-segmentatie per activiteit — bestaat
+nergens in CoachOS (zelfde beperking als eerder bij Running's "beste
+klim", v2.4.128).
+
+### Progress Score
+`progress-engine.ts` — vergelijkt laatste 14 dagen met de 14 dagen
+daarvoor, via de History Engine (v2.4.155). **Belangrijke, eerlijk
+ingebouwde beperking:** de History Engine is pas net live, dus bij de
+meeste gebruikers is er nu nauwelijks geschiedenis. De engine detecteert
+dit zelf (`eerderePunten.length < 3`) en verlaagt dan actief de
+Confidence-score, i.p.v. een misleidend cijfer te tonen.
+
+- **Nieuwe adapter-helpers:** `getEfficiencyFactorData()`,
+  `getHoogtemeters()`, `getFtpEnGewicht()` — elk klein en specifiek,
+  zelfde principe als eerder (`getVo2max()`, `getWekelijkseActiviteitPatroon()`)
+- `core/engine-registry.ts` — alle vijf Fase 2-engines op 'actief'
+- `/debug/performance-engine` — vier compacte kaarten (Sprint/Efficiency/
+  Climbing/Progress) toegevoegd
+
+### Kleine bug gevonden en gefixt tijdens het bouwen
+In `progress-engine.ts` werd `confidence.score` handmatig verlaagd bij
+weinig historie, maar `confidence.level` werd niet opnieuw berekend —
+zou dan niet meer bij het aangepaste getal passen. Gefixt vóórdat het
+ooit live kwam.
+
+**Gevalideerd vóór levering — elk apart getest:**
+- Sprint: 700W → score 50, geen data → score 0
+- Efficiency: EF-waarden (1,43/1,52) → gemiddelde 1,47 → score 39
+- Climbing: 2500m + 4,0 W/kg → beide componenten 50, gecombineerd 50
+- Progress: duidelijke verbetering (50→68) → +35%, stijgend; amper
+  historie → terecht `null`/`onbekend` i.p.v. een verzonnen cijfer
+
+`npx next build` — compileert zonder fouten of warnings.
+
+## 🎉 Fase 2 volledig afgerond
+Endurance, Sprint, Efficiency, Climbing, Progress — alle vijf actief,
+elk met een eerlijke Confidence-score i.p.v. te wachten op maanden
+data. Resterend: Fase 3 (Race Predictor, Athlete Profile e.d.) — vergt
+écht maanden historie en blijft bewust nog even liggen.
+
 ## v2.4.156 — Performance Platform Fase 2, eerste engine: Endurance Index
 **Eerste stap van Fase 2. Zoals afgesproken: geen "nog niet beschikbaar
 totdat er 90 dagen data is" — vanaf dag 1 een score, met een eerlijke
