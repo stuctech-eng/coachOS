@@ -111,6 +111,23 @@ export default function PerformanceEngineDebugPage() {
             </Card>
 
             <Card className="p-5">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Readiness Engine</p>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  data.readiness.value.label === 'High' ? 'bg-green-500/10 text-green-400' :
+                  data.readiness.value.label === 'Moderate' ? 'bg-amber-500/10 text-amber-400' :
+                  'bg-red-500/10 text-red-400'
+                }`}>{data.readiness.value.label}</span>
+              </div>
+              <p className="text-2xl font-bold text-white mb-2">{data.readiness.value.score}/100</p>
+              <div className="flex gap-4 text-xs text-slate-500 mb-2">
+                <span>Recovery: {data.readiness.value.recovery_component}</span>
+                <span>Fris (inv. Fatigue): {data.readiness.value.fatigue_component}</span>
+              </div>
+              <p className="text-xs text-slate-400">CoachPolicy max intensiteit: <span className="text-white font-medium">{data.readiness.value.policy_maxIntensity}</span></p>
+            </Card>
+
+            <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Engine Registry</p>
               {data.registry.map((e: any) => (
                 <div key={e.key} className="flex items-center justify-between py-1.5 border-b border-coach-border last:border-0">

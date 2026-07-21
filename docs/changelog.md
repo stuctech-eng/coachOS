@@ -1,5 +1,36 @@
 # CoachOS — Changelog
 
+## v2.4.153 — Performance Platform Fase 1B, stap 3: Readiness Engine
+**Derde stap van Fase 1B. Onderscheid uit de master-spec: "Recovery =
+herstel. Readiness = klaar om vandaag te presteren." Combineert
+Recovery + Fatigue (omgekeerd) tot één "vandaag klaar"-score.**
+
+- **Nieuw:** `src/core/performance/engines/readiness-engine.ts` —
+  `berekenReadiness()`: `(recovery.score + (100 - fatigue.score)) / 2`,
+  plus CoachPolicy's max-intensiteit als context ernaast (niet
+  dubbel meegewogen — CoachPolicy is zelf al een uitkomst van Recovery)
+- **Bewuste, expliciet benoemde uitzondering:** dit is de eerste engine
+  die een bestaande externe functie (`genereerCoachPolicy`) aanroept
+  die zelf rechtstreeks de database raakt — vergelijkbaar met hoe de
+  Recovery-wrapper `calculateRecoveryScore()` aanroept, geen nieuwe
+  databasequery binnen de engine zelf
+- `core/engine-registry.ts` — Readiness Engine op 'actief'
+- `/debug/performance-engine` — nieuwe kaart met score/label, de twee
+  componenten, en CoachPolicy's max-intensiteit
+
+**Gevalideerd vóór levering — 3 scenario's, allemaal exact zoals
+berekend:**
+- Goed hersteld (75) + laag vermoeid (36) → score 70, High
+- Slecht hersteld (30) + zeer vermoeid (85) → score 23, Low
+- **Tegenstrijdig geval:** goed hersteld (80) maar wél vermoeid (70) →
+  score 55, Moderate — laat precies zien waarom Readiness meerwaarde
+  heeft t.o.v. Recovery alleen (Recovery alleen zou "goed hersteld"
+  zeggen, Readiness temperert dat terecht door opgebouwde vermoeidheid)
+
+`npx next build` — compileert zonder fouten of warnings.
+
+**Resterend in Fase 1B:** Consistency Engine, History Engine.
+
 ## v2.4.152 — Performance Platform Fase 1B, stap 2: Fatigue Engine
 **Tweede stap van Fase 1B. In tegenstelling tot Recovery en Load is dit
 GEEN wrapper — nieuwe logica, dus expliciet los getest met 4
