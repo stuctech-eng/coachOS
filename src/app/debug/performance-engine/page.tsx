@@ -149,6 +149,23 @@ export default function PerformanceEngineDebugPage() {
             </Card>
 
             <Card className="p-5">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Endurance Index (Fase 2)</p>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  data.endurance.confidence.level === 'HIGH' ? 'bg-green-500/10 text-green-400' :
+                  data.endurance.confidence.level === 'MEDIUM' ? 'bg-amber-500/10 text-amber-400' :
+                  'bg-red-500/10 text-red-400'
+                }`}>Confidence: {data.endurance.confidence.level} ({data.endurance.confidence.score}%)</span>
+              </div>
+              <p className="text-2xl font-bold text-white mb-2">{data.endurance.value.score}/100 — {data.endurance.value.label}</p>
+              <div className="flex flex-col gap-1 text-xs text-slate-500">
+                <span>VO2max-component: {data.endurance.value.vo2max_component ?? 'niet beschikbaar'}</span>
+                <span>CTL-component: {data.endurance.value.ctl_component}</span>
+                <span>Consistency-component: {data.endurance.value.consistency_component}</span>
+              </div>
+            </Card>
+
+            <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Engine Registry</p>
               {data.registry.map((e: any) => (
                 <div key={e.key} className="flex items-center justify-between py-1.5 border-b border-coach-border last:border-0">

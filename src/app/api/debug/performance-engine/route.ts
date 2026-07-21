@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { getPerformanceContext, berekenRecovery, berekenLoad, berekenFatigue, berekenReadiness, berekenConsistency, bewaarSnapshot, haalHistorie, verklaarRecovery, ENGINE_REGISTRY } from '@/core/performance'
+import { getPerformanceContext, berekenRecovery, berekenLoad, berekenFatigue, berekenReadiness, berekenConsistency, berekenEndurance, getVo2max, bewaarSnapshot, haalHistorie, verklaarRecovery, ENGINE_REGISTRY } from '@/core/performance'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -33,6 +33,8 @@ export async function GET() {
     const fatigue = berekenFatigue(context, load)
     const readiness = await berekenReadiness(context, recovery, fatigue)
     const consistency = await berekenConsistency(context)
+    const vo2max = await getVo2max(user.id).catch(() => null)
+    const endurance = berekenEndurance(context, load, consistency, vo2max)
 
     // v2.4.155: elke berekende score bewaren voor toekomstige trends —
     // eigen try/catch per snapshot, mag het debug-scherm nooit blokkeren
@@ -42,6 +44,7 @@ export async function GET() {
       bewaarSnapshot(user.id, 'Fatigue', fatigue.value.score).catch(e => console.error('[history] Fatigue bewaren mislukt:', e)),
       bewaarSnapshot(user.id, 'Readiness', readiness.value.score).catch(e => console.error('[history] Readiness bewaren mislukt:', e)),
       bewaarSnapshot(user.id, 'Consistency', consistency.value.percentage).catch(e => console.error('[history] Consistency bewaren mislukt:', e)),
+      bewaarSnapshot(user.id, 'Endurance', endurance.value.score).catch(e => console.error('[history] Endurance bewaren mislukt:', e)),
     ])
 
     const recoveryHistorie = await haalHistorie(user.id, 'Recovery', 30).catch(() => [])
@@ -53,6 +56,7 @@ export async function GET() {
       fatigue,
       readiness,
       consistency,
+      endurance,
       recoveryHistorie,
       registry: ENGINE_REGISTRY,
     })

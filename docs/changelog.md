@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.156 — Performance Platform Fase 2, eerste engine: Endurance Index
+**Eerste stap van Fase 2. Zoals afgesproken: geen "nog niet beschikbaar
+totdat er 90 dagen data is" — vanaf dag 1 een score, met een eerlijke
+Confidence erbij (bestaat al sinds Fase 1A).**
+
+- **Nieuw:** `src/core/performance/engines/endurance-engine.ts` —
+  `berekenEndurance()`. v1, bewust eenvoudig: drie indicatoren gelijk
+  gewogen — VO2max (indien beschikbaar), CTL uit de Load Engine
+  (fitness/chronische belasting), Consistency-percentage. Geen
+  wetenschappelijke definitieve claim, een eerlijke eerste versie.
+- **Belangrijk ontwerpdetail:** ontbrekende VO2max trekt het gemiddelde
+  NIET omlaag (geen 0 invullen) — het gemiddelde wordt berekend over
+  alleen de beschikbare componenten. Los getest en bevestigd: met
+  VO2max ontbrekend gaf het systeem 63 (gemiddelde van 2 componenten),
+  niet 42 (wat je zou krijgen als ontbrekende data als 0 telt).
+- **Nieuw:** `getVo2max()` in de data-adapter — klein, apart van
+  `haalPerformanceVoorRecovery()` (die bewust smal blijft voor
+  Recovery's eigen doel)
+- `core/engine-registry.ts` — Endurance Index op 'actief', eerste
+  Fase 2-engine
+- `/debug/performance-engine` — nieuwe kaart met score, label, de drie
+  componenten, en Confidence-niveau zichtbaar
+
+**Gevalideerd vóór levering — 3 scenario's, allemaal exact zoals
+berekend:**
+- Alle drie componenten beschikbaar → score 58, Goed
+- VO2max ontbreekt → score 63 (niet omlaag getrokken door ontbrekende data)
+- Beginnende gebruiker (weinig CTL/consistency) → score 18, Beginnend
+
+`npx next build` — compileert zonder fouten of warnings.
+
+**Resterend in Fase 2:** Progress Score, Climbing Score, Sprint Score,
+Efficiency Score, Confidence Engine-verfijning.
+
 ## v2.4.155 — Performance Platform Fase 1B, laatste stap: History Engine
 **Sluit Fase 1B volledig af. "Bewaart niet alleen de actuele score,
 maar ook de volledige geschiedenis."**

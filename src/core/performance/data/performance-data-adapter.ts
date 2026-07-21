@@ -84,6 +84,19 @@ export async function getPerformanceContext(userId: string): Promise<Performance
   }
 }
 
+// v2.4.156 (Endurance Index): VO2max apart, want haalPerformanceVoorRecovery()
+// selecteert bewust maar 2 velden (training_readiness, load_ratio) —
+// niet breder maken voor Recovery's doel, dus een eigen kleine functie.
+export async function getVo2max(userId: string): Promise<number | null> {
+  const supabase = createAdminClient()
+  const vandaag = isoDatum(new Date())
+  const { data } = await supabase
+    .from('performance_snapshots')
+    .select('vo2max')
+    .eq('user_id', userId).eq('date', vandaag).maybeSingle()
+  return data?.vo2max ?? null
+}
+
 // v2.4.154 (Consistency Engine): apart van de rijke PerformanceContext
 // hierboven — dit is fijnmaziger (per-week data over meerdere weken),
 // past niet netjes in één plat contextobject. Blijft wel in de data/-

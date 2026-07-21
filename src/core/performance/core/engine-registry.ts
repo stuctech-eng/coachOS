@@ -22,7 +22,7 @@ export const ENGINE_REGISTRY: EngineRegistryEntry[] = [
   { naam: 'Fatigue Engine', key: 'fatigue', status: 'actief', fase: '1B', omschrijving: 'Afgeleid van ACWR/CTL/ATL/TSB' },
   { naam: 'Consistency Engine', key: 'consistency', status: 'actief', fase: '1B', omschrijving: 'Trainingsritme, streaks, gemiste trainingen' },
   { naam: 'History Engine', key: 'history', status: 'actief', fase: '1B', omschrijving: 'Bewaart score-geschiedenis voor trends' },
-  { naam: 'Endurance Index', key: 'endurance', status: 'gepland', fase: '2', omschrijving: 'Met Confidence vanaf dag 1, groeit mee met meer data' },
+  { naam: 'Endurance Index', key: 'endurance', status: 'actief', fase: '2', omschrijving: 'Met Confidence vanaf dag 1, groeit mee met meer data' },
   { naam: 'Progress Score', key: 'progress', status: 'gepland', fase: '2', omschrijving: '' },
   { naam: 'Climbing Score', key: 'climbing', status: 'gepland', fase: '2', omschrijving: '' },
   { naam: 'Sprint Score', key: 'sprint', status: 'gepland', fase: '2', omschrijving: '' },
