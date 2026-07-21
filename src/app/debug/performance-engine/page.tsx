@@ -128,6 +128,15 @@ export default function PerformanceEngineDebugPage() {
             </Card>
 
             <Card className="p-5">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Consistency Engine ({data.consistency.value.aantalWekenBekeken} weken)</p>
+              <p className="text-2xl font-bold text-white mb-3">{data.consistency.value.percentage}%</p>
+              <div className="flex gap-4 text-xs text-slate-500">
+                <span>Huidige streak: {data.consistency.value.huidigeStreakWeken} wk</span>
+                <span>Langste onderbreking: {data.consistency.value.langsteOnderbrekingWeken} wk</span>
+              </div>
+            </Card>
+
+            <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Engine Registry</p>
               {data.registry.map((e: any) => (
                 <div key={e.key} className="flex items-center justify-between py-1.5 border-b border-coach-border last:border-0">

@@ -1,5 +1,36 @@
 # CoachOS — Changelog
 
+## v2.4.154 — Performance Platform Fase 1B, stap 4: Consistency Engine
+**Vierde stap van Fase 1B. "Niet: hoe goed ben je. Maar: hoe consequent
+train je." Kijkt naar de laatste 8 weken, over alle sporten heen.**
+
+- **Nieuw:** `getWekelijkseActiviteitPatroon()` in
+  `performance-data-adapter.ts` — apart van de rijke `PerformanceContext`
+  (fijnmaziger, per-week over meerdere weken, past niet in één plat
+  object), maar blijft wel in de `data/`-map, zelfde principe: enige
+  plek die de database aanraakt. Vult ontbrekende weken expliciet met 0
+  op — anders geen onderscheid mogelijk tussen "geen data" en "bewust
+  geen activiteit".
+- **Nieuw:** `src/core/performance/engines/consistency-engine.ts` —
+  percentage actieve weken, huidige streak (vanaf nu teruggeteld),
+  langste onderbreking (ergens in de periode)
+- `core/engine-registry.ts` — Consistency Engine op 'actief'
+- `/debug/performance-engine` — nieuwe kaart met percentage, streak en
+  langste onderbreking
+
+**Gevalideerd vóór levering — 4 scenario's, allemaal correct:**
+- Elke week actief → 100%, streak 8, onderbreking 0
+- Gat van 2 weken in het midden, nu weer actief → 75%, streak 4 (vanaf
+  nu), langste onderbreking 2
+- Laatste 3 weken niets → 63%, huidige streak 0 (want de laatste week
+  telt), langste onderbreking 3
+- Helemaal niets → 0%, streak 0, onderbreking 8
+
+`npx next build` — compileert zonder fouten of warnings.
+
+**Resterend in Fase 1B: alleen nog History Engine.** Daarna is Fase 1B
+compleet.
+
 ## v2.4.153 — Performance Platform Fase 1B, stap 3: Readiness Engine
 **Derde stap van Fase 1B. Onderscheid uit de master-spec: "Recovery =
 herstel. Readiness = klaar om vandaag te presteren." Combineert

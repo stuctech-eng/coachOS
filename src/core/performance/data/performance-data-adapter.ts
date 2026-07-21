@@ -83,3 +83,52 @@ export async function getPerformanceContext(userId: string): Promise<Performance
     },
   }
 }
+
+// v2.4.154 (Consistency Engine): apart van de rijke PerformanceContext
+// hierboven — dit is fijnmaziger (per-week data over meerdere weken),
+// past niet netjes in één plat contextobject. Blijft wel in de data/-
+// map, zelfde principe: de ENIGE plek die de database aanraakt.
+export interface WeekActiviteit {
+  weekStart: string // ISO-datum van de maandag
+  aantalActiviteiten: number
+}
+
+export async function getWekelijkseActiviteitPatroon(userId: string, aantalWeken: number): Promise<WeekActiviteit[]> {
+  const supabase = createAdminClient()
+  const vanaf = new Date()
+  vanaf.setDate(vanaf.getDate() - aantalWeken * 7)
+
+  const { data } = await supabase
+    .from('activity_sessions')
+    .select('date')
+    .eq('user_id', userId)
+    .gte('date', isoDatum(vanaf))
+    .order('date', { ascending: true })
+
+  function maandagVanWeek(datum: Date): Date {
+    const d = new Date(datum)
+    const dagIndex = (d.getDay() + 6) % 7
+    d.setDate(d.getDate() - dagIndex)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+
+  const perWeek = new Map<string, number>()
+  for (const rij of data || []) {
+    const weekKey = isoDatum(maandagVanWeek(new Date(rij.date)))
+    perWeek.set(weekKey, (perWeek.get(weekKey) || 0) + 1)
+  }
+
+  // Vult ontbrekende weken (0 activiteiten) op — anders zou een streak-
+  // berekening geen onderscheid kunnen maken tussen "geen data" en
+  // "bewust geen activiteit die week"
+  const resultaat: WeekActiviteit[] = []
+  const huidigeWeekStart = maandagVanWeek(new Date())
+  for (let i = aantalWeken - 1; i >= 0; i--) {
+    const weekStart = new Date(huidigeWeekStart)
+    weekStart.setDate(weekStart.getDate() - i * 7)
+    const key = isoDatum(weekStart)
+    resultaat.push({ weekStart: key, aantalActiviteiten: perWeek.get(key) || 0 })
+  }
+  return resultaat
+}

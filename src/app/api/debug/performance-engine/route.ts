@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { getPerformanceContext, berekenRecovery, berekenLoad, berekenFatigue, berekenReadiness, verklaarRecovery, ENGINE_REGISTRY } from '@/core/performance'
+import { getPerformanceContext, berekenRecovery, berekenLoad, berekenFatigue, berekenReadiness, berekenConsistency, verklaarRecovery, ENGINE_REGISTRY } from '@/core/performance'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -32,6 +32,7 @@ export async function GET() {
     const load = await berekenLoad(user.id, context)
     const fatigue = berekenFatigue(context, load)
     const readiness = await berekenReadiness(context, recovery, fatigue)
+    const consistency = await berekenConsistency(context)
 
     return NextResponse.json({
       context,
@@ -39,6 +40,7 @@ export async function GET() {
       load,
       fatigue,
       readiness,
+      consistency,
       registry: ENGINE_REGISTRY,
     })
   } catch (err) {
