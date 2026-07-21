@@ -1,5 +1,37 @@
 # CoachOS — Changelog
 
+## v2.4.150 — Performance Platform Fase 1B, stap 1: Load Engine
+**Eerste stap van Fase 1B. Wrapper, zoals Recovery — combineert de
+bestaande, al-geteste per-sport CTL/ATL/TSB-berekeningen tot één
+platformniveau-cijfer.**
+
+### Wiskundige onderbouwing, geverifieerd vóór implementatie
+De EWMA-formule (`ctl = ctl + (tss-ctl)/42`) is een lineaire,
+tijdsinvariante recursie. Dat betekent `CTL_totaal = CTL_cycling +
+CTL_running`, **exact** — geverifieerd met synthetische data (60 dagen,
+twee verschillende TSS-patronen): verschil tussen apart-berekenen-en-
+optellen versus direct-op-gecombineerde-data was 7×10⁻¹⁵, pure
+afrondingsruis. Dit betekent: gewoon optellen van de laatste per-sport-
+waarden is wiskundig equivalent aan een nieuwe EWMA-berekening, maar
+zonder de bestaande formule te dupliceren.
+
+- **Nieuw:** `src/core/performance/engines/load-engine.ts` —
+  `berekenLoad()`, roept `haalCTLATLTSB()` (Cycling) en
+  `haalRunningCTLATLTSB()` (Running) aan, telt CTL/ATL op, TSB volgt
+  daaruit. Geeft ook de per-sport-breakdown mee (niet alleen het
+  platformtotaal).
+- `core/engine-registry.ts` — Load Engine op 'actief' gezet
+- `/debug/performance-engine` — nieuwe kaart met platform-CTL/ATL/TSB +
+  per-sport-detail
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- EWMA-lineariteit numeriek bewezen (zie hierboven) vóórdat de
+  optel-aanpak als productiecode werd geschreven — geen aanname
+  ongetest laten staan
+
+**Resterend in Fase 1B:** Readiness/Fatigue/Consistency/History Engine.
+
 ## v2.4.149 — CoachOS Performance Intelligence Platform, Fase 1A (fundering)
 **Nieuw platformonderdeel op basis van een goedgekeurde master-spec:
 een compleet analyseplatform met uiteindelijk 18 engines. Deze

@@ -78,6 +78,22 @@ export default function PerformanceEngineDebugPage() {
             </Card>
 
             <Card className="p-5">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Load Engine (platform)</p>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div><p className="text-xs text-slate-500">CTL</p><p className="text-lg font-bold text-white">{data.load.value.ctl}</p></div>
+                <div><p className="text-xs text-slate-500">ATL</p><p className="text-lg font-bold text-white">{data.load.value.atl}</p></div>
+                <div><p className="text-xs text-slate-500">TSB</p><p className="text-lg font-bold text-white">{data.load.value.tsb}</p></div>
+              </div>
+              {data.load.value.per_sport.map((s: any) => (
+                <div key={s.sport} className="flex items-center justify-between py-1.5 border-t border-coach-border text-xs">
+                  <span className="text-slate-400 capitalize">{s.sport}</span>
+                  <span className="text-slate-300">CTL {s.ctl} · ATL {s.atl} · TSB {s.tsb}</span>
+                </div>
+              ))}
+              {data.load.value.per_sport.length === 0 && <p className="text-xs text-slate-600">Geen belastingsdata beschikbaar.</p>}
+            </Card>
+
+            <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Engine Registry</p>
               {data.registry.map((e: any) => (
                 <div key={e.key} className="flex items-center justify-between py-1.5 border-b border-coach-border last:border-0">
