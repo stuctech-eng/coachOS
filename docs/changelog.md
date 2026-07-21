@@ -1,5 +1,28 @@
 # CoachOS — Changelog
 
+## v2.4.151 — Fix: platform-TSB klopte niet met de som van per-sport-TSB's
+**Gemeld met de echte test-output: Cycling toonde CTL 7,2 · ATL 7,6 ·
+TSB −1,5 — maar 7,2−7,6 = −0,4, niet −1,5. Geen bug in de weergave: de
+bestaande per-sport-functies (`haalCTLATLTSB`/`haalRunningCTLATLTSB`)
+slaan TSB bewust op als de waarde bij de START van vandaag (vóór de
+training van vandaag meetelt — standaard TSB-semantiek, zodat je 's
+ochtends kunt beslissen hoe zwaar te trainen), terwijl CTL/ATL de
+waarde NÁ vandaag zijn. Mijn Load Engine berekende platform-TSB
+ten onrechte als `ctl - atl` (na-vandaag), i.p.v. de per-sport-TSB's
+(bij-start-van-vandaag) op te tellen.**
+
+- `src/core/performance/engines/load-engine.ts` — platform-TSB is nu
+  de som van de per-sport-TSB's, niet `ctl - atl`
+- `/debug/performance-engine` — korte toelichting toegevoegd waarom
+  TSB ≠ CTL−ATL, met opzet (voorkomt dat dit later weer als bug
+  oogt)
+
+**Gevalideerd vóór levering:** de EWMA-lineariteit opnieuw numeriek
+bevestigd, nu specifiek voor de "entering-today"-TSB-semantiek (niet
+alleen CTL/ATL zoals bij de vorige levering) — verschil tussen
+optellen en opnieuw berekenen: 3,5×10⁻¹⁵, verwaarloosbaar. `npx next
+build` — compileert zonder fouten of warnings.
+
 ## v2.4.150 — Performance Platform Fase 1B, stap 1: Load Engine
 **Eerste stap van Fase 1B. Wrapper, zoals Recovery — combineert de
 bestaande, al-geteste per-sport CTL/ATL/TSB-berekeningen tot één

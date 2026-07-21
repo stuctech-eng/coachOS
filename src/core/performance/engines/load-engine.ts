@@ -50,7 +50,16 @@ export async function berekenLoad(userId: string, context: PerformanceContext): 
 
   const ctl = Math.round(((laatsteCycling?.ctl || 0) + (laatsteRunning?.ctl || 0)) * 10) / 10
   const atl = Math.round(((laatsteCycling?.atl || 0) + (laatsteRunning?.atl || 0)) * 10) / 10
-  const tsb = Math.round((ctl - atl) * 10) / 10
+  // v2.4.151-fix: TSB NIET als ctl-atl berekenen. De bestaande per-sport
+  // functies slaan TSB bewust op als "waarde bij de START van vandaag"
+  // (vóór de training van vandaag meetelt — standaard TSB-semantiek,
+  // zodat je 's ochtends kunt beslissen hoe zwaar te trainen), terwijl
+  // CTL/ATL de waarde ná vandaag zijn. Daardoor is ctl-atl ≠ tsb, ook
+  // per sport al (bijv. cycling CTL 7.2 - ATL 7.6 = -0.4, maar de
+  // opgeslagen tsb was -1.5). Platform-TSB moet daarom de per-sport-
+  // tsb's optellen, niet opnieuw ctl-atl berekenen — anders klopt het
+  // platformtotaal niet met de som van de per-sport-kaarten.
+  const tsb = Math.round(((laatsteCycling?.tsb || 0) + (laatsteRunning?.tsb || 0)) * 10) / 10
   const vandaagTss = (laatsteCycling?.geschatte_tss || 0) + (laatsteRunning?.geschatte_tss || 0)
 
   return {

@@ -78,7 +78,8 @@ export default function PerformanceEngineDebugPage() {
             </Card>
 
             <Card className="p-5">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Load Engine (platform)</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Load Engine (platform)</p>
+              <p className="text-[10px] text-slate-600 mb-3">TSB is de waarde bij de START van vandaag (vóór de training van vandaag meetelt) — CTL/ATL zijn de waarde ná vandaag. Daarom is TSB ≠ CTL−ATL, met opzet.</p>
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <div><p className="text-xs text-slate-500">CTL</p><p className="text-lg font-bold text-white">{data.load.value.ctl}</p></div>
                 <div><p className="text-xs text-slate-500">ATL</p><p className="text-lg font-bold text-white">{data.load.value.atl}</p></div>
