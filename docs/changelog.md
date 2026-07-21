@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.147 — Definitieve fix: sleep_duration was een decimaal op een integer-kolom
+**De v2.4.146-debug-zichtbaarheid werkte precies zoals bedoeld: de
+gebruiker zag direct de exacte oorzaak. `health_metrics.sleep_duration`
+is een INTEGER-kolom in de database, maar de code stuurde een
+decimaal (`10.4`) — vandaar dat de UPDATE al die tijd stil (later:
+zichtbaar) mislukte, terwijl rusthartslag/Body Battery/slaapscore in
+dezelfde payload zaten en dus ook nooit aankwamen (één mislukte query,
+alle velden in die query raakten niet opgeslagen).**
+
+- `src/app/api/health/vision-import/route.ts` — `sleep_duration`
+  berekening aangepast van `Math.round((minuten/60)*10)/10` (één
+  decimaal) naar `Math.round(minuten/60)` (heel getal) — past nu bij
+  de daadwerkelijke kolomtype
+- **Tijdelijke debug-zichtbaarheid uit v2.4.146 weer verwijderd** —
+  oorzaak gevonden en opgelost, geen reden meer om 'm te laten staan
+  (route + `garmin-import/page.tsx` weer terug naar de schone versie,
+  alleen `console.error`-logging blijft staan voor toekomstige gevallen)
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- Fix los getest met de exacte waarde uit de foutmelding: 10u 26m
+  (626 minuten) → oude berekening gaf 10,4 (brak op integer-kolom),
+  nieuwe berekening geeft 10 (correct)
+
+**Test-instructie:** upload nogmaals de Health-screenshot →
+`/debug/recovery` → rusthartslag/Body Battery/slaapscore moeten nu
+eindelijk wél in de breakdown-tabel staan, geen amber-waarschuwing
+meer op het Garmin Import-scherm.
+
 ## v2.4.146 — TIJDELIJK: foutmelding zichtbaar maken in de app
 **v2.4.145 loste het probleem niet op — rusthartslag/Body Battery/
 slaapscore kwamen na een nieuwe upload nog steeds niet aan in
