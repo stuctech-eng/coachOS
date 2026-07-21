@@ -74,18 +74,22 @@ export async function POST(req: NextRequest) {
     if (hrvError) throw hrvError
 
     // Ook naar health_metrics.hrv — zie bestandskop, laat de bestaande
-    // recovery-score dit automatisch meenemen. v2.4.144: gemerged met
-    // een eventueel al-bestaande rij (bijv. rusthartslag/Body Battery
-    // van een eerdere foto-upload die dag) — niet blind overschrijven.
+    // recovery-score dit automatisch meenemen. v2.4.145-fix: GEEN
+    // upsert-met-onConflict meer (faalt stil zonder matchende unieke
+    // sleutel op health_metrics, zie vision-import/route.ts voor de
+    // volledige toelichting) — expliciet update-of-insert.
     const { data: bestaandeHealthMetrics } = await supabase
       .from('health_metrics')
       .select('*')
       .eq('user_id', user.id).eq('date', vandaag).maybeSingle()
 
-    await supabase.from('health_metrics').upsert({
-      ...(bestaandeHealthMetrics || {}),
-      user_id: user.id, date: vandaag, hrv: body.hrv_ms,
-    }, { onConflict: 'user_id,date' })
+    if (bestaandeHealthMetrics?.id) {
+      const { error: updateErr } = await supabase.from('health_metrics').update({ hrv: body.hrv_ms }).eq('id', bestaandeHealthMetrics.id)
+      if (updateErr) console.error('[hrv POST] health_metrics UPDATE mislukt:', updateErr)
+    } else {
+      const { error: insertErr } = await supabase.from('health_metrics').insert({ user_id: user.id, date: vandaag, hrv: body.hrv_ms })
+      if (insertErr) console.error('[hrv POST] health_metrics INSERT mislukt:', insertErr)
+    }
 
     const { data: historie } = await supabase
       .from('morning_health_metrics')

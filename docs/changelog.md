@@ -1,5 +1,52 @@
 # CoachOS — Changelog
 
+## v2.4.145 — Fix: rusthartslag/Body Battery/slaapscore kwamen nooit aan in health_metrics
+**Gemeld, drie keer getest met screenshots: Garmin Import toonde steeds
+"Opgeslagen ✓" (100% betrouwbaarheid), maar in `health_metrics` bleef
+alleen `hrv` staan — rusthartslag/Body Battery/slaapscore ontbraken,
+ondanks de v2.4.144-fix.**
+
+### Root cause
+`await supabase.from('health_metrics').upsert({...}, { onConflict: 'user_id,date' })`
+werd nergens op `.error` gecontroleerd. Supabase-js **gooit geen
+exception** bij een databasefout (bijv. een `onConflict`-kolomcombinatie
+die niet bij een bestaande unieke sleutel past) — die fout komt terug
+als een `{error}`-veld, dat mijn code negeerde. Resultaat: de opslag
+kon stil mislukken terwijl de rest van de request (garmin_imports +
+morning_health_metrics, die wél hun eigen kloppende constraint hebben)
+gewoon slaagde — vandaar de misleidende groene bevestiging.
+
+### Fix — robuust, ongeacht de exacte databaseoorzaak
+- `src/app/api/health/vision-import/route.ts` +
+  `src/app/api/hrv/route.ts` — **geen `upsert`-met-`onConflict` meer**
+  voor `health_metrics`. In plaats daarvan expliciet: eerst ophalen
+  (stond al in de code), dan **UPDATE op `id`** als er een rij bestaat,
+  anders **INSERT**. Dit kan niet meer stil mislukken op een
+  sleutel-mismatch, want er wordt geen conflict-resolutie meer aan de
+  database overgelaten. Fouten worden nu ook expliciet gelogd
+  (`console.error`) i.p.v. genegeerd.
+
+**Waarom dit eerder niet opviel:** `morning_health_metrics` en
+`performance_snapshots` zijn tabellen die ik zelf heb aangemaakt, mét
+een correcte `unique(user_id, date)`-constraint vanaf het begin — daar
+werkte `upsert`-met-`onConflict` dus wel gewoon. `health_metrics` is
+een oudere, niet in dit project-SQL gedocumenteerde tabel — de aanname
+dat die dezelfde constraint had, bleek onterecht (of de constraint mist
+domweg).
+
+**Gevalideerd vóór levering:** `npx next build` — compileert zonder
+fouten of warnings. Kon dit keer niet los getest worden tegen een
+database (geen directe Supabase-toegang vanuit deze omgeving) — vandaar
+extra nadruk op de test-instructies hieronder.
+
+**Test-instructies (belangrijk, graag echt narennen):**
+1. Garmin Health-screenshot opnieuw uploaden
+2. `/debug/recovery` openen → rusthartslag/Body Battery/slaapscore
+   moeten nu wél in de breakdown-tabel staan
+3. Mocht het nog steeds niet werken: kijk in de Vercel-functielogs naar
+   `[vision-import] health_metrics UPDATE mislukt:` of `INSERT mislukt:`
+   — die geven nu de exacte databasefout, waar ik eerder blind was
+
 ## v2.4.144 — CoachPolicy Niveau 1 (datastroom-fix) + Recovery Debug Dashboard
 **Stap 3 van het vervolgplan, exact zoals afgesproken in de chat:
 alleen de datastroom repareren, GEEN wijziging aan de bestaande

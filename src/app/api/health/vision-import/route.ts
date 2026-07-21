@@ -121,17 +121,30 @@ export async function POST(req: NextRequest) {
           .select('*')
           .eq('user_id', user.id).eq('date', vandaag).maybeSingle()
 
-        await supabase.from('health_metrics').upsert({
-          ...(bestaandeHealthMetrics || {}),
-          user_id: user.id, date: vandaag,
-          // Handmatige ochtend-HRV heeft voorrang indien aanwezig — is
-          // een preciezere, losse meting dan Garmin's 7d-gemiddelde
+        // v2.4.145-fix: GEEN upsert-met-onConflict meer — die faalt STIL
+        // (Supabase geeft databasefouten terug als {error}, niet als
+        // exception) als health_metrics geen unieke sleutel op
+        // (user_id, date) heeft die exact bij 'user_id,date' past. Dat
+        // bleek precies te gebeuren: het scherm toonde "Opgeslagen ✓",
+        // maar rusthartslag/Body Battery/slaapscore kwamen nooit aan.
+        // Nu expliciet: eerst ophalen (al gedaan, bestaandeHealthMetrics
+        // hierboven), dan UPDATE als er al een rij is, anders INSERT —
+        // kan niet stil mislukken op een sleutel-mismatch. Fout wordt nu
+        // ook gelogd i.p.v. genegeerd.
+        const healthMetricsPayload = {
           hrv: bestaandeHealthMetrics?.hrv ?? parsed.hrv.avg_7d_ms,
           resting_hr: parsed.resting_hr,
           body_battery: parsed.body_battery.current,
           sleep_score: parsed.sleep.score,
           sleep_duration: parsed.sleep.duration_minutes ? Math.round((parsed.sleep.duration_minutes / 60) * 10) / 10 : null,
-        }, { onConflict: 'user_id,date' })
+        }
+        if (bestaandeHealthMetrics?.id) {
+          const { error: updateErr } = await supabase.from('health_metrics').update(healthMetricsPayload).eq('id', bestaandeHealthMetrics.id)
+          if (updateErr) console.error('[vision-import] health_metrics UPDATE mislukt:', updateErr)
+        } else {
+          const { error: insertErr } = await supabase.from('health_metrics').insert({ user_id: user.id, date: vandaag, ...healthMetricsPayload })
+          if (insertErr) console.error('[vision-import] health_metrics INSERT mislukt:', insertErr)
+        }
 
         resultaat.health = { parsed, confidence, flags }
       } catch (healthErr) {
