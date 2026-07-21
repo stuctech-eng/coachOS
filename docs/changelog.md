@@ -1,5 +1,60 @@
 # CoachOS — Changelog
 
+## v2.4.148 — CoachPolicy Niveau 2: Training Readiness + ACWR-correctie
+**Verandert daadwerkelijk het gedrag van de Recovery Score voor alle
+gebruikers met Performance-data — precies de reden waarom dit een
+aparte, zorgvuldig geteste stap was (Niveau 1, v2.4.144-147, raakte
+alleen de datastroom; dit raakt de formule zelf).**
+
+### Ontwerp, zoals besproken
+- **Training Readiness** → gewone factor in het gemiddelde, maar met
+  een **bescheiden gewicht (0,5×)** — het is Garmin's eigen
+  samengestelde herstelindicator en overlapt daardoor deels met HRV/
+  slaap die al apart meetellen. Vult aan, domineert niet.
+- **Belastingsverhouding (ACWR)** → GEEN gemiddelde-factor (zegt niets
+  over hoe goed iemand hersteld is, wel over blessurerisico van de
+  huidige belasting) — een **oplopende correctie ná het gemiddelde**,
+  net als de bestaande levensgebeurtenis-correctie:
+  - ≤1,3 → geen correctie
+  - 1,3–1,5 → −5
+  - 1,5–1,7 → −10
+  - \\>1,7 → −15
+- **Bewust geen correctie bij een lage ACWR (<0,8)** — te weinig
+  belasting is een fitness-/trainingsplan-vraag, geen herstelvraag.
+  Hoort bij de Goal Engine/specialist, niet bij de Recovery Score.
+
+### Wijzigingen
+- `src/core/ai-engine/recovery-engine.ts` — nieuwe optionele 4e
+  parameter `performance: PerformanceVoorRecovery | null`, met de
+  weging/correctie hierboven
+- **Nieuw:** `haalPerformanceVoorRecovery()` in
+  `health-analysis-engine.ts` — gedeelde helper, voorkomt duplicatie
+  over de vier aanroeppunten
+- **Alle vier aanroeppunten bijgewerkt:** `coach-policy.ts` (stuurt de
+  Daily Adjustment Layer aan — de belangrijkste), `api/coach/route.ts`
+  (dagadvies), `api/status/route.ts` (de zichtbare Coach Score op
+  Home), `api/debug/recovery/route.ts` (het dashboard zelf)
+
+**Gevalideerd vóór levering — twee lagen:**
+1. `npx next build` — compileert zonder fouten of warnings
+2. **Vier testcategorieën, allemaal geslaagd:**
+   - Gedrag-behoudendheid: zónder Performance-data exact hetzelfde
+     resultaat als vóór deze wijziging (4 testcases, ongewijzigd t.o.v.
+     de eerdere validatie)
+   - Training Readiness-weging: HRV(75) + Readiness(90, gewicht 0,5×)
+     → gewogen gemiddelde 80, exact zoals berekend
+   - ACWR-correctie: 1,2→geen, 1,4→−5, 1,6→−10, 1,8→−15, elke
+     drempelwaarde apart getest en correct
+   - Lage ACWR (0,5): terecht geen correctie
+
+**Test-instructies:**
+1. `/debug/recovery` op een dag met Performance-data → "Training
+   Readiness (gewicht 0,5×)" moet in de breakdown-tabel staan
+2. Bij een belastingsverhouding boven 1,3 → een aparte
+   "Belastingsverhouding-risico"-regel met negatieve bijdrage
+3. Coach Score op Home mag niet raar springen bij normale (ACWR ≤1,3)
+   waarden — pas bij een hoge verhouding een merkbaar effect
+
 ## v2.4.147 — Definitieve fix: sleep_duration was een decimaal op een integer-kolom
 **De v2.4.146-debug-zichtbaarheid werkte precies zoals bedoeld: de
 gebruiker zag direct de exacte oorzaak. `health_metrics.sleep_duration`

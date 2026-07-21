@@ -5,6 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { calculateRecoveryScore } from '@/core/ai-engine/recovery-engine'
+import { haalPerformanceVoorRecovery } from '@/lib/specialists/health-analysis-engine'
 import { calculateTrainingScore } from '@/core/engines/training-engine'
 import { calculateLifestyleScore } from '@/core/engines/lifestyle-engine'
 import { calculateCoachScore } from '@/core/engines/coach-score-engine'
@@ -114,7 +115,11 @@ export async function POST() {
       return acc + (e.recovery_impact * 5) + (e.sleep_disruption * 3)
     }, 0)
 
-    const recovery = calculateRecoveryScore(checkin, metricsVandaag, lifeEventPenalty)
+    // v2.4.148 (Niveau 2): Training Readiness + belastingsverhouding nu
+    // ook input voor de Recovery Score (dus ook voor de zichtbare Coach
+    // Score op Home)
+    const performanceVoorRecovery = await haalPerformanceVoorRecovery(user.id).catch(() => null)
+    const recovery = calculateRecoveryScore(checkin, metricsVandaag, lifeEventPenalty, performanceVoorRecovery)
     const training = calculateTrainingScore(activiteiten30Res.data || [], profile?.available_time || null)
     const lifestyle = calculateLifestyleScore(metrics30Res.data || [])
     const coachScore = calculateCoachScore(recovery.score, training.score, lifestyle.score)

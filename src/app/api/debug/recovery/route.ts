@@ -5,6 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { calculateRecoveryScore } from '@/core/ai-engine/recovery-engine'
+import { haalPerformanceVoorRecovery } from '@/lib/specialists/health-analysis-engine'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 
 async function getUser() {
@@ -33,13 +34,14 @@ export async function GET() {
     const supabase = createAdminClient()
     const vandaag = new Date().toISOString().split('T')[0]
 
-    const [checkinRes, metricsRes, policy] = await Promise.all([
+    const [checkinRes, metricsRes, policy, performance] = await Promise.all([
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', vandaag).maybeSingle(),
       supabase.from('health_metrics').select('*').eq('user_id', user.id).eq('date', vandaag).maybeSingle(),
       genereerCoachPolicy(user.id),
+      haalPerformanceVoorRecovery(user.id).catch(() => null),
     ])
 
-    const recovery = calculateRecoveryScore(checkinRes.data || null, metricsRes.data || null)
+    const recovery = calculateRecoveryScore(checkinRes.data || null, metricsRes.data || null, 0, performance)
 
     return NextResponse.json({
       datum: vandaag,

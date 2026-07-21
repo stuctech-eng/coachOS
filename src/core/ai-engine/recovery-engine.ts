@@ -16,10 +16,42 @@ export interface RecoveryResult {
   breakdown: RecoveryFactorBreakdown[]
 }
 
+// v2.4.148 (CoachPolicy Niveau 2): minimale interface, alleen de twee
+// velden die deze berekening nodig heeft — niet de volledige
+// performance_snapshots-rij, om deze module niet te koppelen aan het
+// hele Performance-schema.
+export interface PerformanceVoorRecovery {
+  training_readiness: number | null
+  load_ratio: number | null
+}
+
+// Training Readiness telt mee met een BESCHEIDEN gewicht — het is
+// Garmin's eigen samengestelde herstelindicator en overlapt daardoor
+// deels met HRV/slaap/trainingsbelasting die al apart meetellen. Vult
+// aan, domineert niet.
+const TRAINING_READINESS_GEWICHT = 0.5
+
+// ACWR (Acute:Chronic Workload Ratio) is GEEN herstelsignaal — het zegt
+// niets over hoe goed iemand hersteld is, wel iets over het
+// blessurerisico van de huidige trainingsbelasting. Daarom geen
+// gemiddelde-factor, maar een vaste correctie NA het gemiddelde (net
+// als lifeEventPenalty) — oplopend, geen harde knip bij 1,5.
+function berekenAcwrCorrectie(loadRatio: number | null): number {
+  if (loadRatio === null || loadRatio === undefined) return 0
+  if (loadRatio > 1.7) return 15
+  if (loadRatio > 1.5) return 10
+  if (loadRatio > 1.3) return 5
+  return 0
+  // Bewust GEEN correctie bij een lage ratio (<0,8) — dat is een
+  // fitness-/trainingsplan-vraag (te weinig belasting), geen
+  // herstelvraag. Hoort thuis bij de Goal Engine/specialist, niet hier.
+}
+
 export function calculateRecoveryScore(
   checkin: DailyCheckin | null,
   metrics: HealthMetrics | null,
-  lifeEventPenalty: number = 0
+  lifeEventPenalty: number = 0,
+  performance: PerformanceVoorRecovery | null = null
 ): RecoveryResult {
   let total = 0
   let count = 0
@@ -122,6 +154,15 @@ export function calculateRecoveryScore(
     breakdown.push({ factor: 'Body Battery', ruwe_waarde: `${metrics.body_battery}`, bijdrage_score: Math.round(bijdrage) })
   }
 
+  // Training Readiness — v2.4.148, bescheiden gewicht (zie toelichting
+  // hierboven bij TRAINING_READINESS_GEWICHT)
+  if (performance?.training_readiness !== null && performance?.training_readiness !== undefined) {
+    const bijdrage = Math.min(100, Math.max(0, performance.training_readiness)) * TRAINING_READINESS_GEWICHT
+    total += bijdrage
+    count += TRAINING_READINESS_GEWICHT
+    breakdown.push({ factor: `Training Readiness (gewicht ${TRAINING_READINESS_GEWICHT}×)`, ruwe_waarde: `${performance.training_readiness}`, bijdrage_score: Math.round(bijdrage) })
+  }
+
   // Bereken score
   let score = count > 0
     ? Math.max(0, Math.min(100, Math.round(total / count)))
@@ -132,6 +173,14 @@ export function calculateRecoveryScore(
     breakdown.push({ factor: 'Levensgebeurtenis-correctie', ruwe_waarde: `-${lifeEventPenalty}`, bijdrage_score: -lifeEventPenalty })
   }
   score = Math.max(0, score - lifeEventPenalty)
+
+  // ACWR-risicocorrectie — v2.4.148, NA het gemiddelde toegepast (niet
+  // verdund door het aantal factoren), zie berekenAcwrCorrectie()
+  const acwrCorrectie = berekenAcwrCorrectie(performance?.load_ratio ?? null)
+  if (acwrCorrectie > 0) {
+    breakdown.push({ factor: `Belastingsverhouding-risico (ACWR ${performance?.load_ratio})`, ruwe_waarde: `${performance?.load_ratio}`, bijdrage_score: -acwrCorrectie })
+  }
+  score = Math.max(0, score - acwrCorrectie)
 
   if (score >= 75) return { score, status: 'Volledig hersteld', color: 'green', breakdown }
   if (score >= 50) return { score, status: 'Gedeeltelijk hersteld', color: 'orange', breakdown }

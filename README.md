@@ -461,9 +461,20 @@ hoeveel bij), bewezen gedrag-behoudend over 5 testcases. Het
 + de complete CoachPolicy-uitkomst, met dezelfde functies als de echte
 Coach-routes — geen kans op afwijking tussen dashboard en werkelijkheid.
 
-**Niveau 2** (Training Readiness/belastingsverhouding als nieuwe
-factoren in de formule zelf — verandert gedrag voor alle gebruikers)
-blijft bewust een aparte, nog te plannen stap.
+**Niveau 2 (v2.4.148) — nu ook afgerond:** Training Readiness telt mee
+als gewone factor in het gemiddelde, met een **bescheiden gewicht
+(0,5×)** — Garmin's eigen samengestelde herstelindicator overlapt deels
+met HRV/slaap die al apart meetellen. **Belastingsverhouding (ACWR)**
+is bewust GEEN gemiddelde-factor (zegt niets over herstel, wel over
+blessurerisico) — een oplopende correctie ná het gemiddelde (≤1,3 geen
+correctie, 1,3-1,5 −5, 1,5-1,7 −10, >1,7 −15), net als de bestaande
+levensgebeurtenis-correctie. Bewust geen correctie bij een lage ACWR
+(<0,8) — dat is een fitness-/trainingsplan-vraag, geen herstelvraag.
+Alle vier aanroeppunten van `calculateRecoveryScore()` bijgewerkt
+(CoachPolicy, dagadvies, de zichtbare Coach Score op Home, en het
+Recovery Debug Dashboard zelf) — gevalideerd met 4 testcategorieën
+(gedrag-behoudendheid zonder Performance-data, gewogen gemiddelde,
+elke ACWR-drempelwaarde apart, lage-ACWR-uitzondering).
 
 ### Performance-pagina (v2.4.142) — platformniveau, geen specialist
 

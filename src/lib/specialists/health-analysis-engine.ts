@@ -72,3 +72,17 @@ export async function haalHrvTrend(userId: string): Promise<HrvTrendResultaat | 
   const voorgaand = alle.filter(r => r.date !== vandaag)
   return berekenHrvTrend(vandaagRij.hrv_ms, voorgaand)
 }
+
+// v2.4.148 (CoachPolicy Niveau 2): kleine, gedeelde helper zodat de
+// vier aanroeppunten van calculateRecoveryScore() (coach-policy.ts,
+// coach/route.ts, status/route.ts, debug/recovery/route.ts) niet elk
+// hun eigen performance_snapshots-query dupliceren.
+export async function haalPerformanceVoorRecovery(userId: string): Promise<{ training_readiness: number | null; load_ratio: number | null } | null> {
+  const supabase = createAdminClient()
+  const vandaag = isoDatum(new Date())
+  const { data } = await supabase
+    .from('performance_snapshots')
+    .select('training_readiness, load_ratio')
+    .eq('user_id', userId).eq('date', vandaag).maybeSingle()
+  return data || null
+}

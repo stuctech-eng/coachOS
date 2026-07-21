@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase'
 import { calculateRecoveryScore } from '@/core/ai-engine/recovery-engine'
+import { haalPerformanceVoorRecovery } from './health-analysis-engine'
 
 // ── Coach Policy Generator ──────────────────────────────────────────────
 // Bron: docs/specialist-coach-policy.md. VOLLEDIG DETERMINISTISCH — geen
@@ -38,13 +39,17 @@ export async function genereerCoachPolicy(userId: string): Promise<CoachPolicy> 
   const supabase = createAdminClient()
   const vandaag = new Date().toISOString().split('T')[0]
 
-  const [checkinRes, metricsRes, blessuresRes] = await Promise.all([
+  const [checkinRes, metricsRes, blessuresRes, performance] = await Promise.all([
     supabase.from('daily_checkins').select('*').eq('user_id', userId).eq('date', vandaag).single(),
     supabase.from('health_metrics').select('*').eq('user_id', userId).eq('date', vandaag).single(),
     supabase.from('injuries').select('body_part, pain_score').eq('user_id', userId).eq('active', true),
+    // v2.4.148 (Niveau 2): Training Readiness + belastingsverhouding nu
+    // ook input voor de Recovery Score — zie recovery-engine.ts voor de
+    // weging/correctie-logica. Eigen catch, mag CoachPolicy nooit blokkeren.
+    haalPerformanceVoorRecovery(userId).catch(() => null),
   ])
 
-  const recovery = calculateRecoveryScore(checkinRes.data || null, metricsRes.data || null)
+  const recovery = calculateRecoveryScore(checkinRes.data || null, metricsRes.data || null, 0, performance)
   const actieveBlessures = blessuresRes.data || []
 
   const reasons: string[] = [`Herstelscore: ${recovery.score}/100 (${recovery.status})`]

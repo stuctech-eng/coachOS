@@ -12,6 +12,7 @@ import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 import { beslisTussenSpecialisten } from '@/lib/specialists/decision-engine'
 import { haalGoalsMetProgress } from '@/lib/specialists/goal-engine'
 import { haalHrvTrend } from '@/lib/specialists/health-analysis-engine'
+import { haalPerformanceVoorRecovery } from '@/lib/specialists/health-analysis-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -336,7 +337,10 @@ export async function POST() {
       body_battery: garmin.body_battery?.current || null,
     } : null)
 
-    const recovery = calculateRecoveryScore(checkinRes.data || null, metricsVandaag || null)
+    // v2.4.148 (Niveau 2): Training Readiness + belastingsverhouding nu
+    // ook input voor de Recovery Score
+    const performanceVoorRecovery = await haalPerformanceVoorRecovery(user.id).catch(() => null)
+    const recovery = calculateRecoveryScore(checkinRes.data || null, metricsVandaag || null, 0, performanceVoorRecovery)
 
     await supabase.from('daily_status').upsert({
       user_id: user.id, date: today,
