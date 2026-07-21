@@ -1,5 +1,31 @@
 # CoachOS — Changelog
 
+## v2.4.146 — TIJDELIJK: foutmelding zichtbaar maken in de app
+**v2.4.145 loste het probleem niet op — rusthartslag/Body Battery/
+slaapscore kwamen na een nieuwe upload nog steeds niet aan in
+`health_metrics`. Ik heb geen toegang tot Vercel-functielogs vanuit
+deze omgeving, dus kan de exacte databasefout niet zien. Deze levering
+maakt die fout zichtbaar in de app zelf, zodat we 'm samen kunnen
+lezen.**
+
+- `src/app/api/health/vision-import/route.ts` — de `.error` van de
+  UPDATE/INSERT-poging naar `health_metrics` wordt nu meegegeven in de
+  API-response (`_health_metrics_debug`), inclusief Postgres-foutcode
+- `src/app/settings/garmin-import/page.tsx` — toont deze foutmelding
+  als amber-waarschuwing op het resultatenscherm, direct boven de
+  "Opgeslagen"-bevestiging
+
+**Dit is bewust tijdelijk** — zodra de echte oorzaak duidelijk is
+(waarschijnlijk een ontbrekende/verkeerde constraint op
+`health_metrics`, of iets anders dat nu eindelijk zichtbaar wordt),
+wordt dit weer verwijderd en de onderliggende fout structureel
+opgelost.
+
+**Test-instructie:** upload nogmaals de Health-screenshot. Verschijnt
+er een amber-waarschuwing? Stuur een screenshot van de exacte tekst —
+dat geeft de Postgres-foutmelding + foutcode, waarmee ik de echte
+oorzaak kan vinden in plaats van verder te gokken.
+
 ## v2.4.145 — Fix: rusthartslag/Body Battery/slaapscore kwamen nooit aan in health_metrics
 **Gemeld, drie keer getest met screenshots: Garmin Import toonde steeds
 "Opgeslagen ✓" (100% betrouwbaarheid), maar in `health_metrics` bleef

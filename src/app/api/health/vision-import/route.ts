@@ -138,15 +138,26 @@ export async function POST(req: NextRequest) {
           sleep_score: parsed.sleep.score,
           sleep_duration: parsed.sleep.duration_minutes ? Math.round((parsed.sleep.duration_minutes / 60) * 10) / 10 : null,
         }
+        let healthMetricsDebug: string | null = null
         if (bestaandeHealthMetrics?.id) {
           const { error: updateErr } = await supabase.from('health_metrics').update(healthMetricsPayload).eq('id', bestaandeHealthMetrics.id)
-          if (updateErr) console.error('[vision-import] health_metrics UPDATE mislukt:', updateErr)
+          if (updateErr) {
+            console.error('[vision-import] health_metrics UPDATE mislukt:', updateErr)
+            healthMetricsDebug = `UPDATE mislukt: ${updateErr.message} (code: ${updateErr.code || 'onbekend'})`
+          }
         } else {
           const { error: insertErr } = await supabase.from('health_metrics').insert({ user_id: user.id, date: vandaag, ...healthMetricsPayload })
-          if (insertErr) console.error('[vision-import] health_metrics INSERT mislukt:', insertErr)
+          if (insertErr) {
+            console.error('[vision-import] health_metrics INSERT mislukt:', insertErr)
+            healthMetricsDebug = `INSERT mislukt: ${insertErr.message} (code: ${insertErr.code || 'onbekend'})`
+          }
         }
 
-        resultaat.health = { parsed, confidence, flags }
+        // v2.4.146: TIJDELIJK — maakt een eventuele health_metrics-
+        // schrijffout zichtbaar in de app zelf (geen toegang tot Vercel-
+        // logs vanuit deze omgeving). Verwijderen zodra het probleem
+        // gevonden en bevestigd opgelost is.
+        resultaat.health = { parsed, confidence, flags, _health_metrics_debug: healthMetricsDebug }
       } catch (healthErr) {
         console.error('[vision-import] Health-foto mislukt:', healthErr)
         resultaat.health = { error: (healthErr as Error).message || 'Verwerken mislukt' }

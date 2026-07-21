@@ -34,7 +34,7 @@ interface PerformanceParsed {
   endurance_score: number | null
 }
 
-interface VisionResultaat<T> { parsed?: T; confidence?: number; flags?: ValidationFlag[]; error?: string }
+interface VisionResultaat<T> { parsed?: T; confidence?: number; flags?: ValidationFlag[]; error?: string; _health_metrics_debug?: string | null }
 interface ImportResponse { health?: VisionResultaat<HealthParsed>; performance?: VisionResultaat<PerformanceParsed> }
 
 function formatDuration(minutes: number | null): string {
@@ -194,6 +194,13 @@ export default function GarminImportPage() {
             {resultaat.performance?.error && (
               <div className="rounded-2xl bg-red-500/5 border border-red-500/20 p-4">
                 <p className="text-sm text-red-400">Performance-foto: {resultaat.performance.error}</p>
+              </div>
+            )}
+
+            {resultaat.health?._health_metrics_debug && (
+              <div className="rounded-2xl bg-amber-500/5 border border-amber-500/20 p-4">
+                <p className="text-xs font-medium text-amber-400 mb-1">⚠️ health_metrics niet volledig opgeslagen (tijdelijke diagnose)</p>
+                <p className="text-[11px] text-amber-300/80 font-mono break-all">{resultaat.health._health_metrics_debug}</p>
               </div>
             )}
 
