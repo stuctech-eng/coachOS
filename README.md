@@ -445,6 +445,26 @@ aanleiding), Coach Recovery Engine/Coach Performance Engine als
 losse, uitgebreidere modules (het huidige context-blok is een eerste,
 lichte integratie).
 
+### CoachPolicy Niveau 1 + Recovery Debug Dashboard (v2.4.144)
+
+**Bevinding:** de foto-import-flow schreef helemaal niets naar
+`health_metrics` (zelfs HRV niet) — `calculateRecoveryScore()` kende
+rusthartslag/Body Battery/slaapscore/slaapduur al als factoren, maar
+kreeg ze zelden te zien. Gefixt: beide routes (`vision-import`, `hrv`)
+schrijven nu alle relevante velden door, met merge-logica zodat ze
+elkaar niet overschrijven.
+
+**Bewust GEEN wijziging aan de scoreformule zelf** — `recovery-engine.ts`
+kreeg alleen een additieve `breakdown`-array (welke factor droeg
+hoeveel bij), bewezen gedrag-behoudend over 5 testcases. Het
+**Recovery Debug Dashboard** (`/debug/recovery`) toont deze breakdown
++ de complete CoachPolicy-uitkomst, met dezelfde functies als de echte
+Coach-routes — geen kans op afwijking tussen dashboard en werkelijkheid.
+
+**Niveau 2** (Training Readiness/belastingsverhouding als nieuwe
+factoren in de formule zelf — verandert gedrag voor alle gebruikers)
+blijft bewust een aparte, nog te plannen stap.
+
 ### Performance-pagina (v2.4.142) — platformniveau, geen specialist
 
 **Bewust NIET onder Cycling of Running** — dit zijn geen sportgegevens,

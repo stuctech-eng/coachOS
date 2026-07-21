@@ -1,5 +1,61 @@
 # CoachOS — Changelog
 
+## v2.4.144 — CoachPolicy Niveau 1 (datastroom-fix) + Recovery Debug Dashboard
+**Stap 3 van het vervolgplan, exact zoals afgesproken in de chat:
+alleen de datastroom repareren, GEEN wijziging aan de bestaande
+scoreformule. Plus het Recovery Debug Dashboard, op voorstel van de
+gebruiker.**
+
+### Bevinding: de foto-flow schreef helemaal niets naar `health_metrics`
+Zelfs HRV niet — alleen de handmatige Check-in-invoer (`/api/hrv`)
+deed dat. `calculateRecoveryScore()` kent rusthartslag/Body Battery/
+slaapscore/slaapduur/HRV allemaal al als factoren, maar kreeg ze in de
+praktijk zelden te zien als iemand alleen screenshots gebruikte.
+
+- `src/app/api/health/vision-import/route.ts` — schrijft nu ALLE
+  relevante velden (HRV, rusthartslag, Body Battery, slaapscore,
+  slaapduur) door naar `health_metrics`, gemerged met een eventuele
+  al-bestaande rij van vandaag (bijv. een eerdere handmatige HRV-
+  invoer heeft voorrang boven Garmin's 7d-gemiddelde)
+- `src/app/api/hrv/route.ts` — fix: schreef voorheen blind een nieuwe
+  `health_metrics`-rij met alleen `hrv`, wat rusthartslag/Body Battery
+  van een eerdere foto-upload die dag zou hebben gewist. Nu ook
+  gemerged.
+- `src/core/ai-engine/recovery-engine.ts` — **GEEN wijziging aan de
+  score/status/color-berekening.** Uitsluitend een nieuwe, additieve
+  `breakdown`-array toegevoegd aan de return-waarde (welke factor droeg
+  hoeveel bij) — voor het Recovery Debug Dashboard hieronder.
+
+### Recovery Debug Dashboard
+- **Nieuw:** `src/app/debug/recovery/page.tsx` +
+  `src/app/api/debug/recovery/route.ts` — toont een tabel met elke
+  factor, de ruwe waarde en de bijdrage aan de score, plus de complete
+  CoachPolicy-uitkomst eronder. Gebruikt dezelfde functies als de
+  echte Coach-routes (`calculateRecoveryScore`/`genereerCoachPolicy`)
+  — geen kans dat het dashboard iets anders toont dan de werkelijkheid.
+- Link toegevoegd vanaf de bestaande `/debug`-pagina
+
+**Gevalideerd vóór levering — twee lagen:**
+1. `npx next build` — compileert zonder fouten of warnings
+2. **Gedrag-behoudendheid bewezen:** oude en nieuwe `calculateRecoveryScore()`
+   vergeleken over 5 testcases (volledige data, extreme lage waarden,
+   alleen check-in, helemaal geen data, pijn gemeld) — score/status/
+   color **allemaal exact identiek**, de breakdown is aantoonbaar puur
+   additief
+
+**Niveau 2 (nieuwe factoren zoals Training Readiness/belastingsverhouding
+in de formule zelf) blijft bewust een aparte, latere stap** — dat
+verandert wél het gedrag voor alle gebruikers en verdient eigen
+validatie, zoals afgesproken.
+
+**Test-instructies:**
+1. Garmin-screenshot uploaden → `/debug/recovery` → controleer dat
+   rusthartslag/Body Battery/slaapscore nu in de breakdown-tabel staan
+2. Check-in met HRV invullen ná een screenshot diezelfde dag →
+   controleer dat rusthartslag/Body Battery niet verdwenen zijn
+3. Coach Score op Home moet zich normaal blijven gedragen (geen
+   sprongen door deze update — de formule is ongewijzigd)
+
 ## v2.4.143 — Trends over tijd (stap 2 van het vervolgplan)
 **Tweede stap van de afgesproken volgorde: HRV/Rusthartslag/Body
 Battery/Slaapscore/Training Readiness/VO2max/Endurance Score als

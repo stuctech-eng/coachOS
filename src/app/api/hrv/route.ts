@@ -74,8 +74,18 @@ export async function POST(req: NextRequest) {
     if (hrvError) throw hrvError
 
     // Ook naar health_metrics.hrv — zie bestandskop, laat de bestaande
-    // recovery-score dit automatisch meenemen
-    await supabase.from('health_metrics').upsert({ user_id: user.id, date: vandaag, hrv: body.hrv_ms }, { onConflict: 'user_id,date' })
+    // recovery-score dit automatisch meenemen. v2.4.144: gemerged met
+    // een eventueel al-bestaande rij (bijv. rusthartslag/Body Battery
+    // van een eerdere foto-upload die dag) — niet blind overschrijven.
+    const { data: bestaandeHealthMetrics } = await supabase
+      .from('health_metrics')
+      .select('*')
+      .eq('user_id', user.id).eq('date', vandaag).maybeSingle()
+
+    await supabase.from('health_metrics').upsert({
+      ...(bestaandeHealthMetrics || {}),
+      user_id: user.id, date: vandaag, hrv: body.hrv_ms,
+    }, { onConflict: 'user_id,date' })
 
     const { data: historie } = await supabase
       .from('morning_health_metrics')

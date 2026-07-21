@@ -110,6 +110,29 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id,date' })
 
+        // v2.4.144 (Niveau 1 — datastroom-fix): ook naar health_metrics,
+        // met ALLE relevante velden — niet alleen HRV. Zonder dit ziet
+        // calculateRecoveryScore() (CoachPolicy) rusthartslag/Body
+        // Battery/slaapscore/slaapduur nooit, ook al staan ze allang in
+        // de formule. Merge met een bestaande rij van vandaag (bijv. al
+        // een handmatige HRV-invoer) — niet blind overschrijven.
+        const { data: bestaandeHealthMetrics } = await supabase
+          .from('health_metrics')
+          .select('*')
+          .eq('user_id', user.id).eq('date', vandaag).maybeSingle()
+
+        await supabase.from('health_metrics').upsert({
+          ...(bestaandeHealthMetrics || {}),
+          user_id: user.id, date: vandaag,
+          // Handmatige ochtend-HRV heeft voorrang indien aanwezig — is
+          // een preciezere, losse meting dan Garmin's 7d-gemiddelde
+          hrv: bestaandeHealthMetrics?.hrv ?? parsed.hrv.avg_7d_ms,
+          resting_hr: parsed.resting_hr,
+          body_battery: parsed.body_battery.current,
+          sleep_score: parsed.sleep.score,
+          sleep_duration: parsed.sleep.duration_minutes ? Math.round((parsed.sleep.duration_minutes / 60) * 10) / 10 : null,
+        }, { onConflict: 'user_id,date' })
+
         resultaat.health = { parsed, confidence, flags }
       } catch (healthErr) {
         console.error('[vision-import] Health-foto mislukt:', healthErr)

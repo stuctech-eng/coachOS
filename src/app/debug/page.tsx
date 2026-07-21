@@ -605,6 +605,11 @@ export default function DebugPage() {
           <p className="text-slate-400 text-sm mt-0.5">CoachOS gezondheidscheck — {ALLE_TABELLEN.length} tabellen, {KERN_ROUTES_GET.length} routes, schrijftest coach_calls</p>
         </div>
 
+        {/* v2.4.144: link naar Recovery Debug Dashboard */}
+        <a href="/debug/recovery" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+          🩺 Recovery Debug Dashboard
+        </a>
+
         <button
           onClick={runDiagnostiek}
           disabled={bezig}
