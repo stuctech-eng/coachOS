@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { getPerformanceContext, berekenRecovery, berekenLoad, berekenFatigue, berekenReadiness, berekenConsistency, verklaarRecovery, ENGINE_REGISTRY } from '@/core/performance'
+import { getPerformanceContext, berekenRecovery, berekenLoad, berekenFatigue, berekenReadiness, berekenConsistency, bewaarSnapshot, haalHistorie, verklaarRecovery, ENGINE_REGISTRY } from '@/core/performance'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -34,6 +34,18 @@ export async function GET() {
     const readiness = await berekenReadiness(context, recovery, fatigue)
     const consistency = await berekenConsistency(context)
 
+    // v2.4.155: elke berekende score bewaren voor toekomstige trends —
+    // eigen try/catch per snapshot, mag het debug-scherm nooit blokkeren
+    await Promise.all([
+      bewaarSnapshot(user.id, 'Recovery', recovery.value.score).catch(e => console.error('[history] Recovery bewaren mislukt:', e)),
+      bewaarSnapshot(user.id, 'Load', load.value.tsb).catch(e => console.error('[history] Load bewaren mislukt:', e)),
+      bewaarSnapshot(user.id, 'Fatigue', fatigue.value.score).catch(e => console.error('[history] Fatigue bewaren mislukt:', e)),
+      bewaarSnapshot(user.id, 'Readiness', readiness.value.score).catch(e => console.error('[history] Readiness bewaren mislukt:', e)),
+      bewaarSnapshot(user.id, 'Consistency', consistency.value.percentage).catch(e => console.error('[history] Consistency bewaren mislukt:', e)),
+    ])
+
+    const recoveryHistorie = await haalHistorie(user.id, 'Recovery', 30).catch(() => [])
+
     return NextResponse.json({
       context,
       recovery: { ...recovery, explanation },
@@ -41,6 +53,7 @@ export async function GET() {
       fatigue,
       readiness,
       consistency,
+      recoveryHistorie,
       registry: ENGINE_REGISTRY,
     })
   } catch (err) {

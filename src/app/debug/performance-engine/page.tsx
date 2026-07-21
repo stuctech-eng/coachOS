@@ -137,6 +137,18 @@ export default function PerformanceEngineDebugPage() {
             </Card>
 
             <Card className="p-5">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">History Engine — Recovery (30 dagen)</p>
+              <p className="text-[10px] text-slate-600 mb-3">Elke keer dat dit scherm laadt, wordt vandaag's score bewaard — na een paar dagen testen zie je hier een echte reeks.</p>
+              {data.recoveryHistorie.length === 0 && <p className="text-xs text-slate-600">Nog geen historie — kom morgen terug.</p>}
+              {data.recoveryHistorie.map((p: any) => (
+                <div key={p.date} className="flex items-center justify-between py-1 border-t border-coach-border text-xs first:border-0">
+                  <span className="text-slate-500">{p.date}</span>
+                  <span className="text-slate-200 font-medium">{p.score}</span>
+                </div>
+              ))}
+            </Card>
+
+            <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Engine Registry</p>
               {data.registry.map((e: any) => (
                 <div key={e.key} className="flex items-center justify-between py-1.5 border-b border-coach-border last:border-0">

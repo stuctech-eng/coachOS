@@ -488,10 +488,31 @@ Confidence/Explainability/History). Fase 1A legt de fundering:
 - Confidence Engine: 3 scenario's (nieuw/ervaren/data-ontbreekt), alle
   drie exact de verwachte score/level/beperkingen
 
-**Bewust nog niet in Fase 1A** (volgt in 1B): Load/Readiness/Fatigue/
-Consistency/History Engine, Dashboard-UI, CoachPolicy-koppeling van de
-nieuwe laag zelf (CoachPolicy gebruikt nog steeds rechtstreeks de oude
-`recovery-engine.ts`, niet de nieuwe wrapper — bewuste keuze om niets
+**Fase 1B (v2.4.150-155) — VOLLEDIG AFGEROND:**
+- **Load Engine** — wrapper, telt bestaande per-sport CTL/ATL/TSB op
+  (EWMA is lineair, wiskundig bewezen — verschil ~10⁻¹⁵)
+- **Fatigue Engine** — nieuwe logica, afgeleid van Load's TSB + ACWR
+  (zelfde drempelwaarden als Recovery's ACWR-correctie)
+- **Readiness Engine** — combineert Recovery + inverse Fatigue,
+  CoachPolicy's max-intensiteit als context. Eerste engine die een
+  bestaande, database-rakende functie (`genereerCoachPolicy`)
+  hergebruikt — bewuste, benoemde uitzondering.
+- **Consistency Engine** — wekelijks activiteitenpatroon (8 weken),
+  streaks, langste onderbreking
+- **History Engine** — bewaart dagelijkse scores
+  (`performance_engine_history`, expliciete update-of-insert i.p.v.
+  upsert-met-onConflict — les uit v2.4.145 toegepast)
+
+Elke nieuwe (niet-wrapper) engine is los getest met meerdere
+scenario's vóór levering: Fatigue (4 scenario's), Readiness (3,
+inclusief een bewust tegenstrijdig geval), Consistency (4). Alle
+wiskundige aannames (EWMA-lineariteit) vooraf numeriek geverifieerd,
+niet als aanname de code in.
+
+**Bewust nog niet gebouwd** (volgt in Fase 2): Dashboard-UI,
+CoachPolicy-koppeling van de nieuwe laag zelf (CoachPolicy gebruikt
+nog steeds rechtstreeks de oude `recovery-engine.ts`, niet de nieuwe
+wrapper — bewuste keuze om niets
 te breken). Levensgebeurtenis-penalty zit nog niet in de data-adapter
 (`lifeEventPenalty: 0` hardcoded, expliciet benoemd in de code).
 

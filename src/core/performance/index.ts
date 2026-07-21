@@ -14,4 +14,5 @@ export { berekenLoad, type LoadValue, type LoadSportDetail } from './engines/loa
 export { berekenFatigue, type FatigueValue } from './engines/fatigue-engine'
 export { berekenReadiness, type ReadinessValue } from './engines/readiness-engine'
 export { berekenConsistency, type ConsistencyValue } from './engines/consistency-engine'
+export { bewaarSnapshot, haalHistorie, type HistoriePunt } from './engines/history-engine'
 export { verklaarRecovery } from './engines/explainability-engine'

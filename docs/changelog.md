@@ -1,5 +1,58 @@
 # CoachOS — Changelog
 
+## v2.4.155 — Performance Platform Fase 1B, laatste stap: History Engine
+**Sluit Fase 1B volledig af. "Bewaart niet alleen de actuele score,
+maar ook de volledige geschiedenis."**
+
+**⚠️ ACTIE VEREIST VÓÓR DEPLOY:**
+```sql
+create table if not exists performance_engine_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date date not null,
+  engine text not null,
+  score numeric not null,
+  payload jsonb,
+  created_at timestamptz not null default now(),
+  unique(user_id, date, engine)
+);
+
+create index if not exists idx_performance_engine_history_user_engine_date
+  on performance_engine_history(user_id, engine, date desc);
+
+alter table performance_engine_history enable row level security;
+
+drop policy if exists "Gebruiker kan eigen performance engine history lezen" on performance_engine_history;
+create policy "Gebruiker kan eigen performance engine history lezen"
+  on performance_engine_history for select using (auth.uid() = user_id);
+```
+
+- **Nieuw:** `src/core/performance/engines/history-engine.ts` —
+  `bewaarSnapshot()` + `haalHistorie()`. **Les uit v2.4.145 direct
+  toegepast:** geen `upsert`-met-`onConflict` (dat faalde daar stil op
+  een niet-matchende sleutel) — expliciet update-of-insert.
+- **Bewuste uitzondering, benoemd:** dit is de tweede engine (na
+  Readiness) die de database aanraakt — bewaren van scores IS de
+  kernfunctie van deze engine, geen ad-hoc databasetoegang.
+- `/debug/performance-engine` — elke berekende engine (Recovery/Load/
+  Fatigue/Readiness/Consistency) wordt nu bewaard bij elk bezoek, plus
+  een nieuwe kaart die Recovery's 30-dagen-historie toont
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- Update-of-insert-idempotentie los getest: herhaald opslaan dezelfde
+  dag/engine → update, geen dubbele rij; andere engine/dag → apart
+  ingevoegd. Geen duplicaten, laatste update wint — bevestigd met een
+  in-memory simulatie van de exacte productielogica.
+
+## 🎉 Fase 1B volledig afgerond
+Load, Fatigue, Readiness, Consistency, History — alle vijf actief.
+Samen met Fase 1A (Confidence, Recovery, Explainability) staat nu het
+volledige fundament van de CoachOS Performance Intelligence Platform.
+Fase 2 (Endurance Index, Progress Score, Climbing Score, Sprint Score,
+Efficiency Score — elk met een Confidence-score vanaf dag 1) is de
+volgende stap, zodra gewenst.
+
 ## v2.4.154 — Performance Platform Fase 1B, stap 4: Consistency Engine
 **Vierde stap van Fase 1B. "Niet: hoe goed ben je. Maar: hoe consequent
 train je." Kijkt naar de laatste 8 weken, over alle sporten heen.**
