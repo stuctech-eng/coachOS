@@ -95,6 +95,22 @@ export default function PerformanceEngineDebugPage() {
             </Card>
 
             <Card className="p-5">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Fatigue Engine</p>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  data.fatigue.value.label === 'Low' ? 'bg-green-500/10 text-green-400' :
+                  data.fatigue.value.label === 'Moderate' ? 'bg-amber-500/10 text-amber-400' :
+                  'bg-red-500/10 text-red-400'
+                }`}>{data.fatigue.value.label}</span>
+              </div>
+              <p className="text-2xl font-bold text-white mb-2">{data.fatigue.value.score}/100</p>
+              <div className="flex gap-4 text-xs text-slate-500">
+                <span>TSB-component: {data.fatigue.value.tsb_component}</span>
+                <span>ACWR-component: {data.fatigue.value.acwr_component}</span>
+              </div>
+            </Card>
+
+            <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Engine Registry</p>
               {data.registry.map((e: any) => (
                 <div key={e.key} className="flex items-center justify-between py-1.5 border-b border-coach-border last:border-0">

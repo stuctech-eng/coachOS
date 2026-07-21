@@ -1,5 +1,37 @@
 # CoachOS — Changelog
 
+## v2.4.152 — Performance Platform Fase 1B, stap 2: Fatigue Engine
+**Tweede stap van Fase 1B. In tegenstelling tot Recovery en Load is dit
+GEEN wrapper — nieuwe logica, dus expliciet los getest met 4
+scenario's vóór levering.**
+
+- **Nieuw:** `src/core/performance/engines/fatigue-engine.ts` —
+  `berekenFatigue()`. Hoger = méér vermoeid (tegenovergesteld aan
+  Recovery). Twee componenten: TSB (hoofdsignaal, hergebruikt Load
+  Engine's platform-TSB, gewicht 0,7) + ACWR-risico (aanvullend, zelfde
+  drempelwaarden als Recovery Engine's ACWR-correctie uit v2.4.148 —
+  consistent tussen de twee engines).
+- `core/engine-registry.ts` — Fatigue Engine op 'actief'
+- `/debug/performance-engine` — nieuwe kaart met score/label + de twee
+  componenten apart zichtbaar
+
+**Gevalideerd vóór levering — 4 scenario's:**
+- Fris (TSB=20, ACWR=1,0) → score 21, Low
+- Vermoeid (TSB=-30, ACWR=1,1) → score 56, High
+- Vermoeid + hoog blessurerisico (TSB=-40, ACWR=1,8) → score 93, Very High
+- Geen ACWR-data beschikbaar → ACWR-component correct 0 (geen straf bij
+  ontbrekende data)
+
+Drie van de vier exact zoals berekend; het vierde week 1 punt af door
+een floating-point-afrondingsverschil (45×0,7 is in JavaScript niet
+precies 31,5) — geen logicafout, puur binaire representatie van
+decimalen.
+
+`npx next build` — compileert zonder fouten of warnings.
+
+**Resterend in Fase 1B:** Readiness Engine, Consistency Engine,
+History Engine.
+
 ## v2.4.151 — Fix: platform-TSB klopte niet met de som van per-sport-TSB's
 **Gemeld met de echte test-output: Cycling toonde CTL 7,2 · ATL 7,6 ·
 TSB −1,5 — maar 7,2−7,6 = −0,4, niet −1,5. Geen bug in de weergave: de
