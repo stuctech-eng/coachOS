@@ -55,6 +55,7 @@ const SECTIES: Sectie[] = [
       'Beide foto\'s worden automatisch verkleind voor ze naar de AI gaan. Dit bespaart kosten en maakt de verwerking sneller. Jij merkt er niets van.',
       'Na verwerking zie je meteen de uitgelezen waarden en worden ze direct opgeslagen — geen apart bevestigstapje meer. Coach AI gebruikt zowel de ruwe waarden als je persoonlijke HRV-trend (zie hieronder) voor het dagadvies.',
       'Los van de screenshots kun je in de dagelijkse Check-in ook je ochtend-HRV handmatig invullen (optioneel, met een Overslaan-knop) — dat is een ander getal dan Garmin\'s 7-daags gemiddelde uit de screenshot: de losse waarde van vannacht. CoachOS bouwt hiermee je eigen HRV-baseline op en laat zien of je vandaag boven, onder, of rond je gebruikelijke niveau zit.',
+      'Al deze cijfers — HRV-trend, Body Battery, Training Readiness, VO2max en meer — zijn ook zichtbaar op de Performance-pagina (via Home), met kleurcodering en een korte uitleg per waarde. Dit is bewust geen onderdeel van Cycling of Running: het hoort bij je algehele belastbaarheid, niet bij één sport.',
     ],
   },
   {

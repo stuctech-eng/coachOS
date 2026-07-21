@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen, Phone, ShieldAlert, CircleUserRound } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen, Phone, ShieldAlert, CircleUserRound, HeartPulse } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -402,6 +402,21 @@ export default function HomePage() {
             <ChevronDown size={16} className="text-blue-400/50 -rotate-90 flex-shrink-0" />
           </Link>
         )}
+
+        {/* v2.4.142: Performance — platformniveau, geen Cycling/Running-
+            specifieke plek. Altijd zichtbaar, niet afhankelijk van
+            garminImported — de pagina zelf toont een nette lege staat. */}
+        <Link href={'/performance'}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-left active:bg-rose-500/15 transition-colors">
+          <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center flex-shrink-0">
+            <HeartPulse size={16} className="text-rose-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-rose-400">Performance</p>
+            <p className="text-xs text-slate-500 mt-0.5">Herstel &amp; belastbaarheid</p>
+          </div>
+          <ChevronDown size={16} className="text-rose-400/50 -rotate-90 flex-shrink-0" />
+        </Link>
 
         {/* Coach Score */}
         <Card className={cn('p-5', getScoreBg(score))}>

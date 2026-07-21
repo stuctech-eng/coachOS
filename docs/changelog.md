@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.142 — Performance-pagina (platformniveau, stap 1 van het vervolgplan)
+**Eerste stap van de afgesproken volgorde: UI voor Performance Metrics.
+Bewust NIET onder Cycling of Running — dit zijn geen sportgegevens, ze
+horen bij de Master Coach. Specialisten en Trainer AI kijken naar
+dezelfde bron, geen duplicatie.**
+
+- **Nieuw:** `src/app/performance/page.tsx` — toont Herstel (HRV-trend,
+  Garmin HRV 7d, Body Battery, rusthartslag, slaapscore, stress),
+  Belastbaarheid (Training Readiness, belastingsverhouding) en Conditie
+  (VO2max, Endurance Score, Hill Score), met kleurcodering (groen/amber/
+  rood/neutraal) en een korte uitleg per metric
+- **Nieuw:** `src/app/api/performance-overview/route.ts` — verzamelt
+  HRV-trend (Health Analysis Engine) + `morning_health_metrics` +
+  `performance_snapshots` van vandaag. **Andere naam dan het bestaande
+  `/api/performance`** (dat is een ander concept — trainingsprogressie/
+  rating-analyse — bewust niet overschreven, geen naamconflict)
+- `src/app/home/page.tsx` — Performance-link toegevoegd, altijd
+  zichtbaar (niet afhankelijk van de Garmin-import-status van vandaag)
+
+**Belangrijk:** dit toont exact dezelfde data die Coach AI en beide
+specialist-coaches al kregen (v2.4.140-141) — geen nieuwe berekening,
+puur voor het eerst zichtbaar gemaakt voor de gebruiker zelf.
+
+**Documentatie bijgewerkt:** README (nieuwe sectie) + hoe-werkt-het
+(Garmin Import-sectie verwijst nu naar de Performance-pagina).
+
+**Gevalideerd vóór levering:** `npx next build` — compileert zonder
+fouten of warnings.
+
+**Vervolgens, zoals afgesproken:** stap 2 (trends over tijd — HRV/
+Training Readiness/VO2max/Endurance Score als grafiek), dan pas stap 3
+(CoachPolicy uitbreiden — vergt apart overleg, raakt de Daily
+Adjustment Layer).
+
 ## v2.4.141 — Morning Health-context ook naar de specialist-coaches
 **Direct meegepakt zodat het niet vergeten wordt: Cycling Coach en
 Running Coach krijgen nu dezelfde HRV-trend/Performance-context als de

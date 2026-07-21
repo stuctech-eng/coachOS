@@ -445,6 +445,23 @@ aanleiding), Coach Recovery Engine/Coach Performance Engine als
 losse, uitgebreidere modules (het huidige context-blok is een eerste,
 lichte integratie).
 
+### Performance-pagina (v2.4.142) — platformniveau, geen specialist
+
+**Bewust NIET onder Cycling of Running** — dit zijn geen sportgegevens,
+ze horen bij de Master Coach. `src/app/performance/page.tsx` +
+`src/app/api/performance-overview/route.ts` (andere naam dan het
+bestaande `/api/performance`, dat is een ander concept —
+trainingsprogressie/rating-analyse, geen gezondheidsdata — bewust niet
+overschreven om verwarring te voorkomen).
+
+Toont Herstel (HRV-trend, Garmin HRV 7d, Body Battery, rusthartslag,
+slaapscore, stress), Belastbaarheid (Training Readiness,
+belastingsverhouding) en Conditie (VO2max, Endurance Score, Hill
+Score) met kleurcodering en een korte uitleg per metric. Link vanaf
+Home, altijd zichtbaar. **Exact dezelfde data die Coach AI en beide
+specialist-coaches al kregen (v2.4.140-141)** — deze pagina maakt dat
+voor het eerst ook zichtbaar voor de gebruiker.
+
 
 ## 🧭 Navigatie-architectuur v1.0 (GEÏMPLEMENTEERD, herzien v2.4.111)
 
