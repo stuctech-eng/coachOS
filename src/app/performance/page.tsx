@@ -39,6 +39,8 @@ interface Performance {
   endurance_score_label: string | null
   hill_score: number | null
 }
+interface HealthHistoriePunt { date: string; hrv_ms: number | null; resting_hr: number | null; body_battery_current: number | null; sleep_score: number | null }
+interface PerformanceHistoriePunt { date: string; training_readiness: number | null; vo2max: number | null; endurance_score: number | null }
 
 type Kleur = 'groen' | 'amber' | 'rood' | 'neutraal'
 const KLEUR_CLASSES: Record<Kleur, string> = {
@@ -88,11 +90,52 @@ function loadRatioKleur(ratio: number | null): Kleur {
   return 'amber'
 }
 
+// Generieke, kleine SVG-lijngrafiek — zelfde patroon als elders in de
+// app (bijv. Running Performance Center), hier los herbruikbaar gemaakt
+// voor willekeurige numerieke reeksen.
+function TrendGrafiek<T extends { date: string }>({ data, veld, kleur = '#f43f5e', hoogte = 70 }: {
+  data: T[]; veld: keyof T; kleur?: string; hoogte?: number
+}) {
+  const punten = data
+    .map(d => ({ datum: d.date, waarde: d[veld] as unknown as number | null }))
+    .filter((p): p is { datum: string; waarde: number } => p.waarde !== null && p.waarde !== undefined)
+
+  if (punten.length < 2) {
+    return <p className="text-[11px] text-slate-600 py-4 text-center">Nog te weinig data voor een trend (minimaal 2 dagen nodig).</p>
+  }
+
+  const breedte = 320
+  const waarden = punten.map(p => p.waarde)
+  const max = Math.max(...waarden)
+  const min = Math.min(...waarden)
+  const bereik = max - min || 1
+
+  const svgPunten = punten.map((p, i) => {
+    const x = (i / (punten.length - 1)) * breedte
+    const y = hoogte - ((p.waarde - min) / bereik) * hoogte
+    return `${x},${y}`
+  }).join(' ')
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${breedte} ${hoogte}`} className="w-full" style={{ height: hoogte }}>
+        <polyline points={svgPunten} fill="none" stroke={kleur} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+      <div className="flex justify-between mt-1">
+        <span className="text-[9px] text-slate-600">{punten[0].datum.slice(5)} — {punten[0].waarde}</span>
+        <span className="text-[9px] text-slate-600">{punten[punten.length - 1].datum.slice(5)} — {punten[punten.length - 1].waarde}</span>
+      </div>
+    </div>
+  )
+}
+
 export default function PerformancePage() {
   const [laden, setLaden] = useState(true)
   const [hrvTrend, setHrvTrend] = useState<HrvTrend | null>(null)
   const [health, setHealth] = useState<Health | null>(null)
   const [performance, setPerformance] = useState<Performance | null>(null)
+  const [healthHistorie, setHealthHistorie] = useState<HealthHistoriePunt[]>([])
+  const [performanceHistorie, setPerformanceHistorie] = useState<PerformanceHistoriePunt[]>([])
 
   useEffect(() => {
     async function laad() {
@@ -103,6 +146,8 @@ export default function PerformancePage() {
         setHrvTrend(data.hrv_trend)
         setHealth(data.health)
         setPerformance(data.performance)
+        setHealthHistorie(data.historie?.health || [])
+        setPerformanceHistorie(data.historie?.performance || [])
       } catch {
         // Elke sectie checkt zelf op aanwezige data
       } finally {
@@ -204,6 +249,52 @@ export default function PerformancePage() {
             )}
             <MetricRij label="Hill Score" waarde={performance.hill_score !== null ? `${performance.hill_score}` : '–'}
               uitleg={performance.hill_score !== null ? 'Klimvermogen.' : 'Nog niet beschikbaar — stond niet op je laatste screenshot.'} kleur="neutraal" />
+          </Card>
+        )}
+
+        {/* v2.4.143: Trends — 30 dagen. Zelfde data als de kaarten
+            hierboven, nu over tijd i.p.v. alleen vandaag. */}
+        {!laden && healthHistorie.length >= 2 && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Trends — Herstel (30 dagen)</p>
+            <div className="flex flex-col gap-4">
+              <div>
+                <p className="text-xs text-slate-400 mb-1">HRV (ms)</p>
+                <TrendGrafiek data={healthHistorie} veld="hrv_ms" kleur="#f43f5e" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Rusthartslag (bpm)</p>
+                <TrendGrafiek data={healthHistorie} veld="resting_hr" kleur="#f59e0b" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Body Battery</p>
+                <TrendGrafiek data={healthHistorie} veld="body_battery_current" kleur="#22c55e" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Slaapscore</p>
+                <TrendGrafiek data={healthHistorie} veld="sleep_score" kleur="#3b82f6" />
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {!laden && performanceHistorie.length >= 2 && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Trends — Belastbaarheid &amp; Conditie (30 dagen)</p>
+            <div className="flex flex-col gap-4">
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Training Readiness</p>
+                <TrendGrafiek data={performanceHistorie} veld="training_readiness" kleur="#f43f5e" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">VO2max</p>
+                <TrendGrafiek data={performanceHistorie} veld="vo2max" kleur="#8b5cf6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Endurance Score</p>
+                <TrendGrafiek data={performanceHistorie} veld="endurance_score" kleur="#06b6d4" />
+              </div>
+            </div>
           </Card>
         )}
 

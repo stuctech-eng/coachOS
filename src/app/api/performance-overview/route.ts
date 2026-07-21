@@ -35,11 +35,19 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
     const supabase = createAdminClient()
     const vandaag = isoDatum(new Date())
+    const dertigDagenGeleden = isoDatum(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
 
-    const [hrvTrend, healthRes, perfRes] = await Promise.all([
+    const [hrvTrend, healthRes, perfRes, healthHistorieRes, perfHistorieRes] = await Promise.all([
       haalHrvTrend(user.id),
       supabase.from('morning_health_metrics').select('*').eq('user_id', user.id).eq('date', vandaag).maybeSingle(),
       supabase.from('performance_snapshots').select('*').eq('user_id', user.id).eq('date', vandaag).maybeSingle(),
+      // v2.4.143: 30-dagen-historie, voor de trendgrafieken
+      supabase.from('morning_health_metrics')
+        .select('date, hrv_ms, resting_hr, body_battery_current, sleep_score')
+        .eq('user_id', user.id).gte('date', dertigDagenGeleden).order('date', { ascending: true }),
+      supabase.from('performance_snapshots')
+        .select('date, training_readiness, vo2max, endurance_score')
+        .eq('user_id', user.id).gte('date', dertigDagenGeleden).order('date', { ascending: true }),
     ])
 
     return NextResponse.json({
@@ -47,6 +55,10 @@ export async function GET() {
       hrv_trend: hrvTrend,
       health: healthRes.data,
       performance: perfRes.data,
+      historie: {
+        health: healthHistorieRes.data || [],
+        performance: perfHistorieRes.data || [],
+      },
     })
   } catch (err) {
     console.error('[performance-overview GET]', err)

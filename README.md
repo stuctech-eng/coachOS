@@ -457,10 +457,12 @@ overschreven om verwarring te voorkomen).
 Toont Herstel (HRV-trend, Garmin HRV 7d, Body Battery, rusthartslag,
 slaapscore, stress), Belastbaarheid (Training Readiness,
 belastingsverhouding) en Conditie (VO2max, Endurance Score, Hill
-Score) met kleurcodering en een korte uitleg per metric. Link vanaf
-Home, altijd zichtbaar. **Exact dezelfde data die Coach AI en beide
-specialist-coaches al kregen (v2.4.140-141)** — deze pagina maakt dat
-voor het eerst ook zichtbaar voor de gebruiker.
+Score) met kleurcodering en een korte uitleg per metric, plus
+**trendgrafieken over 30 dagen** (v2.4.143) voor HRV/rusthartslag/
+Body Battery/slaapscore/Training Readiness/VO2max/Endurance Score.
+Link vanaf Home, altijd zichtbaar. **Exact dezelfde data die Coach AI
+en beide specialist-coaches al kregen (v2.4.140-141)** — deze pagina
+maakt dat voor het eerst ook zichtbaar voor de gebruiker.
 
 
 ## 🧭 Navigatie-architectuur v1.0 (GEÏMPLEMENTEERD, herzien v2.4.111)

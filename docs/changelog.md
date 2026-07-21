@@ -1,5 +1,32 @@
 # CoachOS — Changelog
 
+## v2.4.143 — Trends over tijd (stap 2 van het vervolgplan)
+**Tweede stap van de afgesproken volgorde: HRV/Rusthartslag/Body
+Battery/Slaapscore/Training Readiness/VO2max/Endurance Score als
+grafiek over 30 dagen, op de Performance-pagina.**
+
+- `src/app/api/performance-overview/route.ts` — 30-dagen-historie
+  toegevoegd aan de response (los van de "vandaag"-data), twee losse
+  queries (health + performance), geen nieuwe berekening — puur lezen
+- `src/app/performance/page.tsx` — nieuwe `TrendGrafiek`-component:
+  generieke, kleine SVG-lijngrafiek die op elke numerieke reeks werkt
+  (zelfde visuele stijl als elders in de app), twee nieuwe kaarten
+  ("Trends — Herstel" en "Trends — Belastbaarheid &amp; Conditie")
+
+**Eerlijke leeg-staat:** minder dan 2 datapunten toont een duidelijke
+melding ("nog te weinig data") in plaats van een lege of misleidende
+grafiek. Ontbrekende dagen (null) worden uit de reeks gefilterd, niet
+als 0 getekend.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- Grafiek-schaallogica los getest met een reeks die een null-waarde
+  bevat — correct gefilterd, min/max en puntposities kloppen
+
+**Vervolgens, zoals afgesproken:** stap 3, CoachPolicy uitbreiden met
+Training Readiness/HRV-trend/Body Battery/Slaapscore — vergt apart
+overleg, raakt de Daily Adjustment Layer.
+
 ## v2.4.142 — Performance-pagina (platformniveau, stap 1 van het vervolgplan)
 **Eerste stap van de afgesproken volgorde: UI voor Performance Metrics.
 Bewust NIET onder Cycling of Running — dit zijn geen sportgegevens, ze
