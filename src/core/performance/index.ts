@@ -1,0 +1,13 @@
+// ── CoachOS Performance Intelligence Platform — public API ──────────────
+// Bron: overleg 21 juli 2026, Fase 1A. Alles wat buiten deze map gebruikt
+// mag worden loopt via dit bestand — houdt de interne structuur vrij om
+// te wijzigen zonder externe imports te breken.
+
+export type { PerformanceContext } from './core/types'
+export type { EngineResult, ConfidenceResult, ConfidenceLevel, ExplanationResult } from './core/engine-result'
+export { ENGINE_REGISTRY } from './core/engine-registry'
+
+export { getPerformanceContext } from './data/performance-data-adapter'
+export { berekenConfidence } from './engines/confidence-engine'
+export { berekenRecovery, type RecoveryValue } from './engines/recovery-engine'
+export { verklaarRecovery } from './engines/explainability-engine'

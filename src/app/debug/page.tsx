@@ -610,6 +610,11 @@ export default function DebugPage() {
           🩺 Recovery Debug Dashboard
         </a>
 
+        {/* v2.4.149: link naar Performance Engine Debug (Fase 1A) */}
+        <a href="/debug/performance-engine" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+          ⚙️ Performance Engine Debug (Fase 1A)
+        </a>
+
         <button
           onClick={runDiagnostiek}
           disabled={bezig}

@@ -77,7 +77,12 @@ export async function haalHrvTrend(userId: string): Promise<HrvTrendResultaat | 
 // vier aanroeppunten van calculateRecoveryScore() (coach-policy.ts,
 // coach/route.ts, status/route.ts, debug/recovery/route.ts) niet elk
 // hun eigen performance_snapshots-query dupliceren.
-export async function haalPerformanceVoorRecovery(userId: string): Promise<{ training_readiness: number | null; load_ratio: number | null } | null> {
+export interface PerformanceVoorRecovery {
+  training_readiness: number | null
+  load_ratio: number | null
+}
+
+export async function haalPerformanceVoorRecovery(userId: string): Promise<PerformanceVoorRecovery | null> {
   const supabase = createAdminClient()
   const vandaag = isoDatum(new Date())
   const { data } = await supabase

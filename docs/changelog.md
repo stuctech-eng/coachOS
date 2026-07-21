@@ -1,5 +1,81 @@
 # CoachOS — Changelog
 
+## v2.4.149 — CoachOS Performance Intelligence Platform, Fase 1A (fundering)
+**Nieuw platformonderdeel op basis van een goedgekeurde master-spec:
+een compleet analyseplatform met uiteindelijk 18 engines. Deze
+levering legt alleen de fundering — Confidence + Recovery-wrapper +
+Explainability + de architectuur eromheen. Load/Readiness/Fatigue/
+Consistency/History volgen in Fase 1B.**
+
+### Architectuur, exact zoals besproken
+```
+src/core/performance/
+├── index.ts                    — public exports
+├── core/
+│   ├── types.ts                — PerformanceContext
+│   ├── engine-result.ts        — EngineResult<T>-contract (apart van types.ts, op verzoek)
+│   ├── constants.ts
+│   └── engine-registry.ts      — overzicht van alle 15 geplande engines
+├── data/
+│   └── performance-data-adapter.ts  — ENIGE plek die Supabase aanraakt
+├── engines/
+│   ├── confidence-engine.ts    — NIEUW
+│   ├── recovery-engine.ts      — WRAPPER om de bestaande recovery-engine.ts
+│   └── explainability-engine.ts — NIEUW, regelgebaseerd
+└── shared/
+    ├── scoring.ts, dates.ts, validation.ts
+```
+
+**Kernprincipe:** `Supabase → data adapter → engines → Dashboard/Coach`.
+Geen enkele engine krijgt directe databasetoegang.
+
+### Confidence Engine
+Elke score bestaat vanaf dag 1, MET een eerlijke betrouwbaarheids-
+indicatie — nooit "nog niet beschikbaar". Vier factoren (dataomvang,
+versheid, sensordekking, trainingshistorie), gelijk gewogen, plus
+concrete `limitations`-teksten ("HRV-data ontbreekt", "Slechts 4
+activiteiten bekend").
+
+### Recovery Engine — bewust een WRAPPER
+Roept de bestaande, vandaag al uitgebreid geteste
+`calculateRecoveryScore()` aan (Niveau 1+2, v2.4.144/148) — geen
+dubbele logica, geen regressierisico.
+
+### Explainability Engine — bewust regelgebaseerd
+Geen AI-aanroep voor de basisuitleg — voorspelbaar, goedkoop,
+testbaar. Gecentraliseerd zodat niet elke toekomstige engine zijn
+eigen uitleglogica krijgt.
+
+### Kleine bijvangst
+`haalPerformanceVoorRecovery()` in `health-analysis-engine.ts` had een
+anonieme inline return-type — nu benoemd en geëxporteerd als
+`PerformanceVoorRecovery` (nodig om 'm elders te kunnen hergebruiken;
+brak de build totdat dit gefixt was).
+
+**Gevalideerd vóór levering — drie testlagen:**
+1. `npx next build` — compileert zonder fouten of warnings
+2. **Confidence Engine, 3 scenario's, allemaal exact zoals verwacht:**
+   - Nieuwe gebruiker (4 activiteiten, geen sensoren) → score 31, LOW
+   - Ervaren gebruiker (245 activiteiten, alle sensoren) → score 100, HIGH
+   - Data ontbreekt (32 trainingen, geen Garmin/HRV) → score 62, MEDIUM,
+     met expliciete HRV/slaap-beperkingen
+3. **Recovery-wrapper bewezen identiek** aan de directe
+   `calculateRecoveryScore()`-aanroep (zelfde 4 parameters doorgegeven,
+   zelfde uitkomst)
+
+**Bewust nog niet gedaan:** CoachPolicy zelf gebruikt nog de oude,
+directe `recovery-engine.ts` — niet omgezet naar de nieuwe wrapper.
+Levensgebeurtenis-penalty ontbreekt nog in de adapter
+(`lifeEventPenalty: 0`, expliciet benoemd in de code — vergt nog de
+bestaande berekening uit `api/status/route.ts` overnemen).
+
+**Test-instructies:**
+1. `/debug` → "⚙️ Performance Engine Debug (Fase 1A)"
+2. Controleer dat de PerformanceContext realistische cijfers toont
+   (activiteiten-aantal, sensor-beschikbaarheid)
+3. Recovery-score + Confidence-niveau + uitleg moeten allemaal
+   verschijnen, consistent met wat `/debug/recovery` al liet zien
+
 ## v2.4.148 — CoachPolicy Niveau 2: Training Readiness + ACWR-correctie
 **Verandert daadwerkelijk het gedrag van de Recovery Score voor alle
 gebruikers met Performance-data — precies de reden waarom dit een

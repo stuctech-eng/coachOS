@@ -445,7 +445,57 @@ aanleiding), Coach Recovery Engine/Coach Performance Engine als
 losse, uitgebreidere modules (het huidige context-blok is een eerste,
 lichte integratie).
 
-### CoachPolicy Niveau 1 + Recovery Debug Dashboard (v2.4.144)
+### CoachOS Performance Intelligence Platform — Fase 1A (v2.4.149)
+
+**Nieuw platformonderdeel** (`src/core/performance/`), gebouwd op een
+goedgekeurde master-spec voor een compleet analyseplatform (18 engines
+uiteindelijk: Endurance/Recovery/Fatigue/Progress/Climbing/Sprint/
+Prediction/Efficiency/Consistency/Load/Readiness + Athlete Profile/
+Confidence/Explainability/History). Fase 1A legt de fundering:
+
+- **Kernprincipe:** `Supabase → data adapter → engines → Dashboard/Coach`
+  — geen enkele engine raakt de database rechtstreeks aan. De
+  `performance-data-adapter.ts` is de ENIGE plek die dat doet.
+- **`core/engine-result.ts`** — uniform `EngineResult<T>`-contract voor
+  elke huidige en toekomstige engine (Recovery nu, Load/Fatigue/
+  Readiness/Consistency later)
+- **`core/types.ts`** — `PerformanceContext`, één rijk object per
+  gebruiker (activiteiten-telling, sensor-beschikbaarheid, historie,
+  ruwe data van vandaag) — engines bepalen zelf wat ze gebruiken, geen
+  losse `getRecoveryData()`/`getLoadData()`-functies
+- **Confidence Engine** — de "poortwachter": elke score bestaat vanaf
+  dag 1, altijd met een eerlijke betrouwbaarheidsindicatie erbij
+  (LOW/MEDIUM/HIGH + concrete beperkingen), i.p.v. "nog niet
+  beschikbaar". Gevalideerd met 3 scenario's: nieuwe gebruiker (LOW),
+  ervaren gebruiker (HIGH), data-ontbreekt/alleen-trainingen (MEDIUM)
+  — alle drie exact zoals verwacht.
+- **Recovery Engine — WRAPPER, geen herbouw.** Roept de bestaande,
+  vandaag uitgebreid geteste `calculateRecoveryScore()` aan
+  (`@/core/ai-engine/recovery-engine.ts`, Niveau 1+2). Bewezen
+  identieke uitkomst t.o.v. de directe aanroep.
+- **Explainability Engine — bewust regelgebaseerd, geen AI-aanroep.**
+  Gecentraliseerd, zodat niet elke engine zijn eigen uitleglogica
+  krijgt. Genereert titel/samenvatting/coach-boodschap uit de
+  breakdown-factoren, met een aparte melding bij lage Confidence.
+- **`core/engine-registry.ts`** — overzicht van alle 15 geplande
+  engines met fase en status, klaar voor het toekomstige Dashboard
+- **Debug-scherm:** `/debug/performance-engine` toont de volledige
+  keten (context → confidence → recovery → uitleg) met echte data
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- Recovery-wrapper bewezen identiek aan de directe `calculateRecoveryScore()`-aanroep
+- Confidence Engine: 3 scenario's (nieuw/ervaren/data-ontbreekt), alle
+  drie exact de verwachte score/level/beperkingen
+
+**Bewust nog niet in Fase 1A** (volgt in 1B): Load/Readiness/Fatigue/
+Consistency/History Engine, Dashboard-UI, CoachPolicy-koppeling van de
+nieuwe laag zelf (CoachPolicy gebruikt nog steeds rechtstreeks de oude
+`recovery-engine.ts`, niet de nieuwe wrapper — bewuste keuze om niets
+te breken). Levensgebeurtenis-penalty zit nog niet in de data-adapter
+(`lifeEventPenalty: 0` hardcoded, expliciet benoemd in de code).
+
+
 
 **Bevinding:** de foto-import-flow schreef helemaal niets naar
 `health_metrics` (zelfs HRV niet) — `calculateRecoveryScore()` kende
