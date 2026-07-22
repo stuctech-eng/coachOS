@@ -512,8 +512,12 @@ niet als aanname de code in.
 **Bewust nog niet gebouwd** (volgt later): Dashboard-UI,
 CoachPolicy-koppeling van de nieuwe laag zelf (CoachPolicy gebruikt
 nog steeds rechtstreeks de oude `recovery-engine.ts`, niet de nieuwe
-wrapper — bewuste keuze om niets
-te breken). Levensgebeurtenis-penalty zit nog niet in de data-adapter
+wrapper — na onderzoek (21 juli 2026) bewust definitief NIET
+alsnog gekoppeld: CoachPolicy gebruikt al dezelfde onderliggende
+`calculateRecoveryScore()`-berekening als de wrapper, die alleen
+Confidence-scoring/EngineResult-opmaak toevoegt die CoachPolicy niet
+gebruikt. Overschakelen zou alleen overbodige databasequeries
+toevoegen aan een veelgebruikt pad, zonder gedragsverandering). Levensgebeurtenis-penalty zit nog niet in de data-adapter
 (`lifeEventPenalty: 0` hardcoded, expliciet benoemd in de code).
 
 ### Fase 2 (v2.4.156-157) — VOLLEDIG AFGEROND
@@ -602,21 +606,26 @@ scrollbaar).
 
 ## Openstaand
 
+**Opgeschoond 21 juli 2026** — twee oude blokkerende items geverifieerd
+en bevestigd achterhaald: `injuries.ended_at` wordt nergens in de
+live code gebruikt (de app werkt via een simpeler `active`-boolean-veld
+dat dit kennelijk verving), `garmin_activity_imports` wordt actief en
+zonder problemen gebruikt in meerdere routes (`garmin-activity-tcx`,
+`garmin-activity-vision`, `activities/[id]`) — de tabel bestaat en
+werkt al lang. Beide dus uit de lijst.
+
+De overige oude items hieronder (v2.4.23-72-tijdperk) zijn niet stuk
+voor stuk opnieuw geverifieerd — vermoedelijk grotendeels achterhaald,
+maar dat is een aanname, geen bevestiging. Bij twijfel: navragen
+i.p.v. aannemen dat het nog relevant is.
+
 | Item | Prioriteit |
 |------|-----------|
-| **Running Adaptief Trainingsplan Fase 3 (UI)** — kalenderweergave, weekoverzicht, Coach-uitleg prominent tonen, zelfde patroon als Cycling's `trainingsplan/page.tsx` (v2.4.99) | 🟡 |
-| **✅ `docs/specialist-api.md` gereconstrueerd + extern gereviewd + aangescherpt (v2.4.71-72)** — versieclaims geverifieerd (HTTP 200 op alle documenten/kerncode + live sessietests). Vijf inhoudelijke verbeteringen doorgevoerd na review. | ✅ Afgerond |
-| **Service worker weer op `skipWaiting: false` gezet (v2.4.65, was volledig `disable: true` in v2.4.63)** — test of het reset-probleem terugkeert nu tests via de bestaande `/debug`-pagina lopen (geen navigatie meer). Root cause nooit 100% bevestigd. Komt het terug: service worker is alsnog (mede)schuldig, dan opnieuw `disable: true` overwegen. | 🟡 |
-| **Testen: neemt de coach gewicht/tempo-afwijking (v2.4.51-53) daadwerkelijk mee in zijn geschreven advies?** De data komt gegarandeerd in de prompt terecht (code, geen AI-gok), maar of Sonnet het ook elke keer expliciet benoemt is niet gegarandeerd — instructie staat nu als "je mag dit benoemen" (optioneel), niet dwingend. Test door bewust af te wijken tijdens een kettlebell-training en het volgende coach-advies te checken. Reminder gezet voor 10 juli. Indien coach het niet consistent noemt: instructie in `coach/route.ts` aanscherpen naar een dwingender "je MOET dit noemen als relevant". | 🟡 |
-| **Controleer op bestaand duplicaat in `activity_sessions` vóór/na v2.4.28-deploy** (zie changelog) | 🟡 |
-| Screenshot-import (v2.4.23/24) heeft nog geen duplicaatcheck — TCX wel sinds v2.4.28 | 🟡 |
-| **SQL uitvoeren voor `injuries.ended_at`-kolom vóór v2.4.26 werkt** (zie changelog) | 🔴 Blokkerend |
-| **SQL uitvoeren voor `garmin_activity_imports`-tabel vóór v2.4.23 werkt** (zie changelog) | 🔴 Blokkerend |
-| GitHub tags aanmaken v2.0.4 t/m v2.4.119 | 🟡 |
+| **GitHub tags aanmaken v2.0.4 t/m v2.4.119** — vergt git-push-rechten die Claude niet heeft, moet handmatig of door de gebruiker | 🟡 |
 | Life-events pagina testen | 🟡 |
-| Kettlebell illustraties: 30/102 live (allemaal WebP, gecomprimeerd ~55-71KB), #28 volgende | 🔄 In progress |
+| Kettlebell illustraties: 30/102 live, #28 volgende | 🔄 In progress |
+| Service worker-reset-probleem (v2.4.63-65) — nooit 100% bevestigd opgelost, niet opnieuw opgetreden voor zover bekend | ℹ️ Vermoedelijk stabiel |
 | Coach Call: POST-trigger alleen vanaf home-pagina (bekend gedrag, geen bug) | ℹ️ Info |
-| Exercise records vullen na eerste training | 🔄 automatisch |
 
 ---
 

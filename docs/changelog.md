@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.161 — "Schoon schip", deel 4: Hoe werkt CoachOS bijgewerkt
+**Vierde stap van de opschoonronde.**
+
+- `src/app/settings/hoe-werkt-het/page.tsx` — de regel over de
+  Performance-pagina beschreef nog de oude, eenvoudigere inhoud
+  (HRV-trend/Body Battery/Training Readiness/VO2max). Bijgewerkt naar
+  wat er sinds v2.4.160 daadwerkelijk staat: Herstel, Readiness,
+  belastbaarheid (CTL/ATL/TSB), vermoeidheid, consistentie, en de
+  fitness-indicatoren met hun Confidence-scores.
+
+`npx next build` — compileert zonder fouten of warnings.
+
+**Laatste stap van de opschoonronde: CoachPolicy-koppeling.** Bij
+onderzoek bleek dit geen zinvolle wijziging — zie de toelichting in de
+chat. CoachPolicy gebruikt al dezelfde onderliggende berekening
+(`calculateRecoveryScore()`) als de nieuwe Recovery-wrapper; die
+wrapper voegt alleen Confidence-scoring en EngineResult-opmaak toe die
+CoachPolicy niet gebruikt. Overschakelen zou alleen overbodige
+databasequeries toevoegen aan een veelgebruikt pad (elke Coach-
+aanroep), zonder enige gedragsverandering. Bewust NIET doorgevoerd.
+
 ## v2.4.160 — "Schoon schip", deel 3: Performance Dashboard-UI
 **De grootste stap van de opschoonronde: de Performance Engine-laag
 (Fase 1A/1B/2, 12 engines) is nu voor het eerst zichtbaar voor de
