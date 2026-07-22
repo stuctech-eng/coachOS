@@ -23,8 +23,6 @@ interface WeerData {
     middag: { label: string }
     avond: { label: string }
   }
-  // v2.4.168: TIJDELIJK, voor de GPS-fix-verificatie
-  _debug_locatie?: { bron: 'gps' | 'ip' | 'fallback'; lat: number; lon: number }
 }
 
 const VERSIE_STORAGE_KEY = 'coachos_laatst_geziene_versie'
@@ -115,22 +113,14 @@ export default function HomePage() {
       const url = lat !== undefined && lon !== undefined ? `/api/weather?lat=${lat}&lon=${lon}` : '/api/weather'
       fetch(url)
         .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data && !data.error) {
-            setWeer(data)
-            if (data._debug_locatie) console.log('[weer] locatiebron:', data._debug_locatie)
-          }
-        })
+        .then(data => { if (data && !data.error) setWeer(data) })
         .catch(() => {})
     }
 
     function vraagGpsEnHaalWeerOp() {
       if (!navigator.geolocation) { haalWeerOp(); return }
       navigator.geolocation.getCurrentPosition(
-        pos => {
-          console.log('[weer] GPS ontvangen:', pos.coords.latitude, pos.coords.longitude)
-          haalWeerOp(pos.coords.latitude, pos.coords.longitude)
-        },
+        pos => haalWeerOp(pos.coords.latitude, pos.coords.longitude),
         () => haalWeerOp(), // permissie geweigerd of mislukt — val terug op IP-locatie
         { timeout: 5000, maximumAge: 10 * 60 * 1000 } // maximaal 10 min oude GPS-fix hergebruiken
       )
@@ -354,11 +344,6 @@ export default function HomePage() {
                 <p className="text-xs text-slate-500">
                   Ochtend {weer.dagdelen.ochtend.label} · Middag {weer.dagdelen.middag.label} · Avond {weer.dagdelen.avond.label}
                 </p>
-                {weer._debug_locatie && (
-                  <p className="text-[10px] text-amber-500/70">
-                    🔧 debug: bron={weer._debug_locatie.bron}, lat={weer._debug_locatie.lat.toFixed(4)}, lon={weer._debug_locatie.lon.toFixed(4)}
-                  </p>
-                )}
               </div>
             )}
           </div>

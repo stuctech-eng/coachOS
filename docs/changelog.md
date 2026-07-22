@@ -1,5 +1,31 @@
 # CoachOS — Changelog
 
+## v2.4.170 — Today Engine Debug-scherm + weer-debug opgeruimd
+**Twee dingen tegelijk: een debugscherm om Scenario A/C van de Today
+Engine te kunnen verifiëren zonder de echte planning te hoeven
+aanpassen, en het opruimen van de tijdelijke weer-locatie-debug
+(v2.4.168) — bevestigd werkend, zoals afgesproken bij de volgende
+update verwijderd.**
+
+### Nieuw: Today Engine Debug
+- `src/app/debug/today/page.tsx` — toont de ruwe `/api/today`-respons
+  (geformatteerd én als ruwe JSON), los van hoe Home 'm weergeeft.
+  Bevestigt of de Today Engine (incl. de interne server-naar-server-
+  aanroep naar `api/training/today` met doorgegeven sessie-cookie)
+  technisch werkt, ongeacht welk scenario zich vandaag toevallig
+  voordoet.
+- Link toegevoegd vanaf `/debug`
+
+### Opgeruimd: weer-locatie-debug (v2.4.168)
+- `src/app/api/weather/route.ts` — `_debug_locatie`-veld en de
+  bijbehorende `bron`-variabele verwijderd. De GPS-vóór-IP-logica zelf
+  blijft ongewijzigd, alleen de tijdelijke zichtbaarheid is weg.
+- `src/app/home/page.tsx` — amber debugregel, `console.log`-regels en
+  het `_debug_locatie`-veld uit het `WeerData`-type verwijderd.
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten of
+warnings, `/debug/today` aanwezig in de build-output.
+
 ## v2.4.169 — Today Engine: één orkestrator voor "wat moet ik vandaag doen"
 **Nieuw platformprincipe, vastgelegd na overleg. Losten een echt
 architectuurprobleem op: `api/training/today` (Trainer AI) kon

@@ -58,17 +58,16 @@ export async function GET(req: NextRequest) {
     let lat = 52.37
     let lon = 4.89
     let stad = 'Amsterdam'
-    let bron: 'gps' | 'ip' | 'fallback' = 'fallback'
 
     // v2.4.168-FIX: GPS heeft ALTIJD voorrang boven IP-locatie. IP-
     // gebaseerde locatiebepaling (ipapi.co) is onbetrouwbaar zodra je
     // reist — mobiele providers routeren vaak via een vast regionaal
     // knooppunt (bijv. Venlo), dat dan als "jouw locatie" werd gebruikt,
-    // ook duizenden kilometers verderop. Zie overleg 22 juli 2026.
+    // ook duizenden kilometers verderop. Zie overleg 22 juli 2026,
+    // bevestigd werkend in de praktijk.
     if (gpsLat && gpsLon && !isNaN(parseFloat(gpsLat)) && !isNaN(parseFloat(gpsLon))) {
       lat = parseFloat(gpsLat)
       lon = parseFloat(gpsLon)
-      bron = 'gps'
       // Plaatsnaam bij GPS-coördinaten is optioneel — reverse geocoding
       // zou een extra externe aanroep vergen. Toon voorlopig "Huidige
       // locatie" i.p.v. een stadsnaam; kan later verfijnd worden.
@@ -91,7 +90,6 @@ export async function GET(req: NextRequest) {
               lat = geo.latitude
               lon = geo.longitude
               stad = geo.city || geo.region || 'Onbekend'
-              bron = 'ip'
             }
           }
         } catch { /* gebruik fallback — timeout of netwerkfout, niet blokkerend */ }
@@ -161,10 +159,6 @@ export async function GET(req: NextRequest) {
       },
       advies,
       coach_context: `Weer in ${stad}: ${temp}°C, ${omschrijving}, wind ${wind} km/u. Ochtend: ${ochtendRegen}mm, Middag: ${middagRegen}mm, Avond: ${avondRegen}mm. ${advies}.`,
-      // v2.4.168: TIJDELIJK — laat zien welke locatiebron en coördinaten
-      // daadwerkelijk gebruikt zijn, om de GPS-fix te kunnen bevestigen.
-      // Verwijderen zodra bevestigd dat GPS consistent werkt.
-      _debug_locatie: { bron, lat, lon },
     }
 
     return NextResponse.json(result)

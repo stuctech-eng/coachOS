@@ -615,6 +615,11 @@ export default function DebugPage() {
           ⚙️ Performance Engine Debug (Fase 1A)
         </a>
 
+        {/* v2.4.170: link naar Today Engine Debug */}
+        <a href="/debug/today" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+          📅 Today Engine Debug
+        </a>
+
         <button
           onClick={runDiagnostiek}
           disabled={bezig}
