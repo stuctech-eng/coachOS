@@ -131,7 +131,11 @@ export async function getHoogtemeters(userId: string, aantalDagen: number): Prom
     .eq('activities.name', 'Fietsen')
     .gte('date', isoDatum(vanaf))
 
-  return (data || []).reduce((som: number, r: { metrics: { elevation_gain_m?: number } | null }) => som + (r.metrics?.elevation_gain_m || 0), 0)
+  // v2.4.164-FIX: was metrics.elevation_gain_m (bestaat niet), moet
+  // metrics.elevation_gain zijn — zie running-grafieken.ts voor de
+  // volledige toelichting. Climbing Score gaf hierdoor altijd 0
+  // hoogtemeters, ook met echte Cycling-activiteiten.
+  return (data || []).reduce((som: number, r: { metrics: { elevation_gain?: number } | null }) => som + (r.metrics?.elevation_gain || 0), 0)
 }
 
 // v2.4.157 (Climbing Score): FTP + gewicht, voor W/kg

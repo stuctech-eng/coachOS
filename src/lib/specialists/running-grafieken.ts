@@ -34,7 +34,12 @@ export interface RunningDashboard {
 interface RunningActiviteitRij {
   date: string
   duration: number
-  metrics: { distance_m?: number; avg_speed_kmh?: number; avg_hr?: number; avg_cadence?: number; elevation_gain_m?: number } | null
+  // v2.4.164-FIX: veldnamen kwamen niet overeen met wat de TCX-importer
+  // daadwerkelijk schrijft (garmin-activity-tcx/route.ts: metrics.distance,
+  // metrics.avg_speed, metrics.elevation_gain — GEEN _m/_kmh-suffix).
+  // Cycling gebruikte al de juiste namen; dit bestand niet — km/pace/
+  // hoogtemeters stonden hierdoor altijd op 0, ook al bestond de data.
+  metrics: { distance?: number; avg_speed?: number; avg_hr?: number; avg_cadence?: number; elevation_gain?: number } | null
 }
 
 function maandagVanWeek(datum: Date): Date {
@@ -95,22 +100,22 @@ export async function haalRunningDashboard(userId: string): Promise<RunningDashb
 
   for (const a of activiteiten) {
     const datum = new Date(a.date)
-    const km = (a.metrics?.distance_m || 0) / 1000
+    const km = (a.metrics?.distance || 0) / 1000
     jaarKm += km
     if (datum >= maandStart) maandKm += km
     if (datum >= weekStart) { weekKm += km; trainingenDezeWeek++ }
 
     trainingstijdMinuten += a.duration || 0
-    hoogtemeters += a.metrics?.elevation_gain_m || 0
-    if (a.metrics?.avg_speed_kmh) speedWaarden.push(a.metrics.avg_speed_kmh)
+    hoogtemeters += a.metrics?.elevation_gain || 0
+    if (a.metrics?.avg_speed) speedWaarden.push(a.metrics.avg_speed)
     if (a.metrics?.avg_hr) hrWaarden.push(a.metrics.avg_hr)
     if (a.metrics?.avg_cadence) cadansWaarden.push(a.metrics.avg_cadence)
 
     if (a.duration > 0 && (!langsteDuurloop || a.duration > langsteDuurloop.minuten)) {
       langsteDuurloop = { minuten: a.duration, datum: a.date }
     }
-    if (a.metrics?.avg_speed_kmh && a.metrics.avg_speed_kmh > 0) {
-      const paceSecPerKm = kmuNaarSecPerKm(a.metrics.avg_speed_kmh)
+    if (a.metrics?.avg_speed && a.metrics.avg_speed > 0) {
+      const paceSecPerKm = kmuNaarSecPerKm(a.metrics.avg_speed)
       if (!snelsteTraining || paceSecPerKm < snelsteTraining.pace_sec_per_km) {
         snelsteTraining = { pace_sec_per_km: paceSecPerKm, datum: a.date }
       }
@@ -201,7 +206,7 @@ export async function haalRunningCTLATLTSB(userId: string, aantalDagen: number):
 
   const tssPerDag: Record<string, number> = {}
   for (const a of (activiteitenRes.data || []) as unknown as RunningActiviteitRij[]) {
-    const tss = berekenGeschatteRunningTSS(a.duration || 0, a.metrics?.avg_speed_kmh || null, drempelsnelheidKmh)
+    const tss = berekenGeschatteRunningTSS(a.duration || 0, a.metrics?.avg_speed || null, drempelsnelheidKmh)
     tssPerDag[a.date] = (tssPerDag[a.date] || 0) + tss
   }
 
@@ -352,7 +357,7 @@ export async function haalWekelijkseRunningTrend(userId: string, aantalWeken: nu
   for (const a of (activiteiten || []) as unknown as RunningActiviteitRij[]) {
     const weekKey = isoDatum(maandagVanWeekProgressie(new Date(a.date)))
     if (!perWeek[weekKey]) perWeek[weekKey] = { speedSom: 0, speedCount: 0, hrSom: 0, hrCount: 0, cadansSom: 0, cadansCount: 0 }
-    if (a.metrics?.avg_speed_kmh) { perWeek[weekKey].speedSom += a.metrics.avg_speed_kmh; perWeek[weekKey].speedCount++ }
+    if (a.metrics?.avg_speed) { perWeek[weekKey].speedSom += a.metrics.avg_speed; perWeek[weekKey].speedCount++ }
     if (a.metrics?.avg_hr) { perWeek[weekKey].hrSom += a.metrics.avg_hr; perWeek[weekKey].hrCount++ }
     if (a.metrics?.avg_cadence) { perWeek[weekKey].cadansSom += a.metrics.avg_cadence; perWeek[weekKey].cadansCount++ }
   }

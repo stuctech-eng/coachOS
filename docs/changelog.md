@@ -1,5 +1,61 @@
 # CoachOS — Changelog
 
+## v2.4.164 — BELANGRIJKE FIX: Running-veldnamen kwamen niet overeen met wat de TCX-importer schrijft
+**Gemeld met screenshot: Running Coach-dashboard toonde 0km voor week/
+maand/jaar en geen pace, terwijl de coach-tekst eronder correct "vijf
+runs, 16,3 kilometer" noemde. Twee verschillende bronnen, verschillende
+uitkomst — dat hoorde niet.**
+
+### Root cause
+`garmin-activity-tcx/route.ts` schrijft naar `metrics.distance`,
+`metrics.avg_speed`, `metrics.elevation_gain` (bevestigd: Cycling's
+eigen `cycling-grafieken.ts` gebruikte deze namen al correct). Mijn
+`running-grafieken.ts` — geschreven in een eerdere sessie — gebruikte
+overal de verkeerde namen: `distance_m`, `avg_speed_kmh`,
+`elevation_gain_m`. Die velden bestaan simpelweg niet op de opgeslagen
+data, dus elke berekening die ervan afhing gaf stil 0 terug — geen
+foutmelding, want `?? 0`/`|| 0`-fallbacks vingen het op.
+
+**`running-analysis.ts` (bron van de coach-tekst) gebruikte wél de
+juiste naam (`'distance'`) — vandaar de discrepantie in het
+screenshot.**
+
+### Impact — groter dan alleen het dashboard
+Dit veldnaam-verschil raakte alles wat `running-grafieken.ts`
+aanlevert:
+- Running Dashboard: week/maand/jaar-km, gemiddelde pace — altijd 0/leeg
+- **Running TSS-berekening** (`berekenGeschatteRunningTSS` gebruikt
+  `avg_speed`) — dus ook **CTL/ATL/TSB voor Running altijd 0**
+- **Load Engine (Performance Platform, v2.4.150)** — verklaart waarom
+  eerder vandaag getest werd met "Running: CTL 0 · ATL 0 · TSB 0",
+  wat ik toen aanzag voor "nog geen data" terwijl het deze bug was
+- Wekelijkse pace-trend (Progressie-pagina)
+- **Climbing Score** (`performance-data-adapter.ts`, `getHoogtemeters()`)
+  — zelfde `elevation_gain_m`-fout, dus ook Cycling-hoogtemeters
+  stonden altijd op 0
+
+### Fix
+- `src/lib/specialists/running-grafieken.ts` — alle 6 voorkomens
+  gecorrigeerd naar `distance`/`avg_speed`/`elevation_gain`.
+  `running_distance_records`-verwijzingen (een aparte tabel, terecht
+  met een eigen `distance_m`-kolom) NIET aangeraakt — die klopten al.
+- `src/core/performance/data/performance-data-adapter.ts` —
+  `getHoogtemeters()` idem gefixt
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten of
+warnings. Volledige her-grep van het bestand bevestigt: geen
+verkeerde veldnamen meer over op de juiste plekken, de
+`running_distance_records`-kolomverwijzingen (terecht `distance_m`)
+ongewijzigd gelaten.
+
+**Test-instructies:**
+1. Running Hub → Dashboard moet nu echte week/maand/jaar-km en pace
+   tonen
+2. `/performance` → Load Engine → Running-regel moet nu een echte
+   CTL/ATL/TSB tonen i.p.v. 0/0/0
+3. `/performance` → Climbing-kaart → hoogtemeters moet nu een echt
+   getal tonen (als er Cycling-activiteiten met hoogtedata zijn)
+
 ## v2.4.163 — Fix: Running Profile onvindbaar in Instellingen + volledige live-inventarisatie
 **Gevraagd: "is Running nu compleet?" — het Running-profielscherm
 bleek al sinds v2.4.126 te bestaan en te werken, maar stond nergens
