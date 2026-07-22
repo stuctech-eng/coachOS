@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import { isoDatum } from '../shared/dates'
 import { haalPerformanceVoorRecovery } from '@/lib/specialists/health-analysis-engine'
+import { haalDagContext } from '@/core/utils/life-events-context'
 import type { PerformanceContext } from '../core/types'
 
 // ── Performance Data Adapter ──────────────────────────────────────────────
@@ -26,6 +27,7 @@ export async function getPerformanceContext(userId: string): Promise<Performance
     activiteitenTotaalRes,
     activiteiten30Res,
     eersteActiviteitRes,
+    dagContext,
   ] = await Promise.all([
     supabase.from('daily_checkins').select('*').eq('user_id', userId).eq('date', vandaag).maybeSingle(),
     supabase.from('health_metrics').select('*').eq('user_id', userId).eq('date', vandaag).maybeSingle(),
@@ -33,6 +35,10 @@ export async function getPerformanceContext(userId: string): Promise<Performance
     supabase.from('activity_sessions').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     supabase.from('activity_sessions').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('date', isoDatum(dertigDagenGeleden)),
     supabase.from('activity_sessions').select('date').eq('user_id', userId).order('date', { ascending: true }).limit(1).maybeSingle(),
+    // v2.4.172 (Coach Context Engine Fase 1): was hardcoded 0 (bleek de
+    // v2.4.158-fix nooit echt gecommit te zijn) — nu de gedeelde
+    // Context Resolver, zelfde bron als CoachPolicy/Coach-prompt/Coach Score
+    haalDagContext(supabase, userId, new Date().getDay(), [0, 6].includes(new Date().getDay())).catch(() => null),
   ])
 
   const eersteActiviteitDatum = eersteActiviteitRes.data?.date || null
@@ -79,7 +85,7 @@ export async function getPerformanceContext(userId: string): Promise<Performance
       checkin: checkinRes.data || null,
       healthMetrics: healthMetricsRes.data || null,
       performanceSnapshot: performanceSnapshot,
-      lifeEventPenalty: 0, // zie toelichting in core/types.ts
+      lifeEventPenalty: dagContext?.lifeEventPenalty ?? 0,
     },
   }
 }

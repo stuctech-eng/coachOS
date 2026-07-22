@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { calculateRecoveryScore } from '@/core/ai-engine/recovery-engine'
 import { haalPerformanceVoorRecovery } from '@/lib/specialists/health-analysis-engine'
+import { haalDagContext } from '@/core/utils/life-events-context'
 import { calculateTrainingScore } from '@/core/engines/training-engine'
 import { calculateLifestyleScore } from '@/core/engines/lifestyle-engine'
 import { calculateCoachScore } from '@/core/engines/coach-score-engine'
@@ -80,7 +81,6 @@ export async function POST() {
       activiteiten30Res,
       checkins30Res,
       blessuresRes,
-      lifeEventsRes,
       garminRes,
     ] = await Promise.all([
       supabase.from('profiles').select('available_time').eq('user_id', user.id).single(),
@@ -90,14 +90,12 @@ export async function POST() {
       supabase.from('activity_sessions').select('date, duration, metrics').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('daily_checkins').select('date, energy_score, feeling_score').eq('user_id', user.id).gte('date', vanDatum).order('date'),
       supabase.from('injuries').select('active').eq('user_id', user.id).eq('active', true),
-      supabase.from('life_events').select('type, recovery_impact, stress_load, sleep_disruption').eq('user_id', user.id).gte('start_time', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()),
       getGarminData(supabase, user.id),
     ])
 
     const profile = profileRes.data
     const checkin = checkinRes.data
     const heeftBlessure = (blessuresRes.data?.length || 0) > 0
-    const lifeEvents = (lifeEventsRes.data || []) as Array<{ recovery_impact: number; stress_load: number; sleep_disruption: number }>
     const garmin = garminRes.data
 
     // Garmin data gebruiken als metrics voor herstelberekening indien aanwezig
@@ -111,9 +109,16 @@ export async function POST() {
       body_battery: garmin.body_battery?.current || null,
     } : null)
 
-    const lifeEventPenalty = lifeEvents.reduce((acc, e) => {
-      return acc + (e.recovery_impact * 5) + (e.sleep_disruption * 3)
-    }, 0)
+    // v2.4.172 (Coach Context Engine Fase 1): niet langer een losse,
+    // eigen berekening — haalDagContext() is nu de ENIGE plek die
+    // lifeEventPenalty berekent. Bonus t.o.v. de oude query: neemt nu
+    // ook terugkerende events correct mee (de oude query deed dat niet)
+    // en past de prioriteitsregels toe (vakantie/ziekte/blessure
+    // onderdrukt werk, geen tegenstrijdige context meer).
+    const vandaagNummer = new Date().getDay()
+    const isWeekend = vandaagNummer === 0 || vandaagNummer === 6
+    const dagContext = await haalDagContext(supabase, user.id, vandaagNummer, isWeekend)
+    const lifeEventPenalty = dagContext.lifeEventPenalty
 
     // v2.4.148 (Niveau 2): Training Readiness + belastingsverhouding nu
     // ook input voor de Recovery Score (dus ook voor de zichtbare Coach

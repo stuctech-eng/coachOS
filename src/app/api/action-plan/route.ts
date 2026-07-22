@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
-import { fetchTodaysLifeEvents, formatLifeEventsContext } from '@/core/utils/life-events-context'
+import { haalDagContext, formatResolvedContext } from '@/core/utils/life-events-context'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -56,7 +56,7 @@ export async function POST() {
     const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
     const { dag, isWeekend, dagNummer } = getDagInfo()
 
-    const [profileRes, checkinRes, statusRes, blessuresRes, goalsRes, garminRes, trainingsRes, journalRes, alleEvents] = await Promise.all([
+    const [profileRes, checkinRes, statusRes, blessuresRes, goalsRes, garminRes, trainingsRes, journalRes, dagContext] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('daily_status').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -80,7 +80,7 @@ export async function POST() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(3),
-      fetchTodaysLifeEvents(supabase, user.id, dagNummer, isWeekend),
+      haalDagContext(supabase, user.id, dagNummer, isWeekend),
     ])
 
     const profile = profileRes.data
@@ -110,7 +110,8 @@ export async function POST() {
     const garminIsVandaag = garminDatum === vandaagAms
 
     // Levensgebeurtenissen — alle categorieën, zelfde selectie als coach/route.ts
-    const lifeEventsContext = formatLifeEventsContext(alleEvents)
+    // v2.4.172 (Coach Context Engine Fase 1): opgeloste dagcontext i.p.v. ruwe eventlijst
+    const lifeEventsContext = formatResolvedContext(dagContext)
 
     const naam = profile?.display_name || profile?.first_name || 'je'
     const score = status?.coach_score || 50

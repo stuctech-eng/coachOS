@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { calculateRecoveryScore } from '@/core/ai-engine/recovery-engine'
 import { buildDailyCoachPrompt, WeekMetrics } from '@/core/prompts/daily-coach'
-import { fetchTodaysLifeEvents, formatLifeEventsContext } from '@/core/utils/life-events-context'
+import { haalDagContext, formatResolvedContext } from '@/core/utils/life-events-context'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 import { beslisTussenSpecialisten } from '@/lib/specialists/decision-engine'
@@ -72,7 +72,7 @@ export async function POST() {
     const vandaagNummer = new Date().getDay()
     const isWeekend = vandaagNummer === 0 || vandaagNummer === 6
 
-    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, lifeEvents, exerciseRecordsRes, coachCallsRes, weerRes, actieveSpecialistenRes] = await Promise.all([
+    const [profileRes, goalsRes, checkinRes, metricsRes, memoryRes, weekMetricsRes, activiteitenRes, garminRes, garminWeekRes, trainingsRes, blessuresRes, journalRes, dagContext, exerciseRecordsRes, coachCallsRes, weerRes, actieveSpecialistenRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('user_goals').select('*').eq('user_id', user.id).eq('status', 'active'),
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
@@ -117,7 +117,7 @@ export async function POST() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(3),
-      fetchTodaysLifeEvents(supabase, user.id, vandaagNummer, isWeekend),
+      haalDagContext(supabase, user.id, vandaagNummer, isWeekend),
       // v2.4.52/53: advised_weight_kg + tempo/advised_tempo toegevoegd aan
       // de select, nodig voor de advies-vs-gebruikt-vergelijking hieronder
       supabase.from('exercise_records')
@@ -270,7 +270,12 @@ export async function POST() {
     const loadContext = ''
     const blessures = blessuresRes.data || []
 
-    const lifeEventsContext = formatLifeEventsContext(lifeEvents)
+    // v2.4.172 (Coach Context Engine Fase 1): opgeloste dagcontext
+    // i.p.v. de ruwe eventlijst — vakantie/ziekte/blessure onderdrukt
+    // nu automatisch conflicterende werk-events, geen tegenstrijdige
+    // context meer naar de Coach ("werkt vandaag" + "op vakantie"
+    // tegelijk kon eerder allebei in de prompt terechtkomen)
+    const lifeEventsContext = formatResolvedContext(dagContext)
 
     const blessureContext = blessures.length > 0
       ? `Actieve blessures: ${blessures.map((b: {body_part: string; pain_score: number}) => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ')}`

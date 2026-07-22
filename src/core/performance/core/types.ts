@@ -45,12 +45,9 @@ export interface PerformanceContext {
     checkin: DailyCheckin | null
     healthMetrics: HealthMetrics | null
     performanceSnapshot: PerformanceVoorRecovery | null
-    // v2.4.149: bewust 0 in Fase 1A — de bestaande levensgebeurtenis-
-    // penalty-berekening (zie api/status/route.ts) is nog niet
-    // overgenomen in de adapter. De Recovery-wrapper hieronder geeft
-    // daardoor bij een actieve levensgebeurtenis een net iets ander
-    // (hoger) resultaat dan de live Coach Score op Home tot dit is
-    // toegevoegd — expliciet benoemd, geen verborgen afwijking.
+    // v2.4.172: gevuld via de gedeelde Context Resolver
+    // (haalDagContext() in life-events-context.ts) — zelfde bron als
+    // CoachPolicy, de Coach-prompt en de Coach Score op Home.
     lifeEventPenalty: number
   }
 }

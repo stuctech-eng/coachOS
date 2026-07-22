@@ -1,5 +1,62 @@
 # CoachOS — Changelog
 
+## v2.4.172 — Coach Context Engine Fase 1: Context Resolver
+**Gemeld: de Coach dacht tijdens vakantie nog dat er gewerkt werd.
+Root cause: dedupliceer-logica matchte alleen op exact hetzelfde
+`type`, niet op logisch conflict — een terugkerende "Dagdienst" en een
+eenmalige "Vakantie" stonden gewoon allebei tegelijk in de Coach-
+context.**
+
+### Context Resolver — pure functie
+- **Nieuw:** `src/core/utils/context-resolver.ts` — `bepaalDagContext()`.
+  Volledig puur: geen database, API-calls of AI. Vaste, expliciete
+  prioriteitsvolgorde (`CONTEXT_PRIORITY`): blessure → ziekte →
+  vakantie → herstel → wedstrijd → werk → training → vrije_tijd.
+  Levert één opgeloste dagcontext (mode/modifiers/coachInstruction/
+  suppressedEvents/lifeEventPenalty) i.p.v. een ruwe eventlijst.
+- **Events verdwijnen nooit stilzwijgend** — onderdrukte events krijgen
+  een zichtbare `status: 'suppressed'` + reden.
+- Vakantie krijgt nu echte impact (trainingModifier -30%,
+  recoveryModifier +20%, stressModifier -40%) — was bijna 0.
+
+### Eén gedeelde bron — was voorheen 5x los geïmplementeerd
+- **Nieuw:** `haalDagContext()` + `formatResolvedContext()` in
+  `life-events-context.ts` — de gedeelde "onzuivere" wrapper (haalt
+  data op, roept de pure resolver aan)
+- `api/coach/route.ts`, `api/action-plan/route.ts`,
+  `api/status/route.ts` (Coach Score), `core/performance/data/
+  performance-data-adapter.ts` — allemaal omgezet naar deze ene bron
+
+### Bijvangst: de v2.4.158-fix bleek nooit gecommit
+De Performance-adapter had `lifeEventPenalty` nog letterlijk hardcoded
+op `0` staan — de eerder aangekondigde fix uit v2.4.158 is blijkbaar
+nooit daadwerkelijk toegepast. Nu (eindelijk) echt gefixt, via de
+nieuwe gedeelde bron.
+
+**Geen databasewijziging** — `life_events` blijft ongewijzigd.
+
+### README: Coach Context Engine als toekomstvisie vastgelegd
+Bewust NIET "Coach Agenda" genoemd (klinkt als kalender, de visie is
+groter). Toekomstige inputs (externe agenda's, schoolvakanties,
+automatische periodiserings-events) gedocumenteerd, bewust niet
+gebouwd.
+
+**Gevalideerd vóór levering — 5 scenario's, allemaal correct:**
+- **Het exacte gerapporteerde probleem:** vakantie + terugkerende
+  dagdienst → dagdienst correct onderdrukt, zichtbaar met reden
+- lifeEventPenalty-formule ongewijzigd (gedrag-behoudendheid bevestigd)
+- Blessure wint zelfs van vakantie
+- Neutrale staat zonder events werkt correct
+- Onbekend event-type crasht niet, valt terug op laagste prioriteit
+
+`npx next build` — compileert zonder fouten of warnings.
+
+**Test-instructies:**
+1. Met je huidige vakantie-instelling → Coach-advies opvragen → mag nu
+   niet meer verwijzen naar een werkdag
+2. `/debug` → check of de Coach Score niet onverwacht springt (de
+   formule zelf is ongewijzigd, alleen de bron is opgeschoond)
+
 ## v2.4.171 — Today Engine: proposals[]-structuur + echte tie-break i.p.v. arbitraire volgorde
 **Multi-sport-voorbereiding, gefaseerd zoals afgesproken: Fase 1 nu
 (intern al schaalbaar, naar buiten toe nog steeds precies één

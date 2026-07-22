@@ -1064,7 +1064,82 @@ voor deze disciplines. Ze worden pas een volwaardige "specialist"
 zodra daar een concrete aanleiding voor is — zelfde principe als overal
 vandaag: bouwen met een reden, niet speculatief vooruit.
 
-## Architectuur Flow
+## 🧭 Coach Context Engine — Fase 1 afgerond (v2.4.172)
+
+**Aanleiding:** een gemelde bug — een terugkerend werk-event ("Dagdienst")
+bleef naast een eenmalige "Vakantie" in de Coach-context staan, omdat de
+oude dedupliceer-logica alleen op exact hetzelfde `type` matchte, niet
+op logisch conflict. De Coach dacht daardoor tijdens vakantie nog dat
+er gewerkt werd.
+
+### Context Resolver — pure functie
+`src/core/utils/context-resolver.ts` — `bepaalDagContext()`. **Volledig
+puur:** geen database, geen API-calls, geen AI. Neemt ruwe levensevents
+(+ optioneel actieve blessures) en levert één opgeloste werkelijkheid:
+
+```ts
+{
+  mode: 'vakantie',
+  priorityReason: 'vakantie overschrijft dagdienst',
+  trainingModifier: -30,      // %
+  recoveryModifier: 20,       // %
+  stressModifier: -40,        // %
+  coachInstruction: 'Focus op onderhoud en plezier.',
+  suppressedEvents: [{ type: 'dagdienst', status: 'suppressed', reason: 'overschreven door vakantie' }],
+  lifeEventPenalty: 3,        // zelfde formule als voorheen, nu op één plek
+}
+```
+
+**Vaste prioriteitsvolgorde, expliciete configuratie**
+(`CONTEXT_PRIORITY`, niet verstopt in logica):
+`blessure → ziekte → vakantie → herstel → wedstrijd → werk → training → vrije_tijd`
+
+**Events verdwijnen nooit stilzwijgend** — een onderdrukt event krijgt
+een zichtbare `status: 'suppressed'` + reden, nodig voor debugging,
+gebruikersvertrouwen, en latere agenda-integratie ("Waarom staat mijn
+werk niet in mijn planning?").
+
+### Eén gedeelde bron — vijf plekken die eerder elk hun eigen versie hadden
+`api/coach/route.ts`, `api/action-plan/route.ts`, `api/status/route.ts`
+(Coach Score) en de Performance-data-adapter riepen voorheen elk hun
+eigen `lifeEventPenalty`-berekening of ruwe events-lijst aan — nu
+allemaal via `haalDagContext()` (de "onzuivere" wrapper die data ophaalt
+en de pure resolver aanroept). **Bijvangst:** de Performance-adapter had
+`lifeEventPenalty` nog hardcoded op `0` staan — de eerder aangekondigde
+v2.4.158-fix bleek nooit daadwerkelijk gecommit, ontdekt en nu pas
+écht gefixt.
+
+**Geen databasewijziging** — `life_events` blijft ongewijzigd, de
+Resolver is een intelligente laag erboven.
+
+**Gevalideerd — 5 scenario's, allemaal correct:** het exacte gerapporteerde
+probleem (vakantie onderdrukt terugkerende dagdienst), lifeEventPenalty-
+formule ongewijzigd, blessure wint zelfs van vakantie, neutrale staat
+zonder events, onbekend event-type crasht niet (valt terug op laagste
+prioriteit).
+
+### Toekomstvisie — Coach Context Engine (vastgelegd, nog niet gebouwd)
+
+**Bewust NIET "Coach Agenda" genoemd** — dat klinkt als kalender, maar
+de visie is groter: de Coach begrijpt tijd, verplichtingen, gezondheid,
+training en omgeving samen.
+
+```
+Coach Context Engine (visie)
+Toekomstige inputs:
+- Apple Calendar / Google Calendar / Outlook (optioneel, aanvullend — CoachOS blijft leidend)
+- Schoolvakanties per regio
+- Nationale feestdagen (automatisch)
+- Automatisch-gegenereerde periodiserings-events (Build/Recovery/Peak Week)
+- Wedstrijden/evenementen als eigen categorie
+Allemaal opgelost tot: Athlete Daily Context
+```
+
+**Bewust nog niet gebouwd:** externe agenda-sync (OAuth), schoolvakantie-
+API, een eigen Agenda-UI, nieuwe database-tabellen. Elk daarvan is een
+apart project, geen uitbreiding van vandaag.
+
+
 ```
 Coach (bepaalt doel + beperkingen)
     ↓
