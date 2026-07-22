@@ -1,5 +1,49 @@
 # CoachOS — Changelog
 
+## v2.4.168 — Fix: weer toonde verkeerde locatie tijdens reizen (Venlo i.p.v. Garmisch-Partenkirchen)
+**Root cause bevestigd: de app gebruikte helemaal geen GPS — locatie
+werd bepaald via IP-adres (`ipapi.co`). Mobiele providers routeren
+vaak via een vast regionaal internet-knooppunt (zoals Venlo), waardoor
+je IP-adres daar geregistreerd staat, ook duizenden kilometers
+verderop. Precies zoals gerapporteerd.**
+
+### Fix — GPS krijgt voorrang, IP-locatie wordt het vangnet
+- `src/app/api/weather/route.ts` — accepteert nu optionele `lat`/`lon`-
+  query-parameters. Zijn die aanwezig (van GPS), dan worden ze direct
+  gebruikt — geen IP-lookup meer nodig. Zonder GPS-coördinaten: exact
+  hetzelfde IP-gebaseerde vangnet als voorheen (ongewijzigd gedrag voor
+  wie geen locatiepermissie geeft).
+- `src/app/home/page.tsx` — vraagt nu eerst `navigator.geolocation.
+  getCurrentPosition()` op vóór de weer-API wordt aangeroepen. Bij een
+  geweigerde/mislukte GPS-permissie: automatische fallback naar de oude
+  IP-route, geen crash. **Extra: haalt het weer opnieuw op zodra de app
+  weer op de voorgrond komt** (`visibilitychange`) — belangrijk juist
+  tijdens reizen, wanneer je van locatie verandert terwijl de app op de
+  achtergrond stond.
+
+### Tijdelijke debug-zichtbaarheid (op verzoek)
+Een amber debugregel onder het weerbericht op Home toont welke bron
+(`gps`/`ip`/`fallback`) en welke exacte coördinaten daadwerkelijk zijn
+gebruikt — zodat je zelf kunt bevestigen dat het nu klopt, zonder in de
+devtools te hoeven kijken. **Tijdelijk** — verwijderen zodra bevestigd
+dat GPS consistent werkt.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- Query-parameter-verwerking los getest: geldige GPS-coördinaten,
+  ontbrekende parameters, lege strings, en een ongeldige waarde —
+  allemaal correct afgehandeld (val terug op IP/fallback zodra iets
+  niet klopt, crasht nooit)
+
+**Test-instructies:**
+1. Home openen (met locatiepermissie toegestaan) → debugregel moet
+   `bron=gps` tonen met coördinaten die overeenkomen met je
+   daadwerkelijke locatie
+2. Locatiepermissie weigeren → debugregel moet `bron=ip` of
+   `bron=fallback` tonen, weer moet nog steeds gewoon laden (geen
+   crash)
+3. App naar de achtergrond en weer terug → weer moet opnieuw ophalen
+
 ## v2.4.167 — Hoe werkt CoachOS bijgewerkt: Ritanalyse + Progress Center + Grafieken
 **Gevraagd: is alles bijgewerkt, ook "Hoe werkt CoachOS"? Antwoord:
 nee — en de ritanalyse-functie ontbrak daar zelfs voor Cycling, ook al

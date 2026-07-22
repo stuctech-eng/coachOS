@@ -23,6 +23,8 @@ interface WeerData {
     middag: { label: string }
     avond: { label: string }
   }
+  // v2.4.168: TIJDELIJK, voor de GPS-fix-verificatie
+  _debug_locatie?: { bron: 'gps' | 'ip' | 'fallback'; lat: number; lon: number }
 }
 
 const VERSIE_STORAGE_KEY = 'coachos_laatst_geziene_versie'
@@ -105,12 +107,44 @@ export default function HomePage() {
   const vandaag = new Date().toISOString().split('T')[0]
   const heeftRisicos = coachStatus?.risk_flags && coachStatus.risk_flags.length > 0
 
-  // Weerbericht ophalen
+  // Weerbericht ophalen — v2.4.168-FIX: GPS eerst, IP-locatie alleen als
+  // vangnet (was andersom, gaf verkeerde locatie tijdens reizen — zie
+  // overleg 22 juli 2026)
   useEffect(() => {
-    fetch('/api/weather')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data && !data.error) setWeer(data) })
-      .catch(() => {})
+    function haalWeerOp(lat?: number, lon?: number) {
+      const url = lat !== undefined && lon !== undefined ? `/api/weather?lat=${lat}&lon=${lon}` : '/api/weather'
+      fetch(url)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && !data.error) {
+            setWeer(data)
+            if (data._debug_locatie) console.log('[weer] locatiebron:', data._debug_locatie)
+          }
+        })
+        .catch(() => {})
+    }
+
+    function vraagGpsEnHaalWeerOp() {
+      if (!navigator.geolocation) { haalWeerOp(); return }
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          console.log('[weer] GPS ontvangen:', pos.coords.latitude, pos.coords.longitude)
+          haalWeerOp(pos.coords.latitude, pos.coords.longitude)
+        },
+        () => haalWeerOp(), // permissie geweigerd of mislukt — val terug op IP-locatie
+        { timeout: 5000, maximumAge: 10 * 60 * 1000 } // maximaal 10 min oude GPS-fix hergebruiken
+      )
+    }
+
+    vraagGpsEnHaalWeerOp()
+
+    // Opnieuw ophalen zodra de app weer op de voorgrond komt — belangrijk
+    // als je onderweg bent en van locatie verandert
+    function onZichtbaarheidWijziging() {
+      if (document.visibilityState === 'visible') vraagGpsEnHaalWeerOp()
+    }
+    document.addEventListener('visibilitychange', onZichtbaarheidWijziging)
+    return () => document.removeEventListener('visibilitychange', onZichtbaarheidWijziging)
   }, [])
 
   // v2.4.14: versie-check — bij een nieuw versienummer t.o.v. de vorige
@@ -307,6 +341,11 @@ export default function HomePage() {
                 <p className="text-xs text-slate-500">
                   Ochtend {weer.dagdelen.ochtend.label} · Middag {weer.dagdelen.middag.label} · Avond {weer.dagdelen.avond.label}
                 </p>
+                {weer._debug_locatie && (
+                  <p className="text-[10px] text-amber-500/70">
+                    🔧 debug: bron={weer._debug_locatie.bron}, lat={weer._debug_locatie.lat.toFixed(4)}, lon={weer._debug_locatie.lon.toFixed(4)}
+                  </p>
+                )}
               </div>
             )}
           </div>

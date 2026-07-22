@@ -51,30 +51,51 @@ function dagdeel(uur: number): 'ochtend' | 'middag' | 'avond' {
 
 export async function GET(req: NextRequest) {
   try {
-    const forwarded = req.headers.get('x-forwarded-for')
-    const ip = forwarded ? forwarded.split(',')[0].trim() : null
+    const url = new URL(req.url)
+    const gpsLat = url.searchParams.get('lat')
+    const gpsLon = url.searchParams.get('lon')
 
     let lat = 52.37
     let lon = 4.89
     let stad = 'Amsterdam'
+    let bron: 'gps' | 'ip' | 'fallback' = 'fallback'
 
-    if (ip && ip !== '127.0.0.1' && !ip.startsWith('192.168') && !ip.startsWith('::1')) {
-      try {
-        // FIX v2.4.4: timeout toegevoegd — voorkomt hangende function bij trage geo-lookup
-        const geoRes = await fetchWithTimeout(
-          `https://ipapi.co/${ip}/json/`,
-          { headers: { 'User-Agent': 'CoachOS/1.0' } },
-          3000
-        )
-        if (geoRes.ok) {
-          const geo = await geoRes.json()
-          if (geo.latitude && geo.longitude) {
-            lat = geo.latitude
-            lon = geo.longitude
-            stad = geo.city || geo.region || 'Onbekend'
+    // v2.4.168-FIX: GPS heeft ALTIJD voorrang boven IP-locatie. IP-
+    // gebaseerde locatiebepaling (ipapi.co) is onbetrouwbaar zodra je
+    // reist — mobiele providers routeren vaak via een vast regionaal
+    // knooppunt (bijv. Venlo), dat dan als "jouw locatie" werd gebruikt,
+    // ook duizenden kilometers verderop. Zie overleg 22 juli 2026.
+    if (gpsLat && gpsLon && !isNaN(parseFloat(gpsLat)) && !isNaN(parseFloat(gpsLon))) {
+      lat = parseFloat(gpsLat)
+      lon = parseFloat(gpsLon)
+      bron = 'gps'
+      // Plaatsnaam bij GPS-coördinaten is optioneel — reverse geocoding
+      // zou een extra externe aanroep vergen. Toon voorlopig "Huidige
+      // locatie" i.p.v. een stadsnaam; kan later verfijnd worden.
+      stad = 'Huidige locatie'
+    } else {
+      const forwarded = req.headers.get('x-forwarded-for')
+      const ip = forwarded ? forwarded.split(',')[0].trim() : null
+
+      if (ip && ip !== '127.0.0.1' && !ip.startsWith('192.168') && !ip.startsWith('::1')) {
+        try {
+          // FIX v2.4.4: timeout toegevoegd — voorkomt hangende function bij trage geo-lookup
+          const geoRes = await fetchWithTimeout(
+            `https://ipapi.co/${ip}/json/`,
+            { headers: { 'User-Agent': 'CoachOS/1.0' } },
+            3000
+          )
+          if (geoRes.ok) {
+            const geo = await geoRes.json()
+            if (geo.latitude && geo.longitude) {
+              lat = geo.latitude
+              lon = geo.longitude
+              stad = geo.city || geo.region || 'Onbekend'
+              bron = 'ip'
+            }
           }
-        }
-      } catch { /* gebruik fallback — timeout of netwerkfout, niet blokkerend */ }
+        } catch { /* gebruik fallback — timeout of netwerkfout, niet blokkerend */ }
+      }
     }
 
     // Open-Meteo met uurlijkse data voor ochtend/middag/avond
@@ -140,6 +161,10 @@ export async function GET(req: NextRequest) {
       },
       advies,
       coach_context: `Weer in ${stad}: ${temp}°C, ${omschrijving}, wind ${wind} km/u. Ochtend: ${ochtendRegen}mm, Middag: ${middagRegen}mm, Avond: ${avondRegen}mm. ${advies}.`,
+      // v2.4.168: TIJDELIJK — laat zien welke locatiebron en coördinaten
+      // daadwerkelijk gebruikt zijn, om de GPS-fix te kunnen bevestigen.
+      // Verwijderen zodra bevestigd dat GPS consistent werkt.
+      _debug_locatie: { bron, lat, lon },
     }
 
     return NextResponse.json(result)
