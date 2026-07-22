@@ -1,5 +1,21 @@
 # CoachOS — Changelog
 
+## v2.4.167 — Hoe werkt CoachOS bijgewerkt: Ritanalyse + Progress Center + Grafieken
+**Gevraagd: is alles bijgewerkt, ook "Hoe werkt CoachOS"? Antwoord:
+nee — en de ritanalyse-functie ontbrak daar zelfs voor Cycling, ook al
+bestaat die al sinds v2.4.106.**
+
+- `src/app/settings/hoe-werkt-het/page.tsx` — twee nieuwe regels in de
+  Specialisten-sectie:
+  1. Automatische ritanalyse (herkent zelf Cycling vs Running, legt uit
+     wat er objectief bepaald wordt vóór de coach erop reageert)
+  2. Progress Center + Grafieken als aparte schermen
+
+`npx next build` — compileert zonder fouten of warnings.
+
+Hiermee is de documentatie van de hele Running/Cycling-pariteitsronde
+(v2.4.159-167) compleet: README, changelog, én de in-app uitlegpagina.
+
 ## v2.4.166 — Running Specialist Fase 2 (Professional), afgerond: Progress + Grafieken
 **Laatste stap van de Running/Cycling-pariteitsronde. Progress Center
 en Grafieken-pagina, spiegelend aan Cycling.**
