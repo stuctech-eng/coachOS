@@ -43,6 +43,8 @@ interface ActivitySession {
 
 // v2.4.106: Ritanalyse, Fase 2f — alleen voor deze specifieke sportnamen
 const CYCLING_NAMEN = ['Fietsen', 'Fietsen (buiten)', 'Indoor Fietsen']
+// v2.4.165: Running Ritanalyse, Fase 2 (Professional)
+const RUNNING_NAMEN = ['Hardlopen']
 
 function formatDuur(min: number): string {
   if (min < 60) return `${min}m`
@@ -98,10 +100,14 @@ export default function ActivityDetailPage() {
 
   async function analyseerDezeRit() {
     if (!session) return
+    // v2.4.165: automatische sport-herkenning — geen aparte knoppen per
+    // sport nodig, het scherm kiest zelf het juiste endpoint
+    const isRunning = session.activities?.name && RUNNING_NAMEN.includes(session.activities.name)
+    const endpoint = isRunning ? '/api/specialists/running/rit-analyse' : '/api/specialists/cycling/rit-analyse'
     setAnalyseBezig(true)
     setAnalyseFout(null)
     try {
-      const res = await fetch('/api/specialists/cycling/rit-analyse', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activity_id: session.id }),
@@ -195,20 +201,21 @@ export default function ActivityDetailPage() {
               ) : null}
             </div>
 
-            {/* v2.4.106: Ritanalyse, Fase 2f — alleen voor fietsritten */}
-            {session.activities?.name && CYCLING_NAMEN.includes(session.activities.name) && (
+            {/* v2.4.106/165: Ritanalyse — automatische sport-herkenning,
+                geen aparte knop meer nodig voor Running vs Cycling */}
+            {session.activities?.name && (CYCLING_NAMEN.includes(session.activities.name) || RUNNING_NAMEN.includes(session.activities.name)) && (
               <div className="bg-white/5 rounded-2xl p-4">
                 {!evaluatie && !analyseFout && (
                   <button onClick={analyseerDezeRit} disabled={analyseBezig}
                     className="w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold text-primary-400 disabled:opacity-50">
                     <Sparkles size={16} />
-                    {analyseBezig ? 'Coach analyseert...' : 'Laat je Cycling Coach deze rit analyseren'}
+                    {analyseBezig ? 'Coach analyseert...' : `Laat je ${RUNNING_NAMEN.includes(session.activities.name) ? 'Running' : 'Cycling'} Coach deze ${RUNNING_NAMEN.includes(session.activities.name) ? 'loop' : 'rit'} analyseren`}
                   </button>
                 )}
                 {analyseFout && <p className="text-sm text-red-400">{analyseFout}</p>}
                 {evaluatie && (
                   <>
-                    <p className="text-xs text-primary-400 uppercase tracking-wider mb-2">Ritanalyse</p>
+                    <p className="text-xs text-primary-400 uppercase tracking-wider mb-2">{session.activities?.name && RUNNING_NAMEN.includes(session.activities.name) ? 'Loopanalyse' : 'Ritanalyse'}</p>
                     <p className="text-sm text-slate-200 leading-relaxed">{evaluatie}</p>
                   </>
                 )}

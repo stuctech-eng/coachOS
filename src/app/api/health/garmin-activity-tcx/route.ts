@@ -84,6 +84,9 @@ export async function POST(req: NextRequest) {
       if (parsed.elevation_gain_m) metrics.elevation_gain = parsed.elevation_gain_m
       if (parsed.elevation_loss_m) metrics.elevation_loss = parsed.elevation_loss_m
       if (parsed.route && parsed.route.length > 0) metrics.route = parsed.route
+      // v2.4.165: split-analyse (negative/positive split + pacing-
+      // consistentie) — Running Specialist Fase 2 (Professional)
+      if (parsed.split_analyse) metrics.split_analyse = parsed.split_analyse
 
       // v2.4.42 FIX: was een harde 409-blokkade bij hetzelfde TCX-bestand.
       // Nu: OVERSCHRIJVEN in plaats van weigeren — verst de metrics op de

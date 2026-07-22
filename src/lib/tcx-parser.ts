@@ -10,6 +10,7 @@
 import { XMLParser } from 'fast-xml-parser'
 import { berekenVermogenscurve, type VermogensCurvePunt } from './vermogenscurve'
 import { berekenAfstandscurve, type AfstandsCurvePunt } from './afstandscurve'
+import { berekenSplitAnalyse, type SplitAnalyse } from './split-analyse'
 
 export interface TcxParsed {
   garmin_sport: string | null
@@ -39,6 +40,9 @@ export interface TcxParsed {
   // maar dan andersom (afstand vast, tijd variabel i.p.v. tijd vast,
   // vermogen variabel). Null als er geen cumulatieve afstand-data is.
   afstandscurve: AfstandsCurvePunt[] | null
+  // v2.4.165: negative/positive split + pacing-consistentie, uit
+  // dezelfde afstandMetTijd-reeks als de afstandscurve hierboven
+  split_analyse: SplitAnalyse | null
 }
 
 export const ACTIVITEIT_OPTIES = ['Hardlopen', 'Fietsen (buiten)', 'Indoor Fietsen', 'Wandelen', 'Roeien', 'Krachttraining', 'Kettlebell', 'Anders']
@@ -201,6 +205,7 @@ export function parseTcx(xmlText: string): TcxParsed {
   const vermogenscurve = vermogenMetTijd.length >= 2 ? berekenVermogenscurve(vermogenMetTijd) : null
   // v2.4.128: zelfde principe voor de afstandscurve
   const afstandscurve = afstandMetTijd.length >= 2 ? berekenAfstandscurve(afstandMetTijd) : null
+  const splitAnalyse = afstandMetTijd.length >= 4 ? berekenSplitAnalyse(afstandMetTijd) : null
 
   return {
     garmin_sport: garminSport,
@@ -223,5 +228,6 @@ export function parseTcx(xmlText: string): TcxParsed {
     start_date: startDate,
     vermogenscurve,
     afstandscurve,
+    split_analyse: splitAnalyse,
   }
 }

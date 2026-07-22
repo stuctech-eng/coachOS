@@ -1,5 +1,52 @@
 # CoachOS — Changelog
 
+## v2.4.165 — Running Specialist Fase 2 (Professional), stap 1: Ritanalyse
+**Eerste, belangrijkste stap van de uitgebreide Running-pariteitsronde.
+Prestatie/Techniek/Belasting-categorieën, zoals besproken — Running
+begint hiermee direct op hetzelfde niveau als Cycling, i.p.v. later te
+moeten bijbouwen.**
+
+### Nieuw: split-analyse (Negative/Positive Split + pacing-consistentie)
+- **Nieuw:** `src/lib/split-analyse.ts` — hergebruikt de
+  `afstandMetTijd`-reeks die al werd verzameld voor de afstandscurve
+  (v2.4.128), geen wijziging aan de trackpoint-loop nodig. Negative/
+  positive split (publiek, wijdverspreid concept) + pacing-consistentie
+  (variatiecoëfficiënt over 4 kwart-segmenten).
+- `src/lib/tcx-parser.ts` — nieuw `split_analyse`-veld op `TcxParsed`
+- `src/app/api/health/garmin-activity-tcx/route.ts` — wordt nu ook
+  daadwerkelijk opgeslagen in `metrics.split_analyse`
+
+### Nieuw: Running Ritanalyse
+- **Nieuw:** `src/lib/specialists/running-rit-analyse.ts` — Pace-zone,
+  hartslagzone, cadans (met hardloop-specifieke drempelwaarden 160/185
+  spm, niet dezelfde als fietsen), Prestatie (gem./beste pace, split,
+  hoogtemeters, hartslag), Techniek (cadans-score, Running Power indien
+  aanwezig), Belasting (TSS/IF, CoachPolicy-conclusie), "volgens schema"
+- **Nieuw:** `src/app/api/specialists/running/rit-analyse/route.ts` —
+  zelfde patroon als Cycling: AI interpreteert alleen, beslist niets
+- `src/app/activities/[id]/page.tsx` — **automatische sport-herkenning**,
+  geen aparte knop meer nodig: Cycling-activiteit toont "Cycling Coach"-
+  knop, Running-activiteit toont "Running Coach"-knop, zelfde scherm
+
+### Eerlijke beperking, bewust NIET gebouwd
+Verticale oscillatie, grondcontacttijd, paslengte — deze velden worden
+nergens uit TCX geparsed. Geen gok-implementatie zonder een echt
+bestand om de exacte Garmin-tagnamen tegen te testen — zelfde
+voorzichtigheid als bij Hill Score/Race Predictor eerder.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- **Split-analyse, 4 scenario's:** negative split (-16,7%), positive
+  split (+20%), gelijkmatig (96/100 consistentie), te kort (<500m →
+  terecht null)
+- **Cadans-score, 4 scenario's:** 175spm (ideaal midden, score 100),
+  150spm (laag, score 38), 195spm (hoog, score 50), 167spm (normaal,
+  score 80) — allemaal exact zoals berekend
+
+**Resterend uit de pariteitsronde:** Running Progress-pagina, Running
+Grafieken-pagina (Records/Dashboard/Trainer AI-integratie zijn al
+grotendeels op niveau, zie eerdere vergelijking).
+
 ## v2.4.164 — BELANGRIJKE FIX: Running-veldnamen kwamen niet overeen met wat de TCX-importer schrijft
 **Gemeld met screenshot: Running Coach-dashboard toonde 0km voor week/
 maand/jaar en geen pace, terwijl de coach-tekst eronder correct "vijf
