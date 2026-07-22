@@ -5,42 +5,45 @@ import { ArrowLeft } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 
-// ── Performance — platformniveau ────────────────────────────────────────
-// Bron: overleg 20 juli 2026. Bewust GEEN onderdeel van Cycling of
-// Running — dit hoort bij de Master Coach, niet bij een specialist.
-// Toont exact dezelfde data die de Coach AI en beide specialist-coaches
-// al krijgen (v2.4.140-141) — deze pagina maakt dat voor het eerst ook
-// zichtbaar voor de gebruiker zelf, geen nieuwe berekening.
+// ── Performance Dashboard ────────────────────────────────────────────────
+// Bron: overleg 21 juli 2026, "schoon schip"-ronde. Herbouwd bovenop de
+// Performance Intelligence Platform-laag (src/core/performance/) i.p.v.
+// de oorspronkelijke, eenvoudigere berekening direct op ruwe data
+// (v2.4.142/143) — dit is nu de ENIGE plek die deze cijfers berekent,
+// geen twee verschillende versies van dezelfde waarheid meer.
+//
+// Bewust GEEN onderdeel van Cycling of Running — dit is platformbreed,
+// hoort bij de Master Coach.
 
-interface HrvTrend {
-  vandaag_ms: number
-  gemiddelde_7d_ms: number | null
-  trend: 'stijgend' | 'dalend' | 'stabiel' | null
-  verschil_pct: number | null
+interface Breakdown { factor: string; ruwe_waarde: string; bijdrage_score: number }
+interface Confidence { score: number; level: 'LOW' | 'MEDIUM' | 'HIGH'; limitations: string[] }
+interface EngineResult<T> { engine: string; value: T; confidence: Confidence }
+
+interface RecoveryValue { score: number; status: string; color: 'green' | 'orange' | 'red'; breakdown: Breakdown[] }
+interface LoadValue { ctl: number; atl: number; tsb: number; per_sport: { sport: string; ctl: number; atl: number; tsb: number }[] }
+interface FatigueValue { score: number; label: string }
+interface ReadinessValue { score: number; label: string; policy_maxIntensity: string }
+interface ConsistencyValue { percentage: number; huidigeStreakWeken: number; langsteOnderbrekingWeken: number }
+interface EnduranceValue { score: number; label: string }
+interface SprintValue { score: number; peak_watts: number | null; duration_sec: number | null }
+interface EfficiencyValue { score: number; gemiddelde_ef: number | null }
+interface ClimbingValue { score: number; hoogtemeters_30d: number; watt_per_kg: number | null }
+interface ProgressValue { percentageVerandering: number | null; richting: string; bronEngine: string }
+interface HistoriePunt { date: string; score: number }
+
+interface DashboardData {
+  recovery: EngineResult<RecoveryValue> & { explanation?: { title: string; summary: string; coachMessage: string } }
+  load: EngineResult<LoadValue>
+  fatigue: EngineResult<FatigueValue>
+  readiness: EngineResult<ReadinessValue>
+  consistency: EngineResult<ConsistencyValue>
+  endurance: EngineResult<EnduranceValue>
+  sprint: EngineResult<SprintValue>
+  efficiency: EngineResult<EfficiencyValue>
+  climbing: EngineResult<ClimbingValue>
+  progress: EngineResult<ProgressValue>
+  recoveryHistorie: HistoriePunt[]
 }
-interface Health {
-  resting_hr: number | null
-  body_battery_current: number | null
-  hrv_7d_avg_ms: number | null
-  hrv_status: string | null
-  sleep_score: number | null
-  stress: number | null
-}
-interface Performance {
-  training_readiness: number | null
-  training_readiness_label: string | null
-  training_status_label: string | null
-  acute_load: number | null
-  chronic_load: number | null
-  load_ratio: number | null
-  vo2max: number | null
-  vo2max_label: string | null
-  endurance_score: number | null
-  endurance_score_label: string | null
-  hill_score: number | null
-}
-interface HealthHistoriePunt { date: string; hrv_ms: number | null; resting_hr: number | null; body_battery_current: number | null; sleep_score: number | null }
-interface PerformanceHistoriePunt { date: string; training_readiness: number | null; vo2max: number | null; endurance_score: number | null }
 
 type Kleur = 'groen' | 'amber' | 'rood' | 'neutraal'
 const KLEUR_CLASSES: Record<Kleur, string> = {
@@ -49,115 +52,69 @@ const KLEUR_CLASSES: Record<Kleur, string> = {
   rood: 'text-red-400 bg-red-500/10 border-red-500/20',
   neutraal: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
 }
-
-function MetricRij({ label, waarde, sub, uitleg, kleur }: { label: string; waarde: string; sub?: string; uitleg: string; kleur: Kleur }) {
-  return (
-    <div className="flex items-start justify-between gap-3 py-3 border-b border-coach-border last:border-0">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-slate-300">{label}</p>
-        <p className="text-[10px] text-slate-600 mt-0.5">{uitleg}</p>
-      </div>
-      <div className={`text-right px-2.5 py-1 rounded-lg border ${KLEUR_CLASSES[kleur]}`}>
-        <p className="text-sm font-semibold">{waarde}</p>
-        {sub && <p className="text-[10px] opacity-70">{sub}</p>}
-      </div>
-    </div>
-  )
-}
-
-function readinessKleur(waarde: number | null): Kleur {
-  if (waarde === null) return 'neutraal'
-  if (waarde >= 70) return 'groen'
-  if (waarde >= 40) return 'amber'
+function confidenceKleur(level: string): Kleur {
+  if (level === 'HIGH') return 'groen'
+  if (level === 'MEDIUM') return 'amber'
   return 'rood'
 }
-function bodyBatteryKleur(waarde: number | null): Kleur {
-  if (waarde === null) return 'neutraal'
-  if (waarde >= 70) return 'groen'
-  if (waarde >= 30) return 'amber'
-  return 'rood'
-}
-function trendKleur(trend: HrvTrend['trend']): Kleur {
-  if (trend === 'stijgend') return 'groen'
-  if (trend === 'dalend') return 'rood'
-  if (trend === 'stabiel') return 'neutraal'
-  return 'neutraal'
-}
-function loadRatioKleur(ratio: number | null): Kleur {
-  if (ratio === null) return 'neutraal'
-  if (ratio >= 0.8 && ratio <= 1.3) return 'groen'
-  if (ratio > 1.5) return 'rood'
+function labelKleur(label: string): Kleur {
+  const groen = ['Uitstekend', 'Goed', 'High', 'Low', 'Sterk', 'Explosief', 'Sterke klimmer', 'Bergspecialist', 'Zeer goed']
+  const rood = ['Beginnend', 'Very High', 'Vlak terrein', 'Laag']
+  if (groen.includes(label)) return 'groen'
+  if (rood.includes(label)) return 'rood'
   return 'amber'
 }
 
-// Generieke, kleine SVG-lijngrafiek — zelfde patroon als elders in de
-// app (bijv. Running Performance Center), hier los herbruikbaar gemaakt
-// voor willekeurige numerieke reeksen.
-function TrendGrafiek<T extends { date: string }>({ data, veld, kleur = '#f43f5e', hoogte = 70 }: {
-  data: T[]; veld: keyof T; kleur?: string; hoogte?: number
-}) {
-  const punten = data
-    .map(d => ({ datum: d.date, waarde: d[veld] as unknown as number | null }))
-    .filter((p): p is { datum: string; waarde: number } => p.waarde !== null && p.waarde !== undefined)
+function ConfidenceBadge({ confidence }: { confidence: Confidence }) {
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${KLEUR_CLASSES[confidenceKleur(confidence.level)]}`}>
+      {confidence.level} · {confidence.score}%
+    </span>
+  )
+}
 
-  if (punten.length < 2) {
-    return <p className="text-[11px] text-slate-600 py-4 text-center">Nog te weinig data voor een trend (minimaal 2 dagen nodig).</p>
-  }
+function ScoreKaart({ titel, score, sub, label, kleur }: { titel: string; score: number | string; sub?: string; label?: string; kleur: Kleur }) {
+  return (
+    <Card className="p-4">
+      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{titel}</p>
+      <div className="flex items-baseline gap-2">
+        <p className="text-xl font-bold text-white">{score}</p>
+        {label && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${KLEUR_CLASSES[kleur]}`}>{label}</span>}
+      </div>
+      {sub && <p className="text-[10px] text-slate-600 mt-0.5">{sub}</p>}
+    </Card>
+  )
+}
 
+function TrendGrafiek({ data, kleur = '#f43f5e', hoogte = 60 }: { data: HistoriePunt[]; kleur?: string; hoogte?: number }) {
+  if (data.length < 2) return <p className="text-[11px] text-slate-600 py-2">Nog te weinig data voor een trend (minimaal 2 dagen).</p>
   const breedte = 320
-  const waarden = punten.map(p => p.waarde)
-  const max = Math.max(...waarden)
-  const min = Math.min(...waarden)
-  const bereik = max - min || 1
-
-  const svgPunten = punten.map((p, i) => {
-    const x = (i / (punten.length - 1)) * breedte
-    const y = hoogte - ((p.waarde - min) / bereik) * hoogte
+  const waarden = data.map(p => p.score)
+  const max = Math.max(...waarden), min = Math.min(...waarden), bereik = max - min || 1
+  const punten = data.map((p, i) => {
+    const x = (i / (data.length - 1)) * breedte
+    const y = hoogte - ((p.score - min) / bereik) * hoogte
     return `${x},${y}`
   }).join(' ')
-
   return (
-    <div>
-      <svg viewBox={`0 0 ${breedte} ${hoogte}`} className="w-full" style={{ height: hoogte }}>
-        <polyline points={svgPunten} fill="none" stroke={kleur} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      </svg>
-      <div className="flex justify-between mt-1">
-        <span className="text-[9px] text-slate-600">{punten[0].datum.slice(5)} — {punten[0].waarde}</span>
-        <span className="text-[9px] text-slate-600">{punten[punten.length - 1].datum.slice(5)} — {punten[punten.length - 1].waarde}</span>
-      </div>
-    </div>
+    <svg viewBox={`0 0 ${breedte} ${hoogte}`} className="w-full" style={{ height: hoogte }}>
+      <polyline points={punten} fill="none" stroke={kleur} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
   )
 }
 
 export default function PerformancePage() {
   const [laden, setLaden] = useState(true)
-  const [hrvTrend, setHrvTrend] = useState<HrvTrend | null>(null)
-  const [health, setHealth] = useState<Health | null>(null)
-  const [performance, setPerformance] = useState<Performance | null>(null)
-  const [healthHistorie, setHealthHistorie] = useState<HealthHistoriePunt[]>([])
-  const [performanceHistorie, setPerformanceHistorie] = useState<PerformanceHistoriePunt[]>([])
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [fout, setFout] = useState<string | null>(null)
 
   useEffect(() => {
-    async function laad() {
-      setLaden(true)
-      try {
-        const res = await fetch('/api/performance-overview', { credentials: 'include' })
-        const data = await res.json()
-        setHrvTrend(data.hrv_trend)
-        setHealth(data.health)
-        setPerformance(data.performance)
-        setHealthHistorie(data.historie?.health || [])
-        setPerformanceHistorie(data.historie?.performance || [])
-      } catch {
-        // Elke sectie checkt zelf op aanwezige data
-      } finally {
-        setLaden(false)
-      }
-    }
-    laad()
+    fetch('/api/performance-engine', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.error) setFout(d.error); else setData(d) })
+      .catch(() => setFout('Verbindingsfout — probeer het later opnieuw.'))
+      .finally(() => setLaden(false))
   }, [])
-
-  const geenDataHelemaal = !laden && !health && !performance && !hrvTrend
 
   return (
     <AppShell>
@@ -173,134 +130,106 @@ export default function PerformancePage() {
         </div>
 
         {laden && <div className="h-64 bg-slate-800/50 rounded-2xl animate-pulse" />}
-
-        {geenDataHelemaal && (
+        {fout && (
           <Card className="p-6 text-center">
-            <p className="text-sm text-slate-400 mb-4">Nog geen data voor vandaag. Upload een Garmin-screenshot of vul je ochtend-HRV in bij de Check-in.</p>
+            <p className="text-sm text-slate-400 mb-4">{fout}</p>
             <Link href="/settings/garmin-import" className="inline-block px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold">
               Garmin Import openen
             </Link>
           </Card>
         )}
 
-        {/* Herstel */}
-        {!laden && (health || hrvTrend) && (
-          <Card className="p-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Herstel</p>
-            {performance?.training_status_label && (
-              <div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-2 ${KLEUR_CLASSES[trendKleur(hrvTrend?.trend ?? null)]}`}>
-                {performance.training_status_label}
+        {!laden && data && (
+          <>
+            {/* Vandaag — Recovery + Readiness, het meest actionable */}
+            <Card className="p-5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Vandaag</p>
+                <ConfidenceBadge confidence={data.recovery.confidence} />
               </div>
-            )}
-            {hrvTrend?.trend && (
-              <MetricRij label="HRV vannacht" waarde={`${hrvTrend.vandaag_ms} ms`}
-                sub={hrvTrend.verschil_pct !== null ? `${hrvTrend.verschil_pct > 0 ? '+' : ''}${hrvTrend.verschil_pct}% vs gem.` : undefined}
-                uitleg="T.o.v. je eigen 7-daags gemiddelde — niet een algemene norm." kleur={trendKleur(hrvTrend.trend)} />
-            )}
-            {health?.hrv_7d_avg_ms && (
-              <MetricRij label="HRV (Garmin, 7d gem.)" waarde={`${health.hrv_7d_avg_ms} ms`} sub={health.hrv_status ?? undefined}
-                uitleg="Garmin's eigen voortschrijdend gemiddelde." kleur="neutraal" />
-            )}
-            {health?.body_battery_current !== null && health?.body_battery_current !== undefined && (
-              <MetricRij label="Body Battery" waarde={`${health.body_battery_current}`}
-                uitleg="Energiereserve, 0-100. Hoger is beter." kleur={bodyBatteryKleur(health.body_battery_current)} />
-            )}
-            {health?.resting_hr !== null && health?.resting_hr !== undefined && (
-              <MetricRij label="Rusthartslag" waarde={`${health.resting_hr} bpm`}
-                uitleg="Sterk persoonsafhankelijk — kijk naar je eigen trend, niet naar een algemene norm." kleur="neutraal" />
-            )}
-            {health?.sleep_score !== null && health?.sleep_score !== undefined && (
-              <MetricRij label="Slaapscore" waarde={`${health.sleep_score}`}
-                uitleg="Garmin's slaapkwaliteitsscore, 0-100." kleur="neutraal" />
-            )}
-            {health?.stress !== null && health?.stress !== undefined && (
-              <MetricRij label="Stress" waarde={`${health.stress}`}
-                uitleg="Hoger betekent meer fysiologische stress, niet per se mentale stress." kleur="neutraal" />
-            )}
-          </Card>
-        )}
+              <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Herstel</p>
+                  <p className="text-2xl font-bold text-white">{data.recovery.value.score}<span className="text-sm text-slate-500 font-normal">/100</span></p>
+                  <p className="text-[10px] text-slate-500">{data.recovery.value.status}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Klaar om te presteren</p>
+                  <p className="text-2xl font-bold text-white">{data.readiness.value.score}<span className="text-sm text-slate-500 font-normal">/100</span></p>
+                  <p className="text-[10px] text-slate-500">{data.readiness.value.label}</p>
+                </div>
+              </div>
+              {data.recovery.explanation && (
+                <div className="p-3 bg-primary-500/5 border border-primary-500/20 rounded-xl mb-2">
+                  <p className="text-sm text-slate-200 mb-1">{data.recovery.explanation.summary}</p>
+                  <p className="text-xs text-primary-400 font-medium">{data.recovery.explanation.coachMessage}</p>
+                </div>
+              )}
+              <p className="text-[10px] text-slate-600">Max. intensiteit vandaag (CoachPolicy): <span className="text-slate-400 font-medium">{data.readiness.value.policy_maxIntensity}</span></p>
+              {data.recovery.confidence.limitations.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-coach-border">
+                  {data.recovery.confidence.limitations.slice(0, 2).map((l, i) => <p key={i} className="text-[10px] text-slate-600">• {l}</p>)}
+                </div>
+              )}
+            </Card>
 
-        {/* Belastbaarheid */}
-        {!laden && performance && (
-          <Card className="p-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Belastbaarheid</p>
-            {performance.training_readiness !== null && (
-              <MetricRij label="Training Readiness" waarde={`${performance.training_readiness}`} sub={performance.training_readiness_label ?? undefined}
-                uitleg="Garmin's inschatting hoe klaar je bent voor training vandaag." kleur={readinessKleur(performance.training_readiness)} />
-            )}
-            {performance.load_ratio !== null && (
-              <MetricRij label="Belastingsverhouding" waarde={`${performance.load_ratio}`} sub={`${performance.acute_load ?? '–'}/${performance.chronic_load ?? '–'}`}
-                uitleg="Acute t.o.v. chronische belasting. 0,8-1,3 is doorgaans gebalanceerd." kleur={loadRatioKleur(performance.load_ratio)} />
-            )}
-          </Card>
-        )}
+            {/* Belastbaarheid */}
+            <Card className="p-5">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Belastbaarheid</p>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div><p className="text-xs text-slate-500">CTL</p><p className="text-lg font-bold text-white">{data.load.value.ctl}</p></div>
+                <div><p className="text-xs text-slate-500">ATL</p><p className="text-lg font-bold text-white">{data.load.value.atl}</p></div>
+                <div><p className="text-xs text-slate-500">TSB</p><p className="text-lg font-bold text-white">{data.load.value.tsb}</p></div>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-coach-border">
+                <span className="text-sm text-slate-300">Vermoeidheid</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${KLEUR_CLASSES[labelKleur(data.fatigue.value.label)]}`}>{data.fatigue.value.score}/100 — {data.fatigue.value.label}</span>
+              </div>
+            </Card>
 
-        {/* Conditie */}
-        {!laden && performance && (performance.vo2max !== null || performance.endurance_score !== null || performance.hill_score !== null) && (
-          <Card className="p-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Conditie</p>
-            {performance.vo2max !== null && (
-              <MetricRij label="VO2max" waarde={`${performance.vo2max}`} sub={performance.vo2max_label ?? undefined}
-                uitleg="Geschatte maximale zuurstofopname — verandert langzaam, over weken." kleur="neutraal" />
-            )}
-            {performance.endurance_score !== null && (
-              <MetricRij label="Endurance Score" waarde={`${performance.endurance_score}`} sub={performance.endurance_score_label ?? undefined}
-                uitleg="Garmin's inschatting van je duurvermogen." kleur="neutraal" />
-            )}
-            <MetricRij label="Hill Score" waarde={performance.hill_score !== null ? `${performance.hill_score}` : '–'}
-              uitleg={performance.hill_score !== null ? 'Klimvermogen.' : 'Nog niet beschikbaar — stond niet op je laatste screenshot.'} kleur="neutraal" />
-          </Card>
-        )}
+            {/* Trends */}
+            <Card className="p-5">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Herstel — 30 dagen</p>
+              <TrendGrafiek data={data.recoveryHistorie} kleur="#22c55e" />
+            </Card>
 
-        {/* v2.4.143: Trends — 30 dagen. Zelfde data als de kaarten
-            hierboven, nu over tijd i.p.v. alleen vandaag. */}
-        {!laden && healthHistorie.length >= 2 && (
-          <Card className="p-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Trends — Herstel (30 dagen)</p>
-            <div className="flex flex-col gap-4">
-              <div>
-                <p className="text-xs text-slate-400 mb-1">HRV (ms)</p>
-                <TrendGrafiek data={healthHistorie} veld="hrv_ms" kleur="#f43f5e" />
+            {/* Consistentie */}
+            <Card className="p-5">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Consistentie (8 weken)</p>
+              <p className="text-2xl font-bold text-white mb-2">{data.consistency.value.percentage}%</p>
+              <div className="flex gap-4 text-xs text-slate-500">
+                <span>Huidige streak: {data.consistency.value.huidigeStreakWeken} wk</span>
+                <span>Langste onderbreking: {data.consistency.value.langsteOnderbrekingWeken} wk</span>
               </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Rusthartslag (bpm)</p>
-                <TrendGrafiek data={healthHistorie} veld="resting_hr" kleur="#f59e0b" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Body Battery</p>
-                <TrendGrafiek data={healthHistorie} veld="body_battery_current" kleur="#22c55e" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Slaapscore</p>
-                <TrendGrafiek data={healthHistorie} veld="sleep_score" kleur="#3b82f6" />
+            </Card>
+
+            {/* Fitness-indicatoren */}
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Fitness-indicatoren</p>
+              <div className="grid grid-cols-2 gap-3">
+                <ScoreKaart titel="Uithoudingsvermogen" score={data.endurance.value.score} label={data.endurance.value.label} kleur={labelKleur(data.endurance.value.label)} />
+                <ScoreKaart titel="Sprint" score={data.sprint.value.score} sub={data.sprint.value.peak_watts ? `${data.sprint.value.peak_watts}W @ ${data.sprint.value.duration_sec}s` : 'geen data'} kleur="neutraal" />
+                <ScoreKaart titel="Efficiency" score={data.efficiency.value.score} sub={data.efficiency.value.gemiddelde_ef ? `EF ${data.efficiency.value.gemiddelde_ef}` : 'geen data'} kleur="neutraal" />
+                <ScoreKaart titel="Klimmen" score={data.climbing.value.score} sub={`${data.climbing.value.hoogtemeters_30d}m · ${data.climbing.value.watt_per_kg ?? '–'} W/kg`} kleur="neutraal" />
               </div>
             </div>
-          </Card>
-        )}
 
-        {!laden && performanceHistorie.length >= 2 && (
-          <Card className="p-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Trends — Belastbaarheid &amp; Conditie (30 dagen)</p>
-            <div className="flex flex-col gap-4">
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Training Readiness</p>
-                <TrendGrafiek data={performanceHistorie} veld="training_readiness" kleur="#f43f5e" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">VO2max</p>
-                <TrendGrafiek data={performanceHistorie} veld="vo2max" kleur="#8b5cf6" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Endurance Score</p>
-                <TrendGrafiek data={performanceHistorie} veld="endurance_score" kleur="#06b6d4" />
-              </div>
-            </div>
-          </Card>
-        )}
+            {/* Progressie */}
+            {data.progress.value.percentageVerandering !== null && (
+              <Card className="p-5">
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Progressie ({data.progress.value.bronEngine})</p>
+                <p className="text-2xl font-bold text-white">
+                  {data.progress.value.percentageVerandering > 0 ? '+' : ''}{data.progress.value.percentageVerandering}%
+                </p>
+                <p className="text-[10px] text-slate-500">t.o.v. de 14 dagen daarvoor — {data.progress.value.richting}</p>
+              </Card>
+            )}
 
-        <p className="text-[10px] text-slate-600 text-center px-4">
-          Deze cijfers zijn dezelfde data die Coach AI, Cycling Coach en Running Coach al gebruiken in hun advies — hier voor het eerst ook zichtbaar voor jou.
-        </p>
+            <p className="text-[10px] text-slate-600 text-center px-4">
+              Deze cijfers zijn dezelfde data die Coach AI, Cycling Coach en Running Coach al gebruiken in hun advies.
+            </p>
+          </>
+        )}
       </div>
     </AppShell>
   )

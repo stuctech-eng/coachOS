@@ -1,5 +1,83 @@
 # CoachOS — Changelog
 
+## v2.4.160 — "Schoon schip", deel 3: Performance Dashboard-UI
+**De grootste stap van de opschoonronde: de Performance Engine-laag
+(Fase 1A/1B/2, 12 engines) is nu voor het eerst zichtbaar voor de
+gebruiker in een echt scherm, niet alleen in het debug-scherm.**
+
+- **Nieuw:** `src/app/api/performance-engine/route.ts` — productie-
+  route, zelfde keten als `/api/debug/performance-engine` maar geeft
+  bewust geen ruwe context terug (geen checkin/health-details), alleen
+  wat het Dashboard nodig heeft
+- **Herbouwd:** `src/app/performance/page.tsx` — gebruikt nu de nieuwe
+  Performance Intelligence Platform-laag i.p.v. de oorspronkelijke,
+  eenvoudigere berekening direct op ruwe data (v2.4.142/143). **Eén
+  bron van waarheid**, geen twee verschillende versies van dezelfde
+  cijfers meer.
+- Indeling: Vandaag (Herstel + Readiness, met uitleg en CoachPolicy's
+  max-intensiteit) → Belastbaarheid (CTL/ATL/TSB + Vermoeidheid) →
+  Herstel-trend (30 dagen) → Consistentie → Fitness-indicatoren
+  (Endurance/Sprint/Efficiency/Climbing) → Progressie (indien
+  beschikbaar)
+- **`api/performance-overview/route.ts` (v2.4.142) gemarkeerd als
+  vervangen** — nergens meer aangeroepen, dode code. Kan handmatig
+  verwijderd worden (zips verwijderen geen bestanden), geen haast.
+
+**Gevalideerd vóór levering:** `npx next build` — compileert zonder
+fouten of warnings, beide routes (`/api/performance-engine`,
+`/performance`) aanwezig in de build-output.
+
+**Vervolgens, laatste twee stappen van de opschoonronde:** Hoe werkt
+CoachOS bijwerken (nu er een echt Dashboard is), CoachPolicy-koppeling
+van de Recovery-wrapper.
+
+## v2.4.159 — "Schoon schip", deel 2: Running Kalender
+**Laatste openstaande punt van de Running Adaptive Training Plan-
+roadmap. Exact spiegelbeeld van Cycling's kalenderscherm.**
+
+- **Nieuw:** `src/app/coach/running/kalender/page.tsx` — maandweergave,
+  hergebruikt dezelfde `GET /api/specialists/running/training-plan`
+  als het planningsscherm, geen nieuwe API. Running-sessietypen/-kleuren
+  (Easy Run/Interval/Herstel/Tempo/Lange duurloop).
+- `src/app/coach/running/trainingsplan/page.tsx` — Kalender-knop
+  toegevoegd (was bewust weggelaten in v2.4.134 omdat de pagina toen
+  nog niet bestond)
+
+`npx next build` — compileert zonder fouten of warnings, nieuwe route
+aanwezig in de build-output.
+
+**Vervolgens, in dezelfde opschoonronde:** Dashboard-UI voor de
+Performance Engine, Hoe werkt CoachOS bijwerken, CoachPolicy-koppeling
+van de Recovery-wrapper.
+
+## v2.4.158 — "Schoon schip", deel 1: README-opschoning + levensgebeurtenis-penalty
+**Eerste twee stappen van een grotere opschoonronde (zie het overzicht
+in de chat van 21 juli 2026).**
+
+### README opgeschoond
+Twee oude 🔴-blokkerende items geverifieerd en bevestigd achterhaald:
+`injuries.ended_at` wordt nergens in de live code gebruikt (de app
+werkt via een simpeler `active`-boolean-veld), `garmin_activity_imports`
+wordt actief en zonder problemen gebruikt in meerdere routes. Beide uit
+de Openstaand-lijst. Overige oude items (v2.4.23-72-tijdperk) niet
+stuk voor stuk herverifieerd — expliciet benoemd als aanname, niet als
+bevestiging.
+
+### Levensgebeurtenis-penalty in de Performance-data-adapter
+- `src/core/performance/data/performance-data-adapter.ts` — niet
+  langer hardcoded `0`. Zelfde query + formule als het al-werkende
+  `api/status/route.ts` (`recovery_impact×5 + sleep_disruption×3`,
+  levensgebeurtenissen van de laatste 2 dagen) — geen nieuwe
+  berekening, hergebruik van bestaande, geteste logica.
+- `core/types.ts` — verouderde comment bijgewerkt
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten of
+warnings.
+
+**Vervolgens, in dezelfde opschoonronde:** Running Kalender-pagina,
+Dashboard-UI voor de Performance Engine, Hoe werkt CoachOS bijwerken,
+CoachPolicy-koppeling van de Recovery-wrapper.
+
 ## v2.4.157 — Performance Platform Fase 2 compleet: Sprint, Efficiency, Climbing, Progress
 **Op verzoek in één levering: de resterende vier Fase 2-engines.
 Hiermee is heel Fase 2 afgerond.**

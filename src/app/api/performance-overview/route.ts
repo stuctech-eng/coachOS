@@ -1,5 +1,12 @@
 export const dynamic = 'force-dynamic'
 
+// ⚠️ VERVANGEN sinds v2.4.159 door /api/performance-engine — dit
+// bestand wordt nergens meer aangeroepen (de Performance-pagina
+// gebruikt nu de nieuwe Performance Intelligence Platform-laag).
+// Kan handmatig verwijderd worden (zips kunnen geen bestanden
+// verwijderen, alleen toevoegen/overschrijven) — geen haast, dit is
+// dode code, geen risico.
+
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
