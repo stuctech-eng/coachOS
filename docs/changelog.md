@@ -1,5 +1,52 @@
 # CoachOS — Changelog
 
+## v2.4.171 — Today Engine: proposals[]-structuur + echte tie-break i.p.v. arbitraire volgorde
+**Multi-sport-voorbereiding, gefaseerd zoals afgesproken: Fase 1 nu
+(intern al schaalbaar, naar buiten toe nog steeds precies één
+TodayPlan), Fase 2 (TodaySchedule) bewust pas zodra er echte extra
+specialisten zijn.**
+
+### De arbitraire regel is weg
+De vorige tie-break — "Cycling wint altijd van Running" bij een
+gelijktijdig geplande sessie — was puur toeval van codevolgorde, geen
+inhoudelijke beslissing. Vervangen door de **bestaande Decision Engine**
+(`beslisTussenSpecialisten`, al gebouwd voor specialist-conflicten):
+importance (Goal Engine) → calculated_urgency als tiebreaker.
+
+- `src/lib/today-engine.ts` — herbouwd rond een `proposals[]`-array
+  (`SpecialistProposal[]`) i.p.v. losse `cyclingSessie`/`runningSessie`-
+  variabelen met if/else. Nieuwe `kiesTussenProposals()`-functie haalt
+  bij 2+ voorstellen echte Goal Engine-data op (importance/
+  calculated_urgency/dagen_resterend) en geeft die door aan de
+  bestaande Decision Engine.
+- **Eerlijke vereenvoudiging, benoemd in de code:** `load`/`risk` voor
+  de Decision Engine-aanroep zijn hier `'moderate'`/`'none'` — een
+  sessie staat al gepland, echte blessure-/belastingsrisico's zijn al
+  door Laag 1 (CoachPolicy) afgehandeld vóórdat dit punt bereikt wordt.
+
+### Eerlijke beperking, bewust niet gebouwd
+"Regel 4 — Planfase (Build > Base > Recovery)" uit het overleg: geen
+mesocyclus-type wordt per plan opgeslagen, dus geen databron om op te
+beslissen. Geen gok.
+
+**Gevalideerd vóór levering — 4 scenario's, allemaal correct:**
+- Cycling `must` vs Running `normal` → Cycling wint
+- **Running `must` vs Cycling `normal` → Running wint** — bewijst dat
+  de fix werkt: dit kon met de oude "Cycling wint altijd"-regel
+  NOOIT gebeuren
+- Gelijke importance, Cycling hogere urgentie → Cycling wint via de
+  tiebreaker
+- Geen doeldata bij geen van beide → geen winnaar, valt terug op het
+  eerste voorstel (stabiel, geen willekeur)
+
+`npx next build` — compileert zonder fouten of warnings.
+
+### Architectuur vastgelegd in README
+Fase 1 (nu)/Fase 2 (later, TodaySchedule) expliciet gedocumenteerd,
+inclusief waarom Fase 2 nu bewust niet gebouwd wordt (datamodel
+ondersteunt nog geen meerdere sessies per dag, geen specialisten die
+erom vragen).
+
 ## v2.4.170 — Today Engine Debug-scherm + weer-debug opgeruimd
 **Twee dingen tegelijk: een debugscherm om Scenario A/C van de Today
 Engine te kunnen verifiëren zonder de echte planning te hoeven

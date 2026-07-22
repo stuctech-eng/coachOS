@@ -1009,7 +1009,37 @@ Training Plan Engine krijgen (zie het platformprincipe hieronder), hoeft
 alleen `bepaalTodayPlan()` een extra sport toegevoegd te krijgen — Home
 en de rest van de architectuur veranderen niet.
 
-### Specialist-sjabloon — vast platformprincipe, niet alleen Cycling/Running
+### Today Engine — multi-sport, gefaseerd (v2.4.171)
+
+**Vastgelegd op verzoek: de Today Engine is de plek waar multi-sport
+samenkomt, maar bewust gefaseerd — niet alles tegelijk bouwen.**
+
+**Fase 1 (nu, af):** Today Engine levert altijd precies ÉÉN `TodayPlan`
+— nooit twee trainingen op Home. Intern al wel een `proposals[]`-
+structuur (ook al bevat die nu max. 2 items, cycling/running) — de
+engine hoeft later niet opnieuw ontworpen te worden, alleen uitgebreid.
+
+**Bij meerdere gelijktijdige specialist-voorstellen (zeldzaam: Cycling
+én Running allebei een sessie dezelfde dag) beslist nu de bestaande
+Decision Engine** (`beslisTussenSpecialisten`) — importance
+(Goal Engine) → calculated_urgency als tiebreaker. Vervangt de vorige,
+arbitraire "Cycling wint altijd van Running"-regel. **Bewezen middels
+test:** Running kan nu daadwerkelijk winnen als het belangrijker is
+(kon met de oude volgorde-gebaseerde regel nooit).
+
+**Eerlijke beperking, bewust niet geïmplementeerd:** "Regel 4 —
+Planfase (Build > Base > Recovery)" uit het overleg — er wordt nergens
+een mesocyclus-type per plan opgeslagen om op te beslissen. Geen gok
+zonder databron.
+
+**Fase 2 (later, zodra Rowing/Kettlebell/etc. echte specialisten
+worden):** `TodaySchedule` — meerdere voorstellen tegelijk, een echte
+dagplanning i.p.v. één sessie. Nu bewust NIET gebouwd — het datamodel
+(`training_plan_sessions`) ondersteunt ook nog geen meerdere sessies
+per dag, en er bestaan nog geen specialisten die om deze functionaliteit
+vragen.
+
+
 
 **Vastgelegd op verzoek: elke huidige en toekomstige specialist volgt
 exact dezelfde basisarchitectuur — "niet Cycling is speciaal, elke
