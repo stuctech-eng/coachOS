@@ -393,12 +393,26 @@ Plan Generator + Daily Adjustment Layer + Coach-uitleglaag, gebouwd
 als **Running Adapter bovenop de gedeelde Training Plan Engine Core**
 (zie `src/lib/specialists/training-plan-engine/`) — geen tweede,
 losstaande engine. Sessietypen: Easy Run/Interval/Herstel/Tempo/Lange
-duurloop. **Fase 3 (UI — kalender, weekoverzicht) nog open.**
+duurloop.
 
-**Bewust nog niet gebouwd:** Kalender, uitgebreide Grafieken-pagina
-(los scherm zoals Cycling heeft), Wedstrijdplanning, extra duurpunten
-(10s/3min/45min bestaan al bij Cycling, nog niet bij Running's
-afstandscurve — andere set doelafstanden, geen directe 1-op-1-vertaling).
+### Running Specialist Fase 2 (Professional) — pariteitsronde met Cycling (v2.4.159-166)
+
+**Compleet:** Kalender, Ritanalyse (Pace-zone/hartslagzone/cadans/
+Negative-Positive-Split/pacing-consistentie/Running Power/TSS/
+CoachPolicy-conclusie, met automatische sport-herkenning in het
+activiteitenscherm — geen aparte knop meer), Progress Center, Grafieken
+(CTL/ATL/TSB, wekelijkse trends, volledige records-lijst, progressie
+per kernafstand). Goal Engine/Memory Engine bleken al generiek —
+Running's routes zijn dunne wrappers, net als Cycling s.
+
+**Bewust nog niet gebouwd:** Verticale oscillatie, grondcontacttijd,
+paslengte — geen TCX-parsing hiervoor beschikbaar, geen gok-
+implementatie zonder een echt bestand om tegen te testen.
+Wedstrijdplanning, extra duurpunten (10s/3min/45min bestaan al bij
+Cycling, nog niet bij Running's afstandscurve — andere set
+doelafstanden, geen directe 1-op-1-vertaling). VDOT-ontwikkeling
+(trend over tijd) — geen VDOT-geschiedenis bijgehouden, zelfde reden
+als Cycling's FTP-trend vóór v2.4.108.
 
 ## 💚 Morning Health & Performance Repository (v2.4.137-140)
 

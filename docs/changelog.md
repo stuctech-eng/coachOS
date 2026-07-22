@@ -1,5 +1,48 @@
 # CoachOS — Changelog
 
+## v2.4.166 — Running Specialist Fase 2 (Professional), afgerond: Progress + Grafieken
+**Laatste stap van de Running/Cycling-pariteitsronde. Progress Center
+en Grafieken-pagina, spiegelend aan Cycling.**
+
+### Bevinding vooraf: Goal Engine en Memory Engine waren al generiek
+`api/specialists/cycling/doelvoortgang` en `.../memory` bleken dunne
+wrappers om de al-generieke Goal Engine (`haalGoalsMetProgress`) en
+Memory Engine (`haalMemoryOp`/`verwerkKandidaatInzicht`) — hardcoded op
+`'cycling'`. De Running-equivalenten waren daardoor bijna letterlijke
+kopieën, geen nieuwe logica.
+
+### Nieuw
+- `src/app/api/specialists/running/doelvoortgang/route.ts` — spiegelt
+  Cycling exact
+- `src/app/api/specialists/running/memory/route.ts` — spiegelt Cycling
+  exact
+- `src/app/api/specialists/running/grafieken/route.ts` — gebruikt
+  Running's eigen bestaande functies (`haalWekelijkseRunningTrend`,
+  `haalRunningCTLATLTSB`, `haalRunningRecords`, `haalAfstandTrends`) —
+  geen nieuwe berekeningen, alleen nooit eerder samengevoegd
+- `src/app/coach/running/progress/page.tsx` — VDOT, doelvoortgang,
+  kern-records (5K/10K/Halve/Marathon), Memory-inzichten,
+  Coach-samenvatting
+- `src/app/coach/running/grafieken/page.tsx` — CTL/ATL/TSB-grafiek,
+  wekelijkse pace/hartslag/cadans-trends, progressie per kernafstand,
+  volledige records-lijst (100m t/m marathon)
+- `src/app/coach/running/page.tsx` — links naar beide nieuwe pagina's
+
+**Eerlijk niet gebouwd, zelfde reden als Cycling vóór v2.4.108:**
+"VDOT-ontwikkeling" (trend over tijd) — er wordt alleen het huidige
+race-resultaat opgeslagen, geen VDOT-geschiedenis. Een grafiek zou één
+punt tonen — geen schijngrafiek.
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten of
+warnings, alle 5 nieuwe routes/pagina's aanwezig in de build-output.
+
+## 🎉 Running/Cycling-pariteitsronde compleet
+Dashboard, Trainingsplan, Ritanalyse, Progress, Grafieken, Records,
+Coach, Performance Engine, Goal Engine, Memory Engine, Decision Engine
+— beide specialisten nu op hetzelfde architectuurniveau. Toekomstige
+uitbreidingen (zoals de Performance Intelligence Engines) werken
+voortaan direct voor beide, zonder aparte uitzonderingen.
+
 ## v2.4.165 — Running Specialist Fase 2 (Professional), stap 1: Ritanalyse
 **Eerste, belangrijkste stap van de uitgebreide Running-pariteitsronde.
 Prestatie/Techniek/Belasting-categorieën, zoals besproken — Running

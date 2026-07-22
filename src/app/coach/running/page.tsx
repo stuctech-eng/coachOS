@@ -281,6 +281,29 @@ export default function RunningHubPage() {
           </Link>
         )}
 
+        {/* v2.4.166: Progress + Grafieken — Running Specialist Fase 2
+            (Professional), sluit de pariteitsronde met Cycling af */}
+        {!laden && (
+          <Link href="/coach/running/progress"
+            className="w-full p-4 rounded-2xl bg-gradient-to-r from-green-500/20 to-green-500/5 border border-green-500/30 flex items-center justify-between active:bg-green-500/25">
+            <div className="text-left">
+              <p className="text-sm font-semibold text-white">Progress Center</p>
+              <p className="text-xs text-slate-400">Doel, records en coach-inzichten in één overzicht</p>
+            </div>
+            <span className="text-green-400 text-lg">→</span>
+          </Link>
+        )}
+        {!laden && (
+          <Link href="/coach/running/grafieken"
+            className="w-full p-4 rounded-2xl bg-gradient-to-r from-blue-500/20 to-blue-500/5 border border-blue-500/30 flex items-center justify-between active:bg-blue-500/25">
+            <div className="text-left">
+              <p className="text-sm font-semibold text-white">Grafieken</p>
+              <p className="text-xs text-slate-400">Pace, hartslag, cadans en belasting over tijd</p>
+            </div>
+            <span className="text-blue-400 text-lg">→</span>
+          </Link>
+        )}
+
         {!laden && fout && (
           <Card className="p-5 bg-red-500/5 border-red-500/20">
             <p className="text-sm text-red-400">{fout}</p>
