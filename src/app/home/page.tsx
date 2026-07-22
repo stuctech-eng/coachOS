@@ -147,6 +147,19 @@ export default function HomePage() {
     return () => document.removeEventListener('visibilitychange', onZichtbaarheidWijziging)
   }, [])
 
+  // v2.4.169: Today Engine — de enige bron voor "wat moet ik vandaag
+  // doen", kiest zelf tussen Specialist-trainingsplan en Trainer AI
+  const [todayPlan, setTodayPlan] = useState<{
+    source: string; title: string; duration: number | null; intensity: string | null
+    reason: string; coachMessage: string; actionHref: string; actionLabel: string
+  } | null>(null)
+  useEffect(() => {
+    fetch('/api/today', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.plan) setTodayPlan(data.plan) })
+      .catch(() => {})
+  }, [])
+
   // v2.4.14: versie-check — bij een nieuw versienummer t.o.v. de vorige
   // sessie draait een lichte gezondheidscheck op de achtergrond. Bij
   // problemen verschijnt een banner die naar /debug verwijst voor de
@@ -577,11 +590,40 @@ export default function HomePage() {
               })()}
               {(() => {
                 const actie = (recommendation as {actie_type?: string}).actie_type || 'herstel'
-                const config = {
-                  trainen: { label: 'Start Training', kleur: 'bg-green-500 active:bg-green-600', route: '/training' },
-                  herstel: { label: 'Start Herstel', kleur: 'bg-blue-500 active:bg-blue-600', route: '/training' },
-                  rust: { label: 'Rust vandaag', kleur: 'bg-slate-600 active:bg-slate-700', route: null },
-                }[actie] || { label: 'Start', kleur: 'bg-primary-500', route: '/training' }
+                // v2.4.169: Today Engine — de enige bron voor "wat moet
+                // ik vandaag doen". Toont zichtbaar welke bron leidend
+                // is (specialist-trainingsplan of Trainer AI) i.p.v.
+                // dit stilzwijgend alleen in de routing te verwerken.
+                return todayPlan && todayPlan.source !== 'rust' && actie === 'trainen' ? (
+                  <div className="bg-slate-800/50 rounded-xl p-3 mb-3 flex items-center gap-3">
+                    <span className="text-xl">{todayPlan.source === 'cycling' ? '🚴' : todayPlan.source === 'running' ? '🏃' : '💪'}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white">{todayPlan.title}</p>
+                      <p className="text-xs text-slate-400">
+                        {todayPlan.duration ? `${todayPlan.duration} min` : ''}{todayPlan.duration && todayPlan.intensity ? ' · ' : ''}{todayPlan.intensity ? `intensiteit: ${todayPlan.intensity}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-slate-500 flex-shrink-0">
+                      {todayPlan.source === 'cycling' ? 'Cycling Coach' : todayPlan.source === 'running' ? 'Running Coach' : 'Trainer AI'}
+                    </span>
+                  </div>
+                ) : null
+              })()}
+              {(() => {
+                const actie = (recommendation as {actie_type?: string}).actie_type || 'herstel'
+                // v2.4.169: bij "trainen" gebruikt de knop nu de Today
+                // Engine-uitkomst (specialist-trainingsplan of Trainer AI,
+                // wat vandaag leidend is) i.p.v. altijd blind naar
+                // /training te sturen — voorkomt dat je naar Trainer AI
+                // gestuurd wordt terwijl er een Cycling/Running-sessie
+                // gepland stond.
+                const config = actie === 'trainen' && todayPlan && todayPlan.source !== 'rust'
+                  ? { label: todayPlan.actionLabel, kleur: 'bg-green-500 active:bg-green-600', route: todayPlan.actionHref }
+                  : {
+                      trainen: { label: 'Start Training', kleur: 'bg-green-500 active:bg-green-600', route: '/training' },
+                      herstel: { label: 'Start Herstel', kleur: 'bg-blue-500 active:bg-blue-600', route: '/training' },
+                      rust: { label: 'Rust vandaag', kleur: 'bg-slate-600 active:bg-slate-700', route: null },
+                    }[actie] || { label: 'Start', kleur: 'bg-primary-500', route: '/training' }
                 // v2.4.21 FIX: wis de opgeslagen scrollpositie voor /training
                 // (uit v2.4.20's AppShell scroll-herstel) vlak vóór een verse
                 // navigatie vanuit Home. Zo blijft dit pad ongewijzigd

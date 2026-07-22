@@ -946,6 +946,94 @@ oefening.
 - Cycling drills: 11 (`src/lib/cycling-drills.ts`)
 - **Totaal: 390 modules**
 
+## 🧭 Today Engine — platformprincipe (v2.4.169)
+
+**Vastgelegd op verzoek als vaste architectuurregel voor heel CoachOS,
+niet alleen voor Cycling/Running.**
+
+**Aanleiding:** bij onderzoek bleek dat `api/training/today` (Trainer AI)
+onafhankelijk van het Specialist-trainingsplan óók zelf Cycling/Running-
+sessies kon voorstellen — twee systemen die elkaar konden tegenspreken
+zonder van elkaars bestaan te weten.
+
+**Kernprincipe: de Today Engine maakt zelf nooit trainingen — hij kiest
+alleen welke bestaande bron vandaag de waarheid is.**
+
+```
+Morning Health / Performance / Weer / CoachPolicy
+                    ↓
+              Master Coach
+                    ↓
+              Today Engine
+                    │
+    ┌───────────────┴───────────────┐
+    │                               │
+Actief specialist-plan          Geen actief plan
+voor vandaag?                   voor vandaag?
+    │                               │
+    ▼                               ▼
+Specialist-sessie wint       Trainer AI maakt sessie
+(Trainer AI niet gebruikt)   (Universal Training Engine)
+```
+
+**Vaste prioriteitsvolgorde, voor élke huidige en toekomstige
+specialist:**
+1. **Veiligheid** — CoachPolicy/blessures/herstel (elders al bepaald,
+   Today Engine herberekent dit niet, leest alleen `actie_type`)
+2. **Specialist-trainingsplan** — Cycling/Running nu, later Rowing/
+   Kettlebell/etc. zodra die specialisten bestaan
+3. **Trainer AI** — uitsluitend als er geen actief specialist-plan is
+4. **Handmatige bibliotheekkeuze** — buiten de Today Engine om
+
+- **`src/lib/today-engine.ts`** — `bepaalTodayPlan()`, de enige plek
+  die deze keuze maakt. Roept de bestaande, al-geteste
+  `api/training/today` intern aan als vangnet (server-naar-server, met
+  doorgegeven sessie-cookie) — géén duplicatie van die complexe
+  module-keuze/AI-generatielogica.
+- **`api/today/route.ts`** — de ENIGE ingang voor "wat moet ik vandaag
+  doen?". Home roept voortaan dit aan, nooit meer rechtstreeks
+  `api/training/today` voor dit doel (dat endpoint blijft wél bestaan
+  voor de Trainer-tab zelf en het daadwerkelijk starten van een
+  sessie).
+- Home toont nu een zichtbare "Vandaag"-kaart (titel, duur, intensiteit,
+  bron) i.p.v. alleen een generieke "Start Training"-knop die niet liet
+  zien wát er gepland stond.
+
+**Gevalideerd:** 5 scenario's getest (rust wint altijd, specialist wint
+van Trainer AI, Trainer AI als vangnet, nette lege staat zonder gok,
+en het edge-case van twee gelijktijdige specialist-sessies) — allemaal
+correct.
+
+**Toekomstbestendig:** zodra Rowing/Kettlebell/etc. ooit een eigen
+Training Plan Engine krijgen (zie het platformprincipe hieronder), hoeft
+alleen `bepaalTodayPlan()` een extra sport toegevoegd te krijgen — Home
+en de rest van de architectuur veranderen niet.
+
+### Specialist-sjabloon — vast platformprincipe, niet alleen Cycling/Running
+
+**Vastgelegd op verzoek: elke huidige en toekomstige specialist volgt
+exact dezelfde basisarchitectuur — "niet Cycling is speciaal, elke
+specialist volgt hetzelfde model".**
+
+Elke specialist krijgt (Cycling en Running hebben dit nu allebei,
+volledig):
+1. **Eigen profiel** — instellingen, niveau, zones, doelen
+2. **Eigen Training Plan Engine** — periodisering, adaptief, herstelweken
+3. **Eigen Dashboard** — vandaag/week/maand, kerncijfers
+4. **Eigen Grafieken** — sport-specifiek (vermogen bij Cycling, pace bij
+   Running — bij een toekomstige Rowing-specialist bijv. split/stroke
+   rate)
+5. **Eigen Records** — sport-specifieke afstanden/duren
+6. **Eigen Analyse** — na elke sessie, objectief bepaald vóór de AI
+   erop reageert
+7. **Eigen Memory Engine** — leert alleen over die ene sport
+
+**Bewust NIET nu gebouwd voor Rowing/Kettlebell/etc.** — Trainer AI
+(de Universal Training Engine) blijft voorlopig de generieke uitvoerder
+voor deze disciplines. Ze worden pas een volwaardige "specialist"
+zodra daar een concrete aanleiding voor is — zelfde principe als overal
+vandaag: bouwen met een reden, niet speculatief vooruit.
+
 ## Architectuur Flow
 ```
 Coach (bepaalt doel + beperkingen)

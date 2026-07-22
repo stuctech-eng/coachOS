@@ -1,5 +1,69 @@
 # CoachOS — Changelog
 
+## v2.4.169 — Today Engine: één orkestrator voor "wat moet ik vandaag doen"
+**Nieuw platformprincipe, vastgelegd na overleg. Losten een echt
+architectuurprobleem op: `api/training/today` (Trainer AI) kon
+onafhankelijk van het Specialist-trainingsplan óók zelf Cycling/
+Running-sessies voorstellen — twee systemen die elkaar konden
+tegenspreken.**
+
+### Kernprincipe
+De Today Engine maakt zelf nooit trainingen — hij kiest alleen welke
+bestaande bron vandaag de waarheid is. Vaste prioriteit: Veiligheid
+(CoachPolicy) → Specialist-trainingsplan → Trainer AI (alleen als
+vangnet) → Handmatige bibliotheekkeuze.
+
+### Nieuw
+- **`src/lib/today-engine.ts`** — `bepaalTodayPlan()`. Checkt eerst
+  `actie_type` (rust/herstel/trainen, al bepaald door CoachPolicy),
+  dan `training_plan_sessions` voor Cycling/Running van vandaag, en
+  roept pas als laatste stap de bestaande `api/training/today` intern
+  aan (server-naar-server, met doorgegeven sessie-cookie) — geen
+  duplicatie van die complexe module-keuze/AI-generatielogica.
+- **`api/today/route.ts`** — de ENIGE ingang voor "wat moet ik vandaag
+  doen?". `api/training/today` blijft bestaan voor de Trainer-tab zelf
+  en het starten van een sessie, maar wordt niet langer rechtstreeks
+  door Home gebruikt voor deze beslissing.
+- `src/app/home/page.tsx` — nieuwe zichtbare "Vandaag"-kaart (titel,
+  duur, intensiteit, bron: Cycling/Running Coach of Trainer AI) i.p.v.
+  alleen een generieke knop. De actieknop linkt nu naar de juiste plek
+  (specialist-trainingsplan óf Trainer AI) i.p.v. altijd blind naar
+  Training te sturen.
+
+### Fix onderweg gevonden
+Mijn eerste opzet gebruikte een niet-bestaande env-variabele
+(`NEXT_PUBLIC_SITE_URL`, zelf verzonnen) en een lege cookie voor de
+interne server-naar-server-aanroep — zou nooit hebben gewerkt in
+productie. Gefixt naar `VERCEL_URL` (automatisch door Vercel gezet) en
+de echte, doorgegeven sessie-cookie.
+
+### Architectuurprincipes vastgelegd in README
+1. **Today Engine-hiërarchie** — geldt voor élke huidige en
+   toekomstige specialist, niet alleen Cycling/Running
+2. **Specialist-sjabloon** — elke specialist krijgt dezelfde 7
+   bouwstenen (Profiel/Training Plan Engine/Dashboard/Grafieken/
+   Records/Analyse/Memory). Bewust NIET nu gebouwd voor Rowing/
+   Kettlebell — Trainer AI blijft daar voorlopig de generieke
+   uitvoerder, tot er een concrete aanleiding is.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings, `/api/today`
+  aanwezig in de build-output
+- **5 scenario's los getest:** rust wint altijd (veiligheid), specialist
+  wint van Trainer AI, Trainer AI als vangnet zonder specialist-plan,
+  nette lege staat zonder gok, en het edge-case van gelijktijdige
+  Cycling+Running-sessies (geen crash, eerste in prioriteitsvolgorde
+  wint) — allemaal correct
+
+**Test-instructies:**
+1. Met een actief Cycling- of Running-trainingsplan én "trainen" als
+   Coach-advies → Home moet de specialist-sessie tonen, knop moet naar
+   het trainingsplan linken (niet naar Trainer AI)
+2. Zonder actief specialist-plan → Home moet een Trainer AI-sessie
+   tonen zoals voorheen
+3. Bij "rust" als Coach-advies → geen Vandaag-kaart, gewoon het
+   bestaande rust-gedrag
+
 ## v2.4.168 — Fix: weer toonde verkeerde locatie tijdens reizen (Venlo i.p.v. Garmisch-Partenkirchen)
 **Root cause bevestigd: de app gebruikte helemaal geen GPS — locatie
 werd bepaald via IP-adres (`ipapi.co`). Mobiele providers routeren
