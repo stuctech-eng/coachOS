@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.163 — Fix: Running Profile onvindbaar in Instellingen + volledige live-inventarisatie
+**Gevraagd: "is Running nu compleet?" — het Running-profielscherm
+bleek al sinds v2.4.126 te bestaan en te werken, maar stond nergens
+gelinkt vanuit Instellingen. Alleen Cycling Profile had een regel.**
+
+- `src/app/settings/page.tsx` — "Running Profile"-regel toegevoegd,
+  direct naast Cycling Profile
+
+### Volledige live-inventarisatie uitgevoerd (op verzoek, voortaan standaard)
+Alle bestanden gecontroleerd die vandaag zijn geleverd — niet alleen
+aanwezigheid (HTTP 200), maar ook inhoud (bevat het bestand daadwerkelijk
+de laatste logica, niet een oudere versie):
+
+- **Running Specialist** (8 bestanden): alle aanwezig
+- **Training Plan Engine** (6 bestanden): alle aanwezig
+- **Morning Health / Vision Engine** (9 bestanden): alle aanwezig
+- **Performance Intelligence Platform** (21 bestanden — Fase 1A/1B/2
+  compleet): alle aanwezig
+- **Inhoudelijke steekproeven**: recovery-engine.ts (Niveau 2-logica),
+  coach-policy.ts (Performance-koppeling), checkin-pagina
+  (HRV-Overslaan-knop), home-pagina (Performance-link), alle drie
+  coach-routes (morningHealthContext) — allemaal bevestigd correct
+
+**Enige gevonden gat:** de Running Profile-link, nu gefixt in deze
+levering.
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten of
+warnings.
+
+**Antwoord op de vraag "is Running nu compleet?":** functioneel ja —
+Profile, Pace Zones, Dashboard, Records, Performance Center,
+Trainingsbelasting, Progressie, volledig Adaptief Trainingsplan
+(inclusief Kalender sinds v2.4.159/162), en nu ook vindbaar in
+Instellingen. Nog open: uitgebreide Grafieken-pagina (los scherm zoals
+Cycling heeft), Wedstrijdplanning — bewust nog niet gebouwd, geen
+concrete aanleiding tot nu toe.
+
 ## v2.4.162 — HERSTEL: v2.4.159 (Running Kalender) was nooit gecommit
 **Gebruiker vroeg "is alles gecommit" — controle wees uit dat de
 volledige v2.4.159-levering (2 bestanden) nooit is toegepast, ondanks

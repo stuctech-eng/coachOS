@@ -153,6 +153,8 @@ export default function SettingsPage() {
             <div className="h-px bg-coach-border mx-4" />
             <Row icon={Info} label="Inzichten" href="/insights" />
             <Row icon={Zap} label="Cycling Profile" href="/settings/cycling-profile" />
+            <div className="h-px bg-coach-border mx-4" />
+            <Row icon={Activity} label="Running Profile" href="/settings/running-profile" />
           </Card>
         </div>
 
