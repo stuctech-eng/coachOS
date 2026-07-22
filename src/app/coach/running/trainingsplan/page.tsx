@@ -220,9 +220,12 @@ export default function RunningTrainingsplanPage() {
               Verder dan {komendeSessies.length > 0 ? formatDatum(komendeSessies[komendeSessies.length - 1].date) : 'nu'} plant de coach nog geen concrete dagen — dat volgt automatisch zodra die week dichterbij komt.
             </p>
 
-            {/* Bewust geen Kalender-knop — die pagina bestaat nog niet
-                voor Running (zie roadmap, staat nog open). Geen dode
-                link naar iets dat niet werkt. */}
+            {/* v2.4.159 (dit keer echt gecommit): Kalender bestaat nu */}
+            <Link href="/coach/running/kalender"
+              className="w-full py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+              <Calendar size={14} />
+              Kalender
+            </Link>
             <button onClick={laadPlan} className="w-full py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
               <RefreshCw size={14} />
               Ververs

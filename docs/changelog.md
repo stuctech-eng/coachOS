@@ -1,5 +1,25 @@
 # CoachOS — Changelog
 
+## v2.4.162 — HERSTEL: v2.4.159 (Running Kalender) was nooit gecommit
+**Gebruiker vroeg "is alles gecommit" — controle wees uit dat de
+volledige v2.4.159-levering (2 bestanden) nooit is toegepast, ondanks
+dat `package.json` al doorliep naar v2.4.161. Beide bestanden opnieuw
+geleverd, exact zoals ze hoorden te zijn.**
+
+- `src/app/coach/running/kalender/page.tsx` — ontbrak volledig (404
+  live)
+- `src/app/coach/running/trainingsplan/page.tsx` — stond nog in de
+  oude vorm (zonder Kalender-knop, met de comment die zei dat de
+  pagina nog niet bestond)
+
+**Belangrijk:** commit en push dit hele pakket in één keer. Controleer
+na het toepassen of `src/app/coach/running/kalender/page.tsx`
+daadwerkelijk in Working Copy staat vóórdat je commit — dat is precies
+waar het eerder misging.
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten, nieuwe
+route aanwezig in de build-output.
+
 ## v2.4.161 — "Schoon schip", deel 4: Hoe werkt CoachOS bijgewerkt
 **Vierde stap van de opschoonronde.**
 
