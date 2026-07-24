@@ -29,11 +29,14 @@ import { beslisTussenSpecialisten, type SpecialistSummaryVoorBeslissing } from '
 // te worden, alleen uitgebreid.
 //
 // EERLIJKE BEPERKING: "Regel 4 — Planfase (Build > Base > Recovery)"
-// uit het overleg is NIET geïmplementeerd — er wordt nergens een
-// mesocyclus-type per plan opgeslagen om op te beslissen. Geen gok
-// zonder databron. Springt van Regel 3 (Goal Engine-importance/
-// -urgentie, via de bestaande Decision Engine) direct naar de
-// eindafweging.
+// uit het overleg gebruikt NOG STEEDS geen mesocyclus voor de
+// prioriteitsbeslissing tussen specialisten (die blijft bij Regel 3 —
+// Goal Engine-importance/-urgentie). mesocycle_type wordt vanaf
+// v2.4.176 wél opgeslagen en doorgegeven — maar puur als BESCHRIJVENDE
+// context bij TodayPlan, niet als extra tiebreak-regel. Dat is een
+// bewuste, kleinere scope dan "gebruik dit óók om tussen specialisten
+// te kiezen" — die uitbreiding kan later, met een concreet scenario om
+// tegen te testen.
 
 export interface TodayPlan {
   source: 'cycling' | 'running' | 'trainer' | 'rust'
@@ -44,6 +47,12 @@ export interface TodayPlan {
   coachMessage: string
   actionHref: string
   actionLabel: string
+  // v2.4.176: periodiserings-context — bestond al in de Training Plan
+  // Engine (bepaalMesocycli), werd nooit opgeslagen. Nu wel. Bewust
+  // UITBREIDBAAR ontworpen (matcht het "Training Phase"-blok uit het
+  // overleg) — week-binnen-blok/dagen-tot-wedstrijd zijn hier bewust
+  // NIET aan toegevoegd, die data bestaat nog nergens om op te baseren.
+  trainingPhase: { mesocycleType: 'basis' | 'opbouw' | 'piek' | 'herstel' } | null
 }
 
 interface TrainingPlanSessie {
@@ -52,6 +61,7 @@ interface TrainingPlanSessie {
   duration: number
   status: string
   adjustment_reason: string | null
+  mesocycle_type: 'basis' | 'opbouw' | 'piek' | 'herstel' | null
 }
 
 interface SpecialistProposal {
@@ -79,7 +89,7 @@ async function haalSpecialistSessieVanVandaag(userId: string, sport: 'cycling' |
 
   const { data: sessie } = await supabase
     .from('training_plan_sessions')
-    .select('id, type, duration, status, adjustment_reason')
+    .select('id, type, duration, status, adjustment_reason, mesocycle_type')
     .eq('date', vandaag)
     .in('plan_id', planIds)
     .neq('status', 'cancelled')
@@ -88,20 +98,25 @@ async function haalSpecialistSessieVanVandaag(userId: string, sport: 'cycling' |
   return sessie || null
 }
 
+const MESOCYCLE_LABELS: Record<string, string> = { basis: 'Base-week', opbouw: 'Build-week', piek: 'Peak-week', herstel: 'Recovery-week' }
+
 function proposalNaarTodayPlan(proposal: SpecialistProposal): TodayPlan {
   const intensiteit: TodayPlan['intensity'] = proposal.sessie.type === 'interval' ? 'hoog'
     : proposal.sessie.type === 'herstel' ? 'licht' : 'matig'
+  const fase = proposal.sessie.mesocycle_type
+  const faseLabel = fase ? MESOCYCLE_LABELS[fase] : null
   return {
     source: proposal.sport,
     title: SPORT_LABELS[proposal.sessie.type] || proposal.sessie.type,
     duration: proposal.sessie.duration,
     intensity: intensiteit,
-    reason: `Onderdeel van je ${proposal.sport === 'cycling' ? 'Cycling' : 'Running'}-trainingsplan`,
+    reason: `Onderdeel van je ${proposal.sport === 'cycling' ? 'Cycling' : 'Running'}-trainingsplan${faseLabel ? ` (${faseLabel})` : ''}`,
     coachMessage: proposal.sessie.adjustment_reason
       ? 'Deze sessie is aangepast op basis van je herstel — zie het trainingsplan voor de volledige uitleg.'
       : 'Volgens schema — ga ervoor!',
     actionHref: `/coach/${proposal.sport}/trainingsplan`,
     actionLabel: 'Open trainingsplan',
+    trainingPhase: fase ? { mesocycleType: fase } : null,
   }
 }
 
@@ -161,6 +176,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string): Pro
       reason: 'Coach adviseert vandaag volledige rust',
       coachMessage: 'Vandaag is herstel de training. Geen sportieve inspanning gepland.',
       actionHref: '/coach', actionLabel: 'Bekijk Coach-advies',
+      trainingPhase: null,
     }
   }
 
@@ -200,6 +216,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string): Pro
           reason: instr.reason || 'Trainer AI-sessie',
           coachMessage: instr.coach_message || 'Veel succes met je training!',
           actionHref: '/training', actionLabel: 'Start Training',
+          trainingPhase: null,
         }
       }
     }
@@ -213,5 +230,6 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string): Pro
     reason: 'Geen actief trainingsplan en Trainer AI kon geen sessie bepalen',
     coachMessage: 'Wil je toch trainen? Kies zelf een module in de bibliotheek.',
     actionHref: '/training', actionLabel: 'Bibliotheek openen',
+    trainingPhase: null,
   }
 }

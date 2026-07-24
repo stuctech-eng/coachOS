@@ -52,6 +52,8 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
           plan_id: planId, date: vandaag, sport: adapter.sport, type: sessie.type,
           duration: sessie.duration, load_target: sessie.load_target,
           status: 'adjusted', original_session_id: sessie.id, adjustment_reason: 'missed_session',
+          // v2.4.176: anders zou de aangepaste sessie z'n trainingsfase kwijtraken
+          mesocycle_type: sessie.mesocycle_type,
         })
         .select()
         .single()
@@ -83,6 +85,7 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
           plan_id: planId, date: sessie.date, sport: adapter.sport, type: adapter.vervangingBijBeperking,
           duration: sessie.duration, load_target: sessie.load_target,
           status: 'adjusted', original_session_id: sessie.id, adjustment_reason: 'injury_protection',
+          mesocycle_type: sessie.mesocycle_type,
         })
         .select()
         .single()
@@ -109,6 +112,7 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
           plan_id: planId, date: vandaag, sport: adapter.sport, type: adapter.vervangingBijVermoeidheid,
           duration: Math.round(vandaagSessie.duration * 0.6), load_target: vandaagSessie.load_target,
           status: 'adjusted', original_session_id: vandaagSessie.id, adjustment_reason: 'fatigue_detected',
+          mesocycle_type: vandaagSessie.mesocycle_type,
         })
         .select()
         .single()

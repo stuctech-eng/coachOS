@@ -142,6 +142,7 @@ export default function HomePage() {
   const [todayPlan, setTodayPlan] = useState<{
     source: string; title: string; duration: number | null; intensity: string | null
     reason: string; coachMessage: string; actionHref: string; actionLabel: string
+    trainingPhase: { mesocycleType: string } | null
   } | null>(null)
   useEffect(() => {
     fetch('/api/today', { credentials: 'include' })
@@ -588,8 +589,9 @@ export default function HomePage() {
                         {todayPlan.duration ? `${todayPlan.duration} min` : ''}{todayPlan.duration && todayPlan.intensity ? ' · ' : ''}{todayPlan.intensity ? `intensiteit: ${todayPlan.intensity}` : ''}
                       </p>
                     </div>
-                    <span className="text-[10px] text-slate-500 flex-shrink-0">
+                    <span className="text-[10px] text-slate-500 flex-shrink-0 text-right">
                       {todayPlan.source === 'cycling' ? 'Cycling Coach' : todayPlan.source === 'running' ? 'Running Coach' : 'Trainer AI'}
+                      {todayPlan.trainingPhase && <><br /><span className="text-primary-400">{{ basis: 'Base-week', opbouw: 'Build-week', piek: 'Peak-week', herstel: 'Recovery-week' }[todayPlan.trainingPhase.mesocycleType] || todayPlan.trainingPhase.mesocycleType}</span></>}
                     </span>
                   </div>
                 ) : null

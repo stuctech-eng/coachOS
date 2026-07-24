@@ -1,5 +1,64 @@
 # CoachOS — Changelog
 
+## v2.4.176 — Periodiserings-context: Today Engine weet nu in welke trainingsfase je zit
+**Eerste échte databasewijziging sinds de hele Coach Context Engine-
+reeks begon — klein, nullable, backwards compatible. `bepaalMesocycli()`
+berekende dit al sinds het begin van de Training Plan Engine, maar
+gooide het na gebruik weg.**
+
+### SQL (uitvoeren vóór deze code)
+`supabase/mesocycle_type_kolom.sql`:
+```sql
+alter table training_plan_sessions
+  add column if not exists mesocycle_type text
+  check (mesocycle_type is null or mesocycle_type in ('basis', 'opbouw', 'piek', 'herstel'));
+```
+
+### Code
+- `training-plan-engine/core.ts` — slaat het al-berekende
+  `mesocyclusWeek.type` nu op bij elke sessie (geen nieuwe berekening)
+- `training-plan-engine/adjuster-core.ts` — **bijvangst tijdens het
+  bouwen:** alle drie de aanpassings-triggers (missed_session/
+  injury_protection/fatigue_detected) maakten een vervangende sessie
+  aan zonder het mesocyclus-type van het origineel over te nemen — zou
+  de trainingsfase alsnog kwijtraken bij elke aanpassing. Nu gefixt op
+  alle drie de plekken (`select('*')` bevat het veld al, alleen de
+  insert miste het).
+- `today-engine.ts` — `TodayPlan.trainingPhase`, bewust uitbreidbaar
+  ontworpen maar niet vooruitgebouwd met week-binnen-blok/dagen-tot-
+  wedstrijd (bestaat nergens om op te baseren)
+- `coach/route.ts` + `action-plan/route.ts` — expliciete AI-instructie
+  om de trainingsfase te gebruiken in de uitleg
+- `home/page.tsx`, `debug/today/page.tsx` — trainingsfase zichtbaar
+  gemaakt (Vandaag-kaart en debugscherm)
+
+### Architectuurkeuze
+Bewust NIET in de Context Resolver's prioriteitensysteem (dat is voor
+concurrerende levensgebeurtenissen) — trainingsfase is beschrijvende
+informatie over de sessie van vandaag, hoort dus bij de Today Engine's
+TodayPlan.
+
+**Gevalideerd:** sessie met fase (reason bevat "(Build-week)",
+trainingPhase gevuld) en oude sessie zonder dit veld (geen crash,
+`trainingPhase: null`) — beide correct. `npx next build` compileert
+zonder fouten.
+
+### README: prioriteitenvolgorde bijgewerkt
+1. ✅ Master Coach ↔ Today Engine
+2. ✅ Periodiserings-context (dit)
+3. ✅ Feestdagen
+4. Coach Agenda uitbreiden (schoolvakanties, extern)
+5. Apple/Google/Outlook-sync
+6. Rowing Specialist
+7. Strength Specialist
+8. Kettlebell Specialist
+9. Multi-sport Orchestrator
+
+**Let op:** nieuwe trainingsplannen die vanaf nu gegenereerd worden
+krijgen dit veld automatisch. Bestaande, al-gegenereerde sessies blijven
+`mesocycle_type: null` totdat er een nieuw plan wordt aangemaakt — geen
+achteraf-invullen van historische data.
+
 ## v2.4.175 — Coach Agenda Fase 2, eerste stap: feestdagen in de Context Resolver
 **Kleinste, veiligste stukje van Fase 2 — geen externe API, geen nieuw
 datamodel. Nederlandse feestdagen (Gauss' paasformule, sinds v2.4.173)

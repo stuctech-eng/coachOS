@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
       const cookieHeader = req.headers.get('cookie') || ''
       const todayPlan = await bepaalTodayPlan(user.id, cookieHeader)
       if (todayPlan.source !== 'rust' || todayPlan.title !== 'Geen training gepland') {
-        todayEngineContext = `Vandaag gepland (Today Engine, autoritatief — gebruik dit, verzin geen ander sessietype): ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''} via ${todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'}`
+        todayEngineContext = `Vandaag gepland (Today Engine, autoritatief — gebruik dit, verzin geen ander sessietype): ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''} via ${todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'}${todayPlan.trainingPhase ? ` — trainingsfase: ${todayPlan.trainingPhase.mesocycleType}` : ''}`
       }
     } catch (err) {
       console.error('[action-plan] Today Engine ophalen mislukt, gaat door zonder dit blok:', err)

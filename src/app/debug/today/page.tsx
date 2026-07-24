@@ -21,6 +21,7 @@ interface TodayPlan {
   coachMessage: string
   actionHref: string
   actionLabel: string
+  trainingPhase: { mesocycleType: string } | null
 }
 
 export default function TodayDebugPage() {
@@ -91,6 +92,7 @@ export default function TodayDebugPage() {
               <div><span className="text-slate-500">coachMessage: </span><span className="text-slate-300">{plan.coachMessage}</span></div>
               <div><span className="text-slate-500">actionHref: </span><span className="text-slate-300 font-mono">{plan.actionHref}</span></div>
               <div><span className="text-slate-500">actionLabel: </span><span className="text-slate-300">{plan.actionLabel}</span></div>
+              <div><span className="text-slate-500">trainingPhase: </span><span className="text-slate-300">{plan.trainingPhase?.mesocycleType ?? 'null'}</span></div>
             </div>
           </Card>
         )}

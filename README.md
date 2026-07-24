@@ -1118,6 +1118,56 @@ formule ongewijzigd, blessure wint zelfs van vakantie, neutrale staat
 zonder events, onbekend event-type crasht niet (valt terug op laagste
 prioriteit).
 
+### Periodiserings-context: Today Engine weet nu in welke trainingsfase je zit (v2.4.176)
+
+**Eerste échte databasewijziging sinds de hele Coach Context Engine-
+reeks begon — klein, nullable, backwards compatible.**
+`bepaalMesocycli()` in de Training Plan Engine berekende al sinds het
+begin `basis`/`opbouw`/`piek`/`herstel` per week — maar gebruikte dat
+alleen om het sessietype te kiezen (interval vs herstel), en gooide het
+daarna weg. De Training Plan Engine wist het, de Coach niet, de Today
+Engine niet, de Specialist moest het later opnieuw afleiden.
+
+- **`supabase/mesocycle_type_kolom.sql`** — nieuwe nullable kolom op
+  `training_plan_sessions`
+- `training-plan-engine/core.ts` — slaat het al-berekende type nu op
+  (geen nieuwe berekening)
+- `training-plan-engine/adjuster-core.ts` — **bijvangst:** alle drie de
+  aanpassings-triggers (gemiste training/blessure/vermoeidheid)
+  maakten een vervangende sessie aan zonder het mesocyclus-type van het
+  origineel over te nemen — zou de trainingsfase alsnog kwijtraken bij
+  elke aanpassing. Nu gefixt op alle drie de plekken.
+- `today-engine.ts` — `TodayPlan` kreeg een `trainingPhase`-veld,
+  bewust uitbreidbaar ontworpen (matcht het "Training Phase"-blok uit
+  het overleg) maar NIET vooruitgebouwd met week-binnen-blok/dagen-tot-
+  wedstrijd — die data bestaat nergens om op te baseren
+- `coach/route.ts` + `action-plan/route.ts` — de Coach-prompt krijgt nu
+  een expliciete instructie om de trainingsfase te gebruiken in de
+  uitleg (bijv. "omdat je in een opbouwweek zit, hoort deze hogere
+  belasting bij de opbouw")
+
+**Architectuurkeuze:** dit zit NIET in de Context Resolver's
+prioriteitensysteem (dat is voor levensgebeurtenissen die met elkaar
+concurreren) — trainingsfase is beschrijvende informatie over de
+sessie van vandaag, en hoort dus bij de Today Engine's TodayPlan, waar
+die sessie-info al leeft.
+
+**Gevalideerd:** sessie met mesocyclus-fase (reason bevat "(Build-
+week)", trainingPhase gevuld) en een oude sessie zonder dit veld (geen
+crash, `trainingPhase: null`, ongewijzigd gedrag) — beide correct.
+`npx next build` compileert zonder fouten.
+
+**Bijgewerkte prioriteitenvolgorde:**
+1. ✅ Master Coach ↔ Today Engine (v2.4.174)
+2. ✅ Periodiserings-context (v2.4.176, dit)
+3. ✅ Feestdagen (v2.4.175)
+4. Coach Agenda uitbreiden (schoolvakanties, extern)
+5. Apple/Google/Outlook-sync
+6. Rowing Specialist
+7. Strength Specialist
+8. Kettlebell Specialist
+9. Multi-sport Orchestrator
+
 ### Coach Agenda Fase 2, eerste stap: feestdagen in de Context Resolver (v2.4.175)
 
 **Kleinste, veiligste stukje van Fase 2 — geen externe API, geen nieuw

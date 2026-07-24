@@ -157,6 +157,10 @@ export async function genereerTrainingsplanCore(userId: string, adapter: Trainin
           intensity: null,
           load_target: mesocyclusWeek.week_load_uren / sessieTypen.length,
           status: weekOffset === 0 ? 'scheduled' : 'planned',
+          // v2.4.176: bestond al (mesocyclusWeek.type), werd alleen
+          // gebruikt om het sessietype te kiezen en daarna weggegooid —
+          // nu ook opgeslagen zodat Today Engine/Coach het kunnen lezen
+          mesocycle_type: mesocyclusWeek.type,
         })
 
       if (!sessieError) aantalSessies++
