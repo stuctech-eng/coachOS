@@ -1118,6 +1118,42 @@ formule ongewijzigd, blessure wint zelfs van vakantie, neutrale staat
 zonder events, onbekend event-type crasht niet (valt terug op laagste
 prioriteit).
 
+### Coach Context UI — v2.4.173
+
+**De Levensgebeurtenissen-pagina volledig herbouwd** — niet langer
+alleen een registratiescherm, maar een venster naar de Context
+Resolver. Statuskaart bovenaan toont letterlijk wat de Coach ziet
+("Vakantiemodus actief — Dagdienst tijdelijk gepauzeerd"), i.p.v. dat
+je losse events zelf moest interpreteren.
+
+**Twee écht kapotte functies gevonden en gefixt tijdens het bouwen:**
+1. `end_date` bestond al in het datamodel en werd al verzonden vanuit
+   het formulier, maar er stond **nergens een invoerveld** voor —
+   altijd `null`. De kalenderweergave gebruikte `end_date` bovendien
+   alleen bij `type === 'vakantie'`, hardcoded voor andere types.
+2. **`fetchTodaysLifeEvents()`** (de query die de Coach-context voedt)
+   filterde eenmalige events op "laatste 2 dagen sinds aanmaken" —
+   niet op de echte periode. Een vakantie van 20 juli–3 augustus zou
+   daardoor na een paar dagen automatisch uit de Coach-context
+   verdwijnen. Nu een echte periode-check (`start_date <= vandaag <=
+   end_date`).
+
+**Architectuurregel bewust bewaakt:** het formulier bepaalt nooit de
+intelligentie (trainingModifier/-30% etc. blijft exclusief bij de
+Resolver, afgeleid van de modus) — de gebruiker stelt alleen de ruwe
+impact-scores in (herstel/stress/slaap, 0-3), in vriendelijke taal
+(Geen/Licht/Matig/Zwaar), niet als kale cijfers.
+
+**Snelknoppen:** Vakantie/Ziek blijven `life_events` (levenscontext),
+Blessure linkt door naar `/injuries` (eigen, rijkere module — geen
+dubbele registratie), Wedstrijd bewust niet toegevoegd (hoort bij Goal
+Engine's `target_date`, geen nieuw datamodel-eiland).
+
+**Gevalideerd:** periode-logica getest met de exacte grens (dag na
+`end_date` correct inactief), plus de 4 eerder afgesproken
+Resolver-scenario's opnieuw bevestigd na de output-herstructurering
+(`lifeContext`/`healthContext`/`trainingImpact`).
+
 ### Toekomstvisie — Coach Context Engine (vastgelegd, nog niet gebouwd)
 
 **Bewust NIET "Coach Agenda" genoemd** — dat klinkt als kalender, maar

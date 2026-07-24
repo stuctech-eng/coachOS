@@ -1,5 +1,67 @@
 # CoachOS — Changelog
 
+## v2.4.173 — Coach Context UI: Levensgebeurtenissen volledig herbouwd
+**Vervolg op v2.4.172 (Context Resolver). De pagina zelf herbouwd —
+niet langer een registratiescherm, maar een venster naar de Resolver.**
+
+### Context Resolver: output herstructureerd
+`src/core/utils/context-resolver.ts` — `ResolvedContext` genest naar
+`lifeContext`/`healthContext`/`trainingImpact` (was plat). Zelfde
+beslislogica, puur een output-herindeling: "Life Events = leven,
+Injuries = gezondheid, Training = uitvoering — de Resolver brengt ze
+samen, de bronnen blijven gescheiden." `formatResolvedContext()` en de
+4 consumenten (coach/action-plan/status/performance-adapter)
+bijgewerkt naar de nieuwe vorm — geen directe veldtoegang buiten deze
+functie om, dus verder geen wijzigingen nodig.
+
+### Twee écht kapotte functies gevonden en gefixt
+1. **`end_date` had nergens een invoerveld** — bestond al in het
+   datamodel en werd al verzonden (altijd `null`), en de
+   kalenderweergave gebruikte het alleen bij `type === 'vakantie'`,
+   hardcoded. Nu: een echt periode-invoerveld (begin+einddatum) voor
+   ELK type, generieke `isEenmaligActiefVandaag()`-check i.p.v. de
+   type-specifieke regel.
+2. **`fetchTodaysLifeEvents()` filterde op "laatste 2 dagen sinds
+   aanmaken"**, niet op de echte periode — een vakantie van 20 juli–3
+   augustus zou na een paar dagen automatisch uit de Coach-context
+   verdwijnen. Nu een echte periode-check
+   (`start_date <= vandaag <= end_date`). Ook `/api/life-events` GET
+   (de lijst-query) had een soortgelijk probleem: filterde ALLE
+   events op "laatste 14 dagen", waardoor een 3 maanden geleden
+   ingesteld terugkerend event uit het overzicht verdween ondanks nog
+   actief te zijn. Nu: terugkerende events altijd meegenomen
+   (tijdsonafhankelijk), eenmalige events op een 90-dagen-venster.
+
+### Nieuwe UI
+- **Statuskaart** — toont de opgeloste Resolver-werkelijkheid:
+  modus, waarom, trainingsinvloed in leesbare taal, wat er tijdelijk
+  gepauzeerd is (met reden), Coach-advies
+- **Snelknoppen**: Vakantie/Ziek (blijven `life_events`), Blessure
+  (linkt door naar `/injuries` — eigen, rijkere module, geen dubbele
+  registratie), Wedstrijd bewust niet toegevoegd (hoort bij Goal
+  Engine's `target_date`)
+- **Weekstrip met labels** i.p.v. alleen emoji's
+- **Gegroepeerd**: Nu actief / Binnenkort / Terugkerend (één regel per
+  terugkerend event, geen expansie — sowieso gegarandeerd doordat elke
+  rij al maar één keer is opgeslagen)
+- **Formulier uitgebreid**: periode (begin+eind) voor elk type,
+  invloed-stap met vriendelijke labels (Geen/Licht/Matig/Zwaar i.p.v.
+  kale 0-3-cijfers), vooraf ingevuld vanuit het type maar aanpasbaar
+- **Nieuw:** `api/life-events/context/route.ts` — levert de opgeloste
+  context aan de UI, zelfde bron als de Coach-prompt
+
+**Architectuurregel bewust bewaakt:** het formulier bepaalt nooit de
+intelligentie — trainingModifier/-30% etc. blijft exclusief bij de
+Resolver (afgeleid van de modus), niet per event instelbaar. De
+gebruiker stelt alleen de ruwe impact-scores in.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten of warnings
+- Periode-logica getest op de exacte grens (dag ná `end_date` correct
+  inactief, start- en einddag zelf correct actief)
+- De 4 eerder afgesproken Resolver-scenario's opnieuw bevestigd na de
+  output-herstructurering
+
 ## v2.4.172 — Coach Context Engine Fase 1: Context Resolver
 **Gemeld: de Coach dacht tijdens vakantie nog dat er gewerkt werd.
 Root cause: dedupliceer-logica matchte alleen op exact hetzelfde

@@ -24,6 +24,9 @@ export interface LifeEventRow {
   recovery_impact?: number | null
   stress_load?: number | null
   sleep_disruption?: number | null
+  // v2.4.173: toegevoegd voor de echte periode-check hieronder
+  start_time?: string
+  end_date?: string | null
 }
 
 export async function fetchTodaysLifeEvents(
@@ -32,14 +35,17 @@ export async function fetchTodaysLifeEvents(
   dagNummer: number,
   isWeekend: boolean
 ): Promise<LifeEventRow[]> {
-  const SELECT_FIELDS = 'type, start_hour, end_hour, notes, recurrence, recurrence_days, recovery_impact, stress_load, sleep_disruption'
+  const SELECT_FIELDS = 'type, start_hour, end_hour, notes, recurrence, recurrence_days, recovery_impact, stress_load, sleep_disruption, start_time, end_date'
+  const vandaag = new Date().toISOString().split('T')[0]
+  const negentigDagenGeleden = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
 
   const [eenmaligRes, herhalendRes] = await Promise.all([
     supabase
       .from('life_events')
       .select(SELECT_FIELDS)
       .eq('user_id', userId)
-      .gte('start_time', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()),
+      .is('recurrence', null)
+      .gte('start_time', negentigDagenGeleden),
     supabase
       .from('life_events')
       .select(SELECT_FIELDS)
@@ -49,6 +55,21 @@ export async function fetchTodaysLifeEvents(
 
   const eenmalig = (eenmaligRes.data || []) as LifeEventRow[]
   const herhalend = (herhalendRes.data || []) as LifeEventRow[]
+
+  // v2.4.173-FIX: was `.gte('start_time', laatste 2 dagen)` — dat
+  // betekende dat een meerdaags event (bijv. vakantie 20 juli t/m 3
+  // augustus) na een paar dagen automatisch uit de Coach-context
+  // verdween, los van end_date. Nu een echte periode-check: actief als
+  // vandaag tussen start_date en (end_date, of anders start_date zelf
+  // bij eenmalige events) valt. Was eerder ALLEEN toegepast op
+  // type==='vakantie' in de kalender-UI (life-events/page.tsx) — hier
+  // gold het voorheen zelfs voor GEEN enkel type correct.
+  const eenmaligActiefVandaag = eenmalig.filter(e => {
+    if (!e.start_time) return false
+    const startDatum = e.start_time.split('T')[0]
+    const eindDatum = e.end_date || startDatum
+    return vandaag >= startDatum && vandaag <= eindDatum
+  })
 
   // Filter herhalende events op relevantie voor vandaag — alle categorieën,
   // niet alleen werk. Een wekelijks terugkerend "hersteldag" event hoort
@@ -66,7 +87,7 @@ export async function fetchTodaysLifeEvents(
 
   // Dedupliceer op type — eenmalige events hebben voorrang als beide
   // hetzelfde type vandaag bevatten
-  const alleEvents = [...eenmalig]
+  const alleEvents = [...eenmaligActiefVandaag]
   relevanteHerhalend.forEach(he => {
     if (!alleEvents.find(e => e.type === he.type)) alleEvents.push(he)
   })
@@ -129,14 +150,14 @@ export async function haalDagContext(
  * nu de opgeloste werkelijkheid krijgen i.p.v. de ruwe eventlijst.
  */
 export function formatResolvedContext(context: ResolvedContext): string {
-  if (context.mode === 'normaal') return ''
+  if (context.lifeContext.mode === 'normaal' && !context.healthContext.activeInjuries) return ''
 
   const regels = [
-    `LEVENSCONTEXT VANDAAG: ${context.mode} (${context.priorityReason})`,
-    context.coachInstruction ? `Instructie: ${context.coachInstruction}` : '',
-    context.trainingModifier !== 0 ? `Trainingsbelasting-aanpassing: ${context.trainingModifier > 0 ? '+' : ''}${context.trainingModifier}%` : '',
-    context.suppressedEvents.length > 0
-      ? `Onderdrukt vandaag: ${context.suppressedEvents.map(e => `${e.type} (${e.reason})`).join(', ')}`
+    `LEVENSCONTEXT VANDAAG: ${context.lifeContext.mode} (${context.lifeContext.priorityReason})`,
+    context.lifeContext.coachInstruction ? `Instructie: ${context.lifeContext.coachInstruction}` : '',
+    context.trainingImpact.trainingModifier !== 0 ? `Trainingsbelasting-aanpassing: ${context.trainingImpact.trainingModifier > 0 ? '+' : ''}${context.trainingImpact.trainingModifier}%` : '',
+    context.lifeContext.suppressedEvents.length > 0
+      ? `Onderdrukt vandaag: ${context.lifeContext.suppressedEvents.map(e => `${e.type} (${e.reason})`).join(', ')}`
       : '',
   ].filter(Boolean)
 

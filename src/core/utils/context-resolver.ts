@@ -59,16 +59,35 @@ export interface SuppressedEvent {
   reason: string
 }
 
-export interface ResolvedContext {
+export interface LifeContext {
   mode: ContextMode
   priorityReason: string
+  coachInstruction: string
+  suppressedEvents: SuppressedEvent[]
+}
+
+export interface HealthContext {
+  activeInjuries: boolean
+  injuryDetails: InjuryInput[]
+}
+
+export interface TrainingImpact {
   trainingModifier: number // percentage, bijv. -30 = 30% minder trainingsbelasting
   recoveryModifier: number // percentage, bijv. +20 = 20% gunstiger voor herstel
   stressModifier: number // percentage, bijv. -40 = 40% minder fysiologische stress-aanname
-  coachInstruction: string
-  suppressedEvents: SuppressedEvent[]
-  // Zelfde formule als voorheen los berekend in api/status/route.ts —
-  // hier nu de ENIGE plek die dit nog doet (geen duplicatie meer)
+}
+
+// v2.4.173: herstructureerd op verzoek — "Life Events = leven, Injuries
+// = gezondheid, Goals = prestaties, Training = uitvoering. De Context
+// Resolver brengt ze samen, maar de bronnen blijven gescheiden." Puur
+// een output-herindeling — de beslislogica hieronder is ongewijzigd.
+export interface ResolvedContext {
+  lifeContext: LifeContext
+  healthContext: HealthContext
+  trainingImpact: TrainingImpact
+  // Blijft top-level (geen nesting) — wordt rechtstreeks als getal
+  // doorgegeven aan calculateRecoveryScore(), geen reden om dat een
+  // extra laag diep te maken
   lifeEventPenalty: number
 }
 
@@ -106,12 +125,15 @@ export function bepaalDagContext(input: DagContextInput): ResolvedContext {
     0
   )
 
+  const healthContext: HealthContext = { activeInjuries: injuries.length > 0, injuryDetails: injuries }
+
   // Geen events, geen blessures — nette, neutrale standaardstaat
   if (lifeEvents.length === 0 && injuries.length === 0) {
     return {
-      mode: 'normaal', priorityReason: 'Geen bijzondere levensgebeurtenissen vandaag',
-      trainingModifier: 0, recoveryModifier: 0, stressModifier: 0,
-      coachInstruction: '', suppressedEvents: [], lifeEventPenalty: 0,
+      lifeContext: { mode: 'normaal', priorityReason: 'Geen bijzondere levensgebeurtenissen vandaag', coachInstruction: '', suppressedEvents: [] },
+      healthContext,
+      trainingImpact: { trainingModifier: 0, recoveryModifier: 0, stressModifier: 0 },
+      lifeEventPenalty: 0,
     }
   }
 
@@ -138,13 +160,9 @@ export function bepaalDagContext(input: DagContextInput): ResolvedContext {
       : `${winnendeCategorie} is vandaag van toepassing`
 
   return {
-    mode: winnendeCategorie,
-    priorityReason,
-    trainingModifier: modifier.training,
-    recoveryModifier: modifier.recovery,
-    stressModifier: modifier.stress,
-    coachInstruction: modifier.instructie,
-    suppressedEvents,
+    lifeContext: { mode: winnendeCategorie, priorityReason, coachInstruction: modifier.instructie, suppressedEvents },
+    healthContext,
+    trainingImpact: { trainingModifier: modifier.training, recoveryModifier: modifier.recovery, stressModifier: modifier.stress },
     lifeEventPenalty,
   }
 }

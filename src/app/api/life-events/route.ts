@@ -21,15 +21,31 @@ export async function GET() {
     const user = await getUser()
     if (!user) return NextResponse.json({ events: [] })
     const supabase = createAdminClient()
-    const veertien = new Date()
-    veertien.setDate(veertien.getDate() - 14)
-    const { data } = await supabase
-      .from('life_events')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('start_time', veertien.toISOString())
-      .order('start_time', { ascending: false })
-    return NextResponse.json({ events: data || [] })
+
+    // v2.4.173-FIX: was `.gte('start_time', 14 dagen geleden)` voor
+    // ALLE events — een terugkerend event dat 3 maanden geleden werd
+    // ingesteld verdween daardoor uit het overzicht, ook al is het nog
+    // actief (recurrence wordt op dag-van-de-week beoordeeld, niet op
+    // hoe lang geleden het is aangemaakt). Nu: terugkerende events
+    // altijd meenemen, eenmalige events op een ruimere venster (90
+    // dagen terug tot 90 dagen vooruit — dekt zowel recente als
+    // toekomstig geplande vakanties).
+    const negentigTerug = new Date(); negentigTerug.setDate(negentigTerug.getDate() - 90)
+    const negentigVooruit = new Date(); negentigVooruit.setDate(negentigVooruit.getDate() + 90)
+
+    const [eenmaligRes, herhalendRes] = await Promise.all([
+      supabase.from('life_events').select('*').eq('user_id', user.id)
+        .is('recurrence', null)
+        .gte('start_time', negentigTerug.toISOString())
+        .lte('start_time', negentigVooruit.toISOString())
+        .order('start_time', { ascending: false }),
+      supabase.from('life_events').select('*').eq('user_id', user.id)
+        .not('recurrence', 'is', null)
+        .order('start_time', { ascending: false }),
+    ])
+
+    const events = [...(eenmaligRes.data || []), ...(herhalendRes.data || [])]
+    return NextResponse.json({ events })
   } catch {
     return NextResponse.json({ events: [] })
   }
