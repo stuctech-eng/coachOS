@@ -1118,6 +1118,44 @@ formule ongewijzigd, blessure wint zelfs van vakantie, neutrale staat
 zonder events, onbekend event-type crasht niet (valt terug op laagste
 prioriteit).
 
+### Coach Agenda Fase 2, eerste stap: feestdagen in de Context Resolver (v2.4.175)
+
+**Kleinste, veiligste stukje van Fase 2 — geen externe API, geen nieuw
+datamodel.** Nederlandse feestdagen werden al berekend (Gauss'
+paasformule) sinds v2.4.173, maar **uitsluitend als visuele decoratie**
+in de kalender-UI — de Coach wist er niets van.
+
+- **Nieuw:** `src/lib/feestdagen.ts` — de berekening verplaatst naar
+  een gedeeld bestand (was verdubbeld tussen UI en... nergens anders,
+  maar nu klaar om ook server-side gebruikt te worden). `life-events/
+  page.tsx` importeert dezelfde functie, geen twee losse
+  implementaties meer.
+- `context-resolver.ts` — `DagContextInput` kreeg een optioneel
+  `holiday`-veld. Puur informatief, **laagste prioriteit**
+  (`vrije_tijd`) — een feestdag overschrijft nooit iets belangrijkers
+  (vakantie, ziekte, werk blijven gewoon leidend als ze er zijn), maar
+  wordt wél zichtbaar als er verder niets speelt.
+- `haalDagContext()` — berekent nu ook of vandaag een feestdag is
+  (geen extra databron, dezelfde wiskundige functie) en geeft dat door.
+
+**Bewuste keuze:** een feestdag overschrijft géén werk-event. CoachOS
+kan niet weten of een ingeroosterde dienst op een feestdag verplicht is
+— dat blijft aan de gebruiker om zelf aan te geven (bijv. door op die
+dag "Vrije dag" i.p.v. "Dagdienst" te registreren).
+
+**Gevalideerd — 4 scenario's:** feestdag alleen (zichtbaar, bij naam
+genoemd), feestdag + vakantie (vakantie wint, ongewijzigd), feestdag +
+werk (werk wint, feestdag overschrijft niet), geen feestdag/geen events
+(normale staat, gedrag-behoudendheid bevestigd).
+
+**Bijgewerkte prioriteitenvolgorde:**
+1. ✅ Master Coach leest Today Engine — afgerond (v2.4.174)
+2. 🔄 Coach Agenda Fase 2 — **feestdagen afgerond (v2.4.175)**, externe agenda-sync/schoolvakanties/periodiserings-events blijven aparte, grotere projecten
+3. Rowing Specialist
+4. Strength Specialist
+5. Kettlebell Specialist
+6. Multi-sport Orchestrator
+
 ### Eén bron van waarheid: Coach-tekst leest nu ook de Today Engine (v2.4.174)
 
 **Gevonden architectuurprobleem:** de Today Engine-kaart op Home

@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { bepaalDagContext, type ResolvedContext } from './context-resolver'
+import { isFeestdag } from '@/lib/feestdagen'
 
 /**
  * Haalt ALLE levensgebeurtenissen op voor een gebruiker — alle categorieën
@@ -138,9 +139,15 @@ export async function haalDagContext(
     supabase.from('injuries').select('body_part, pain_score').eq('user_id', userId).eq('active', true),
   ])
 
+  // v2.4.175 (Coach Agenda Fase 2, eerste stap): puur wiskundig, geen
+  // extra databron of API-call nodig — zelfde berekening als de UI
+  const vandaag = new Date().toISOString().split('T')[0]
+  const feestdag = isFeestdag(vandaag)
+
   return bepaalDagContext({
     lifeEvents: events,
     injuries: injuriesRes.data || [],
+    holiday: feestdag ? { name: feestdag.name } : null,
   })
 }
 

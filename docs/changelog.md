@@ -1,5 +1,46 @@
 # CoachOS — Changelog
 
+## v2.4.175 — Coach Agenda Fase 2, eerste stap: feestdagen in de Context Resolver
+**Kleinste, veiligste stukje van Fase 2 — geen externe API, geen nieuw
+datamodel. Nederlandse feestdagen (Gauss' paasformule, sinds v2.4.173)
+waren tot nu toe puur visuele decoratie in de kalender-UI — de Coach
+wist er niets van.**
+
+### Nieuw
+- **`src/lib/feestdagen.ts`** — de berekening verplaatst naar een
+  gedeeld bestand. `life-events/page.tsx` importeert nu dezelfde
+  functie i.p.v. een eigen lokale kopie.
+- `context-resolver.ts` — `DagContextInput` kreeg een optioneel
+  `holiday`-veld. Puur informatief, laagste prioriteit (`vrije_tijd`)
+  — overschrijft nooit iets belangrijkers (vakantie/ziekte/werk blijven
+  leidend), maar wordt zichtbaar als er verder niets speelt.
+- `haalDagContext()` — berekent nu ook of vandaag een feestdag is
+  (geen extra databron, dezelfde wiskundige functie).
+
+### Bewuste keuze
+Een feestdag overschrijft géén werk-event — CoachOS kan niet weten of
+een ingeroosterde dienst op een feestdag verplicht is. Dat blijft aan
+de gebruiker (bijv. zelf "Vrije dag" registreren i.p.v. "Dagdienst").
+
+**Gevalideerd — 4 scenario's, allemaal correct:**
+- Feestdag alleen → zichtbaar, bij naam genoemd in de Coach-context
+- Feestdag + vakantie → vakantie wint, ongewijzigd
+- Feestdag + werk → werk wint, feestdag overschrijft niet
+- Geen feestdag/geen events → normale staat (gedrag-behoudendheid
+  bevestigd)
+
+`npx next build` — compileert zonder fouten of warnings.
+
+### README: prioriteitenvolgorde bijgewerkt
+1. ✅ Master Coach ↔ Today Engine — afgerond (v2.4.174)
+2. 🔄 Coach Agenda Fase 2 — feestdagen afgerond (dit), externe
+   agenda-sync/schoolvakanties/periodiserings-events blijven aparte,
+   grotere projecten
+3. Rowing Specialist
+4. Strength Specialist
+5. Kettlebell Specialist
+6. Multi-sport Orchestrator
+
 ## v2.4.174 — Eén bron van waarheid: Coach-tekst leest nu ook de Today Engine
 **Prioriteit 1 van de vastgelegde Coach Context Engine-roadmap.
 Opgelost: de Today-kaart op Home en de AI-gegenereerde Coach-tekst

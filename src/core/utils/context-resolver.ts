@@ -113,10 +113,16 @@ function categorieVan(type: string): ContextCategory {
 export interface DagContextInput {
   lifeEvents: LifeEventInput[]
   injuries?: InjuryInput[]
+  // v2.4.175 (Coach Agenda Fase 2, eerste stap): Nederlandse feestdagen
+  // — was tot nu toe alleen visuele decoratie in de kalender-UI, de
+  // Coach wist er niets van. Puur informatief, laagste prioriteit
+  // (vrije_tijd) — overschrijft nooit iets belangrijkers zoals werk of
+  // vakantie, maar wordt wél zichtbaar als er verder niets speelt.
+  holiday?: { name: string } | null
 }
 
 export function bepaalDagContext(input: DagContextInput): ResolvedContext {
-  const { lifeEvents, injuries = [] } = input
+  const { lifeEvents, injuries = [], holiday = null } = input
 
   // Zelfde formule als voorheen los in api/status/route.ts —
   // ongewijzigd, nu op één plek
@@ -127,8 +133,9 @@ export function bepaalDagContext(input: DagContextInput): ResolvedContext {
 
   const healthContext: HealthContext = { activeInjuries: injuries.length > 0, injuryDetails: injuries }
 
-  // Geen events, geen blessures — nette, neutrale standaardstaat
-  if (lifeEvents.length === 0 && injuries.length === 0) {
+  // Geen events, geen blessures, geen feestdag — nette, neutrale
+  // standaardstaat
+  if (lifeEvents.length === 0 && injuries.length === 0 && !holiday) {
     return {
       lifeContext: { mode: 'normaal', priorityReason: 'Geen bijzondere levensgebeurtenissen vandaag', coachInstruction: '', suppressedEvents: [] },
       healthContext,
@@ -141,6 +148,7 @@ export function bepaalDagContext(input: DagContextInput): ResolvedContext {
   // aanwezig is
   const aanwezigeCategorieen = new Set<ContextCategory>()
   if (injuries.length > 0) aanwezigeCategorieen.add('blessure')
+  if (holiday) aanwezigeCategorieen.add('vrije_tijd')
   for (const e of lifeEvents) aanwezigeCategorieen.add(categorieVan(e.type))
 
   const winnendeCategorie = CONTEXT_PRIORITY.find(c => aanwezigeCategorieen.has(c)) || 'vrije_tijd'
@@ -153,14 +161,22 @@ export function bepaalDagContext(input: DagContextInput): ResolvedContext {
     .map(e => ({ type: e.type, status: 'suppressed', reason: `overschreven door ${winnendeCategorie}` }))
 
   const modifier = MODIFIERS[winnendeCategorie]
+  // Feestdag wint (of is de enige reden dat vrije_tijd de winnende
+  // categorie is) — noem 'm expliciet bij naam, niet alleen "vrije_tijd"
+  const feestdagIsRedenVanVrijeTijd = winnendeCategorie === 'vrije_tijd' && holiday
   const priorityReason = winnendeCategorie === 'blessure'
     ? `Actieve blessure (${injuries.map(i => i.body_part).join(', ')}) heeft voorrang op alles`
-    : suppressedEvents.length > 0
-      ? `${winnendeCategorie} overschrijft ${[...new Set(suppressedEvents.map(e => e.type))].join(', ')}`
-      : `${winnendeCategorie} is vandaag van toepassing`
+    : feestdagIsRedenVanVrijeTijd
+      ? `Vandaag is het ${holiday!.name}`
+      : suppressedEvents.length > 0
+        ? `${winnendeCategorie} overschrijft ${[...new Set(suppressedEvents.map(e => e.type))].join(', ')}`
+        : `${winnendeCategorie} is vandaag van toepassing`
+  const coachInstruction = feestdagIsRedenVanVrijeTijd
+    ? `Vandaag is het ${holiday!.name} — een vrije dag, mogelijk extra ruimte om te trainen.`
+    : modifier.instructie
 
   return {
-    lifeContext: { mode: winnendeCategorie, priorityReason, coachInstruction: modifier.instructie, suppressedEvents },
+    lifeContext: { mode: winnendeCategorie, priorityReason, coachInstruction, suppressedEvents },
     healthContext,
     trainingImpact: { trainingModifier: modifier.training, recoveryModifier: modifier.recovery, stressModifier: modifier.stress },
     lifeEventPenalty,

@@ -5,6 +5,7 @@ import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { cn } from '@/utils'
 import Link from 'next/link'
+import { getNederlandseFeestdagen, type HolidayEvent } from '@/lib/feestdagen'
 
 // ── Levensgebeurtenissen — Coach Context, Fase 1 UI ─────────────────────
 // Bron: overleg 22 juli 2026. Belangrijkste verandering: dit scherm is
@@ -47,34 +48,6 @@ interface ResolvedContext {
   healthContext: { activeInjuries: boolean; injuryDetails: { body_part: string; pain_score: number }[] }
   trainingImpact: { trainingModifier: number; recoveryModifier: number; stressModifier: number }
   lifeEventPenalty: number
-}
-
-interface HolidayEvent { date: string; name: string; icon: string }
-
-function getNederlandseFeestdagen(jaar: number): HolidayEvent[] {
-  const a = jaar % 19, b = Math.floor(jaar / 100), c = jaar % 100
-  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25)
-  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30
-  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7
-  const m = Math.floor((a + 11 * h + 22 * l) / 451)
-  const maand = Math.floor((h + l - 7 * m + 114) / 31)
-  const dag = ((h + l - 7 * m + 114) % 31) + 1
-  const pasen = new Date(jaar, maand - 1, dag)
-  const add = (dt: Date, n: number) => { const r = new Date(dt); r.setDate(dt.getDate() + n); return r }
-  const s = (dt: Date) => dt.toISOString().split('T')[0]
-  return [
-    { date: `${jaar}-01-01`, name: 'Nieuwjaarsdag', icon: '🎆' },
-    { date: s(add(pasen, -2)), name: 'Goede Vrijdag', icon: '✝️' },
-    { date: s(pasen), name: 'Eerste Paasdag', icon: '🐣' },
-    { date: s(add(pasen, 1)), name: 'Tweede Paasdag', icon: '🐣' },
-    { date: `${jaar}-04-27`, name: 'Koningsdag', icon: '👑' },
-    { date: `${jaar}-05-05`, name: 'Bevrijdingsdag', icon: '🕊️' },
-    { date: s(add(pasen, 39)), name: 'Hemelvaartsdag', icon: '☁️' },
-    { date: s(add(pasen, 49)), name: 'Eerste Pinksterdag', icon: '🕊️' },
-    { date: s(add(pasen, 50)), name: 'Tweede Pinksterdag', icon: '🕊️' },
-    { date: `${jaar}-12-25`, name: 'Eerste Kerstdag', icon: '🎄' },
-    { date: `${jaar}-12-26`, name: 'Tweede Kerstdag', icon: '🎄' },
-  ]
 }
 
 const EVENT_CATEGORIES = [
