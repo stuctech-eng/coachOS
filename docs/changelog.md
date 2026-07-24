@@ -1,5 +1,52 @@
 # CoachOS — Changelog
 
+## v2.4.174 — Eén bron van waarheid: Coach-tekst leest nu ook de Today Engine
+**Prioriteit 1 van de vastgelegde Coach Context Engine-roadmap.
+Opgelost: de Today-kaart op Home en de AI-gegenereerde Coach-tekst
+gebruikten twee verschillende bronnen om te bepalen wat er vandaag
+getraind wordt — konden in uitzonderlijke gevallen iets anders zeggen.**
+
+### Root cause
+`api/today/route.ts` (de kaart) las `training_plan_sessions`
+rechtstreeks via `bepaalTodayPlan()` — correct, al getest.
+`api/coach/route.ts` en `api/action-plan/route.ts` (de AI-tekst)
+leidden het af uit trainingsgeschiedenis + specialist-samenvatting,
+geen directe koppeling aan het exacte schema van vandaag.
+
+### Fix — chirurgisch, geen herontwerp
+Beide routes roepen nu ook `bepaalTodayPlan()` aan (dezelfde functie
+als de kaart) en voegen het resultaat toe als een expliciet,
+gezaghebbend contextblok: "VANDAAG STAAT GEPLAND (bepaald door de
+Today Engine — dit is de autoritatieve bron, verzin geen ander
+sessietype)". De bestaande context-bronnen (Garmin/Morning Health/
+weer/dagboek/blessures/etc.) blijven ongewijzigd — dit is één extra,
+prioritair blok, geen vervanging van de hele pijplijn.
+
+- `src/app/api/coach/route.ts` — `POST` kreeg toegang tot de
+  request (`req: NextRequest`, nodig voor de cookie-doorgifte aan
+  Today Engine's interne aanroep), `todayEngineContext`-blok
+  toegevoegd vooraan in de prompt-samenstelling
+- `src/app/api/action-plan/route.ts` — zelfde patroon, voor het
+  gedetailleerde dagplan
+- Eigen try/catch op beide plekken: een mislukte Today Engine-aanroep
+  mag het Coach-advies nooit blokkeren
+
+### README: prioriteitenvolgorde vastgelegd
+1. ✅ Master Coach leest Today Engine — afgerond (dit)
+2. Coach Agenda Fase 2 (extern)
+3. Rowing Specialist
+4. Strength Specialist
+5. Kettlebell Specialist
+6. Multi-sport Orchestrator — pas zinvol met meerdere specialisten
+
+**Gevalideerd:** conditielogica getest (4 gevallen: specialist-sessie,
+Trainer AI-sessie, echte rustdag, lege fallback — toont correct/niet
+correct), `npx next build` compileert zonder fouten.
+
+**Test-instructie:** vraag een nieuw Coach-advies aan op een dag met
+een actief specialist-trainingsplan — de tekst zou nu consistent moeten
+zijn met wat de Today-kaart op Home toont.
+
 ## v2.4.173 — Coach Context UI: Levensgebeurtenissen volledig herbouwd
 **Vervolg op v2.4.172 (Context Resolver). De pagina zelf herbouwd —
 niet langer een registratiescherm, maar een venster naar de Resolver.**

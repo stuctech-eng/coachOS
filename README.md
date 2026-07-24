@@ -1118,6 +1118,40 @@ formule ongewijzigd, blessure wint zelfs van vakantie, neutrale staat
 zonder events, onbekend event-type crasht niet (valt terug op laagste
 prioriteit).
 
+### Eén bron van waarheid: Coach-tekst leest nu ook de Today Engine (v2.4.174)
+
+**Gevonden architectuurprobleem:** de Today Engine-kaart op Home
+(`api/today`) en de AI-gegenereerde Coach-tekst (`api/coach`,
+`api/action-plan`) gebruikten tot nu toe **twee verschillende bronnen**
+om te bepalen wat er vandaag getraind wordt. De kaart las
+`training_plan_sessions` rechtstreeks (correct, getest). De Coach-tekst
+leidde het af uit trainingsgeschiedenis + de specialist-samenvatting —
+geen directe koppeling aan het exacte schema van vandaag. In
+uitzonderlijke gevallen hadden kaart en tekst dus kunnen afwijken.
+
+**Chirurgische fix, geen herontwerp van de hele context-opbouw:**
+`api/coach/route.ts` en `api/action-plan/route.ts` roepen nu ook
+`bepaalTodayPlan()` aan (dezelfde Today Engine-functie als de kaart) en
+voegen het resultaat toe als een expliciet, gezaghebbend contextblok —
+"gebruik dit, verzin geen ander sessietype". De bestaande, werkende
+context-bronnen (Garmin/Morning Health/weer/dagboek/etc.) blijven
+ongewijzigd — dit is één extra, prioritair blok, geen vervanging van
+de hele pijplijn.
+
+**Vastgelegde prioriteitenvolgorde voor de rest van de Coach Context
+Engine** (op verzoek, zodat elke laag op een stabiele onderliggende
+architectuur steunt):
+1. ✅ Master Coach leest de Today Engine — **afgerond, v2.4.174**
+2. Coach Agenda afronden als centrale contextbron (Fase 2, groter — externe agenda's/schoolvakanties, nog niet gebouwd)
+3. Rowing Specialist bouwen (grote klus — vergelijkbaar met de hele Running-pariteitsronde)
+4. Strength Specialist
+5. Kettlebell Specialist
+6. Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol zodra er daadwerkelijk meerdere specialisten zijn om tussen te kiezen
+
+**Gevalideerd:** conditielogica getest (toont het blok bij een echte
+sessie of rustdag, niet bij de lege fallback-staat), `npx next build`
+compileert zonder fouten.
+
 ### Coach Context UI — v2.4.173
 
 **De Levensgebeurtenissen-pagina volledig herbouwd** — niet langer

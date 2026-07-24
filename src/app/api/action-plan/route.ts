@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic'
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { haalDagContext, formatResolvedContext } from '@/core/utils/life-events-context'
+import { bepaalTodayPlan } from '@/lib/today-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -46,7 +47,7 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
@@ -113,6 +114,21 @@ export async function POST() {
     // v2.4.172 (Coach Context Engine Fase 1): opgeloste dagcontext i.p.v. ruwe eventlijst
     const lifeEventsContext = formatResolvedContext(dagContext)
 
+    // v2.4.174 (Coach Context Engine, prioriteit 1): zelfde fix als
+    // coach/route.ts — het dagplan gebruikte tot nu toe trainingsgeschiedenis
+    // i.p.v. het exacte schema van vandaag. Eigen try/catch: mag het
+    // dagplan nooit blokkeren.
+    let todayEngineContext = ''
+    try {
+      const cookieHeader = req.headers.get('cookie') || ''
+      const todayPlan = await bepaalTodayPlan(user.id, cookieHeader)
+      if (todayPlan.source !== 'rust' || todayPlan.title !== 'Geen training gepland') {
+        todayEngineContext = `Vandaag gepland (Today Engine, autoritatief — gebruik dit, verzin geen ander sessietype): ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''} via ${todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'}`
+      }
+    } catch (err) {
+      console.error('[action-plan] Today Engine ophalen mislukt, gaat door zonder dit blok:', err)
+    }
+
     const naam = profile?.display_name || profile?.first_name || 'je'
     const score = status?.coach_score || 50
     const herstel = status?.recovery_score || 50
@@ -134,6 +150,7 @@ export async function POST() {
     const context = [
       `Dag: ${dag} ${isWeekend ? '(WEEKEND — vrije dag)' : '(werkdag)'}`,
       `Coach Score: ${score}/100, Herstel: ${herstel}/100`,
+      todayEngineContext,
       checkin ? `Gevoel: ${checkin.feeling_score}/10, Energie: ${checkin.energy_score}/10, Stress: ${(checkin as {stress_score?: number}).stress_score || '?'}/10` : 'Geen check-in',
       garminContext,
       blessures.length > 0 ? `Blessures: ${blessures.map(b => b.body_part).join(', ')}` : '',

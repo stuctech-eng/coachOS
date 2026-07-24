@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
@@ -13,6 +13,7 @@ import { beslisTussenSpecialisten } from '@/lib/specialists/decision-engine'
 import { haalGoalsMetProgress } from '@/lib/specialists/goal-engine'
 import { haalHrvTrend } from '@/lib/specialists/health-analysis-engine'
 import { haalPerformanceVoorRecovery } from '@/lib/specialists/health-analysis-engine'
+import { bepaalTodayPlan } from '@/lib/today-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -44,7 +45,7 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
@@ -276,6 +277,24 @@ export async function POST() {
     // context meer naar de Coach ("werkt vandaag" + "op vakantie"
     // tegelijk kon eerder allebei in de prompt terechtkomen)
     const lifeEventsContext = formatResolvedContext(dagContext)
+
+    // v2.4.174 (Coach Context Engine, prioriteit 1): de Coach-tekst
+    // gebruikte tot nu toe een ANDERE bron dan de Today Engine-kaart op
+    // Home (trainingsgeschiedenis + specialist-samenvatting, i.p.v. het
+    // exacte schema van vandaag). Twee bronnen van waarheid — konden in
+    // theorie iets anders zeggen. Nu leest de Coach-prompt hetzelfde,
+    // al-bepaalde TodayPlan als de kaart — één waarheid, niet twee.
+    // Eigen try/catch: mag de rest van het Coach-advies nooit blokkeren.
+    let todayEngineContext = ''
+    try {
+      const cookieHeader = req.headers.get('cookie') || ''
+      const todayPlan = await bepaalTodayPlan(user.id, cookieHeader)
+      if (todayPlan.source !== 'rust' || todayPlan.title !== 'Geen training gepland') {
+        todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'}\n- Reden: ${todayPlan.reason}\n`
+      }
+    } catch (err) {
+      console.error('[coach] Today Engine ophalen mislukt, advies gaat door zonder dit blok:', err)
+    }
 
     const blessureContext = blessures.length > 0
       ? `Actieve blessures: ${blessures.map((b: {body_part: string; pain_score: number}) => `${b.body_part} (pijn ${b.pain_score}/10)`).join(', ')}`
@@ -608,7 +627,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + morningHealthContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (weerContext || '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + (specialistContext || '') + trainerInstructiePrompt
+    ) + garminContext + morningHealthContext + todayEngineContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (weerContext || '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + (specialistContext || '') + trainerInstructiePrompt
 
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
