@@ -46,8 +46,8 @@ ${analyse.vermogenszone ? `- Vermogenszone: Zone ${analyse.vermogenszone.zone} (
 ${analyse.hartslagzone ? `- Hartslagzone: Zone ${analyse.hartslagzone.zone} (${analyse.hartslagzone.naam})` : '- Geen hartslagzone te bepalen (ontbrekende max hartslag of hartslagdata)'}
 ${analyse.cadans_beoordeling ? `- Cadans: ${analyse.cadans_beoordeling}` : '- Geen cadansdata beschikbaar'}
 ${analyse.geplande_sessie
-  ? `- Gepland stond: ${analyse.geplande_sessie.type}, ${analyse.geplande_sessie.duration} minuten. ${analyse.volgens_schema ? 'Deze rit valt binnen de verwachte duur.' : 'Deze rit wijkt qua duur af van wat gepland stond.'}`
-  : '- Geen geplande training gevonden voor deze datum om mee te vergelijken.'}
+  ? `- Gepland stond: ${analyse.geplande_sessie.type}, ${analyse.geplande_sessie.duration} minuten. Werkelijke duur: ${analyse.werkelijke_duur_minuten} minuten. ${analyse.volgens_schema ? 'Dit valt binnen de verwachte duur.' : analyse.afwijking_richting === 'langer' ? `Dit is LANGER dan gepland (${analyse.werkelijke_duur_minuten} t.o.v. ${analyse.geplande_sessie.duration} minuten) — gebruik deze richting exact, verzin geen andere.` : `Dit is KORTER dan gepland (${analyse.werkelijke_duur_minuten} t.o.v. ${analyse.geplande_sessie.duration} minuten) — gebruik deze richting exact, verzin geen andere.`}`
+  : `- Geen geplande training gevonden voor deze datum om mee te vergelijken. Werkelijke duur: ${analyse.werkelijke_duur_minuten} minuten.`}
 
 Schrijf een korte (3-5 zinnen), motiverende en concrete rit-evaluatie in
 het Nederlands. Behandel: wat ging goed, wat verdient aandacht, en of dit

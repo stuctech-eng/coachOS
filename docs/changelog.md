@@ -1,5 +1,45 @@
 # CoachOS — Changelog
 
+## v2.4.177 — Fix: Ritanalyse noemde een 3u43m rit "korter" dan gepland (moest langer zijn)
+**Gemeld met screenshot: een rit van 3u43m (223 min) werd door de
+Ritanalyse-AI beschreven als "korter dan de geplande 90 minuten" — dat
+is duidelijk fout, 223 > 90 is langer.**
+
+### Root cause
+De AI-prompt gaf wel de GEPLANDE duur (90 min) door, maar **nergens de
+werkelijke duur van de rit zelf** — de AI moest zelf "korter" of
+"langer" verzinnen zonder de vergelijking expliciet te krijgen, en deed
+dat in dit geval aantoonbaar verkeerd. Exact hetzelfde patroon dat we
+vandaag steeds vermeden: de AI moet interpreteren, nooit zelf een
+feitelijke vergelijking berekenen.
+
+**Bug zat in zowel Cycling als Running** (zelfde prompt-patroon,
+apart gebouwd, apart bevestigd).
+
+### Fix
+- `cycling-rit-analyse.ts` + `running-rit-analyse.ts` —
+  `RitAnalyseResultaat`/interface kreeg `werkelijke_duur_minuten` +
+  `afwijking_richting` ('korter'/'langer'/null), deterministisch
+  bepaald (`werkelijkeDuur > geplandeDuur`)
+- `api/specialists/cycling/rit-analyse/route.ts` +
+  `api/specialists/running/rit-analyse/route.ts` — de prompt geeft nu
+  expliciet beide getallen én de vastgestelde richting door: "Dit is
+  LANGER dan gepland (223 t.o.v. 90 minuten) — gebruik deze richting
+  exact, verzin geen andere."
+
+**Gevalideerd — 3 scenario's:**
+- Exact het gerapporteerde geval (223 min werkelijk, 90 gepland) →
+  `langer` (was ten onrechte "korter" in de AI-tekst)
+- Omgekeerd (45 min werkelijk, 90 gepland) → `korter`
+- Binnen de marge (95 min werkelijk, 90 gepland) → `null`, geen
+  noemenswaardige afwijking
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** vraag een nieuwe ritanalyse aan op een rit die
+duidelijk afwijkt van het geplande schema — de tekst zou nu de juiste
+richting (langer/korter) moeten noemen.
+
 ## v2.4.176 — Periodiserings-context: Today Engine weet nu in welke trainingsfase je zit
 **Eerste échte databasewijziging sinds de hele Coach Context Engine-
 reeks begon — klein, nullable, backwards compatible. `bepaalMesocycli()`

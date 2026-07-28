@@ -59,8 +59,8 @@ ${analyse.running_power_watt ? `- Running Power: ${Math.round(analyse.running_po
 ${analyse.geschatte_tss !== null ? `- Geschatte trainingsbelasting: ${analyse.geschatte_tss} TSS (intensiteit ${analyse.intensity_factor})` : ''}
 ${analyse.coach_policy_conclusie ? `- Huidige herstelstatus: ${analyse.coach_policy_conclusie.recoveryState} (max intensiteit vandaag: ${analyse.coach_policy_conclusie.maxIntensity})` : ''}
 ${analyse.geplande_sessie
-  ? `- Gepland stond: ${analyse.geplande_sessie.type}, ${analyse.geplande_sessie.duration} minuten. ${analyse.volgens_schema ? 'Deze loop valt binnen de verwachte duur.' : 'Deze loop wijkt qua duur af van wat gepland stond.'}`
-  : '- Geen geplande training gevonden voor deze datum om mee te vergelijken.'}
+  ? `- Gepland stond: ${analyse.geplande_sessie.type}, ${analyse.geplande_sessie.duration} minuten. Werkelijke duur: ${analyse.werkelijke_duur_minuten} minuten. ${analyse.volgens_schema ? 'Dit valt binnen de verwachte duur.' : analyse.afwijking_richting === 'langer' ? `Dit is LANGER dan gepland (${analyse.werkelijke_duur_minuten} t.o.v. ${analyse.geplande_sessie.duration} minuten) — gebruik deze richting exact, verzin geen andere.` : `Dit is KORTER dan gepland (${analyse.werkelijke_duur_minuten} t.o.v. ${analyse.geplande_sessie.duration} minuten) — gebruik deze richting exact, verzin geen andere.`}`
+  : `- Geen geplande training gevonden voor deze datum om mee te vergelijken. Werkelijke duur: ${analyse.werkelijke_duur_minuten} minuten.`}
 
 Schrijf een korte (3-5 zinnen), motiverende en concrete evaluatie in het
 Nederlands. Behandel: wat ging goed, wat verdient aandacht, en of dit

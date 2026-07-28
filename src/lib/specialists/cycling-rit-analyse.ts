@@ -22,6 +22,15 @@ export interface RitAnalyseResultaat {
   cadans_beoordeling: 'laag' | 'normaal' | 'hoog' | null
   volgens_schema: boolean | null // null = geen geplande sessie gevonden op deze datum
   geplande_sessie: { type: string; duration: number } | null
+  // v2.4.177-FIX: werkelijke duur + deterministisch bepaalde richting
+  // toegevoegd — de AI kreeg voorheen alleen "wijkt af van wat gepland
+  // stond" te horen, zonder de werkelijke duur te weten. Moest zelf
+  // "korter" of "langer" verzinnen, en deed dat een keer aantoonbaar
+  // verkeerd (3u43m rit "korter" genoemd dan een geplande 90 minuten).
+  // Zelfde principe als overal vandaag: AI interpreteert, verzint geen
+  // feiten of vergelijkingen zelf.
+  werkelijke_duur_minuten: number
+  afwijking_richting: 'korter' | 'langer' | null // null = binnen de marge, geen noemenswaardige afwijking
 }
 
 export async function analyseerRit(userId: string, activiteitId: string): Promise<RitAnalyseResultaat> {
@@ -85,13 +94,23 @@ export async function analyseerRit(userId: string, activiteitId: string): Promis
         .maybeSingle()
     : { data: null }
 
+  let afwijkingRichting: 'korter' | 'langer' | null = null
+
   if (sessie) {
     geplandeSessie = { type: sessie.type, duration: sessie.duration }
     // "Volgens schema": duur binnen 20% van het geplande, geen strengere
     // claim dan dat — puur een ruwe indicatie, geen exacte match-eis
     const marge = sessie.duration * 0.2
     volgensSchema = Math.abs(activiteitRes.data.duration - sessie.duration) <= marge
+    if (!volgensSchema) {
+      afwijkingRichting = activiteitRes.data.duration > sessie.duration ? 'langer' : 'korter'
+    }
   }
 
-  return { vermogenszone, hartslagzone, cadans_beoordeling: cadansBeoordeling, volgens_schema: volgensSchema, geplande_sessie: geplandeSessie }
+  return {
+    vermogenszone, hartslagzone, cadans_beoordeling: cadansBeoordeling,
+    volgens_schema: volgensSchema, geplande_sessie: geplandeSessie,
+    werkelijke_duur_minuten: activiteitRes.data.duration,
+    afwijking_richting: afwijkingRichting,
+  }
 }

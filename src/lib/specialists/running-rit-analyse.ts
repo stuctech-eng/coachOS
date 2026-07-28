@@ -47,6 +47,10 @@ export interface RunningRitAnalyseResultaat {
   // Vergelijking met schema
   volgens_schema: boolean | null
   geplande_sessie: { type: string; duration: number } | null
+  // v2.4.177-FIX: zelfde fout gevonden als bij Cycling — AI kreeg geen
+  // werkelijke duur te horen, moest zelf "korter"/"langer" bedenken
+  werkelijke_duur_minuten: number
+  afwijking_richting: 'korter' | 'langer' | null
 }
 
 function cadansNaarBeoordelingEnScore(cadans: number): { beoordeling: 'laag' | 'normaal' | 'hoog'; score: number } {
@@ -147,10 +151,15 @@ export async function analyseerRunningRit(userId: string, activiteitId: string):
         .maybeSingle()
     : { data: null }
 
+  let afwijkingRichting: 'korter' | 'langer' | null = null
+
   if (sessie) {
     geplandeSessie = { type: sessie.type, duration: sessie.duration }
     const marge = sessie.duration * 0.2
     volgensSchema = Math.abs(activiteitRes.data.duration - sessie.duration) <= marge
+    if (!volgensSchema) {
+      afwijkingRichting = activiteitRes.data.duration > sessie.duration ? 'langer' : 'korter'
+    }
   }
 
   return {
@@ -172,5 +181,7 @@ export async function analyseerRunningRit(userId: string, activiteitId: string):
     coach_policy_conclusie: policy ? { recoveryState: policy.recoveryState, maxIntensity: policy.maxIntensity } : null,
     volgens_schema: volgensSchema,
     geplande_sessie: geplandeSessie,
+    werkelijke_duur_minuten: activiteitRes.data.duration,
+    afwijking_richting: afwijkingRichting,
   }
 }
