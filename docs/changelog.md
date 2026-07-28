@@ -1,5 +1,48 @@
 # CoachOS — Changelog
 
+## v2.4.179 — Fix: "Gegenereerd via dagplan — nog geen apart coach advies" (race condition)
+**Gevraagd: waarom staat er soms een generieke fallback-tekst i.p.v.
+het echte, persoonlijke Coach-advies? Root cause: een race condition
+tussen twee API-aanroepen die niet op elkaar wachtten.**
+
+### Root cause
+De ververs-knop bij "Vandaag van je Coach" riep
+`generateAdvice()` (→ `/api/coach` POST, genereert het echte advies met
+AI) en `genereerDagplan()` (→ `/api/action-plan` POST, genereert het
+dagplan) **tegelijk** aan, zonder op elkaar te wachten:
+```js
+onClick={() => { generateAdvice(); genereerDagplan() }}
+```
+`api/action-plan/route.ts` verwacht dat er al een
+`coach_recommendations`-rij voor vandaag bestaat (geschreven door
+`api/coach`) om die bij te werken met het dagplan. Bestaat die nog
+niet — omdat `/api/coach` trager is (echte AI-call) en het raakte —
+dan maakt `api/action-plan` zelf een rij aan met generieke
+fallback-tekst: *"Gegenereerd via dagplan — nog geen apart coach advies
+voor vandaag."* Het echte advies van `generateAdvice()` komt daarna
+alsnog binnen, maar te laat — de fallback stond er al.
+
+**Tweede aanroeppunt gevonden:** de aparte "Maak dagplan"-knop riep
+`genereerDagplan` rechtstreeks aan, zónder ooit `generateAdvice()` te
+hebben gedaan — zelfde probleem, ander pad.
+
+### Fix
+- `src/app/home/page.tsx` — ververs-knop wacht nu expliciet op
+  `generateAdvice()` vóór `genereerDagplan()` wordt aangeroepen
+- **Robuustere fix binnen `genereerDagplan()` zelf**, ongeacht welke
+  knop het triggert: als er nog geen `recommendation` bestaat, wordt
+  eerst `generateAdvice()` afgewacht — dekt beide aanroeppunten met één
+  wijziging, i.p.v. per-knop losse fixes die later weer uit de pas
+  kunnen lopen
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten of
+warnings. `recommendation` bevestigd in scope vóór `genereerDagplan`'s
+definitie (regel 88 vs 315).
+
+**Test-instructie:** tik op de ververs-knop bij "Vandaag van je Coach"
+— het dagplan zou nu pas moeten verschijnen nadat het echte advies er
+ook is, niet met de generieke fallback-tekst.
+
 ## v2.4.178 — Fix: Coach Score bleef de hele dag verouderd na check-in/Garmin-import/activiteit
 **Gevraagd: ververst de Coach Score na check-in, foto-import en na een
 activiteit? Antwoord na onderzoek: nee — echte bug, geen verkeerde

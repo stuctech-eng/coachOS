@@ -315,6 +315,16 @@ export default function HomePage() {
   const genereerDagplan = async () => {
     setGeneratingPlan(true)
     try {
+      // v2.4.179-FIX: los van welke knop dit triggert (de refresh-knop
+      // hierboven roept dit inmiddels wél in de juiste volgorde aan,
+      // maar de aparte "Maak dagplan"-knop verderop deed dat niet) —
+      // zonder een bestaand advies zou api/action-plan een generieke
+      // fallback-tekst aanmaken ("Gegenereerd via dagplan — nog geen
+      // apart coach advies voor vandaag") i.p.v. het echte, persoonlijke
+      // advies. Hier gegarandeerd, ongeacht het aanroeppunt.
+      if (!recommendation) {
+        await generateAdvice()
+      }
       const res = await fetch('/api/action-plan', { method: 'POST' })
       const data = await res.json()
       if (data.plan) {
@@ -545,7 +555,7 @@ export default function HomePage() {
               <Sparkles size={18} />
               <span className="text-sm font-medium">Vandaag van je Coach</span>
             </div>
-            <button onClick={() => { generateAdvice(); genereerDagplan() }} disabled={isGenerating || generatingPlan}
+            <button onClick={async () => { await generateAdvice(); genereerDagplan() }} disabled={isGenerating || generatingPlan}
               className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center active:bg-slate-700 disabled:opacity-50">
               <RefreshCw size={14} className={cn('text-slate-400', (isGenerating || generatingPlan) && 'animate-spin')} />
             </button>
