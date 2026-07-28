@@ -63,6 +63,16 @@ export default function CheckInPage() {
       }
 
       setDone(true)
+      // v2.4.178-FIX: cache van Home wissen — anders toont Home de hele
+      // dag een verouderde (mogelijk van vóór deze check-in berekende)
+      // Coach Score, ook al is er nu nieuwe data. Zie changelog v2.4.178
+      // voor de volledige toelichting.
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('coach_status_datum')
+        window.localStorage.removeItem('coach_status_data')
+        window.localStorage.removeItem('dagplan_datum')
+        window.localStorage.removeItem('dagplan_data')
+      }
       setTimeout(() => router.push('/home'), boodschapVoorTiming ? 2800 : 1500)
     } catch {
       setError('Opslaan mislukt. Probeer opnieuw.')

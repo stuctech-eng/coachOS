@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.178 — Fix: Coach Score bleef de hele dag verouderd na check-in/Garmin-import/activiteit
+**Gevraagd: ververst de Coach Score na check-in, foto-import en na een
+activiteit? Antwoord na onderzoek: nee — echte bug, geen verkeerde
+perceptie.**
+
+### Root cause
+Home cachet de Coach Score in localStorage, gesleuteld op datum
+(`coach_status_datum`). Zodra er **op welk moment dan ook** vandaag een
+score is opgehaald — ook een onvolledige, van vóór check-in/Garmin-
+import — blijft die cache de rest van de dag staan. Geen van de drie
+invoerpunten wiste deze cache:
+
+- **Check-in**: wiste nooit iets — vertrouwde volledig op
+  `herberekenIndienCompleet()` in Home, die zelf een logica-fout heeft
+  (`if (scoreDatum === vandaagAms) return` — stopt zodra er ooit een
+  cache voor vandaag bestaat, ongeacht of die compleet was)
+- **Garmin foto-import**: riep al wél `/api/status` aan na een
+  geslaagde import, maar dat ververste alleen de **server**-cache
+  (`daily_status`-tabel) — niet de **localStorage**-cache die Home
+  daadwerkelijk leest. Halve fix, nooit afgemaakt.
+- **Garmin activiteit-import (TCX)**: deed **helemaal niets** — geen
+  server-herberekening, geen cache-clear. Grootste gat van de drie.
+
+### Fix
+Alle drie de pagina's wissen nu bij een geslaagde actie expliciet
+`coach_status_datum`/`coach_status_data`/`dagplan_datum`/`dagplan_data`
+uit localStorage, zodat Home bij terugkeer gegarandeerd vers ophaalt
+(geen wijziging aan Home's eigen caching-logica nodig — die valt
+vanzelf terug op een verse fetch zodra de cache leeg is):
+- `src/app/checkin/page.tsx`
+- `src/app/settings/garmin-import/page.tsx`
+- `src/app/settings/garmin-activity-import/page.tsx`
+
+**Bekende, resterende beperking:** `herberekenIndienCompleet()`'s eigen
+interne logica-fout in `home/page.tsx` is niet aangepakt — die blijft
+theoretisch een edge-case (bijv. Home al open in een ander tabblad
+terwijl elders check-in/Garmin gebeurt). De drie directe fixes dekken
+het gerapporteerde, praktische probleem volledig af.
+
+`npx next build` — compileert zonder fouten of warnings.
+
+**Test-instructie:** open Home, laat de score even zien, doe daarna een
+check-in of Garmin-import, ga terug naar Home — de score zou nu direct
+vers moeten zijn, niet pas na een handmatige refresh of de volgende dag.
+
 ## v2.4.177 — Fix: Ritanalyse noemde een 3u43m rit "korter" dan gepland (moest langer zijn)
 **Gemeld met screenshot: een rit van 3u43m (223 min) werd door de
 Ritanalyse-AI beschreven als "korter dan de geplande 90 minuten" — dat

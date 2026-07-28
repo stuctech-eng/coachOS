@@ -96,6 +96,16 @@ export default function GarminImportPage() {
       }
       setResultaat(data)
       setPhase('done')
+      // v2.4.178-FIX: de server-cache (daily_status) werd al ververst,
+      // maar Home leest voor "al vandaag opgehaald?" uit localStorage —
+      // die werd nooit gewist. Zonder dit bleef Home de hele dag een
+      // verouderde score tonen, ook na een geslaagde import.
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('coach_status_datum')
+        window.localStorage.removeItem('coach_status_data')
+        window.localStorage.removeItem('dagplan_datum')
+        window.localStorage.removeItem('dagplan_data')
+      }
       fetch('/api/status', { method: 'POST', credentials: 'include' }).catch(() => {})
     } catch {
       setErrorMsg('Verbindingsfout. Probeer opnieuw.')

@@ -179,6 +179,17 @@ export default function GarminActivityImportPage() {
       // "Opgeslagen", zodat duidelijk is dat het geen nieuwe activiteit is.
       setWasOverwritten(!!data.overwritten)
       setFase('done')
+      // v2.4.178-FIX: ontbrak hier volledig — na een geslaagde
+      // activiteit-upload werd Home's Coach Score-cache nooit gewist,
+      // dus toonde Home de rest van de dag een score van vóór deze
+      // activiteit. Zelfde fix als bij check-in en de foto-import.
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('coach_status_datum')
+        window.localStorage.removeItem('coach_status_data')
+        window.localStorage.removeItem('dagplan_datum')
+        window.localStorage.removeItem('dagplan_data')
+      }
+      fetch('/api/status', { method: 'POST', credentials: 'include' }).catch(() => {})
     } catch {
       setErrorMsg('Bevestigen mislukt. Probeer opnieuw.')
       setFase('error')
