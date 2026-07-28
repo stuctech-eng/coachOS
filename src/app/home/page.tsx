@@ -322,7 +322,13 @@ export default function HomePage() {
       // fallback-tekst aanmaken ("Gegenereerd via dagplan — nog geen
       // apart coach advies voor vandaag") i.p.v. het echte, persoonlijke
       // advies. Hier gegarandeerd, ongeacht het aanroeppunt.
-      if (!recommendation) {
+      // v2.4.180: verscherpt — "iets staat er al" is niet genoeg, want
+      // een eerder aangemaakte fallback-rij (zie v2.4.179) heeft ook een
+      // gevulde recommendation, alleen met de verkeerde inhoud. Check nu
+      // expliciet op de fallback-herkenningstekst zelf.
+      const isNogGeenEchtAdvies = !recommendation ||
+        (recommendation as { reasoning?: string })?.reasoning?.includes('Gegenereerd via dagplan')
+      if (isNogGeenEchtAdvies) {
         await generateAdvice()
       }
       const res = await fetch('/api/action-plan', { method: 'POST' })

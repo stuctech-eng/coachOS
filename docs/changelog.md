@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.180 — Fix (2/2): ververs-knop gaf nog steeds dezelfde fallback-tekst terug
+**Gemeld: v2.4.179 loste het niet op, zelfde tekst na een klik op de
+ververs-knop. Diepere oorzaak gevonden — v2.4.179 was een terechte
+fix, maar loste niet de échte hoofdoorzaak op.**
+
+### Root cause
+`POST /api/coach` — de route die de ververs-knop en "Genereer advies"-
+knop aanroepen — bevatte zélf een kortsluiting: als er al een rij voor
+vandaag bestond met zowel `recommendation` als `advice_bullets`
+gevuld, werd die meteen teruggegeven **zonder opnieuw te genereren**.
+
+Een eerder aangemaakte fallback-rij (uit de v2.4.179-race-condition,
+vóór die fix) heeft toevallig beide velden gevuld
+(`recommendation: 'Bekijk je dagplan hieronder'`, `advice_bullets:
+'[]'` — een lege array, maar een niet-lege string). Deze kortsluiting
+zag dat dus als "al klaar" en sloeg regeneratie over — **ook bij een
+expliciete klik op ververs**. Bevestigd: `POST /api/coach` wordt
+uitsluitend via directe knopklikken aangeroepen (geen achtergrond-
+aanroeper die van deze cache profiteert), en de knop is al `disabled`
+tijdens het genereren — deze kortsluiting had dus geen nuttig doel.
+
+### Fix
+- `src/app/api/coach/route.ts` — de "geef bestaande rij terug"-
+  kortsluiting uit `POST` verwijderd. POST betekent nu altijd: écht
+  opnieuw genereren. GET blijft de cache-lezende variant voor stille
+  achtergrond-weergave.
+- `src/app/home/page.tsx` — de check in `genereerDagplan()` (v2.4.179)
+  verscherpt: keek alleen of er *iets* stond, niet of het de fallback-
+  tekst zelf was. Herkent nu expliciet de fallback-markering
+  ("Gegenereerd via dagplan...") i.p.v. alleen op leegte te controleren.
+
+**Gevalideerd — 3 scenario's, allemaal correct:**
+- Geen recommendation → regenereren
+- Fallback-tekst (het gerapporteerde geval) → regenereren
+- Echt, persoonlijk advies → niet onnodig opnieuw genereren
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** tik nogmaals op de ververs-knop (rond pijltje) bij
+"Vandaag van je Coach" — deze keer zou er een écht, persoonlijk advies
+moeten verschijnen, niet de "Gegenereerd via dagplan"-tekst.
+
 ## v2.4.179 — Fix: "Gegenereerd via dagplan — nog geen apart coach advies" (race condition)
 **Gevraagd: waarom staat er soms een generieke fallback-tekst i.p.v.
 het echte, persoonlijke Coach-advies? Root cause: een race condition

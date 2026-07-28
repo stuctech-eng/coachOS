@@ -53,14 +53,18 @@ export async function POST(req: NextRequest) {
     const today = new Date().toISOString().split('T')[0]
     const vandaagAms = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
-    const { data: cached } = await supabase
-      .from('coach_recommendations')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .eq('type', 'coach')
-      .single()
-    if (cached?.recommendation && cached?.advice_bullets) return NextResponse.json(cached)
+    // v2.4.180-FIX: verwijderd — deze "geef bestaande rij terug, genereer
+    // niets nieuws" kortsluiting zat IN de POST-functie zelf, die
+    // uitsluitend via expliciete knopklikken wordt aangeroepen (ververs-
+    // knop, "Genereer advies"-knop). Er is geen achtergrond-aanroeper die
+    // hiervan profiteert. Gevolg: als er ooit een rij met fallback-tekst
+    // was aangemaakt (bijv. door de race condition uit v2.4.179, vóór die
+    // fix), kon de gebruiker daar nooit meer vanaf komen — een expliciete
+    // klik op ververs gaf gewoon dezelfde oude tekst terug, want zowel
+    // recommendation als advice_bullets waren toevallig gevuld (ook al
+    // was het de foute inhoud). POST betekent nu altijd: echt opnieuw
+    // genereren. GET (hierboven) blijft de cache-lezende variant voor
+    // stille achtergrond-weergave bij het openen van Home.
 
     const zeven = new Date()
     zeven.setDate(zeven.getDate() - 7)
