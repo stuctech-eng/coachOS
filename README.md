@@ -1206,6 +1206,35 @@ werk (werk wint, feestdag overschrijft niet), geen feestdag/geen events
 5. Kettlebell Specialist
 6. Multi-sport Orchestrator
 
+### Weer, Pauzeer/Hervat, en een echte Today Engine-bugfix (v2.4.182-184)
+
+**v2.4.182 — Meer weergegevens.** Gevoelstemperatuur, luchtvochtigheid,
+windstoten, UV-index, neerslagkans (%) toegevoegd — allemaal al
+beschikbaar bij Open-Meteo. Op verzoek: tik-om-uit-te-klappen op het
+bestaande weerblok op Home, geen apart scherm.
+
+**v2.4.183 — Pauzeer/Hervat-knop voor trainingsplannen.** Ontstaan uit
+een testbehoefte (Today Engine Scenario A forceren zonder SQL), bleek
+een genuine, blijvende functie — ook nuttig bij een blessure of
+prioriteitswissel. Hergebruikt de bestaande `'abandoned'`-status, geen
+nieuw datamodel. Beide specialisten (Cycling + Running), consistent.
+
+**v2.4.184 — Today Engine's Trainer AI-vangnet bevestigd gefixt.**
+Root cause: `VERCEL_URL` (gebruikt voor de interne server-naar-server-
+aanroep naar Trainer AI) wijst naar een deployment-specifieke URL die
+kan afwijken van het domein waar de gebruiker daadwerkelijk op inlogt
+— cookie-domain-mismatch maakte de sessie-cookie ongeldig bij die
+interne aanroep. Fix: `baseUrl` nu afgeleid van het daadwerkelijke
+inkomende verzoek (`req.nextUrl.origin`) i.p.v. gegokt. **Bevestigd
+werkend in de praktijk** (niet alleen in code) — Scenario A (Trainer
+AI-vangnet) toont nu een echte, persoonlijke sessie i.p.v. de eerdere
+foutmelding.
+
+**Alle drie de Today Engine-acceptatietesten nu bevestigd:**
+1. ✅ Trainer AI-vangnet (v2.4.184-fix, bevestigd in de praktijk)
+2. ✅ Coach Score verversen na check-in/import/activiteit (v2.4.178, bevestigd)
+3. ⏳ ACWR-correctie bij een echt hoge belastingsverhouding — wacht nog op een natuurlijke gelegenheid, geen actie nodig
+
 ### Eén bron van waarheid: Coach-tekst leest nu ook de Today Engine (v2.4.174)
 
 **Gevonden architectuurprobleem:** de Today Engine-kaart op Home
