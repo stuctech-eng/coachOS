@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
     let lat = 52.37
     let lon = 4.89
     let stad = 'Amsterdam'
+    let locatieBron: 'gps' | 'vercel-headers' | 'ipapi' | 'fallback' = 'fallback'
 
     // v2.4.168-FIX: GPS heeft ALTIJD voorrang boven IP-locatie. IP-
     // gebaseerde locatiebepaling (ipapi.co) is onbetrouwbaar zodra je
@@ -68,31 +69,50 @@ export async function GET(req: NextRequest) {
     if (gpsLat && gpsLon && !isNaN(parseFloat(gpsLat)) && !isNaN(parseFloat(gpsLon))) {
       lat = parseFloat(gpsLat)
       lon = parseFloat(gpsLon)
+      locatieBron = 'gps'
       // Plaatsnaam bij GPS-coördinaten is optioneel — reverse geocoding
       // zou een extra externe aanroep vergen. Toon voorlopig "Huidige
       // locatie" i.p.v. een stadsnaam; kan later verfijnd worden.
       stad = 'Huidige locatie'
     } else {
-      const forwarded = req.headers.get('x-forwarded-for')
-      const ip = forwarded ? forwarded.split(',')[0].trim() : null
+      // v2.4.181-FIX: Vercel's eigen geo-headers eerst proberen — deze
+      // worden door Vercel's edge-netwerk zelf berekend op basis van het
+      // daadwerkelijke client-IP, betrouwbaarder dan onze eigen ipapi.co-
+      // lookup op basis van x-forwarded-for (die soms een proxy-/server-
+      // IP oplevert i.p.v. de echte client-IP — bijv. "Ashburn, Virginia",
+      // een bekend AWS/Vercel-datacenter, i.p.v. de werkelijke locatie).
+      const vercelLat = req.headers.get('x-vercel-ip-latitude')
+      const vercelLon = req.headers.get('x-vercel-ip-longitude')
+      const vercelCity = req.headers.get('x-vercel-ip-city')
 
-      if (ip && ip !== '127.0.0.1' && !ip.startsWith('192.168') && !ip.startsWith('::1')) {
-        try {
-          // FIX v2.4.4: timeout toegevoegd — voorkomt hangende function bij trage geo-lookup
-          const geoRes = await fetchWithTimeout(
-            `https://ipapi.co/${ip}/json/`,
-            { headers: { 'User-Agent': 'CoachOS/1.0' } },
-            3000
-          )
-          if (geoRes.ok) {
-            const geo = await geoRes.json()
-            if (geo.latitude && geo.longitude) {
-              lat = geo.latitude
-              lon = geo.longitude
-              stad = geo.city || geo.region || 'Onbekend'
+      if (vercelLat && vercelLon && !isNaN(parseFloat(vercelLat)) && !isNaN(parseFloat(vercelLon))) {
+        lat = parseFloat(vercelLat)
+        lon = parseFloat(vercelLon)
+        stad = vercelCity ? decodeURIComponent(vercelCity) : 'Onbekend'
+        locatieBron = 'vercel-headers'
+      } else {
+        const forwarded = req.headers.get('x-forwarded-for')
+        const ip = forwarded ? forwarded.split(',')[0].trim() : null
+
+        if (ip && ip !== '127.0.0.1' && !ip.startsWith('192.168') && !ip.startsWith('::1')) {
+          try {
+            // FIX v2.4.4: timeout toegevoegd — voorkomt hangende function bij trage geo-lookup
+            const geoRes = await fetchWithTimeout(
+              `https://ipapi.co/${ip}/json/`,
+              { headers: { 'User-Agent': 'CoachOS/1.0' } },
+              3000
+            )
+            if (geoRes.ok) {
+              const geo = await geoRes.json()
+              if (geo.latitude && geo.longitude) {
+                lat = geo.latitude
+                lon = geo.longitude
+                stad = geo.city || geo.region || 'Onbekend'
+                locatieBron = 'ipapi'
+              }
             }
-          }
-        } catch { /* gebruik fallback — timeout of netwerkfout, niet blokkerend */ }
+          } catch { /* gebruik fallback — timeout of netwerkfout, niet blokkerend */ }
+        }
       }
     }
 
@@ -159,6 +179,11 @@ export async function GET(req: NextRequest) {
       },
       advies,
       coach_context: `Weer in ${stad}: ${temp}°C, ${omschrijving}, wind ${wind} km/u. Ochtend: ${ochtendRegen}mm, Middag: ${middagRegen}mm, Avond: ${avondRegen}mm. ${advies}.`,
+      // v2.4.181: PERMANENT (in tegenstelling tot de v2.4.168-versie die
+      // na bevestiging weer verwijderd werd) — dit soort locatieproblemen
+      // bleek zich te herhalen. Alleen zichtbaar via /debug, niet meer op
+      // Home zelf, dus geen visuele rommel voor dagelijks gebruik.
+      _locatie_debug: { bron: locatieBron, lat, lon, stad },
     }
 
     return NextResponse.json(result)

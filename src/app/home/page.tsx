@@ -121,8 +121,29 @@ export default function HomePage() {
       if (!navigator.geolocation) { haalWeerOp(); return }
       navigator.geolocation.getCurrentPosition(
         pos => haalWeerOp(pos.coords.latitude, pos.coords.longitude),
-        () => haalWeerOp(), // permissie geweigerd of mislukt — val terug op IP-locatie
-        { timeout: 5000, maximumAge: 10 * 60 * 1000 } // maximaal 10 min oude GPS-fix hergebruiken
+        (err) => {
+          // v2.4.181-FIX: reden niet meer stilzwijgend weggooien — kon
+          // daardoor nooit onderscheiden of het een geweigerde permissie,
+          // timeout, of iets anders was. Zichtbaar in de console, geen
+          // gok meer nodig bij een volgend "verkeerde locatie"-rapport.
+          const redenen: Record<number, string> = { 1: 'permissie geweigerd', 2: 'positie niet beschikbaar', 3: 'timeout' }
+          console.warn('[weer] GPS mislukt:', redenen[err.code] || err.message, '— val terug op IP-locatie')
+          haalWeerOp()
+        },
+        {
+          // v2.4.181-FIX: enableHighAccuracy toegevoegd — zonder deze
+          // vlag gebruikt de browser standaard WiFi/zendmast-
+          // positiebepaling i.p.v. echte GPS-satellieten. Kan in een
+          // onbekend buitenlands netwerk (bijv. op reis) minder
+          // betrouwbaar zijn dan een echte GPS-fix. Timeout ruimer
+          // gezet (5s -> 15s) — een echte GPS-fix kost meer tijd dan
+          // WiFi-positiebepaling, zeker met minder goed zicht op de
+          // hemel (bijv. binnen, of tussen bergen zoals bij het
+          // Gardameer).
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 10 * 60 * 1000, // maximaal 10 min oude GPS-fix hergebruiken
+        }
       )
     }
 

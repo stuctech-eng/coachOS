@@ -1,5 +1,56 @@
 # CoachOS — Changelog
 
+## v2.4.181 — Fix: "Ashburn, Virginia" i.p.v. Riva del Garda — GPS viel terug op zwakke IP-locatie
+**Gemeld: Coach dacht dat de gebruiker in Ashburn, Virginia zat, terwijl
+die daadwerkelijk aan het Gardameer (Italië) was. "Ashburn" is een
+bekend AWS/Vercel-datacenter — een klassiek signaal dat er een server-
+IP werd opgepikt i.p.v. de echte locatie.**
+
+### Twee waarschijnlijke oorzaken gevonden en beide gefixt
+
+**1. GPS-aanvraag was te zwak ingesteld**
+- `enableHighAccuracy` stond niet aan (standaard `false`) — de browser
+  gebruikt dan WiFi/zendmast-positiebepaling i.p.v. echte GPS-
+  satellieten. Op reis, in een onbekend buitenlands netwerk, kan dat
+  onbetrouwbaarder zijn dan een echte GPS-fix.
+- Timeout stond op 5 seconden — te kort voor een "koude" GPS-fix,
+  helemaal met minder goed zicht op de hemel (bijv. tussen bergen bij
+  het Gardameer).
+- **Fix:** `enableHighAccuracy: true`, timeout naar 15 seconden.
+- **Bijvangst:** de foutreden bij een mislukte GPS-aanvraag werd
+  stilzwijgend weggegooid (`() => haalWeerOp()`) — nu gelogd naar de
+  console (permissie geweigerd/timeout/positie niet beschikbaar), zodat
+  een volgend probleem niet meer geraden hoeft te worden.
+
+**2. IP-vangnet gebruikte niet Vercel's eigen, betrouwbaardere geo-headers**
+- Vercel's edge-netwerk berekent zelf al `x-vercel-ip-latitude`/
+  `-longitude`/`-city` op basis van het daadwerkelijke client-IP — dit
+  werd nergens gebruikt. In plaats daarvan deed de app een eigen
+  ipapi.co-lookup op basis van `x-forwarded-for`, die soms een proxy-/
+  server-IP oplevert (vandaar mogelijk Ashburn).
+- **Fix:** `src/app/api/weather/route.ts` — Vercel's geo-headers nu als
+  eerste, betere vangnet vóór de ipapi.co-lookup.
+
+### Permanente diagnosemogelijkheid (niet meer verwijderen)
+De vorige debug-indicator (v2.4.168) werd na bevestiging weer
+verwijderd — bleek te vroeg, want dit probleem kwam terug zonder dat we
+het konden diagnosticeren. Nu anders aangepakt:
+- **Nieuw:** `/debug/weer` — permanent beschikbaar (vanaf `/debug`),
+  toont welke locatiebron daadwerkelijk gebruikt is (`gps`/
+  `vercel-headers`/`ipapi`/`fallback`), met een eigen GPS-testknop.
+  Niet meer op Home zelf — geen visuele rommel voor dagelijks gebruik,
+  wel altijd beschikbaar bij een volgend rapport.
+- `_locatie_debug`-veld in de `/api/weather`-respons, permanent
+  (i.t.t. de vorige, tijdelijke versie).
+
+`npx next build` — compileert zonder fouten, `/debug/weer` aanwezig in
+de build-output.
+
+**Test-instructie:** open `/debug/weer`, tik op "GPS opvragen" — de
+gebruikte bron zou `gps` moeten worden met de juiste coördinaten. Mocht
+er ooit weer een verkeerde locatie gemeld worden: check eerst dit
+scherm vóór er verder gegokt wordt.
+
 ## v2.4.180 — Fix (2/2): ververs-knop gaf nog steeds dezelfde fallback-tekst terug
 **Gemeld: v2.4.179 loste het niet op, zelfde tekst na een klik op de
 ververs-knop. Diepere oorzaak gevonden — v2.4.179 was een terechte

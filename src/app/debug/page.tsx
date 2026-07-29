@@ -620,6 +620,11 @@ export default function DebugPage() {
           📅 Today Engine Debug
         </a>
 
+        {/* v2.4.181: link naar Weer Debug (permanent) */}
+        <a href="/debug/weer" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+          🌍 Weer Debug (locatiebron)
+        </a>
+
         <button
           onClick={runDiagnostiek}
           disabled={bezig}
