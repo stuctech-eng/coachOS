@@ -28,7 +28,10 @@ export async function GET(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 
     const cookieHeader = req.headers.get('cookie') || ''
-    const plan = await bepaalTodayPlan(user.id, cookieHeader)
+    // v2.4.184-FIX: baseUrl van het eigen inkomende verzoek i.p.v.
+    // VERCEL_URL — garandeert hetzelfde domein als waar de sessie-
+    // cookie voor geldig is
+    const plan = await bepaalTodayPlan(user.id, cookieHeader, req.nextUrl.origin)
 
     return NextResponse.json({ plan })
   } catch (err) {

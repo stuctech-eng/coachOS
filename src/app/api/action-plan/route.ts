@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
     let todayEngineContext = ''
     try {
       const cookieHeader = req.headers.get('cookie') || ''
-      const todayPlan = await bepaalTodayPlan(user.id, cookieHeader)
+      const todayPlan = await bepaalTodayPlan(user.id, cookieHeader, req.nextUrl.origin)
       if (todayPlan.source !== 'rust' || todayPlan.title !== 'Geen training gepland') {
         todayEngineContext = `Vandaag gepland (Today Engine, autoritatief — gebruik dit, verzin geen ander sessietype): ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''} via ${todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'}${todayPlan.trainingPhase ? ` — trainingsfase: ${todayPlan.trainingPhase.mesocycleType}` : ''}`
       }

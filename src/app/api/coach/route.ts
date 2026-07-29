@@ -292,7 +292,7 @@ export async function POST(req: NextRequest) {
     let todayEngineContext = ''
     try {
       const cookieHeader = req.headers.get('cookie') || ''
-      const todayPlan = await bepaalTodayPlan(user.id, cookieHeader)
+      const todayPlan = await bepaalTodayPlan(user.id, cookieHeader, req.nextUrl.origin)
       if (todayPlan.source !== 'rust' || todayPlan.title !== 'Geen training gepland') {
         todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'}\n- Reden: ${todayPlan.reason}${todayPlan.trainingPhase ? `\n- Trainingsfase: ${todayPlan.trainingPhase.mesocycleType} — leg desgewenst uit waarom de belasting van vandaag past bij deze fase (bijv. "omdat je in een opbouwweek zit, hoort deze hogere belasting bij de opbouw" of "ondanks dat je je fit voelt, zit je in een herstelweek — daarom nu bewust rustiger")` : ''}\n`
       }

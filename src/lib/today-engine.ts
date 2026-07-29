@@ -158,7 +158,7 @@ async function kiesTussenProposals(userId: string, proposals: SpecialistProposal
   return proposals.find(p => p.sport === beslissing.selectedCoach) || proposals[0]
 }
 
-export async function bepaalTodayPlan(userId: string, cookieHeader: string): Promise<TodayPlan> {
+export async function bepaalTodayPlan(userId: string, cookieHeader: string, baseUrl: string): Promise<TodayPlan> {
   const supabase = createAdminClient()
   const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
@@ -198,13 +198,22 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string): Pro
 
   // ── Laag 3: Trainer AI — alleen als er geen specialist-plan is ─────
   try {
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+    // v2.4.184-FIX: VERCEL_URL verwijderd — die wijst naar een
+    // deployment-specifieke URL (kan afwijken van het custom domain/
+    // production-alias waar de gebruiker daadwerkelijk op inlogt).
+    // Cookie-domain-mismatch tussen die twee URLs kon de sessie-cookie
+    // ongeldig maken bij deze interne aanroep — precies bevestigd:
+    // Trainer-tab in de browser werkte prima, deze interne aanroep
+    // faalde stil. baseUrl komt nu van de aanroeper, afgeleid van het
+    // daadwerkelijke inkomende verzoek — gegarandeerd hetzelfde domein.
     const trainerRes = await fetch(`${baseUrl}/api/training/today`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', cookie: cookieHeader },
       body: JSON.stringify({}),
     })
-    if (trainerRes.ok) {
+    if (!trainerRes.ok) {
+      console.error('[today-engine] Trainer AI-aanroep gaf status', trainerRes.status, 'baseUrl:', baseUrl)
+    } else {
       const data = await trainerRes.json()
       const instr = data.instruction
       if (instr && instr.training_allowed) {
@@ -218,10 +227,12 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string): Pro
           actionHref: '/training', actionLabel: 'Start Training',
           trainingPhase: null,
         }
+      } else {
+        console.error('[today-engine] Trainer AI gaf geen bruikbare instructie terug:', JSON.stringify(data).slice(0, 300))
       }
     }
   } catch (err) {
-    console.error('[today-engine] Trainer AI ophalen mislukt:', err)
+    console.error('[today-engine] Trainer AI ophalen mislukt, baseUrl:', baseUrl, 'fout:', err)
   }
 
   // Geen enkele bron leverde iets op — nette lege staat, geen gok

@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.184 — Fix: Today Engine's Trainer AI-vangnet faalde stil (Scenario A-bug)
+**Gevonden tijdens het testen van Stap 1 (Today Engine-vangnet): met
+het Running-plan gepauzeerd toonde `/debug/today` "Geen actief
+trainingsplan en Trainer AI kon geen sessie bepalen" — terwijl de
+Trainer-tab zelf in de browser prima een sessie liet zien (Fietsen
+training, 75 min). Bevestigd: de interne server-naar-server-aanroep
+faalde, niet het ontbreken van data.**
+
+### Root cause (sterk vermoeden, gebaseerd op het exacte symptoom-patroon)
+`bepaalTodayPlan()` bouwde de interne aanroep-URL met `VERCEL_URL` —
+die wijst naar een **deployment-specifieke** URL, die kan afwijken van
+het custom domain/production-alias waar de gebruiker daadwerkelijk op
+inlogt. Cookie-domain-mismatch tussen die twee URLs kan de doorgegeven
+sessie-cookie ongeldig maken bij de interne aanroep — precies het
+patroon dat bevestigd werd (browser werkt, interne aanroep niet).
+
+### Fix
+- `src/lib/today-engine.ts` — `bepaalTodayPlan()` accepteert nu een
+  expliciete `baseUrl`-parameter i.p.v. zelf te gokken met
+  `VERCEL_URL`. Ook diagnostische logging toegevoegd (HTTP-status,
+  foutmelding, gebruikte baseUrl) voor het geval het probleem toch
+  ergens anders zit.
+- **Alle drie de aanroepers bijgewerkt** (`api/today/route.ts`,
+  `api/coach/route.ts`, `api/action-plan/route.ts` — de laatste twee
+  sinds v2.4.174 ook kwetsbaar voor hetzelfde probleem, nooit apart
+  getest) — geven nu `req.nextUrl.origin` door: de host van het
+  daadwerkelijke inkomende verzoek, gegarandeerd hetzelfde domein als
+  waar de sessie-cookie voor geldig is.
+
+`npx next build` — compileert zonder fouten.
+
+**Belangrijk, eerlijk:** dit is mijn beste diagnose op basis van het
+exacte symptoom (browser werkt, interne aanroep niet — een klassiek
+cookie-domain-mismatch-patroon), maar zonder toegang tot de
+serverlogs kan ik het niet met 100% zekerheid bevestigen. De nieuwe
+logging maakt een eventuele volgende poging in elk geval diagnosticeerbaar
+i.p.v. weer te moeten gokken.
+
+**Test-instructie:** met het Running-plan nog steeds gepauzeerd, open
+`/debug/today` opnieuw — `source` zou nu `trainer` moeten zijn met de
+Fietsen-sessie uit de Trainer-tab.
+
 ## v2.4.183 — Pauzeer/Hervat-knop voor trainingsplannen (Cycling + Running)
 **Aanleiding: Today Engine Scenario A (Trainer AI-vangnet) testen
 vergde tijdelijk handmatig SQL uitvoeren. Bleek een genuine, blijvende
