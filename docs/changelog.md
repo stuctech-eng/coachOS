@@ -1,5 +1,40 @@
 # CoachOS — Changelog
 
+## v2.4.183 — Pauzeer/Hervat-knop voor trainingsplannen (Cycling + Running)
+**Aanleiding: Today Engine Scenario A (Trainer AI-vangnet) testen
+vergde tijdelijk handmatig SQL uitvoeren. Bleek een genuine, blijvende
+functie te zijn — niet alleen voor testen, ook nuttig bij een blessure
+of prioriteitswissel zonder het hele plan te moeten verwijderen.**
+
+### Nieuw
+- **`PATCH /api/specialists/{cycling,running}/training-plan`** —
+  `action: 'pause' | 'resume'`. Hergebruikt de al-bestaande
+  `'abandoned'`-status (dezelfde die de bestaande POST-route al
+  gebruikt bij het vervangen van een plan) — geen nieuw datamodel
+  nodig.
+  - `pause`: zoekt het actieve plan, zet op `abandoned`
+  - `resume`: **veiligheidscheck eerst** — weigert als er om wat voor
+    reden dan ook al een ander actief plan bestaat (zou twee actieve
+    plannen opleveren), anders wordt het meest recent gepauzeerde plan
+    weer actief gezet
+- **GET-route uitgebreid**: retourneert nu ook `heeftGepauzeerdPlan`,
+  zodat de UI onderscheid kan maken tussen "nooit een plan gehad" en
+  "plan staat gepauzeerd" — anders zou bij een gepauzeerd plan alleen
+  "Genereer nieuw plan" te zien zijn, geen "Hervat"
+- **UI**: "Pauzeer plan"-knop (met bevestiging, want impactvol —
+  Trainer AI neemt het over totdat je hervat) op beide
+  Trainingsplan-pagina's. Bij geen actief plan: "Hervat trainingsplan"
+  i.p.v. "Genereer" als er een gepauzeerd plan gevonden wordt.
+
+**Geen SQL nodig** — hergebruikt een bestaande statuswaarde
+(`'abandoned'`, al onderdeel van de tabel-constraint sinds het begin).
+
+`npx next build` — compileert zonder fouten of warnings.
+
+**Test-instructie:** pauzeer je Running-trainingsplan via de nieuwe
+knop, check `/debug/today` — `source` zou nu `trainer` of `rust`
+moeten zijn i.p.v. `running`. Hervat daarna weer via dezelfde knop.
+
 ## v2.4.182 — Meer weergegevens: gevoelstemperatuur, luchtvochtigheid, windstoten, UV-index, neerslagkans
 **Gevraagd: meer weergegevens (o.a. neerslag). Neerslag (mm) bestond al
 per dagdeel — uitgebreid met vijf nieuwe, trainingsrelevante velden,

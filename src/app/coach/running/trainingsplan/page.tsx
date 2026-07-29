@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { ArrowLeft, RefreshCw, Calendar, CheckCircle2, XCircle, ArrowRightLeft } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Calendar, CheckCircle2, XCircle, ArrowRightLeft, PauseCircle } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { isoDatum } from '@/utils'
 import { Card } from '@/components/ui'
@@ -71,6 +71,7 @@ export default function RunningTrainingsplanPage() {
   const [vandaagUitleg, setVandaagUitleg] = useState<string | null>(null)
   const [uitlegLaden, setUitlegLaden] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
+  const [heeftGepauzeerdPlan, setHeeftGepauzeerdPlan] = useState(false)
 
   useEffect(() => { laadPlan() }, [])
 
@@ -82,6 +83,7 @@ export default function RunningTrainingsplanPage() {
       const data = await res.json()
       setPlan(data.plan)
       setSessies(data.sessies || [])
+      setHeeftGepauzeerdPlan(!!data.heeftGepauzeerdPlan)
 
       if (data.plan) {
         const vandaag = isoDatum(new Date())
@@ -92,6 +94,27 @@ export default function RunningTrainingsplanPage() {
       setFout((e as Error).message)
     } finally {
       setLaden(false)
+    }
+  }
+
+  // v2.4.183: Pauzeer/Hervat — hergebruikt de bestaande 'abandoned'-
+  // status. Nuttig bij een blessure/prioriteitswissel, en handig om de
+  // Today Engine's vangnet (Trainer AI) te kunnen testen zonder SQL.
+  const [pauzeAction, setPauzeAction] = useState(false)
+  async function pauzeerOfHervat(actie: 'pause' | 'resume') {
+    setPauzeAction(true)
+    try {
+      const res = await fetch('/api/specialists/running/training-plan', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: actie }),
+      })
+      const data = await res.json()
+      if (data.error) { setFout(data.error); return }
+      await laadPlan()
+    } catch (e) {
+      setFout((e as Error).message)
+    } finally {
+      setPauzeAction(false)
     }
   }
 
@@ -159,11 +182,23 @@ export default function RunningTrainingsplanPage() {
         {!laden && !plan && !fout && (
           <Card className="p-6 text-center">
             <Calendar size={32} className="text-slate-600 mx-auto mb-3" />
-            <p className="text-sm text-slate-400 mb-4">Nog geen trainingsplan gegenereerd.</p>
-            <button onClick={genereerPlan} disabled={genereren}
-              className="px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
-              {genereren ? 'Bezig...' : 'Genereer je trainingsplan'}
-            </button>
+            {heeftGepauzeerdPlan ? (
+              <>
+                <p className="text-sm text-slate-400 mb-4">Je trainingsplan staat gepauzeerd.</p>
+                <button onClick={() => pauzeerOfHervat('resume')} disabled={pauzeAction}
+                  className="px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                  {pauzeAction ? 'Bezig...' : 'Hervat trainingsplan'}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-400 mb-4">Nog geen trainingsplan gegenereerd.</p>
+                <button onClick={genereerPlan} disabled={genereren}
+                  className="px-5 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                  {genereren ? 'Bezig...' : 'Genereer je trainingsplan'}
+                </button>
+              </>
+            )}
           </Card>
         )}
 
@@ -229,6 +264,15 @@ export default function RunningTrainingsplanPage() {
             <button onClick={laadPlan} className="w-full py-3 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
               <RefreshCw size={14} />
               Ververs
+            </button>
+            {/* v2.4.183: Pauzeer — bevestiging vereist, dit is impactvol
+                (Trainer AI neemt het over totdat je hervat) */}
+            <button
+              onClick={() => { if (window.confirm('Trainingsplan pauzeren? Je kunt het later weer hervatten.')) pauzeerOfHervat('pause') }}
+              disabled={pauzeAction}
+              className="w-full py-3 bg-slate-800 text-amber-400 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
+              <PauseCircle size={14} />
+              {pauzeAction ? 'Bezig...' : 'Pauzeer plan'}
             </button>
           </>
         )}
