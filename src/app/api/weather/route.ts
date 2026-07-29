@@ -28,17 +28,26 @@ function weerEmoji(code: number): string {
   return '⛈️'
 }
 
-function weerAdvies(temp: number, code: number, wind: number): string {
+function weerAdvies(temp: number, code: number, wind: number, gevoelstemp: number, luchtvochtigheid: number, windstoten: number, uvIndex: number): string {
   const adviezen: string[] = []
-  if (temp >= 32) adviezen.push('Extreme hitte — train vroeg of binnen, hydrateer extra')
-  else if (temp >= 28) adviezen.push('Warm weer — verminder intensiteit buiten, drink veel')
-  else if (temp >= 25) adviezen.push('Warm — let op hydratatie bij buitentraining')
-  else if (temp <= 0) adviezen.push('Vriespunt — let op gladheid, warm goed op')
-  else if (temp <= 5) adviezen.push('Koud — langere warming-up nodig')
+  // v2.4.182: gevoelstemperatuur leidend i.p.v. kale temperatuur —
+  // relevanter voor inspanningsadvies. Hoge luchtvochtigheid verhoogt
+  // hitte-stress bij dezelfde temperatuur (publiek bekend fysiologisch
+  // principe, geen eigen claim).
+  if (gevoelstemp >= 32) adviezen.push('Extreme hitte — train vroeg of binnen, hydrateer extra')
+  else if (gevoelstemp >= 28) adviezen.push('Warm weer — verminder intensiteit buiten, drink veel')
+  else if (gevoelstemp >= 25) adviezen.push('Warm — let op hydratatie bij buitentraining')
+  else if (gevoelstemp <= 0) adviezen.push('Vriespunt — let op gladheid, warm goed op')
+  else if (gevoelstemp <= 5) adviezen.push('Koud — langere warming-up nodig')
+  if (temp >= 20 && luchtvochtigheid >= 75) adviezen.push('Hoge luchtvochtigheid — voelt zwaarder aan dan de temperatuur alleen doet vermoeden')
   if (code >= 80) adviezen.push('Buien verwacht — overweeg binnentraining')
   else if (code >= 60) adviezen.push('Regen — pas je kleding aan of train binnen')
-  if (wind >= 50) adviezen.push('Harde wind — hardlopen extra zwaar')
+  // Windstoten zijn relevanter dan gemiddelde wind, vooral voor hardlopen/fietsen
+  if (windstoten >= 60) adviezen.push('Zware windstoten — extra voorzichtig bij fietsen')
+  else if (wind >= 50) adviezen.push('Harde wind — hardlopen extra zwaar')
   else if (wind >= 30) adviezen.push('Stevige wind — pas pace aan bij hardlopen')
+  if (uvIndex >= 8) adviezen.push('Zeer hoge UV — zonbescherming aanbevolen bij lange buitentraining')
+  else if (uvIndex >= 6) adviezen.push('Hoge UV — smeer in bij langere buitentraining')
   if (adviezen.length === 0) return 'Goede weersomstandigheden voor training'
   return adviezen.join('. ')
 }
@@ -116,8 +125,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Open-Meteo met uurlijkse data voor ochtend/middag/avond
-    const weerUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,precipitation&hourly=precipitation,weathercode,temperature_2m&timezone=Europe/Amsterdam&forecast_days=1`
+    // v2.4.182: uitgebreid met gevoelstemperatuur, luchtvochtigheid,
+    // neerslagkans, windstoten en UV-index — allemaal al beschikbaar bij
+    // Open-Meteo, alleen nooit opgevraagd
+    const weerUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weathercode,windspeed_10m,wind_gusts_10m,precipitation,uv_index&hourly=precipitation,precipitation_probability,weathercode,temperature_2m,uv_index&timezone=Europe/Amsterdam&forecast_days=1`
 
     // FIX v2.4.4: timeout toegevoegd — voorkomt hangende function bij trage/onbereikbare Open-Meteo
     const weerRes = await fetchWithTimeout(weerUrl, {}, 4000)
@@ -130,10 +141,18 @@ export async function GET(req: NextRequest) {
     const temp = Math.round(current.temperature_2m)
     const code = current.weathercode
     const wind = Math.round(current.windspeed_10m)
+    // v2.4.182: nieuwe velden
+    const gevoelstemp = Math.round(current.apparent_temperature)
+    const luchtvochtigheid = Math.round(current.relative_humidity_2m)
+    const windstoten = Math.round(current.wind_gusts_10m)
+    const uvIndex = Math.round((current.uv_index ?? 0) * 10) / 10
 
     // Bereken regen per dagdeel
     const dagdeelRegen: Record<string, number> = { ochtend: 0, middag: 0, avond: 0 }
     const dagdeelCode: Record<string, number[]> = { ochtend: [], middag: [], avond: [] }
+    // v2.4.182: neerslagkans (max per dagdeel — de meest zinvolle
+    // samenvatting, niet een gemiddelde dat een korte bui wegmiddelt)
+    const dagdeelKans: Record<string, number> = { ochtend: 0, middag: 0, avond: 0 }
 
     if (hourly?.time && hourly?.precipitation) {
       for (let i = 0; i < hourly.time.length; i++) {
@@ -141,6 +160,9 @@ export async function GET(req: NextRequest) {
         const dd = dagdeel(uur)
         dagdeelRegen[dd] += hourly.precipitation[i] || 0
         if (hourly.weathercode) dagdeelCode[dd].push(hourly.weathercode[i] || 0)
+        if (hourly.precipitation_probability) {
+          dagdeelKans[dd] = Math.max(dagdeelKans[dd], hourly.precipitation_probability[i] || 0)
+        }
       }
     }
 
@@ -164,7 +186,7 @@ export async function GET(req: NextRequest) {
     }
 
     const omschrijving = weerOmschrijving(code)
-    const advies = weerAdvies(temp, code, wind)
+    const advies = weerAdvies(temp, code, wind, gevoelstemp, luchtvochtigheid, windstoten, uvIndex)
 
     const result = {
       stad,
@@ -172,13 +194,19 @@ export async function GET(req: NextRequest) {
       omschrijving,
       emoji: weerEmoji(code),
       wind,
+      // v2.4.182: nieuwe velden — puur toevoegingen, bestaande
+      // consumenten breken niet
+      gevoelstemp,
+      luchtvochtigheid,
+      windstoten,
+      uv_index: uvIndex,
       dagdelen: {
-        ochtend: { regen: ochtendRegen, code: ochtendCode, label: formatDagdeel(ochtendRegen, ochtendCode) },
-        middag: { regen: middagRegen, code: middagCode, label: formatDagdeel(middagRegen, middagCode) },
-        avond: { regen: avondRegen, code: avondCode, label: formatDagdeel(avondRegen, avondCode) },
+        ochtend: { regen: ochtendRegen, code: ochtendCode, label: formatDagdeel(ochtendRegen, ochtendCode), kans: Math.round(dagdeelKans.ochtend) },
+        middag: { regen: middagRegen, code: middagCode, label: formatDagdeel(middagRegen, middagCode), kans: Math.round(dagdeelKans.middag) },
+        avond: { regen: avondRegen, code: avondCode, label: formatDagdeel(avondRegen, avondCode), kans: Math.round(dagdeelKans.avond) },
       },
       advies,
-      coach_context: `Weer in ${stad}: ${temp}°C, ${omschrijving}, wind ${wind} km/u. Ochtend: ${ochtendRegen}mm, Middag: ${middagRegen}mm, Avond: ${avondRegen}mm. ${advies}.`,
+      coach_context: `Weer in ${stad}: ${temp}°C (voelt als ${gevoelstemp}°C), ${omschrijving}, wind ${wind} km/u (stoten tot ${windstoten}), luchtvochtigheid ${luchtvochtigheid}%, UV-index ${uvIndex}. Ochtend: ${ochtendRegen}mm (${Math.round(dagdeelKans.ochtend)}% kans), Middag: ${middagRegen}mm (${Math.round(dagdeelKans.middag)}% kans), Avond: ${avondRegen}mm (${Math.round(dagdeelKans.avond)}% kans). ${advies}.`,
       // v2.4.181: PERMANENT (in tegenstelling tot de v2.4.168-versie die
       // na bevestiging weer verwijderd werd) — dit soort locatieproblemen
       // bleek zich te herhalen. Alleen zichtbaar via /debug, niet meer op

@@ -18,10 +18,16 @@ interface WeerData {
   omschrijving: string
   emoji: string
   wind: number
+  // v2.4.182: nieuwe velden
+  gevoelstemp?: number
+  luchtvochtigheid?: number
+  windstoten?: number
+  uv_index?: number
+  advies?: string
   dagdelen: {
-    ochtend: { label: string }
-    middag: { label: string }
-    avond: { label: string }
+    ochtend: { label: string; kans?: number }
+    middag: { label: string; kans?: number }
+    avond: { label: string; kans?: number }
   }
 }
 
@@ -97,6 +103,7 @@ export default function HomePage() {
   const [garminDatum, setGarminDatum] = useState<string | null>(null)
   const [coachCall, setCoachCall] = useState<{ id: string; pending_count: number; coach_call_items: { id: string }[] } | null>(null)
   const [weer, setWeer] = useState<WeerData | null>(null)
+  const [weerUitgeklapt, setWeerUitgeklapt] = useState(false)
   // v2.4.14: automatische update-detectie + lichte gezondheidscheck
   const [updateProbleem, setUpdateProbleem] = useState<{ nieuweVersie: string; problemen: number } | null>(null)
 
@@ -376,12 +383,48 @@ export default function HomePage() {
             <h1 className="text-2xl font-bold text-white mt-0.5">{greeting}</h1>
             {weer && (
               <div className="mt-1.5 flex flex-col gap-0.5">
-                <p className="text-xs text-slate-400">
-                  {weer.emoji} {weer.stad} · {weer.temp}°C · {weer.omschrijving}
-                </p>
+                <button onClick={() => setWeerUitgeklapt(v => !v)} className="flex items-center gap-1 text-left">
+                  <p className="text-xs text-slate-400">
+                    {weer.emoji} {weer.stad} · {weer.temp}°C · {weer.omschrijving}
+                  </p>
+                  {weerUitgeklapt ? <ChevronUp size={12} className="text-slate-500" /> : <ChevronDown size={12} className="text-slate-500" />}
+                </button>
                 <p className="text-xs text-slate-500">
                   Ochtend {weer.dagdelen.ochtend.label} · Middag {weer.dagdelen.middag.label} · Avond {weer.dagdelen.avond.label}
                 </p>
+                {/* v2.4.182: uitklapbare extra weergegevens — tik op de
+                    regel hierboven i.p.v. een apart scherm/knop, zoals
+                    gevraagd. Alleen zichtbaar op verzoek, geen visuele
+                    rommel voor wie het niet nodig heeft. */}
+                {weerUitgeklapt && (
+                  <div className="mt-1.5 p-3 bg-slate-800/50 rounded-xl flex flex-col gap-1.5">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      {weer.gevoelstemp !== undefined && (
+                        <p className="text-slate-400">Voelt als <span className="text-white font-medium">{weer.gevoelstemp}°C</span></p>
+                      )}
+                      {weer.luchtvochtigheid !== undefined && (
+                        <p className="text-slate-400">Luchtvochtigheid <span className="text-white font-medium">{weer.luchtvochtigheid}%</span></p>
+                      )}
+                      {weer.wind !== undefined && (
+                        <p className="text-slate-400">Wind <span className="text-white font-medium">{weer.wind} km/u</span></p>
+                      )}
+                      {weer.windstoten !== undefined && (
+                        <p className="text-slate-400">Windstoten <span className="text-white font-medium">{weer.windstoten} km/u</span></p>
+                      )}
+                      {weer.uv_index !== undefined && (
+                        <p className="text-slate-400">UV-index <span className="text-white font-medium">{weer.uv_index}</span></p>
+                      )}
+                    </div>
+                    <div className="pt-1.5 mt-0.5 border-t border-white/5 flex flex-col gap-0.5 text-xs text-slate-500">
+                      <p>Ochtend: {weer.dagdelen.ochtend.label}{weer.dagdelen.ochtend.kans ? ` · ${weer.dagdelen.ochtend.kans}% kans op neerslag` : ''}</p>
+                      <p>Middag: {weer.dagdelen.middag.label}{weer.dagdelen.middag.kans ? ` · ${weer.dagdelen.middag.kans}% kans op neerslag` : ''}</p>
+                      <p>Avond: {weer.dagdelen.avond.label}{weer.dagdelen.avond.kans ? ` · ${weer.dagdelen.avond.kans}% kans op neerslag` : ''}</p>
+                    </div>
+                    {weer.advies && (
+                      <p className="pt-1.5 mt-0.5 border-t border-white/5 text-xs text-primary-400">{weer.advies}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

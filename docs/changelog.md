@@ -1,5 +1,37 @@
 # CoachOS — Changelog
 
+## v2.4.182 — Meer weergegevens: gevoelstemperatuur, luchtvochtigheid, windstoten, UV-index, neerslagkans
+**Gevraagd: meer weergegevens (o.a. neerslag). Neerslag (mm) bestond al
+per dagdeel — uitgebreid met vijf nieuwe, trainingsrelevante velden,
+allemaal al beschikbaar bij Open-Meteo (gratis, geen nieuwe sleutel).**
+
+### Backend
+`src/app/api/weather/route.ts`:
+- Open-Meteo-aanroep uitgebreid: `apparent_temperature`,
+  `relative_humidity_2m`, `wind_gusts_10m`, `uv_index`,
+  `precipitation_probability`
+- `weerAdvies()` gebruikt nu gevoelstemperatuur i.p.v. kale temperatuur
+  (relevanter voor inspanningsadvies), weegt luchtvochtigheid mee bij
+  hitte-advies, windstoten i.p.v. alleen gemiddelde wind, en UV-index
+  bij lange buitentraining
+- Neerslagkans (%) per dagdeel toegevoegd naast de bestaande mm
+- `coach_context` (gebruikt door de Coach-prompt) bevat nu alle nieuwe
+  velden — de Coach "ziet" dus ook de rijkere data
+
+### UI — tik-om-uit-te-klappen, geen apart scherm
+Op verzoek: geen navigatie naar een nieuwe pagina, gewoon het bestaande
+weerblok op Home tikbaar gemaakt. Standaard compact (zoals nu), tik
+erop voor gevoelstemperatuur/luchtvochtigheid/windstoten/UV-index +
+neerslagkans per dagdeel + het volledige weeradvies.
+
+**Gevalideerd — 3 scenario's:**
+- Warm + vochtig + hoge UV → alle drie de relevante meldingen
+- Rustige, koele dag → "Goede weersomstandigheden", geen ruis
+- Windstoten → onderdrukt terecht de overbodige "harde wind"-melding
+  (voorkomt dubbele info)
+
+`npx next build` — compileert zonder fouten.
+
 ## v2.4.181 — Fix: "Ashburn, Virginia" i.p.v. Riva del Garda — GPS viel terug op zwakke IP-locatie
 **Gemeld: Coach dacht dat de gebruiker in Ashburn, Virginia zat, terwijl
 die daadwerkelijk aan het Gardameer (Italië) was. "Ashburn" is een
