@@ -58,6 +58,30 @@
 | Exercise Illustraties Systeem | ✅ |
 | Countdown + Timer (alle modules) | ✅ |
 
+### Aanvulling (juli 2026) — Coach Context Engine, Performance Platform, Specialist-pariteit
+
+*Deze tabel hierboven is ouder dan de sessie van juli 2026. Onderstaande
+rijen zijn de aanvulling met alles wat sinds die tijd gebouwd is — samen
+vormen ze de volledige, actuele status.*
+
+| Systeem | Status | Toelichting |
+|---------|--------|-------------|
+| **Today Engine** | ✅ Bevestigd in de praktijk | Enige bron voor "wat moet ik vandaag doen" — kiest tussen Specialist-trainingsplan en Trainer AI, nooit beide tegelijk. `src/lib/today-engine.ts` |
+| Master Coach ↔ Today Engine | ✅ | Coach-tekst en Today-kaart gebruiken nu dezelfde bron, geen tegenstrijdige adviezen meer mogelijk |
+| **Context Resolver** (Coach Context Engine Fase 1) | ✅ Bevestigd | Vaste prioriteit blessure→ziekte→vakantie→herstel→wedstrijd→werk→training→vrije_tijd. `src/core/utils/context-resolver.ts` |
+| Coach Agenda Fase 2 | 🔄 Deels | Feestdagen ✅, periodiserings-context (mesocyclus) ✅. Schoolvakanties/Apple/Google/Outlook-sync: ⏳ nog niet gestart |
+| **Performance Intelligence Platform** | ✅ Fase 1A/1B/2 compleet | Recovery/Load/Fatigue/Readiness/Consistency/History/Endurance/Sprint/Efficiency/Climbing/Progress. Fase 3 (Race Predictor e.d.) bewust nog niet — vergt maanden data |
+| **Cycling ↔ Running specialist-pariteit** | ✅ Compleet | Dashboard/Records/Grafieken/Trainingsplan/Ritanalyse/Progress — beide op hetzelfde niveau |
+| Pauzeer/Hervat trainingsplan | ✅ | Beide specialisten, hergebruikt bestaande `'abandoned'`-status |
+| Weer — uitgebreide gegevens | ✅ | Gevoelstemperatuur/luchtvochtigheid/windstoten/UV-index/neerslagkans, tik-om-uit-te-klappen op Home |
+| GPS-locatie (i.p.v. IP-only) | ✅ Bevestigd | `/debug/weer` permanent beschikbaar voor diagnose |
+| Rowing/Strength/Kettlebell als volwaardige specialisten | ⏳ Niet gestart | Elk net zo groot als de Cycling/Running-pariteitsronde — vergt concrete aanleiding |
+| Multi-sport Orchestrator (`TodaySchedule`) | ⏳ Niet gestart | Pas zinvol zodra er meerdere volwassen specialisten zijn |
+
+**Nog niet in de praktijk bevestigd** (wel gebouwd en getest in code):
+ACWR-correctie in de Recovery Score bij een echt hoge belastingsverhouding
+— wacht op een natuurlijke gelegenheid, geen bekend probleem.
+
 ## Werkinstructies aan Claude — vaste regels deze sessie
 
 Deze regels gelden vanaf nu en altijd, in elke sessie over dit project:
