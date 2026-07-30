@@ -1,5 +1,66 @@
 # CoachOS — Changelog
 
+## v2.4.185 — Coach Agenda Fase A (Master Foundation)
+**Eerste bouwstap van de Coach Agenda-visie. Volledig additief, zoals
+afgesproken: geen bestaande engines (Recovery/CoachPolicy/Today
+Engine/Decision Engine) gewijzigd.**
+
+### SQL (uitvoeren vóór deze code)
+`supabase/coach_agenda_fase_a.sql` — puur additieve kolommen op
+`life_events`: `available_time_minutes`, `priority`, `coach_note`,
+`location_type`, `energy_expectation`, `travel_distance_km`,
+`recurrence_exceptions` (date-array).
+
+### Twee besluiten vooraf, expliciet vastgelegd
+1. **Recovery Score onaangeroerd** — bestaande 0-3-schaal
+   (`recovery_impact`/`stress_load`/`sleep_disruption`) blijft de
+   operationele velden voor de Recovery Engine. Nieuwe velden zijn
+   puur aanvullende context voor Context Resolver/Today Engine/Master
+   Coach, geen parallelle schaal.
+2. **Soft-delete pas in een latere fase** — DELETE blijft een echte
+   verwijdering. Status-lifecycle (Actief/Gepauzeerd/Beëindigd) is
+   bewust uitgesteld naar Fase C/D.
+
+### Nieuw
+- **Categorieën uitgebreid**: Medisch (nieuwe categorie — huisarts/
+  fysiotherapeut/sportarts/specialist/massage/medisch onderzoek/
+  vaccinatie), Sport (nieuwe categorie — trainingskamp/testdag/
+  clubrit/evenement), Leven uitgebreid (verjaardag/bruiloft/
+  begrafenis/weekend weg/zakenreis/lange autorit/vlucht/hotel), Werk
+  (consignatie)
+- **Coach-properties**: beschikbare tijd (minuten) en prioriteit
+  (laag/normaal/hoog) toegevoegd aan zowel het toevoeg- als
+  bewerkformulier
+- **Uitzonderingen op terugkerende regels** — "iedere maandag
+  dagdienst, BEHALVE 17 augustus" zonder de regel aan te passen of te
+  stoppen. Toegevoegd aan `fetchTodaysLifeEvents()` (backend, voedt de
+  Context Resolver) én `isHerhalendActiefOpDag()` (UI, weekweergave/
+  groepering) — beide consistent
+- **Actieve regels duidelijker**: 🔄-icoon prominenter bij terugkerende
+  events in de lijstweergave, prioriteit zichtbaar als badge,
+  beschikbare tijd zichtbaar
+
+### Bewust niet gedaan
+`coach_note` (kolom bestaat, nog niet aan de UI gekoppeld) — zou een
+verwarrend tweede notitieveld naast de bestaande `notes` opleveren.
+Blijft beschikbaar voor Fase B (AI-gegenereerde notities specifiek).
+
+### Bug gevonden en gefixt tijdens het bouwen
+Per ongeluk `recovery_impact: -1` gegeven aan "Massage" — de bestaande
+schaal is 0-3 (`IMPACT_NIVEAUS[value]` zou crashen bij een negatieve
+index, en de formule gaat uit van alleen-positieve belasting).
+Gecorrigeerd naar 0 vóór levering. Alle waarden nogmaals gecontroleerd
+op geldig bereik.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten
+- Uitzonderingen-logica, 4 scenario's: normale dag (actief), exacte
+  uitzonderingsdag (correct inactief), week erna (regel blijft
+  bestaan), bestaande regels zonder uitzonderingen (ongewijzigd
+  gedrag) — allemaal correct
+- Alle impact-waarden in de nieuwe categorieën handmatig gecontroleerd
+  op 0-3-bereik, geen negatieven
+
 ## v2.4.184 — Fix: Today Engine's Trainer AI-vangnet faalde stil (Scenario A-bug)
 **Gevonden tijdens het testen van Stap 1 (Today Engine-vangnet): met
 het Running-plan gepauzeerd toonde `/debug/today` "Geen actief

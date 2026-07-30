@@ -36,6 +36,14 @@ interface LifeEvent {
   recurrence_end_date: string | null
   vacation_type: string | null
   end_date: string | null
+  // v2.4.185 (Coach Agenda Fase A): puur additieve contextvelden
+  available_time_minutes: number | null
+  priority: 'laag' | 'normaal' | 'hoog' | null
+  coach_note: string | null
+  location_type: string | null
+  energy_expectation: string | null
+  travel_distance_km: number | null
+  recurrence_exceptions: string[] | null
 }
 
 interface ResolvedContext {
@@ -60,6 +68,8 @@ const EVENT_CATEGORIES = [
     { type: 'lange_dag', label: 'Lange dag', icon: '⏰', start_hour: 8, end_hour: 20, recovery_impact: 1, stress_load: 2, sleep_disruption: 1 },
     { type: 'vrije_dag', label: 'Vrije dag', icon: '🗓️', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 0, sleep_disruption: 0 },
     { type: 'werk_stress', label: 'Werkstress', icon: '😤', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 3, sleep_disruption: 1 },
+    // v2.4.185 (Coach Agenda Fase A)
+    { type: 'consignatie', label: 'Consignatie (bereikbaarheidsdienst)', icon: '📟', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 1, sleep_disruption: 1 },
   ]},
   { id: 'leven', label: 'Leven', icon: '🌍', events: [
     { type: 'vakantie', label: 'Vakantie', icon: '🏖️', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 0, sleep_disruption: 1 },
@@ -67,12 +77,40 @@ const EVENT_CATEGORIES = [
     { type: 'feest', label: 'Feest / Late avond', icon: '🎉', start_hour: null, end_hour: null, recovery_impact: 2, stress_load: 0, sleep_disruption: 2 },
     { type: 'sociaal', label: 'Familie / sociaal', icon: '👨‍👩‍👧', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 1, sleep_disruption: 0 },
     { type: 'jetlag', label: 'Jetlag', icon: '🌍', start_hour: null, end_hour: null, recovery_impact: 2, stress_load: 1, sleep_disruption: 3 },
+    // v2.4.185 (Coach Agenda Fase A) — Privé + Reizen, verder uitgesplitst
+    { type: 'verjaardag', label: 'Verjaardag', icon: '🎂', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 0, sleep_disruption: 0 },
+    { type: 'bruiloft', label: 'Bruiloft', icon: '💍', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 0, sleep_disruption: 1 },
+    { type: 'begrafenis', label: 'Begrafenis', icon: '🕊️', start_hour: null, end_hour: null, recovery_impact: 2, stress_load: 2, sleep_disruption: 0 },
+    { type: 'weekend_weg', label: 'Weekend weg', icon: '🧳', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 0, sleep_disruption: 1 },
+    { type: 'zakenreis', label: 'Zakenreis', icon: '💼', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 1, sleep_disruption: 1 },
+    { type: 'lange_autorit', label: 'Lange autorit', icon: '🚗', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 0, sleep_disruption: 0 },
+    { type: 'vlucht', label: 'Vlucht', icon: '🛫', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 1, sleep_disruption: 1 },
+    { type: 'hotel', label: 'Hotel', icon: '🏨', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 0, sleep_disruption: 1 },
   ]},
   { id: 'gezondheid', label: 'Gezondheid', icon: '❤️', events: [
     { type: 'ziek', label: 'Ziek', icon: '🤒', start_hour: null, end_hour: null, recovery_impact: 3, stress_load: 1, sleep_disruption: 2 },
     { type: 'emotionele_stress', label: 'Emotionele stress', icon: '😔', start_hour: null, end_hour: null, recovery_impact: 2, stress_load: 3, sleep_disruption: 2 },
     { type: 'slecht_geslapen', label: 'Slecht geslapen', icon: '😴', start_hour: null, end_hour: null, recovery_impact: 2, stress_load: 0, sleep_disruption: 3 },
     { type: 'hersteldag', label: 'Hersteldag', icon: '🛋️', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 0, sleep_disruption: 0 },
+  ]},
+  // v2.4.185 (Coach Agenda Fase A) — nieuwe categorie, was voorheen niet
+  // te onderscheiden van een algemene 'ziek'-melding
+  { id: 'medisch', label: 'Medisch', icon: '🏥', events: [
+    { type: 'huisarts', label: 'Huisarts', icon: '🩺', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 1, sleep_disruption: 0 },
+    { type: 'fysiotherapeut', label: 'Fysiotherapeut', icon: '🦵', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 0, sleep_disruption: 0 },
+    { type: 'sportarts', label: 'Sportarts', icon: '🏃‍♂️', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 0, sleep_disruption: 0 },
+    { type: 'specialist', label: 'Specialist', icon: '👨‍⚕️', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 1, sleep_disruption: 0 },
+    { type: 'massage', label: 'Massage', icon: '💆', start_hour: null, end_hour: null, recovery_impact: 0, stress_load: 0, sleep_disruption: 0 },
+    { type: 'medisch_onderzoek', label: 'Medisch onderzoek', icon: '🔬', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 1, sleep_disruption: 0 },
+    { type: 'vaccinatie', label: 'Vaccinatie', icon: '💉', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 0, sleep_disruption: 0 },
+  ]},
+  // v2.4.185 (Coach Agenda Fase A) — nieuwe categorie voor sport-events
+  // die geen reguliere training zijn (dus los van het trainingsplan)
+  { id: 'sport', label: 'Sport', icon: '🚴', events: [
+    { type: 'trainingskamp', label: 'Trainingskamp', icon: '⛰️', start_hour: null, end_hour: null, recovery_impact: 2, stress_load: 0, sleep_disruption: 1 },
+    { type: 'testdag', label: 'Testdag (FTP/tijdrit/etc.)', icon: '⏱️', start_hour: null, end_hour: null, recovery_impact: 2, stress_load: 1, sleep_disruption: 0 },
+    { type: 'clubrit', label: 'Clubrit', icon: '🚴‍♂️', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 0, sleep_disruption: 0 },
+    { type: 'evenement', label: 'Evenement (toertocht e.d.)', icon: '🏁', start_hour: null, end_hour: null, recovery_impact: 2, stress_load: 1, sleep_disruption: 0 },
   ]},
   { id: 'omgeving', label: 'Omgeving', icon: '🌡️', events: [
     { type: 'extreme_hitte', label: 'Extreme hitte', icon: '🌡️', start_hour: null, end_hour: null, recovery_impact: 1, stress_load: 0, sleep_disruption: 1 },
@@ -155,7 +193,10 @@ function isHerhalendActiefOpDag(event: LifeEvent, datum: Date): boolean {
   if (!event.recurrence) return false
   const dagNummer = datum.getDay()
   const isWeekend = dagNummer === 0 || dagNummer === 6
-  if (event.recurrence_end_date && datum.toISOString().split('T')[0] > event.recurrence_end_date) return false
+  const dagStr = datum.toISOString().split('T')[0]
+  // v2.4.185 (Coach Agenda Fase A): uitzonderingen eerst checken
+  if (event.recurrence_exceptions?.includes(dagStr)) return false
+  if (event.recurrence_end_date && dagStr > event.recurrence_end_date) return false
   if (event.recurrence === 'workdays') return !isWeekend
   if (event.recurrence === 'weekend') return isWeekend
   if (event.recurrence === 'weekly' || event.recurrence === 'biweekly' || event.recurrence === 'custom') {
@@ -373,6 +414,10 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
   const [stressLoad, setStressLoad] = useState(voorgeselecteerdType?.stress_load ?? 1)
   const [sleepDisruption, setSleepDisruption] = useState(voorgeselecteerdType?.sleep_disruption ?? 1)
   const [notes, setNotes] = useState('')
+  // v2.4.185 (Coach Agenda Fase A) — puur additief, beïnvloedt de
+  // Recovery Score niet
+  const [availableTimeMinutes, setAvailableTimeMinutes] = useState<number | ''>('')
+  const [priority, setPriority] = useState<'' | 'laag' | 'normaal' | 'hoog'>('')
   const [saving, setSaving] = useState(false)
 
   function kiesCategorie(cat: typeof EVENT_CATEGORIES[0]) { setGekozenCategorie(cat); setSheet('type') }
@@ -413,6 +458,9 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
         recurrence_end_date: recurrenceEndDate || null,
         end_date: endDate || null,
         notes: notes || null,
+        // v2.4.185 (Coach Agenda Fase A)
+        available_time_minutes: availableTimeMinutes === '' ? null : availableTimeMinutes,
+        priority: priority || null,
       })
     } catch (err) {
       console.error('Opslaan mislukt:', err)
@@ -574,6 +622,26 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
           {sheet === 'invloed' && (
             <div className="flex flex-col gap-5">
               <InvloedStap recoveryImpact={recoveryImpact} stressLoad={stressLoad} sleepDisruption={sleepDisruption} onChange={onInvloedChange} />
+              {/* v2.4.185 (Coach Agenda Fase A) — puur additieve context,
+                  raakt de Recovery Score niet */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs text-slate-400 uppercase tracking-wider">Beschikbare tijd</label>
+                  <input type="number" min={0} step={15} value={availableTimeMinutes}
+                    onChange={e => setAvailableTimeMinutes(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="min" className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs text-slate-400 uppercase tracking-wider">Prioriteit</label>
+                  <select value={priority} onChange={e => setPriority(e.target.value as typeof priority)}
+                    className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none">
+                    <option value="">Geen</option>
+                    <option value="laag">Laag</option>
+                    <option value="normaal">Normaal</option>
+                    <option value="hoog">Hoog</option>
+                  </select>
+                </div>
+              </div>
               <div className="flex flex-col gap-2">
                 <label className="text-xs text-slate-400 uppercase tracking-wider">Notitie (optioneel)</label>
                 <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Extra context"
@@ -607,6 +675,11 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
   const [stressLoad, setStressLoad] = useState(event.stress_load)
   const [sleepDisruption, setSleepDisruption] = useState(event.sleep_disruption)
   const [notes, setNotes] = useState(event.notes || '')
+  // v2.4.185 (Coach Agenda Fase A)
+  const [availableTimeMinutes, setAvailableTimeMinutes] = useState<number | ''>(event.available_time_minutes ?? '')
+  const [priority, setPriority] = useState<'' | 'laag' | 'normaal' | 'hoog'>(event.priority ?? '')
+  const [exceptions, setExceptions] = useState<string[]>(event.recurrence_exceptions || [])
+  const [nieuweException, setNieuweException] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [showHerhaling, setShowHerhaling] = useState(false)
@@ -640,6 +713,10 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
         stress_load: stressLoad,
         sleep_disruption: sleepDisruption,
         notes: notes || null,
+        // v2.4.185 (Coach Agenda Fase A)
+        available_time_minutes: availableTimeMinutes === '' ? null : availableTimeMinutes,
+        priority: priority || null,
+        recurrence_exceptions: exceptions.length > 0 ? exceptions : null,
       }
       const res = await fetch('/api/life-events', {
         method: 'PATCH',
@@ -709,6 +786,32 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
               {recurrenceEndDate && <button onClick={() => setRecurrenceEndDate('')} className="text-xs text-slate-500">Geen einddatum</button>}
             </div>
           )}
+          {/* v2.4.185 (Coach Agenda Fase A): uitzonderingen — bijv.
+              "iedere maandag dagdienst, BEHALVE 17 augustus" zonder de
+              regel zelf te hoeven aanpassen of stoppen */}
+          {recurrence !== '' && (
+            <div className="mt-2 flex flex-col gap-2">
+              <p className="text-xs text-slate-400">Uitzonderingen (regel geldt dan die dag niet)</p>
+              <div className="flex gap-2">
+                <input type="date" value={nieuweException} onChange={e => setNieuweException(e.target.value)}
+                  min={vandaagStr()} className="flex-1 bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                <button onClick={() => { if (nieuweException && !exceptions.includes(nieuweException)) { setExceptions([...exceptions, nieuweException].sort()); setNieuweException('') } }}
+                  className="px-4 bg-slate-800 text-primary-400 rounded-xl text-sm font-semibold">
+                  + Toevoegen
+                </button>
+              </div>
+              {exceptions.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {exceptions.map(datum => (
+                    <button key={datum} onClick={() => setExceptions(exceptions.filter(d => d !== datum))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 rounded-full text-xs text-slate-300">
+                      {formatDatumKort(datum)} <X size={12} className="text-slate-500" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <Button onClick={() => setShowHerhaling(false)} fullWidth className="mt-2">Klaar</Button>
         </div>
       </div>
@@ -725,6 +828,25 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
           <h2 className="text-lg font-bold text-white">Invloed op jouw herstel</h2>
         </div>
         <InvloedStap recoveryImpact={recoveryImpact} stressLoad={stressLoad} sleepDisruption={sleepDisruption} onChange={onInvloedChange} />
+        {/* v2.4.185 (Coach Agenda Fase A) */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-slate-400 uppercase tracking-wider">Beschikbare tijd</label>
+            <input type="number" min={0} step={15} value={availableTimeMinutes}
+              onChange={e => setAvailableTimeMinutes(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="min" className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-slate-400 uppercase tracking-wider">Prioriteit</label>
+            <select value={priority} onChange={e => setPriority(e.target.value as typeof priority)}
+              className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none">
+              <option value="">Geen</option>
+              <option value="laag">Laag</option>
+              <option value="normaal">Normaal</option>
+              <option value="hoog">Hoog</option>
+            </select>
+          </div>
+        </div>
         <Button onClick={() => setShowInvloed(false)} fullWidth className="mt-2">Klaar</Button>
       </div>
     )
@@ -971,6 +1093,7 @@ export default function LifeEventsPage() {
 
 function EventRij({ event, onClick, gepauzeerd }: { event: LifeEvent; onClick: () => void; gepauzeerd?: boolean }) {
   const et = EVENT_TYPES.find(e => e.type === event.type)
+  const PRIORITY_KLEUR: Record<string, string> = { hoog: 'text-red-400 bg-red-500/10', normaal: 'text-slate-400 bg-slate-500/10', laag: 'text-slate-500 bg-slate-500/5' }
   return (
     <button onClick={onClick} className="w-full text-left">
       <Card className={cn('p-4 active:bg-slate-700', gepauzeerd && 'opacity-60')}>
@@ -979,18 +1102,24 @@ function EventRij({ event, onClick, gepauzeerd }: { event: LifeEvent; onClick: (
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <p className="text-white text-sm font-medium">{et?.label || event.type}</p>
-              {event.recurrence && <span className="text-xs text-primary-400">{formatHerhaling(event)}</span>}
+              {/* v2.4.185: 🔄 prominenter bij terugkerende regels, zoals gevraagd */}
+              {event.recurrence && <span className="text-xs text-primary-400">🔄 {formatHerhaling(event)}</span>}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               {event.recurrence ? '' : formatDatum(event.start_time)}
               {event.end_date && !event.recurrence && ` → ${formatDatumKort(event.end_date)}`}
               {event.start_hour !== null && event.end_hour !== null && ` · ${formatUur(event.start_hour)}–${formatUur(event.end_hour)}`}
+              {/* v2.4.185 (Coach Agenda Fase A) */}
+              {event.available_time_minutes ? ` · ${event.available_time_minutes} min beschikbaar` : ''}
             </p>
             {gepauzeerd && <p className="text-xs text-amber-400 mt-1">⏸ Tijdelijk gepauzeerd</p>}
             <div className="flex gap-2 mt-1.5 flex-wrap">
               <ImpactBadge label="Herstel" value={event.recovery_impact} />
               <ImpactBadge label="Stress" value={event.stress_load} />
               <ImpactBadge label="Slaap" value={event.sleep_disruption} />
+              {event.priority && event.priority !== 'normaal' && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_KLEUR[event.priority]}`}>Prioriteit: {event.priority}</span>
+              )}
             </div>
           </div>
           <ChevronRight size={16} className="text-slate-600 flex-shrink-0" />

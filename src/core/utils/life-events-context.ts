@@ -28,6 +28,9 @@ export interface LifeEventRow {
   // v2.4.173: toegevoegd voor de echte periode-check hieronder
   start_time?: string
   end_date?: string | null
+  // v2.4.185 (Coach Agenda Fase A): uitzonderingen op een terugkerende
+  // regel — specifieke datums die de regel voor die ene dag overschrijven
+  recurrence_exceptions?: string[] | null
 }
 
 export async function fetchTodaysLifeEvents(
@@ -36,7 +39,7 @@ export async function fetchTodaysLifeEvents(
   dagNummer: number,
   isWeekend: boolean
 ): Promise<LifeEventRow[]> {
-  const SELECT_FIELDS = 'type, start_hour, end_hour, notes, recurrence, recurrence_days, recovery_impact, stress_load, sleep_disruption, start_time, end_date'
+  const SELECT_FIELDS = 'type, start_hour, end_hour, notes, recurrence, recurrence_days, recovery_impact, stress_load, sleep_disruption, start_time, end_date, recurrence_exceptions'
   const vandaag = new Date().toISOString().split('T')[0]
   const negentigDagenGeleden = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
 
@@ -76,6 +79,10 @@ export async function fetchTodaysLifeEvents(
   // niet alleen werk. Een wekelijks terugkerend "hersteldag" event hoort
   // hier net zo goed in als een nachtdienst.
   const relevanteHerhalend = herhalend.filter(he => {
+    // v2.4.185 (Coach Agenda Fase A): uitzonderingen eerst checken —
+    // "iedere maandag dagdienst, BEHALVE 17 augustus" overschrijft de
+    // regel alleen voor die ene dag, de regel zelf blijft ongewijzigd
+    if (he.recurrence_exceptions?.includes(vandaag)) return false
     if (he.recurrence === 'workdays' && isWeekend) return false
     if (he.recurrence === 'weekend' && !isWeekend) return false
     if (he.recurrence === 'weekly' || he.recurrence === 'biweekly' || he.recurrence === 'custom') {

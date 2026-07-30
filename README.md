@@ -111,7 +111,32 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
-#### Coach Agenda — volledige visie (vastgelegd juli 2026, niets hiervan gebouwd)
+#### Coach Agenda — Fase A afgerond (v2.4.185), Fase B-D nog visie
+
+**Fase A (v2.4.185) — volledig additief, geen bestaande engines
+gewijzigd:**
+- Nieuwe categorieën: Medisch (huisarts/fysiotherapeut/sportarts/
+  specialist/massage/medisch onderzoek/vaccinatie), Sport
+  (trainingskamp/testdag/clubrit/evenement), uitgebreid Leven
+  (verjaardag/bruiloft/begrafenis/weekend weg/zakenreis/lange
+  autorit/vlucht/hotel), Werk (consignatie)
+- Nieuwe Coach-properties: `available_time_minutes`, `priority`,
+  `location_type`, `energy_expectation`, `travel_distance_km`,
+  `coach_note` (kolom aanwezig, nog niet in de UI gekoppeld — bewust,
+  om een dubbel notitieveld naast de bestaande `notes` te voorkomen)
+- **Uitzonderingen op terugkerende regels** — "iedere maandag
+  dagdienst, BEHALVE 17 augustus" zonder de regel te hoeven aanpassen
+  of stoppen. Nieuw: `recurrence_exceptions` (date-array)
+- **Besluit vastgelegd:** bestaande 0-3-schaal (`recovery_impact`/
+  `stress_load`/`sleep_disruption`) blijft ongewijzigd — voedt nog
+  steeds de Recovery Score. Nieuwe velden zijn puur additief, geen
+  parallelle schaal.
+- **Besluit vastgelegd:** DELETE blijft een echte verwijdering — soft-
+  delete/status-lifecycle (Actief/Gepauzeerd/Beëindigd) is bewust
+  uitgesteld naar Fase C/D, niet meegenomen in Fase A
+- SQL: `supabase/coach_agenda_fase_a.sql` — puur additieve kolommen
+
+**Fase B-D blijven visie, niets gebouwd:**
 
 **Filosofie:** een gewone agenda vraagt "welke afspraak wil je
 toevoegen?". CoachOS vraagt "waar moet ik als coach rekening mee

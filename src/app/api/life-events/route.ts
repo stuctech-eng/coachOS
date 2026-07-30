@@ -74,6 +74,16 @@ export async function POST(req: NextRequest) {
         end_date: body.end_date ?? null,
         vacation_type: body.vacation_type ?? null,
         notes: body.notes ?? null,
+        // v2.4.185 (Coach Agenda Fase A): puur additieve contextvelden —
+        // beïnvloeden NIET de Recovery Score, bedoeld voor Context
+        // Resolver/Today Engine/Master Coach in een latere fase
+        available_time_minutes: body.available_time_minutes ?? null,
+        priority: body.priority ?? null,
+        coach_note: body.coach_note ?? null,
+        location_type: body.location_type ?? null,
+        energy_expectation: body.energy_expectation ?? null,
+        travel_distance_km: body.travel_distance_km ?? null,
+        recurrence_exceptions: body.recurrence_exceptions ?? null,
       })
       .select()
       .single()
@@ -100,6 +110,14 @@ export async function PATCH(req: NextRequest) {
     if (body.recurrence_end_date !== undefined) updates.recurrence_end_date = body.recurrence_end_date
     if (body.end_date !== undefined) updates.end_date = body.end_date
     if (body.vacation_type !== undefined) updates.vacation_type = body.vacation_type
+    // v2.4.185 (Coach Agenda Fase A)
+    if (body.available_time_minutes !== undefined) updates.available_time_minutes = body.available_time_minutes
+    if (body.priority !== undefined) updates.priority = body.priority
+    if (body.coach_note !== undefined) updates.coach_note = body.coach_note
+    if (body.location_type !== undefined) updates.location_type = body.location_type
+    if (body.energy_expectation !== undefined) updates.energy_expectation = body.energy_expectation
+    if (body.travel_distance_km !== undefined) updates.travel_distance_km = body.travel_distance_km
+    if (body.recurrence_exceptions !== undefined) updates.recurrence_exceptions = body.recurrence_exceptions
     const { error } = await supabase
       .from('life_events')
       .update(updates)
