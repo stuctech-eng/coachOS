@@ -32,6 +32,92 @@
 | Rowing drills | ✅ Volledig | 12 |
 | **Totaal** | | **390** |
 
+## Context Intelligence Architecture (vastgelegd juli 2026)
+
+**Vast principe: documentatie beschrijft wat de software nú doet, niet
+wat zij ooit zou kunnen doen.** Dat voorkomt dat het README ongemerkt
+een roadmap wordt. Daarom hieronder twee strikt gescheiden blokken:
+huidige architectuur, en toekomstige uitbreidingen.
+
+De Coach Agenda is geen vervanger van Apple/Google Calendar — het is
+het (nu deels, straks volledig) centrale systeem waarin alle planbare
+gebeurtenissen samenkomen die invloed kunnen hebben op de Coach. Drie
+lagen, elk met precies één verantwoordelijkheid:
+
+```
+Coach Agenda            "Welke gebeurtenissen bestaan er?"
+      │
+      ▼
+Context Resolver        "Welke context is vandaag relevant?"
+      │
+      ▼
+Today Engine             "Wat betekent dat concreet voor vandaag?"
+      │
+      ▼
+   TodayPlan
+      │
+      ▼
+Master Coach / Trainer AI / Specialisten
+```
+
+Geen enkele laag neemt de verantwoordelijkheid van een andere laag
+over. De Context Resolver bepaalt geen training — hij beschrijft
+uitsluitend de situatie. De Today Engine beslist niet over de
+seizoensopbouw — dat blijft bij de Training Plan Engine per specialist.
+
+### Huidige architectuur (v2.4.176+) — wat er daadwerkelijk gebeurt
+
+**Coach Agenda** — bevat op dit moment levensgebeurtenissen (werk/
+vakantie/ziekte/etc., via `life_events`) en feestdagen. Nog niet:
+trainingssessies/wedstrijden/reizen/medische afspraken als aparte
+agenda-items (die bestaan wel als data — training_plan_sessions,
+Goal Engine's target_date — maar zijn nog niet samengevoegd tot één
+overzicht).
+
+**Context Resolver** (`src/core/utils/context-resolver.ts`) — huidige
+databronnen: **Life Events, Blessures, Feestdagen**. Resultaat: één
+uniforme `ResolvedContext` (mode/prioriteit/trainingImpact/
+suppressedEvents). Niets meer, niets minder dan dat.
+
+**Today Engine** (`src/lib/today-engine.ts`) — huidige databronnen:
+**`coach_recommendations.actie_type`** (indirect signaal, al elders
+door CoachPolicy/Recovery bepaald), **`training_plan_sessions`**
+(specialist-schema), **Trainer AI** (vangnet, alleen als er geen
+specialist-plan is). Resultaat: `TodayPlan`. **Niet** (nog):
+Performance Platform rechtstreeks, weer rechtstreeks.
+
+**Master Coach** (`api/coach/route.ts`) — leest: TodayPlan, de
+Context Resolver-uitkomst, trainingsgeschiedenis, specialist-
+samenvattingen, en de overige bestaande contextbronnen (Garmin/
+Morning Health/weer/dagboek/blessures/etc., rechtstreeks, niet via de
+Context Resolver). Gebruikt dezelfde TodayPlan-waarheid als de
+Today-kaart op Home (v2.4.174) — geen tegenstrijdige adviezen meer.
+
+**TodayPlan-principe:** niet elk scherm gebruikt TodayPlan — dat zou
+verkeerd zijn. **Onderdelen die de situatie van vandaag tonen**
+(Home, Today-kaart, Master Coach, dagplanning, Trainer AI) lezen
+TodayPlan. **Specialistische schermen houden bewust hun eigen domein-
+API's** (Cycling/Running-trainingsschema, grafieken, analyse, records;
+Performance-trends/historie) — TodayPlan vervangt die niet, en zou dat
+ook niet moeten.
+
+### Toekomstige uitbreidingen (Roadmap — bewust nog niet gebouwd)
+
+- **Performance Platform + weer rechtstreeks in de Today Engine** —
+  nu nog niet gecombineerd, wel al elders bruikbaar (Performance-
+  pagina, Coach-prompt los)
+- **Coach Agenda volledig** — trainingssessies/wedstrijden/reizen/
+  medische afspraken als één overzicht. Wedstrijden zouden daarbij
+  een **virtuele gebeurtenis** worden (Goal Engine blijft eigenaar van
+  `target_date`, Coach Agenda toont 'm alleen — geen tweede waarheid,
+  geen dubbele opslag)
+- Schoolvakanties, externe agenda-sync (Apple/Google/Outlook)
+- Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
+  meerdere volwassen specialisten
+
+**Wanneer deze worden toegevoegd, gebeurt dat als nieuwe
+architectuurstappen — niet als correcties op deze documentatie.**
+
 ## Huidige Status — Systemen
 
 | Systeem | Status |
