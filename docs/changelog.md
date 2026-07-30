@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.187 — Week-navigatie op Levensgebeurtenissen
+**Gevraagd: "verder scrollen is wel handig" — de weekstrip toonde
+alleen "Deze week", zonder mogelijkheid om vooruit te bladeren. Nodig
+om de v2.4.185-uitzonderingen-functie te kunnen controleren zonder een
+week te hoeven wachten.**
+
+### Nieuw
+- `src/app/life-events/page.tsx` — `WeekKalender` kreeg vorige/volgende-
+  weekknoppen (◀ ▶), zelfde patroon als de Cycling/Running Kalender-
+  pagina's. Label wordt dynamisch: "Deze week" bij offset 0, anders
+  "Week van [datum]".
+
+**Gevalideerd:** datumberekening getest met exact het scenario uit de
+gerapporteerde screenshots (vandaag 30 juli) — één klik op "volgende
+week" komt correct uit op de week van 3 augustus (bevat 5 augustus,
+de ingestelde uitzondering). `npx next build` compileert zonder
+fouten.
+
+**Test-instructie:** open Levensgebeurtenissen, tik op de rechter
+pijl bij "Deze week" — de week met 5 augustus zou nu zichtbaar moeten
+worden, met woensdag 5 augustus zonder het Fysiotherapeut-icoon
+(de ingestelde uitzondering), terwijl andere woensdagen het gewoon
+tonen.
+
 ## v2.4.186 — Fix: "Uitzonderingen" ontbrak in het toevoegscherm
 **Gevonden tijdens het testen (met screenshot): bij het aanmaken van
 een nieuwe terugkerende regel (Wekelijks + Woensdag) stond er geen

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, Plus, Trash2, Calendar, ChevronRight, X, Check, Sparkles } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Calendar, ChevronLeft, ChevronRight, X, Check, Sparkles } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import { cn } from '@/utils'
@@ -297,12 +297,17 @@ function SnelInstellenRij({ onSnelToevoegen }: { onSnelToevoegen: (type: string)
 
 // ── Weekstrip — met leesbare labels i.p.v. alleen emoji's ───────────────
 function WeekKalender({ events }: { events: LifeEvent[] }) {
+  // v2.4.187: week-navigatie toegevoegd — kon voorheen niet vooruit/
+  // terug bladeren, dus een uitzondering in een toekomstige week (of
+  // een event verder terug) kon nooit gecontroleerd worden zonder te
+  // wachten tot die week vanzelf "deze week" werd.
+  const [weekOffset, setWeekOffset] = useState(0)
   const vandaag = new Date()
   const startWeekdag = (vandaag.getDay() + 6) % 7
-  const maandag = new Date(vandaag); maandag.setDate(vandaag.getDate() - startWeekdag)
+  const maandag = new Date(vandaag); maandag.setDate(vandaag.getDate() - startWeekdag + weekOffset * 7)
   const week = Array.from({ length: 7 }, (_, i) => { const d = new Date(maandag); d.setDate(maandag.getDate() + i); return d })
   const weekLabels = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo']
-  const jaar = vandaag.getFullYear()
+  const jaar = maandag.getFullYear()
   const feestdagen = getNederlandseFeestdagen(jaar)
 
   function getEventsVoorDag(dag: Date) {
@@ -318,7 +323,17 @@ function WeekKalender({ events }: { events: LifeEvent[] }) {
 
   return (
     <Card className="p-4">
-      <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Deze week</p>
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={() => setWeekOffset(o => o - 1)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800 text-slate-400 active:bg-slate-700">
+          <ChevronLeft size={14} />
+        </button>
+        <p className="text-xs text-slate-500 uppercase tracking-wider">
+          {weekOffset === 0 ? 'Deze week' : `Week van ${maandag.getDate()} ${maandag.toLocaleDateString('nl-NL', { month: 'short' })}`}
+        </p>
+        <button onClick={() => setWeekOffset(o => o + 1)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800 text-slate-400 active:bg-slate-700">
+          <ChevronRight size={14} />
+        </button>
+      </div>
       <div className="grid grid-cols-7 gap-1 mb-3">
         {dagenMetEvents.map(({ dag, events: dagEvents }, i) => {
           const actief = isVandaag(dag)
