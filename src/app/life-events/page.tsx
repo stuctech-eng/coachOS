@@ -306,6 +306,19 @@ function ContextStatusKaart({ context }: { context: ResolvedContext | null }) {
 // Pas na een expliciete tik op "✓ Opslaan" gaat de data naar de
 // bestaande, al-geteste onSave-functie — exact dezelfde weg als het
 // handmatige formulier.
+// v2.4.195: tik-om-te-vullen suggesties — dekken de patronen die
+// vandaag in de praktijk voorkwamen (terugkerende regel, vakantie,
+// uitzondering, medische afspraak, eenmalige gebeurtenis). Vierkante
+// haken zijn bewust nog leeg — de gebruiker vult zelf de details in,
+// de chip geeft alleen de structuur/formulering als startpunt.
+const SUGGESTIE_CHIPS: { label: string; template: string }[] = [
+  { label: '🔄 Terugkerende afspraak', template: 'Elke [dag] om [tijd] ' },
+  { label: '🏖️ Vakantie', template: 'Vakantie van [begindatum] t/m [einddatum]' },
+  { label: '🚫 Uitzondering op een regel', template: 'Op [datum] geen [gebeurtenis]' },
+  { label: '🏥 Medische afspraak', template: '[Type afspraak] op [datum] om [tijd]' },
+  { label: '📅 Eenmalige gebeurtenis', template: '[Wat] op [datum]' },
+]
+
 interface AiVoorstel {
   gelukt: boolean
   type?: string
@@ -330,6 +343,22 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
   function pasHoogteAan(el: HTMLTextAreaElement) {
     el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
+  }
+  // v2.4.195: vult een suggestie-template in en selecteert meteen het
+  // eerste [invulblok] — de gebruiker kan direct typen om dat te
+  // vervangen, zonder zelf te hoeven slepen/selecteren
+  function vulSuggestieIn(template: string) {
+    setTekst(template)
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (!el) return
+      pasHoogteAan(el)
+      el.focus()
+      const eersteBlok = template.match(/\[[^\]]*\]/)
+      if (eersteBlok && eersteBlok.index !== undefined) {
+        el.setSelectionRange(eersteBlok.index, eersteBlok.index + eersteBlok[0].length)
+      }
+    })
   }
   const [bezig, setBezig] = useState(false)
   const [voorstel, setVoorstel] = useState<AiVoorstel | null>(null)
@@ -403,6 +432,17 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
           meerregelige, uitklappende textarea. Enter maakt nu een
           nieuwe regel (zoals normaal in een tekstveld), versturen gaat
           via de knop. */}
+      {/* v2.4.195: tik-om-te-vullen suggesties — startpunt voor wie niet
+          precies weet hoe te formuleren, geen automatische opslag, de
+          gebruiker vult zelf de details aan vóór het versturen */}
+      <div className="flex gap-1.5 overflow-x-auto pb-2 mb-1 -mx-1 px-1">
+        {SUGGESTIE_CHIPS.map(chip => (
+          <button key={chip.label} onClick={() => vulSuggestieIn(chip.template)}
+            className="flex-shrink-0 px-3 py-1.5 bg-slate-800 text-slate-300 rounded-full text-xs whitespace-nowrap active:bg-slate-700">
+            {chip.label}
+          </button>
+        ))}
+      </div>
       <textarea ref={textareaRef} value={tekst}
         onChange={e => { setTekst(e.target.value); pasHoogteAan(e.target) }}
         rows={2}

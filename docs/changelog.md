@@ -1,5 +1,24 @@
 # CoachOS — Changelog
 
+## v2.4.195 — Tik-om-te-vullen suggesties bij "Vertel de Coach"
+**Gevraagd: hulp bij het formuleren, met suggesties. Gekozen optie
+(B van 4 voorgestelde): korte tik-knopjes die een startzin invullen,
+de gebruiker vult zelf de details aan.**
+
+### Nieuw
+- **5 suggestie-chips**, dekken de patronen die vandaag in de praktijk
+  voorkwamen: 🔄 Terugkerende afspraak, 🏖️ Vakantie, 🚫 Uitzondering op
+  een regel, 🏥 Medische afspraak, 📅 Eenmalige gebeurtenis.
+- Fijn detail: bij het tikken op een chip wordt automatisch het eerste
+  `[invulblok]` geselecteerd — direct typen vervangt het, geen zelf
+  hoeven slepen/selecteren.
+- Puur een startpunt — geen automatische opslag, de gebruiker stuurt
+  zelf de aangepaste tekst naar de AI-parser zoals gebruikelijk.
+
+**Gevalideerd:** selectie-logica getest — vindt en selecteert correct
+het eerste `[...]`-blok in een template. `npx next build` compileert
+zonder fouten.
+
 ## v2.4.194 — Autogroeiend tekstveld bij "Vertel de Coach"
 **Gevraagd: "kan het tekstveld niet automatisch groter worden".**
 
