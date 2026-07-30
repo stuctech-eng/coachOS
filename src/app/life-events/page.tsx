@@ -196,6 +196,12 @@ function isHerhalendActiefOpDag(event: LifeEvent, datum: Date): boolean {
   const dagStr = datum.toISOString().split('T')[0]
   // v2.4.185 (Coach Agenda Fase A): uitzonderingen eerst checken
   if (event.recurrence_exceptions?.includes(dagStr)) return false
+  // v2.4.189-FIX: begindatum werd nooit gecheckt — een terugkerende
+  // regel met een toekomstige startdatum (bijv. "vanaf 10 augustus")
+  // werd hierdoor als actief beschouwd vanaf het begin der tijden. Nu:
+  // dagen vóór de ingestelde startdatum tellen nooit mee.
+  const startDatum = event.start_time.split('T')[0]
+  if (dagStr < startDatum) return false
   if (event.recurrence_end_date && dagStr > event.recurrence_end_date) return false
   if (event.recurrence === 'workdays') return !isWeekend
   if (event.recurrence === 'weekend') return isWeekend

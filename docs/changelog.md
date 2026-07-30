@@ -1,5 +1,52 @@
 # CoachOS — Changelog
 
+## v2.4.189 — BELANGRIJKE FIX: terugkerende regels negeerden hun eigen begindatum
+**Gemeld met screenshots: "Avonddienst" met begindatum 10 augustus
+verscheen al vanaf 3 augustus in de kalender. Bevestigd: een echte,
+significante bug — niet alleen dit ene geval.**
+
+### Root cause
+`isHerhalendActiefOpDag()` (UI) en de `relevanteHerhalend`-filter
+(backend, voedt de Context Resolver/Coach) checkten wel de **einddatum**
+van een terugkerende regel, maar **nooit de begindatum**. Een
+terugkerende regel werd hierdoor als actief beschouwd vanaf het begin
+der tijden, ongeacht de ingestelde startdatum — deze bug bestaat sinds
+v2.4.173, toen deze functies voor het eerst gebouwd zijn.
+
+**Erger dan verwacht:** de backend-query miste `recurrence_end_date`
+zelfs helemaal — die kolom werd nooit opgehaald, dus ook de
+**einddatum** werd door de Coach/Context Resolver nooit gerespecteerd,
+alleen door de UI (die het wél ophaalde, voor de kalenderweergave).
+
+### Impact
+Elke gebruiker die ooit een terugkerende regel met een **toekomstige
+startdatum** instelde ("vanaf volgende maand elke maandag..."), kreeg
+die regel al **onmiddellijk** meegewogen in Coach-advies en Recovery
+Score — weken of maanden te vroeg. Regels met een einddatum bleven voor
+de Coach (niet de UI) voor altijd actief.
+
+### Fix
+- `src/app/life-events/page.tsx` — `isHerhalendActiefOpDag()`:
+  begindatum-check toegevoegd (`dagStr < startDatum → false`)
+- `src/core/utils/life-events-context.ts` — `recurrence_end_date`
+  toegevoegd aan `SELECT_FIELDS` (ontbrak volledig) en het
+  `LifeEventRow`-interface; begin- én einddatum-check toegevoegd aan
+  `relevanteHerhalend`
+
+**Gevalideerd — 5 scenario's, exact het gerapporteerde geval (begin 10
+aug, eind 13 aug):**
+- 3 augustus (vóór begindatum) → correct inactief (was het probleem)
+- 10 augustus (begindatum zelf) → correct actief
+- 12 augustus (binnen de periode) → correct actief
+- 13 augustus (einddatum zelf) → correct actief (grens inclusief)
+- 14 augustus (na einddatum) → correct inactief
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Levensgebeurtenissen, bekijk "Avonddienst" —
+zou nu pas vanaf 10 augustus moeten verschijnen in de weekweergave,
+niet meer op 3-7 augustus.
+
 ## v2.4.188 — Coach Agenda Fase B, eerste stap: AI-invoer (tekst)
 **Vervolg op Fase A. Scope voor deze levering: tekst-invoer +
 verplichte bevestiging. Spraak en Quick Cards volgen apart.**
