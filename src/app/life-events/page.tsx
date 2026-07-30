@@ -272,6 +272,124 @@ function ContextStatusKaart({ context }: { context: ResolvedContext | null }) {
   )
 }
 
+// ── AI-invoer — Coach Agenda Fase B ──────────────────────────────────
+// Bron: overleg 30 juli 2026. NIET-ONDERHANDELBAAR: deze component slaat
+// NOOIT rechtstreeks iets op. Ze roept alleen /api/life-events/parse aan
+// (dat zelf ook niets opslaat) en toont een verplichte bevestigingskaart.
+// Pas na een expliciete tik op "✓ Opslaan" gaat de data naar de
+// bestaande, al-geteste onSave-functie — exact dezelfde weg als het
+// handmatige formulier.
+interface AiVoorstel {
+  gelukt: boolean
+  type?: string
+  start_datum?: string
+  start_uur?: number | null
+  eind_uur?: number | null
+  recurrence?: string | null
+  recurrence_dagen?: number[] | null
+  eind_datum?: string | null
+  prioriteit?: string | null
+  beschikbare_tijd_minuten?: number | null
+  notitie?: string | null
+  samenvatting?: string
+  reden_mislukt?: string
+}
+
+function AiInvoerKaart({ onSave }: { onSave: (event: Partial<LifeEvent>) => Promise<void> }) {
+  const [tekst, setTekst] = useState('')
+  const [bezig, setBezig] = useState(false)
+  const [voorstel, setVoorstel] = useState<AiVoorstel | null>(null)
+  const [opslaanBezig, setOpslaanBezig] = useState(false)
+
+  async function verstuur() {
+    if (!tekst.trim()) return
+    setBezig(true)
+    setVoorstel(null)
+    try {
+      const res = await fetch('/api/life-events/parse', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: tekst }),
+      })
+      const data: AiVoorstel = await res.json()
+      setVoorstel(data)
+    } catch {
+      setVoorstel({ gelukt: false, reden_mislukt: 'Verbindingsfout — probeer het opnieuw.' })
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  async function bevestigen() {
+    if (!voorstel || !voorstel.type) return
+    setOpslaanBezig(true)
+    try {
+      const et = EVENT_TYPES.find(t => t.type === voorstel.type)
+      const uur = voorstel.start_uur ?? et?.start_hour ?? 9
+      const startTimeISO = new Date(`${voorstel.start_datum || vandaagStr()}T${String(uur).padStart(2, '0')}:00:00`).toISOString()
+      await onSave({
+        type: voorstel.type,
+        start_time: startTimeISO,
+        start_hour: voorstel.start_uur ?? et?.start_hour ?? null,
+        end_hour: voorstel.eind_uur ?? et?.end_hour ?? null,
+        recovery_impact: et?.recovery_impact ?? 1,
+        stress_load: et?.stress_load ?? 1,
+        sleep_disruption: et?.sleep_disruption ?? 1,
+        recurrence: (voorstel.recurrence as LifeEvent['recurrence']) || null,
+        recurrence_days: voorstel.recurrence_dagen || null,
+        end_date: voorstel.eind_datum || null,
+        notes: voorstel.notitie || null,
+        available_time_minutes: voorstel.beschikbare_tijd_minuten ?? null,
+        priority: (voorstel.prioriteit as LifeEvent['priority']) ?? null,
+      } as Partial<LifeEvent>)
+      setVoorstel(null)
+      setTekst('')
+    } catch {
+      /* onSave toont zelf al een foutmelding op de hoofdpagina */
+    } finally {
+      setOpslaanBezig(false)
+    }
+  }
+
+  return (
+    <Card className="p-4">
+      <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">💬 Vertel de Coach</p>
+      <div className="flex gap-2">
+        <input value={tekst} onChange={e => setTekst(e.target.value)} onKeyDown={e => e.key === 'Enter' && verstuur()}
+          placeholder="Bijv. 'Elke woensdag fysiotherapie'"
+          className="flex-1 bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+        <button onClick={verstuur} disabled={bezig || !tekst.trim()}
+          className="px-4 bg-primary-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+          {bezig ? '...' : '→'}
+        </button>
+      </div>
+
+      {voorstel && voorstel.gelukt && (
+        <div className="mt-3 p-3 bg-primary-500/10 border border-primary-500/30 rounded-xl">
+          <p className="text-xs text-primary-400 uppercase tracking-wider mb-1">Ik heb dit begrepen</p>
+          <p className="text-sm text-slate-200 mb-3">{voorstel.samenvatting}</p>
+          <div className="flex gap-2">
+            <button onClick={bevestigen} disabled={opslaanBezig}
+              className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+              {opslaanBezig ? 'Bezig...' : '✓ Opslaan'}
+            </button>
+            <button onClick={() => { setVoorstel(null); setTekst('') }}
+              className="flex-1 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold">
+              ✏️ Opnieuw
+            </button>
+          </div>
+        </div>
+      )}
+
+      {voorstel && !voorstel.gelukt && (
+        <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+          <p className="text-sm text-amber-400">{voorstel.reden_mislukt || 'Kon dit niet interpreteren.'}</p>
+          <p className="text-xs text-slate-500 mt-1">Probeer het preciezer te omschrijven, of gebruik de "+"-knop hierboven.</p>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 // ── Snel instellen ────────────────────────────────────────────────────
 function SnelInstellenRij({ onSnelToevoegen }: { onSnelToevoegen: (type: string) => void }) {
   return (
@@ -1084,6 +1202,10 @@ export default function LifeEventsPage() {
         {/* Statuskaart — venster naar de Context Resolver */}
         {!loading && <ContextStatusKaart context={context} />}
         {loading && <div className="h-32 bg-coach-card rounded-2xl animate-pulse" />}
+
+        {/* v2.4.188 (Coach Agenda Fase B): AI-invoer — verplichte
+            bevestiging, slaat nooit rechtstreeks op */}
+        <AiInvoerKaart onSave={slaEventOp} />
 
         <SnelInstellenRij onSnelToevoegen={(type) => { setSnelType(type); setShowSheet(true) }} />
 

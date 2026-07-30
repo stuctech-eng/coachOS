@@ -111,7 +111,28 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
-#### Coach Agenda — Fase A afgerond (v2.4.185), Fase B-D nog visie
+#### Coach Agenda — Fase A + B (tekst) afgerond, spraak/Quick Cards/C/D nog visie
+
+**Fase B, eerste stap (v2.4.188) — tekst-invoer, verplichte
+bevestiging:**
+- **`api/life-events/parse/route.ts`** — neemt vrije tekst, roept
+  Claude aan met de **volledige, exacte typevocabulaire** (38 types
+  uit alle 6 categorieën) als harde grens. Slaat NIETS op — levert
+  alleen een gestructureerd voorstel.
+- **Niet-onderhandelbaar principe, technisch afgedwongen, niet alleen
+  in de prompt**: een **onafhankelijke validatielaag** controleert het
+  door de AI teruggegeven type tegen de bekende vocabulaire — als de AI
+  de instructie zou negeren en toch iets verzint, wordt dat hier alsnog
+  geblokkeerd. Getest: zelfs een plausibel klinkend, maar niet-bestaand
+  type ("wedstrijd") wordt correct afgewezen.
+- **UI: `AiInvoerKaart`** — "Vertel de Coach..." invoerveld,
+  bevestigingskaart ("Ik heb dit begrepen: ...") met ✓ Opslaan /
+  ✏️ Opnieuw. Opslaan loopt via de bestaande, al-geteste
+  `slaEventOp()` — geen nieuwe opslaglogica.
+
+**Nog niet gebouwd:** spraak (aparte, kleinere stap — browser-eigen
+spraakherkenning, geen nieuwe API nodig), Quick Cards, Fase C (Coach
+Inbox, patroonherkenning), Fase D (externe sync).
 
 **Fase A (v2.4.185) — volledig additief, geen bestaande engines
 gewijzigd:**

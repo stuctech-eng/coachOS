@@ -1,5 +1,46 @@
 # CoachOS — Changelog
 
+## v2.4.188 — Coach Agenda Fase B, eerste stap: AI-invoer (tekst)
+**Vervolg op Fase A. Scope voor deze levering: tekst-invoer +
+verplichte bevestiging. Spraak en Quick Cards volgen apart.**
+
+### Nieuw
+- **`src/app/api/life-events/parse/route.ts`** — neemt vrije Nederlandse
+  tekst, roept Claude aan met de volledige, exacte typevocabulaire (38
+  types uit alle 6 categorieën, inclusief Fase A's uitbreidingen) als
+  harde grens in de system-prompt. **Slaat niets op** — levert alleen
+  een gestructureerd voorstel (`gelukt: true/false`, type, datum,
+  herhaling, etc.) terug.
+- **Niet-onderhandelbaar principe, technisch afgedwongen**: een
+  onafhankelijke validatielaag (`GELDIGE_TYPES`-check) controleert het
+  door de AI teruggegeven type tegen de bekende vocabulaire, los van de
+  prompt-instructie zelf. Als de AI de instructie zou negeren, wordt
+  een onbekend type hier alsnog geblokkeerd — geen vertrouwen op alleen
+  "de AI zal het wel goed doen".
+- **`AiInvoerKaart`** (UI-component op `/settings/life-events`) —
+  invoerveld + verplichte bevestigingskaart ("Ik heb dit begrepen: ...")
+  met ✓ Opslaan / ✏️ Opnieuw. De daadwerkelijke opslag loopt via de
+  bestaande, al-geteste `slaEventOp()` — geen nieuwe opslaglogica, de
+  AI levert alleen het voorstel aan.
+
+### Architectuurprincipe herbevestigd
+Zelfde filosofie als CoachOS' allereerste kernregel ("AI never creates
+exercises"): AI mag nooit zelfstandig een regel opslaan.
+
+**Gevalideerd vóór levering:**
+- `npx next build` — compileert zonder fouten, nieuwe route aanwezig
+  in de build-output
+- Validatielaag getest: geldig type (fysiotherapeut) → doorgelaten;
+  verzonnen type (kapper) → geblokkeerd; **plausibel klinkend maar
+  bewust niet-ondersteund type (wedstrijd) → geblokkeerd** — bevestigt
+  dat de check onafhankelijk van de AI-prompt werkt, niet alleen
+  "vertrouwen op de instructie"
+- 38 geldige types bevestigd, matcht de volledige Fase A-vocabulaire
+
+**Nog niet gebouwd:** spraak (browser-eigen spraakherkenning, geen
+nieuwe API nodig — kleine, aparte vervolgstap), Quick Cards, Fase C
+(Coach Inbox, patroonherkenning), Fase D (externe agenda-sync).
+
 ## v2.4.187 — Week-navigatie op Levensgebeurtenissen
 **Gevraagd: "verder scrollen is wel handig" — de weekstrip toonde
 alleen "Deze week", zonder mogelijkheid om vooruit te bladeren. Nodig
