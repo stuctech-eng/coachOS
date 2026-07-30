@@ -1,5 +1,15 @@
 # CoachOS — Changelog
 
+## v2.4.194 — Autogroeiend tekstveld bij "Vertel de Coach"
+**Gevraagd: "kan het tekstveld niet automatisch groter worden".**
+
+### Nieuw
+`src/app/life-events/page.tsx` — de textarea past nu automatisch zijn
+hoogte aan de inhoud aan (via `scrollHeight`, geen vaste 2 regels
+meer). Hoogte reset netjes terug naar normaal na opslaan of "Opnieuw".
+
+`npx next build` — compileert zonder fouten.
+
 ## v2.4.193 — BELANGRIJKE FIX: "Om de week" gedroeg zich exact als "Elke week"
 **Gemeld: "Als ik om de week doe, pakt hij ook niet." Gevraagd: alle
 herhalingsopties grondig controleren. Bevestigd: een derde,

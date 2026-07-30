@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { ArrowLeft, Plus, Trash2, Calendar, ChevronLeft, ChevronRight, X, Check, Sparkles } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
@@ -324,6 +324,13 @@ interface AiVoorstel {
 
 function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<LifeEvent>) => Promise<void>; onOpenHandmatig: () => void }) {
   const [tekst, setTekst] = useState('')
+  // v2.4.194: autogroeiend tekstveld — ref om de hoogte dynamisch aan
+  // te passen aan de inhoud, in plaats van een vast aantal regels
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  function pasHoogteAan(el: HTMLTextAreaElement) {
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
   const [bezig, setBezig] = useState(false)
   const [voorstel, setVoorstel] = useState<AiVoorstel | null>(null)
   const [opslaanBezig, setOpslaanBezig] = useState(false)
@@ -380,6 +387,7 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
       } as Partial<LifeEvent>)
       setVoorstel(null)
       setTekst('')
+      if (textareaRef.current) textareaRef.current.style.height = 'auto'
     } catch (err) {
       setOpslaanFout('Opslaan mislukt: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
@@ -395,9 +403,11 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
           meerregelige, uitklappende textarea. Enter maakt nu een
           nieuwe regel (zoals normaal in een tekstveld), versturen gaat
           via de knop. */}
-      <textarea value={tekst} onChange={e => setTekst(e.target.value)} rows={2}
+      <textarea ref={textareaRef} value={tekst}
+        onChange={e => { setTekst(e.target.value); pasHoogteAan(e.target) }}
+        rows={2}
         placeholder="Bijv. 'Elke woensdag fysiotherapie'"
-        className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500 resize-none" />
+        className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500 resize-none overflow-hidden" />
       <button onClick={verstuur} disabled={bezig || !tekst.trim()}
         className="w-full mt-2 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
         {bezig ? 'Bezig...' : '→ Versturen'}
@@ -418,7 +428,7 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
               className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
               {opslaanBezig ? 'Bezig...' : '✓ Opslaan'}
             </button>
-            <button onClick={() => { setVoorstel(null); setTekst('') }}
+            <button onClick={() => { setVoorstel(null); setTekst(''); if (textareaRef.current) textareaRef.current.style.height = 'auto' }}
               className="flex-1 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold">
               ✏️ Opnieuw
             </button>
