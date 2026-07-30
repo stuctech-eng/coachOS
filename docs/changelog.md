@@ -1,5 +1,30 @@
 # CoachOS — Changelog
 
+## v2.4.191 — Fix: verwarrende "+"-knop-verwijzing bij mislukte AI-invoer
+**Gemeld met screenshot: "heb ik geen plus en min knop?" — bleek een
+verwarrende foutmelding, geen ontbrekende knop.**
+
+### Root cause
+Bij een mislukte AI-interpretatie (v2.4.188) verwees de foutmelding
+naar *"gebruik de '+'-knop hierboven"* — die knop staat in de
+**titelbalk**, bovenaan de pagina, ver van het AI-invoerkaartje en niet
+zichtbaar zonder terug te scrollen. Verwarrend, geen echte bug in de
+zin dat er iets ontbrak — de tekst verwees gewoon naar de verkeerde
+plek.
+
+### Fix
+`src/app/life-events/page.tsx` — de vage verwijzing vervangen door een
+**directe, werkende knop binnen het foutmeldingskaartje zelf**
+("Probeer het preciezer, of voeg handmatig toe →"), die rechtstreeks
+het handmatige toevoegformulier opent. Geen cross-page-verwijzing meer
+nodig.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** typ iets vaags in "Vertel de Coach" (bijv. een
+zin zonder duidelijk type) — de foutmelding zou nu een knop moeten
+tonen die direct het handmatige formulier opent.
+
 ## v2.4.190 — Fix (2/2): einddatum via het hoofdveld werd nog steeds genegeerd
 **Gemeld ná v2.4.189: begindatum werkte nu correct, maar de einddatum
 "pakte hij niet". Root cause: twee aparte einddatum-velden.**

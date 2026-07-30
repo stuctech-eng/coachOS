@@ -304,7 +304,7 @@ interface AiVoorstel {
   reden_mislukt?: string
 }
 
-function AiInvoerKaart({ onSave }: { onSave: (event: Partial<LifeEvent>) => Promise<void> }) {
+function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<LifeEvent>) => Promise<void>; onOpenHandmatig: () => void }) {
   const [tekst, setTekst] = useState('')
   const [bezig, setBezig] = useState(false)
   const [voorstel, setVoorstel] = useState<AiVoorstel | null>(null)
@@ -392,7 +392,13 @@ function AiInvoerKaart({ onSave }: { onSave: (event: Partial<LifeEvent>) => Prom
       {voorstel && !voorstel.gelukt && (
         <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
           <p className="text-sm text-amber-400">{voorstel.reden_mislukt || 'Kon dit niet interpreteren.'}</p>
-          <p className="text-xs text-slate-500 mt-1">Probeer het preciezer te omschrijven, of gebruik de "+"-knop hierboven.</p>
+          {/* v2.4.191-FIX: verwees voorheen vaag naar "de +-knop
+              hierboven" — die staat in de titelbalk, ver van dit kaartje
+              en niet zichtbaar zonder terug te scrollen. Nu een directe,
+              werkende knop op deze plek zelf. */}
+          <button onClick={onOpenHandmatig} className="mt-2 text-xs text-primary-400 font-medium">
+            Probeer het preciezer, of voeg handmatig toe →
+          </button>
         </div>
       )}
     </Card>
@@ -1214,7 +1220,7 @@ export default function LifeEventsPage() {
 
         {/* v2.4.188 (Coach Agenda Fase B): AI-invoer — verplichte
             bevestiging, slaat nooit rechtstreeks op */}
-        <AiInvoerKaart onSave={slaEventOp} />
+        <AiInvoerKaart onSave={slaEventOp} onOpenHandmatig={() => setShowSheet(true)} />
 
         <SnelInstellenRij onSnelToevoegen={(type) => { setSnelType(type); setShowSheet(true) }} />
 
