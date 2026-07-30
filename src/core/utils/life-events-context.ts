@@ -36,6 +36,24 @@ export interface LifeEventRow {
   recurrence_end_date?: string | null
 }
 
+// v2.4.193-FIX: "om de week" (biweekly) gedroeg zich exact hetzelfde
+// als "elke week" — er werd nergens gecheckt of het een even of
+// oneven week was ten opzichte van de startdatum, alleen of de
+// dag-van-de-week matchte. Deze helper berekent het aantal volle
+// weken tussen de startdatum en vandaag (gerekend vanaf de maandag
+// van elke week, dus onafhankelijk van welke dag de startdatum zelf
+// op valt).
+function weekVerschil(startDatumStr: string, vandaagStr: string): number {
+  const maandagVan = (datumStr: string) => {
+    const d = new Date(datumStr + 'T00:00:00')
+    const dagOffset = (d.getDay() + 6) % 7 // maandag=0
+    d.setDate(d.getDate() - dagOffset)
+    return d
+  }
+  const verschilMs = maandagVan(vandaagStr).getTime() - maandagVan(startDatumStr).getTime()
+  return Math.round(verschilMs / (1000 * 60 * 60 * 24 * 7))
+}
+
 export async function fetchTodaysLifeEvents(
   supabase: SupabaseClient,
   userId: string,
@@ -102,9 +120,16 @@ export async function fetchTodaysLifeEvents(
     if (he.recurrence_end_date && vandaag > he.recurrence_end_date) return false
     if (he.recurrence === 'workdays' && isWeekend) return false
     if (he.recurrence === 'weekend' && !isWeekend) return false
-    if (he.recurrence === 'weekly' || he.recurrence === 'biweekly' || he.recurrence === 'custom') {
+    if (he.recurrence === 'weekly' || he.recurrence === 'custom') {
       const days = he.recurrence_days
       return days ? days.includes(dagNummer) : true
+    }
+    if (he.recurrence === 'biweekly') {
+      const days = he.recurrence_days
+      const dagMatcht = days ? days.includes(dagNummer) : true
+      if (!dagMatcht || !he.start_time) return false
+      // Even weekverschil = zelfde week als start, of exact 2/4/6... weken later
+      return weekVerschil(he.start_time.split('T')[0], vandaag) % 2 === 0
     }
     // 'daily' of geen specifieke regel: altijd relevant
     return true

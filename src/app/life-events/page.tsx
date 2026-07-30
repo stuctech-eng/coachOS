@@ -189,6 +189,19 @@ function isEenmaligActiefVandaag(event: LifeEvent, dagStr: string): boolean {
   return dagStr >= startDatum && dagStr <= eindDatum
 }
 
+// v2.4.193-FIX: zelfde toelichting als in life-events-context.ts —
+// "om de week" gedroeg zich exact als "elke week"
+function weekVerschil(startDatumStr: string, vandaagStr: string): number {
+  const maandagVan = (datumStr: string) => {
+    const d = new Date(datumStr + 'T00:00:00')
+    const dagOffset = (d.getDay() + 6) % 7
+    d.setDate(d.getDate() - dagOffset)
+    return d
+  }
+  const verschilMs = maandagVan(vandaagStr).getTime() - maandagVan(startDatumStr).getTime()
+  return Math.round(verschilMs / (1000 * 60 * 60 * 24 * 7))
+}
+
 function isHerhalendActiefOpDag(event: LifeEvent, datum: Date): boolean {
   if (!event.recurrence) return false
   const dagNummer = datum.getDay()
@@ -208,8 +221,13 @@ function isHerhalendActiefOpDag(event: LifeEvent, datum: Date): boolean {
   if (event.recurrence_end_date && dagStr > event.recurrence_end_date) return false
   if (event.recurrence === 'workdays') return !isWeekend
   if (event.recurrence === 'weekend') return isWeekend
-  if (event.recurrence === 'weekly' || event.recurrence === 'biweekly' || event.recurrence === 'custom') {
+  if (event.recurrence === 'weekly' || event.recurrence === 'custom') {
     return event.recurrence_days ? event.recurrence_days.includes(dagNummer) : true
+  }
+  if (event.recurrence === 'biweekly') {
+    const dagMatcht = event.recurrence_days ? event.recurrence_days.includes(dagNummer) : true
+    if (!dagMatcht) return false
+    return weekVerschil(startDatum, dagStr) % 2 === 0
   }
   return true // daily
 }

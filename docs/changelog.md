@@ -1,5 +1,53 @@
 # CoachOS — Changelog
 
+## v2.4.193 — BELANGRIJKE FIX: "Om de week" gedroeg zich exact als "Elke week"
+**Gemeld: "Als ik om de week doe, pakt hij ook niet." Gevraagd: alle
+herhalingsopties grondig controleren. Bevestigd: een derde,
+significante bug — apart van de eerder gevonden begin-/einddatum-
+problemen.**
+
+### Root cause
+`weekly`, `biweekly` en `custom` werden in zowel de UI
+(`isHerhalendActiefOpDag`) als de backend (`relevanteHerhalend`-filter,
+voedt de Context Resolver/Coach) **identiek behandeld** — er werd
+alleen gecheckt of de dag-van-de-week matchte, nooit of het een even
+of oneven week was ten opzichte van de startdatum. "Om de week" heeft
+dus al deze hele tijd **elke week** gevuurd, niet om de week.
+
+### Fix
+- **Nieuwe helper** (`weekVerschil()`, in beide bestanden) — berekent
+  het aantal volle weken tussen de startdatum en vandaag, gerekend
+  vanaf de maandag van elke week (onafhankelijk van welke dag de
+  startdatum zelf op valt).
+- `biweekly` nu apart behandeld: dag-van-de-week moet matchen **én**
+  het weekverschil moet even zijn (0, 2, 4, ... weken na de start).
+- `weekly`/`custom` ongewijzigd (die waren al correct — vuren elke
+  week op de matchende dag/dagen).
+
+### Volledige audit uitgevoerd, zoals gevraagd
+Alle zes herhalingsopties (workdays/weekend/weekly/biweekly/daily/
+custom) apart getest. Ook de hele codebase doorzocht op andere plekken
+die "biweekly" checken — één extra voorkomen gevonden
+(`formatHerhaling()`), maar dat is puur een weergave-label-functie
+("🔄 Om de week · Wo"), geen actief/inactief-beslissing — geen bug,
+ongewijzigd gelaten.
+
+**Gevalideerd — alle 6 opties, 12 scenario's totaal:**
+- Workdays/Weekend: correct
+- Weekly: elke week actief op de matchende dag — correct
+- **Biweekly (het gerapporteerde probleem)**: week 0 en 2 actief, week
+  1 en 3 correct inactief — exact het afwisselende patroon dat "om de
+  week" hoort te zijn
+- Daily: elke dag actief — correct
+- Custom (meerdere dagen): alleen de geselecteerde dagen actief —
+  correct
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** stel een "Om de week"-regel in vanaf vandaag, en
+check volgende week — die zou nu **niet** moeten verschijnen. De week
+daarna wel weer.
+
 ## v2.4.192 — Fix: Opslaan-knop deed niets bij AI-invoer + invoerveld toonde niet de volledige tekst
 **Gemeld: "De opslaan knop werkt niet" + "wil de hele tekst kunnen zien
 als ik het intype".**
