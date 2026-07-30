@@ -1,5 +1,54 @@
 # CoachOS — Changelog
 
+## v2.4.192 — Fix: Opslaan-knop deed niets bij AI-invoer + invoerveld toonde niet de volledige tekst
+**Gemeld: "De opslaan knop werkt niet" + "wil de hele tekst kunnen zien
+als ik het intype".**
+
+### Probleem 2 (invoerveld) — opgelost
+Het "Vertel de Coach"-veld was een eenregelig `<input>` — lange tekst
+liep buiten beeld, niet terug te lezen wat je had getypt.
+- `src/app/life-events/page.tsx` — omgezet naar een meerregelige,
+  uitklappende `<textarea>`. Enter maakt nu een nieuwe regel, versturen
+  gaat via de knop (die nu voluit "→ Versturen" toont, ook duidelijker).
+
+### Probleem 1 (Opslaan-knop) — waarschijnlijke oorzaak gevonden en gefixt
+Het AI-voorstel in het gerapporteerde geval noemde "14:45" en "00:45"
+— tijden met minuten. Het bestaande systeem ondersteunt alleen **hele
+uren** (0-23). Als de AI zo'n tijd probeerde te representeren als een
+decimaal getal (bijv. 14.75), gaf de daaropvolgende
+`new Date(...).toISOString()`-aanroep een **Invalid Date**-crash —
+vlak vóórdat de gebruiker op Opslaan drukte. De catch-blok was leeg
+(ging er stilzwijgend van uit dat fouten altijd via `onSave()` kwamen),
+dus er verscheen nooit een melding: de knop "deed" zichtbaar niets.
+
+**Drievoudige fix:**
+1. `api/life-events/parse/route.ts` — AI-prompt expliciet gemaakt: uren
+   moeten hele getallen zijn, rond af en noem de exacte tijd apart in de
+   samenvatting
+2. Zelfde route — **onafhankelijke validatielaag**, niet alleen
+   vertrouwen op de prompt: een niet-heel-getal-uur wordt nu al bij het
+   voorstel zelf geblokkeerd met een duidelijke reden
+3. `life-events/page.tsx` — client-side vangnet (valt terug op een
+   veilige standaardwaarde i.p.v. te crashen) + **altijd een zichtbare
+   foutmelding** in het kaartje zelf bij een probleem, ongeacht waar het
+   misgaat
+
+**Gevalideerd — 4 scenario's:**
+- Geldig heel uur (15) → toegestaan
+- Decimaal uur (14.75, precies het waarschijnlijke crash-scenario) →
+  geblokkeerd
+- Geen uur opgegeven (null) → toegestaan
+- Uur buiten bereik (25) → geblokkeerd
+- Client-side fallback bij een ongeldige waarde → valt terug op 9:00
+  i.p.v. te crashen
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** typ een zin met een tijd inclusief minuten (bijv.
+"vanaf 14:45") — zou nu ofwel een duidelijke, afgeronde tijd in de
+samenvatting moeten tonen, ofwel een nette foutmelding, nooit meer een
+knop die niets zichtbaars doet.
+
 ## v2.4.191 — Fix: verwarrende "+"-knop-verwijzing bij mislukte AI-invoer
 **Gemeld met screenshot: "heb ik geen plus en min knop?" — bleek een
 verwarrende foutmelding, geen ontbrekende knop.**

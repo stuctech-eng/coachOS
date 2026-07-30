@@ -309,6 +309,9 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
   const [bezig, setBezig] = useState(false)
   const [voorstel, setVoorstel] = useState<AiVoorstel | null>(null)
   const [opslaanBezig, setOpslaanBezig] = useState(false)
+  // v2.4.192-FIX: was een lege catch die stilzwijgend faalde als de
+  // fout vóór onSave() al optrad — nu altijd een zichtbare melding.
+  const [opslaanFout, setOpslaanFout] = useState<string | null>(null)
 
   async function verstuur() {
     if (!tekst.trim()) return
@@ -331,10 +334,17 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
   async function bevestigen() {
     if (!voorstel || !voorstel.type) return
     setOpslaanBezig(true)
+    setOpslaanFout(null)
     try {
       const et = EVENT_TYPES.find(t => t.type === voorstel.type)
-      const uur = voorstel.start_uur ?? et?.start_hour ?? 9
+      // v2.4.192-FIX: uur-waarde beveiligen — moet een heel getal 0-23
+      // zijn, anders geeft new Date(...).toISOString() verderop een
+      // stille crash (Invalid Date). Backend valideert dit inmiddels
+      // ook (v2.4.192), dit is een extra, client-side vangnet.
+      const ruweUur = voorstel.start_uur ?? et?.start_hour ?? 9
+      const uur = Number.isInteger(ruweUur) && ruweUur >= 0 && ruweUur <= 23 ? ruweUur : 9
       const startTimeISO = new Date(`${voorstel.start_datum || vandaagStr()}T${String(uur).padStart(2, '0')}:00:00`).toISOString()
+      if (isNaN(new Date(startTimeISO).getTime())) throw new Error('Ongeldige datum/tijd in het AI-voorstel')
       await onSave({
         type: voorstel.type,
         start_time: startTimeISO,
@@ -352,8 +362,8 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
       } as Partial<LifeEvent>)
       setVoorstel(null)
       setTekst('')
-    } catch {
-      /* onSave toont zelf al een foutmelding op de hoofdpagina */
+    } catch (err) {
+      setOpslaanFout('Opslaan mislukt: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setOpslaanBezig(false)
     }
@@ -362,15 +372,24 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
   return (
     <Card className="p-4">
       <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">💬 Vertel de Coach</p>
-      <div className="flex gap-2">
-        <input value={tekst} onChange={e => setTekst(e.target.value)} onKeyDown={e => e.key === 'Enter' && verstuur()}
-          placeholder="Bijv. 'Elke woensdag fysiotherapie'"
-          className="flex-1 bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
-        <button onClick={verstuur} disabled={bezig || !tekst.trim()}
-          className="px-4 bg-primary-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
-          {bezig ? '...' : '→'}
-        </button>
-      </div>
+      {/* v2.4.192-FIX: was een eenregelig <input> — lange tekst liep
+          buiten beeld, je kon niet terugzien wat je had getypt. Nu een
+          meerregelige, uitklappende textarea. Enter maakt nu een
+          nieuwe regel (zoals normaal in een tekstveld), versturen gaat
+          via de knop. */}
+      <textarea value={tekst} onChange={e => setTekst(e.target.value)} rows={2}
+        placeholder="Bijv. 'Elke woensdag fysiotherapie'"
+        className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500 resize-none" />
+      <button onClick={verstuur} disabled={bezig || !tekst.trim()}
+        className="w-full mt-2 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+        {bezig ? 'Bezig...' : '→ Versturen'}
+      </button>
+
+      {opslaanFout && (
+        <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+          <p className="text-sm text-red-400">{opslaanFout}</p>
+        </div>
+      )}
 
       {voorstel && voorstel.gelukt && (
         <div className="mt-3 p-3 bg-primary-500/10 border border-primary-500/30 rounded-xl">

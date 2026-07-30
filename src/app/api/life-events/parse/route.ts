@@ -80,11 +80,12 @@ BELANGRIJKE REGELS:
 ${TYPE_VOCABULAIRE}
 2. Als de tekst niet duidelijk bij één van deze types past, geef dan "gelukt": false met een reden. Gok niet.
 3. Vandaag is ${vandaag} (dagnummer ${vandaagNummer}, waarbij 0=zondag, 1=maandag, ... 6=zaterdag).
-4. Voor "recurrence": gebruik "weekly" bij "elke [dag]" of "iedere [dag]", "workdays" bij "op werkdagen", "weekend" bij "in het weekend", "daily" bij "elke dag", null bij een eenmalige gebeurtenis.
+4. Voor "recurrence": gebruik "weekly" bij "elke [dag]" of "iedere [dag]", "workdays" bij "op werkdagen", "weekend" bij "in het weekend", "daily" bij "elke dag", null bij een eenmalige gebeurtenis. Gebruik "custom" (met meerdere recurrence_dagen) als er meerdere specifieke dagen genoemd worden, bijv. "maandag t/m donderdag" → recurrence "custom", recurrence_dagen [1,2,3,4].
 5. Voor "recurrence_dagen": array met dagnummers (0-6, JS-conventie) als er een specifieke dag genoemd wordt bij een wekelijkse regel — bijv. "elke woensdag" → [3].
 6. Voor "start_datum": bepaal een concrete datum (yyyy-mm-dd) uit relatieve tijdsaanduidingen ("volgende week", "vanaf morgen", etc.) — reken vanaf vandaag.
 7. Geef ALTIJD een korte "samenvatting" in natuurlijke taal die de gebruiker kan bevestigen, bijv. "Fysiotherapeut, elke woensdag, vanaf nu, geen einddatum".
 8. Verzin GEEN prioriteit, beschikbare tijd of notitie als de gebruiker dat niet noemt — laat dan null.
+9. BELANGRIJK, voorkomt een crash: "start_uur" en "eind_uur" MOETEN gehele getallen zijn van 0 t/m 23 (bijv. 14), NOOIT met minuten (dus NOOIT "14:45" of 14.75). Het systeem ondersteunt alleen hele uren. Rond af naar het dichtstbijzijnde hele uur en noem de exacte tijd (met minuten) apart in de "samenvatting", zodat de gebruiker het zelf ziet — bijv. bij "14:45" → start_uur: 15, samenvatting vermeldt "vanaf ~14:45 (afgerond naar 15:00 in het systeem)".
 
 Reageer ALLEEN met geldige JSON, geen uitleg eromheen:
 {
@@ -140,6 +141,19 @@ Of bij twijfel:
       return NextResponse.json({
         gelukt: false,
         reden_mislukt: 'Kon dit niet aan een bekend type koppelen — probeer het preciezer te omschrijven of kies handmatig een categorie.',
+      } as ParseResultaat)
+    }
+
+    // v2.4.192-FIX: onafhankelijke validatie, niet alleen vertrouwen op
+    // de prompt-instructie — anders kan een uur-waarde met minuten
+    // (bijv. bij "14:45") verderop een crash veroorzaken (Invalid Date)
+    // vlak vóórdat de gebruiker op Opslaan drukt, zonder duidelijke
+    // foutmelding.
+    const isGeldigUur = (u: unknown) => u === null || u === undefined || (Number.isInteger(u) && (u as number) >= 0 && (u as number) <= 23)
+    if (parsed.gelukt && (!isGeldigUur(parsed.start_uur) || !isGeldigUur(parsed.eind_uur))) {
+      return NextResponse.json({
+        gelukt: false,
+        reden_mislukt: 'Kon de tijd niet correct interpreteren (alleen hele uren worden ondersteund, geen minuten). Probeer het te herformuleren met een heel uur.',
       } as ParseResultaat)
     }
 
