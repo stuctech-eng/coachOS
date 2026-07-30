@@ -106,14 +106,96 @@ ook niet moeten.
 - **Performance Platform + weer rechtstreeks in de Today Engine** —
   nu nog niet gecombineerd, wel al elders bruikbaar (Performance-
   pagina, Coach-prompt los)
-- **Coach Agenda volledig** — trainingssessies/wedstrijden/reizen/
-  medische afspraken als één overzicht. Wedstrijden zouden daarbij
-  een **virtuele gebeurtenis** worden (Goal Engine blijft eigenaar van
-  `target_date`, Coach Agenda toont 'm alleen — geen tweede waarheid,
-  geen dubbele opslag)
-- Schoolvakanties, externe agenda-sync (Apple/Google/Outlook)
+- Schoolvakanties, externe agenda-sync (Apple/Google/Outlook) — zie
+  Coach Agenda-visie hieronder, Fase D
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
+
+#### Coach Agenda — volledige visie (vastgelegd juli 2026, niets hiervan gebouwd)
+
+**Filosofie:** een gewone agenda vraagt "welke afspraak wil je
+toevoegen?". CoachOS vraagt "waar moet ik als coach rekening mee
+houden?" — CoachOS verzamelt geen afspraken, het verzamelt context.
+
+**Herziene architectuur** (Coach Agenda is niet de enige contextbron,
+wel eigenaar van *planbare* gebeurtenissen — Injuries/Performance/
+Goal Engine/Weather blijven eigen, gelijkwaardige bronnen ernaast):
+
+```
+              AI Invoer (spraak/tekst)
+                       │
+                       ▼
+                 Rule Engine
+                       │
+                       ▼
+             Coach Agenda (Actieve Regels)
+                       │
+    ┌──────────────────┼──────────────────┐
+    │                  │                  │
+Injuries          Performance         Goal Engine
+    │                  │                  │
+    └──────────────────┼──────────────────┘
+                       │
+                Weather / Locatie
+                       │
+                       ▼
+               Context Resolver
+                       │
+                       ▼
+                 Today Engine
+                       │
+                       ▼
+                 Master Coach
+                       │
+                       ▼
+                 Specialisten
+```
+
+**Rule Engine** (nieuwe, expliciete component): natuurlijke taal
+interpreteren, regels valideren, conflicten detecteren, uitzonderingen
+verwerken, herhalingen genereren, regels pauzeren/hervatten/
+overschrijven. **Niet-onderhandelbaar principe, zelfde filosofie als
+CoachOS' allereerste kernregel** ("AI never creates exercises"):
+**AI mag nooit zelfstandig een regel opslaan.** Elke AI-geïnterpreteerde
+regel vereist expliciete bevestiging van de gestructureerde uitkomst
+vóór opslag — bijv. "Ik heb dit begrepen: Werk, Nachtdienst, start 3
+augustus, elke 2 weken, geen einddatum. ✓ Opslaan ✏️ Wijzigen."
+
+**Actieve Regels** i.p.v. losse afspraken — bouwt voort op bestaande
+`recurrence`-functionaliteit (`life_events` heeft dit al); de
+innovatie zit in de AI-laag die vrije tekst omzet naar een
+gevalideerde, terugkerende regel.
+
+**Virtuele gebeurtenissen** — wedstrijden (Goal Engine's `target_date`),
+Build/Recovery/Peak Week (Training Plan Engine's mesocyclus) worden
+automatisch getoond in Coach Agenda, niet handmatig ingevoerd en niet
+dubbel opgeslagen. Coach Agenda blijft daarvan alleen de weergave, de
+brondata blijft bij Goal Engine/Training Plan Engine.
+
+**Navigatie — géén nieuwe tab.** De bestaande 6-tabs bottom-navigatie
+(Home/Coach/Trainer/Specialisten/Activiteiten/Voortgang) is al logisch
+opgebouwd en blijft ongewijzigd. Coach Agenda wordt bereikbaar via:
+een nieuwe kaart op Home ("🗓️ Coach Agenda — vandaag/morgen/volgende
+week, met een link naar het volledige scherm"), vanuit Coach, en
+eventueel via Instellingen. Redenering: de Agenda is geen dagelijkse
+bestemming — de meeste gebruikers openen 'm alleen als er iets
+verandert (nieuw rooster, vakantie invoeren), de AI doet de rest. Home
+blijft de dagelijkse cockpit ("90% van de tijd opent de gebruiker
+alleen Home").
+
+**Fasering (bewust, niet als één groot geheel bouwen):**
+- **Fase A** — bredere categorieën (medische afspraken, familie
+  expliciet), Coach-properties per event (uitbreiding van het
+  bestaande v2.4.173-patroon), Actieve Regels (bouwt voort op
+  bestaande recurrence)
+- **Fase B** — AI-invoer (spraak/tekst), Quick Cards, **verplichte
+  bevestigingsstap** (zie hierboven, niet-onderhandelbaar)
+- **Fase C** — Coach Inbox (proactieve meldingen op Home:
+  "Volgende week begint je vakantie — trainingsplan pauzeren?"),
+  patroonherkenning ("Je werkt al 8 weken om de week nachtdienst —
+  hiervan een vaste regel maken?")
+- **Fase D** — Apple/Google/Outlook-sync (alleen sync-bron, nooit
+  hoofdbron — CoachOS blijft eigenaar van de context), schoolvakanties
 
 **Wanneer deze worden toegevoegd, gebeurt dat als nieuwe
 architectuurstappen — niet als correcties op deze documentatie.**
