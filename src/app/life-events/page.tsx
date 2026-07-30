@@ -410,6 +410,10 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
   const [recurrence, setRecurrence] = useState('')
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([])
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('')
+  // v2.4.186-FIX: hoorde hier al bij v2.4.185, per ongeluk alleen in
+  // het bewerkscherm gebouwd, niet hier in het toevoegscherm
+  const [exceptions, setExceptions] = useState<string[]>([])
+  const [nieuweException, setNieuweException] = useState('')
   const [recoveryImpact, setRecoveryImpact] = useState(voorgeselecteerdType?.recovery_impact ?? 1)
   const [stressLoad, setStressLoad] = useState(voorgeselecteerdType?.stress_load ?? 1)
   const [sleepDisruption, setSleepDisruption] = useState(voorgeselecteerdType?.sleep_disruption ?? 1)
@@ -456,6 +460,8 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
         recurrence: recurrence || null,
         recurrence_days: recurrenceDays.length > 0 ? recurrenceDays : null,
         recurrence_end_date: recurrenceEndDate || null,
+        // v2.4.186-FIX
+        recurrence_exceptions: exceptions.length > 0 ? exceptions : null,
         end_date: endDate || null,
         notes: notes || null,
         // v2.4.185 (Coach Agenda Fase A)
@@ -613,6 +619,32 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+              {/* v2.4.186-FIX: hoorde hier al bij v2.4.185, per ongeluk
+                  vergeten in het toevoegscherm — alleen in het
+                  bewerkscherm gebouwd */}
+              {recurrence !== '' && (
+                <div className="mt-2 flex flex-col gap-2">
+                  <p className="text-xs text-slate-400">Uitzonderingen (regel geldt dan die dag niet)</p>
+                  <div className="flex gap-2">
+                    <input type="date" value={nieuweException} onChange={e => setNieuweException(e.target.value)}
+                      min={vandaagStr()} className="flex-1 bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                    <button onClick={() => { if (nieuweException && !exceptions.includes(nieuweException)) { setExceptions([...exceptions, nieuweException].sort()); setNieuweException('') } }}
+                      className="px-4 bg-slate-800 text-primary-400 rounded-xl text-sm font-semibold">
+                      + Toevoegen
+                    </button>
+                  </div>
+                  {exceptions.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {exceptions.map(datum => (
+                        <button key={datum} onClick={() => setExceptions(exceptions.filter(d => d !== datum))}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 rounded-full text-xs text-slate-300">
+                          {formatDatumKort(datum)} <X size={12} className="text-slate-500" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               <Button onClick={() => setSheet('periode')} fullWidth className="mt-2">Klaar</Button>

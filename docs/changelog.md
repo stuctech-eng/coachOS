@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.186 — Fix: "Uitzonderingen" ontbrak in het toevoegscherm
+**Gevonden tijdens het testen (met screenshot): bij het aanmaken van
+een nieuwe terugkerende regel (Wekelijks + Woensdag) stond er geen
+"Uitzonderingen"-veld, terwijl dat wel in v2.4.185 zou moeten zitten.**
+
+### Root cause
+De uitzonderingen-UI (v2.4.185) werd per ongeluk alleen in het
+**bewerkscherm** (`EventDetail`) gebouwd, niet in het **toevoegscherm**
+(`NieuwEventSheet`) — twee losse componenten met elk hun eigen
+herhaling-stap, ik heb de tweede over het hoofd gezien.
+
+### Fix
+`src/app/life-events/page.tsx` — dezelfde uitzonderingen-UI (datum
+toevoegen/verwijderen) nu ook in `NieuwEventSheet`'s herhaling-stap,
+inclusief het meesturen bij het opslaan.
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten.
+"Uitzonderingen"-tekst bevestigd op beide plekken (toevoegen én
+bewerken).
+
+**Test-instructie:** maak een nieuwe terugkerende regel aan (Wekelijks
++ een dag) — het "Uitzonderingen"-veld zou nu direct zichtbaar moeten
+zijn, zonder eerst te hoeven opslaan en opnieuw te openen.
+
 ## v2.4.185 — Coach Agenda Fase A (Master Foundation)
 **Eerste bouwstap van de Coach Agenda-visie. Volledig additief, zoals
 afgesproken: geen bestaande engines (Recovery/CoachPolicy/Today
