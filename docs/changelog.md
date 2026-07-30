@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.190 — Fix (2/2): einddatum via het hoofdveld werd nog steeds genegeerd
+**Gemeld ná v2.4.189: begindatum werkte nu correct, maar de einddatum
+"pakte hij niet". Root cause: twee aparte einddatum-velden.**
+
+### Root cause
+Er bestaan **twee verschillende "einddatum"-velden**:
+- `end_date` — het hoofdveld, bovenaan het formulier ("Einddatum"),
+  waar de gebruiker deze in de praktijk invult
+- `recurrence_end_date` — een apart veld, alleen bereikbaar via de
+  Herhaling-substap, bedoeld voor "wanneer stopt deze terugkerende
+  regel volledig"
+
+v2.4.189 checkte alleen `recurrence_end_date` als bovengrens voor
+terugkerende events. Omdat de gebruiker de datum via het voor de hand
+liggende hoofdveld instelde (`end_date`), werd die grens genegeerd —
+de regel bleef na de ingestelde einddatum gewoon actief.
+
+### Fix
+- `src/core/utils/life-events-context.ts` + `src/app/life-events/
+  page.tsx` — beide velden worden nu gecheckt (`end_date` én
+  `recurrence_end_date`) als bovengrens voor terugkerende events.
+
+**Gevalideerd — 3 scenario's, exact het gerapporteerde geval (10-13
+augustus, einddatum via het hoofdveld):**
+- 9 augustus (vóór begin) → correct inactief
+- 13 augustus (einddatum zelf) → correct actief (grens inclusief)
+- 14 augustus (ná einddatum — het gerapporteerde probleem) → correct
+  inactief
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** check "Avonddienst" nogmaals — zou nu ná 13
+augustus niet meer moeten verschijnen.
+
 ## v2.4.189 — BELANGRIJKE FIX: terugkerende regels negeerden hun eigen begindatum
 **Gemeld met screenshots: "Avonddienst" met begindatum 10 augustus
 verscheen al vanaf 3 augustus in de kalender. Bevestigd: een echte,

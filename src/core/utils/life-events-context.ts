@@ -92,6 +92,13 @@ export async function fetchTodaysLifeEvents(
     // ongeacht wat er werkelijk was ingesteld. Dit voedde rechtstreeks
     // de Context Resolver/Coach Score sinds v2.4.173.
     if (he.start_time && vandaag < he.start_time.split('T')[0]) return false
+    // v2.4.190-FIX: er blijken TWEE aparte "einddatum"-velden te
+    // bestaan — end_date (het hoofdveld, in de UI "Einddatum" boven het
+    // formulier) en recurrence_end_date (apart, binnen de Herhaling-
+    // substap). Alleen het laatste werd gecheckt — als de gebruiker de
+    // datum via het hoofdveld instelde (het meest voor de hand liggende
+    // veld), werd die dus genegeerd. Nu allebei gecheckt.
+    if (he.end_date && vandaag > he.end_date) return false
     if (he.recurrence_end_date && vandaag > he.recurrence_end_date) return false
     if (he.recurrence === 'workdays' && isWeekend) return false
     if (he.recurrence === 'weekend' && !isWeekend) return false

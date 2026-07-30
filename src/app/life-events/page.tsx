@@ -202,6 +202,9 @@ function isHerhalendActiefOpDag(event: LifeEvent, datum: Date): boolean {
   // dagen vóór de ingestelde startdatum tellen nooit mee.
   const startDatum = event.start_time.split('T')[0]
   if (dagStr < startDatum) return false
+  // v2.4.190-FIX: zie toelichting in life-events-context.ts — twee
+  // aparte einddatum-velden, beide moeten gecheckt worden
+  if (event.end_date && dagStr > event.end_date) return false
   if (event.recurrence_end_date && dagStr > event.recurrence_end_date) return false
   if (event.recurrence === 'workdays') return !isWeekend
   if (event.recurrence === 'weekend') return isWeekend
