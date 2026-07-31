@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.201 — Coach Planning Fase B: Home — Coach Vooruitblik-kaart
+**Eerste stap na Fase A. "Eerst de bestemming, dan de snelkoppeling" —
+nu heeft de knop een echte bestemming (Coach Planning bestaat al).**
+
+### Nieuw
+- `src/app/home/page.tsx` — nieuwe kaart, direct na "Vandaag van je
+  Coach": toont maximaal 3 items (volgende vakantie, volgende
+  wedstrijd, eerstvolgende trainingsfase-overgang), puur feitelijk,
+  geen voorspelling (dat blijft Fase D/Coach Forecast, bewust apart).
+- **Hergebruikt exact `/api/coach-planning/overzicht`** (v2.4.200) —
+  geen nieuwe backend-logica, geen dubbele databron.
+- **Bewuste keuze:** als er niets relevants is (nieuwe gebruiker,
+  weinig ingevuld in Coach Planning), blijft de kaart volledig weg —
+  geen lege kaart tonen.
+- Knop "Open Coach Planning →" — geen nieuwe navigatie-tab, zoals
+  eerder vastgelegd.
+
+### Bijvangst tijdens het bouwen
+Bij het invoegen is per ongeluk de `{/* Snelle links */}`-
+commentaarregel mee vervangen (puur cosmetisch, geen functionele
+impact — de daadwerkelijke inhoud bleef intact). Teruggezet vóór
+levering.
+
+**Gevalideerd:**
+- Zichtbaarheidslogica: 3 scenario's (alles leeg → kaart weg, 1 item,
+  3 items) — correct
+- Dag-labels (Vandaag/Morgen/Over X dagen) — correct
+- `npx next build` — compileert zonder fouten
+
+**Test-instructie:** open Home — als je in Coach Planning al een
+vakantie/wedstrijd/trainingsfase hebt lopen, zou de nieuwe kaart nu
+zichtbaar moeten zijn met een link naar Coach Planning.
+
 ## v2.4.200 — Coach Planning: Fase A, stap 3 (Overzicht) — Fase A compleet
 **Laatste stap van Fase A. Vervangt de "Overzicht"-placeholder door een
 echte, intelligente samenvatting.**

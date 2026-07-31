@@ -139,8 +139,17 @@ bron, geen dubbele logica. Robuust tegen het bekende v2.4.176-
 randgeval (oude trainingsplannen zonder mesocyclus-data — geen crash,
 toont dat onderdeel gewoon niet).
 
-**Fase B (Home: Vooruitblik-kaart), Fase C (Smart Action Engine) en
-Fase D (Coach Forecast) blijven visie**, zoals hieronder vastgelegd.
+**Fase B (Home: Coach Vooruitblik-kaart) afgerond — v2.4.201.**
+Hergebruikt exact dezelfde `/api/coach-planning/overzicht`-route als
+Fase A stap 3 — één bron, geen dubbele logica. Toont maximaal 3 items
+(vakantie/wedstrijd/faseovergang), puur feitelijk, geen voorspelling.
+**Bewuste keuze:** als er niets relevants is (nieuwe gebruiker, weinig
+ingevuld), blijft de kaart volledig weg — geen lege kaart tonen.
+Knop "Open Coach Planning →" onderaan, geen nieuwe navigatie-tab
+(zoals eerder vastgelegd).
+
+**Fase C (Smart Action Engine) en Fase D (Coach Forecast) blijven
+visie**, zoals hieronder vastgelegd.
 
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan

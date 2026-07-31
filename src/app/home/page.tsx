@@ -172,6 +172,20 @@ export default function HomePage() {
     reason: string; coachMessage: string; actionHref: string; actionLabel: string
     trainingPhase: { mesocycleType: string } | null
   } | null>(null)
+  // v2.4.201 (Coach Planning Fase B): Coach Vooruitblik — hergebruikt
+  // de al-geteste /api/coach-planning/overzicht-route (v2.4.200), geen
+  // dubbele logica
+  const [vooruitblik, setVooruitblik] = useState<{
+    volgendeVakantie: { datum: string; eindDatum: string | null } | null
+    volgendEvenement: { datum: string; type: string } | null
+    huidigeFase: string | null
+    volgendeFaseWissel: { datum: string; fase: string } | null
+    werkEventsKomende14Dagen: number
+    trainingenKomendeWeek: number
+  } | null>(null)
+  useEffect(() => {
+    fetch('/api/coach-planning/overzicht').then(r => r.json()).then(d => { if (!d.error) setVooruitblik(d) }).catch(() => {})
+  }, [])
   useEffect(() => {
     fetch('/api/today', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
@@ -759,6 +773,39 @@ export default function HomePage() {
             )}
           </div>
         </Card>
+
+        {/* v2.4.201 (Coach Planning Fase B): Coach Vooruitblik — puur
+            feitelijk, geen voorspelling (dat is Fase D/Coach Forecast,
+            bewust apart gehouden) */}
+        {vooruitblik && (() => {
+          const FASE_LABELS: Record<string, string> = { basis: 'Base-week', opbouw: 'Build-week', piek: 'Peak-week', herstel: 'Recovery-week' }
+          const dagenTot = (datumStr: string) => {
+            const nu = new Date(); nu.setHours(0, 0, 0, 0)
+            return Math.round((new Date(datumStr + 'T00:00:00').getTime() - nu.getTime()) / (1000 * 60 * 60 * 24))
+          }
+          const labelVoorDagen = (d: number) => d === 0 ? 'Vandaag' : d === 1 ? 'Morgen' : `Over ${d} dagen`
+          const items: { icon: string; tekst: string }[] = []
+          if (vooruitblik.volgendeVakantie) items.push({ icon: '🏖️', tekst: `Vakantie — ${labelVoorDagen(dagenTot(vooruitblik.volgendeVakantie.datum))}` })
+          if (vooruitblik.volgendEvenement) items.push({ icon: '🏁', tekst: `Wedstrijd — ${labelVoorDagen(dagenTot(vooruitblik.volgendEvenement.datum))}` })
+          if (vooruitblik.volgendeFaseWissel) items.push({ icon: '🔥', tekst: `${FASE_LABELS[vooruitblik.volgendeFaseWissel.fase] || vooruitblik.volgendeFaseWissel.fase} — ${labelVoorDagen(dagenTot(vooruitblik.volgendeFaseWissel.datum))}` })
+          if (items.length === 0) return null // niets relevants — kaart blijft dan bewust weg, geen lege kaart tonen
+          return (
+            <Card className="p-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">📅 Coach Vooruitblik</p>
+              <div className="flex flex-col gap-2 mb-3">
+                {items.slice(0, 3).map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-base">{item.icon}</span>
+                    <span className="text-sm text-slate-300">{item.tekst}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/coach-planning" className="text-xs text-primary-400 font-medium">
+                Open Coach Planning →
+              </Link>
+            </Card>
+          )
+        })()}
 
         {/* Snelle links */}
         <div className="grid grid-cols-2 gap-3">
