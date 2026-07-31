@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.210 — REGRESSIE-FIX: nav-tabs vielen alsnog van het scherm + Performance-tekst wrapte lelijk
+
+### Nav-tabs — regressie op v2.4.209
+**Gemeld met screenshot: "Voortgang" was nog steeds niet volledig
+zichtbaar, ondanks v2.4.209's fix.**
+
+Root cause: v2.4.209 verwijderde `overflow-x-auto` en vertrouwde op
+`min-w-[68px]` per tab, met een berekening die uitging van "5 × 68px
+= 340px, past ruim". Fout: `min-w` is een **ondergrens**, geen vaste
+breedte — de daadwerkelijke breedte van "Specialisten" en
+"Activiteiten" als tekst is aanzienlijk breder dan 68px, dus de rij
+liep alsnog over en het laatste item ("Voortgang") viel van het
+scherm.
+
+**Definitieve fix:** `src/components/layout/index.tsx` — elke tab
+krijgt nu `flex-1` (gelijk deel van de beschikbare breedte) i.p.v. een
+losse pixel-ondergrens. Dit is **wiskundig gegarandeerd** correct:
+vijf `flex-1`-items tellen per definitie op tot precies de
+containerbreedte, ongeacht hoe lang een label is — geen berekening
+meer die opnieuw fout kan gaan. Labels mogen nu wrappen naar 2 regels
+i.p.v. verplicht op 1 regel te passen.
+
+### Performance-pagina — coach-tekst wrapte lelijk
+**Gemeld met screenshot: de coach-uitleg werd in een te smalle kolom
+geperst naast de "Belangrijkste factoren"-pillen.**
+
+Root cause: `flex items-start justify-between` zette de coach-tekst
+(`flex-1`) en de pillen (`flex-shrink-0`) naast elkaar — op een smal
+scherm bleef er te weinig breedte over voor de tekst, die daardoor
+over veel regels wrapte.
+
+**Fix:** `src/app/performance/page.tsx` — coach-tekst en pillen nu
+**onder elkaar** (`flex-col`) i.p.v. naast elkaar. Tekst krijgt de
+volle breedte, pillen krijgen hun eigen rij eronder.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** check de bottom-nav — alle 5 tabs, inclusief
+"Voortgang", zouden nu volledig zichtbaar moeten zijn. Check
+Performance — de coach-uitleg zou nu leesbaar over de volle breedte
+moeten lopen, pillen eronder.
+
 ## v2.4.209 — Kleine fixes: "Indoor Fiets" hernoemd + bottom-nav scrollde nog
 
 ### "Indoor Fiets" → "Fietsen"

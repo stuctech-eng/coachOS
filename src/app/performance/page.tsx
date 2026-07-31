@@ -228,17 +228,22 @@ export default function PerformancePage() {
                   kleur={KLEUR_HEX[data.recovery.value.color === 'green' ? 'groen' : data.recovery.value.color === 'orange' ? 'amber' : 'rood']} />
               </div>
 
-              <div className="flex items-start justify-between gap-4 pt-3 border-t border-coach-border">
+              {/* v2.4.210-FIX: coach-tekst en factoren-pillen stonden
+                  naast elkaar (justify-between) — de tekst werd daardoor
+                  in een te smalle kolom geperst en wrapte lelijk over
+                  veel regels (gemeld met screenshot). Nu onder elkaar:
+                  coach-tekst krijgt de volle breedte, pillen eronder. */}
+              <div className="flex flex-col gap-3 pt-3 border-t border-coach-border">
                 {data.recovery.explanation && (
-                  <div className="flex items-start gap-2 flex-1">
+                  <div className="flex items-start gap-2">
                     <span className="text-lg flex-shrink-0">🧠</span>
                     <p className="text-xs text-slate-300">{data.recovery.explanation.coachMessage}</p>
                   </div>
                 )}
                 {topFactoren.length > 0 && (
-                  <div className="flex-shrink-0">
+                  <div>
                     <p className="text-[10px] text-slate-500 mb-1.5">Belangrijkste factoren:</p>
-                    <div className="flex flex-wrap gap-1.5 justify-end">
+                    <div className="flex flex-wrap gap-1.5">
                       {topFactoren.map((f, i) => (
                         <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">+ {f.factor}</span>
                       ))}

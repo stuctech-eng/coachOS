@@ -111,6 +111,23 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
+#### Kleine fixes — v2.4.210
+
+**Regressie op v2.4.209's nav-fix.** Gemeld met screenshot: "Voortgang"
+viel nog steeds van het scherm af. Root cause: `min-w-[68px]` was
+alleen een ondergrens, geen vaste breedte — lange labels
+("Specialisten", "Activiteiten") zijn als tekst breder dan 68px, dus
+de rij liep alsnog over. **Fix:** elke tab krijgt nu `flex-1` — een
+gegarandeerd gelijk deel van de beschikbare breedte, kan per definitie
+nooit meer overlopen, ongeacht labellengte (in tegenstelling tot een
+losse pixel-berekening die opnieuw fout kon gaan).
+
+**Performance-pagina — coach-tekst wrapte lelijk.** Gemeld met
+screenshot: de coach-uitleg ("Gematigd trainen is...") stond naast de
+"Belangrijkste factoren"-pillen, werd daardoor in een te smalle kolom
+geperst en wrapte over veel regels. **Fix:** coach-tekst en pillen nu
+onder elkaar i.p.v. naast elkaar — tekst krijgt de volle breedte.
+
 #### Kleine fixes — v2.4.209
 
 - **"Indoor Fiets" hernoemd naar "Fietsen"** (equipment-instellingen):

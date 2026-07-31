@@ -28,14 +28,20 @@ export function BottomNav() {
       {/* no-scrollbar is optioneel/niet gedefinieerd in dit project — geen
           probleem, iOS Safari verbergt scrollbars al standaard. Puur ter
           documentatie van de intentie, geen functionele afhankelijkheid. */}
-      <div className="flex items-center justify-around pt-2 pb-1 px-1">
+      {/* v2.4.210-FIX: min-w-[68px] was alleen een ONDERGRENS, geen
+          vaste breedte — lange labels ("Specialisten", "Activiteiten")
+          waren als tekst breder dan 68px, dus de rij liep alsnog over
+          (gemeld: "Voortgang" viel van het scherm af). Nu flex-1: elke
+          tab krijgt gegarandeerd exact 1/5 van de beschikbare breedte
+          — kan per definitie nooit meer overlopen, ongeacht labellengte. */}
+      <div className="flex items-start pt-2 pb-1 px-1">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link key={href} href={href}
-              className={cn('flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all flex-shrink-0 min-w-[68px]', isActive ? 'text-primary-400' : 'text-slate-500')}>
+              className={cn('flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all min-w-0', isActive ? 'text-primary-400' : 'text-slate-500')}>
               <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
-              <span className="text-xs font-medium whitespace-nowrap">{label}</span>
+              <span className="text-[10px] font-medium text-center leading-tight px-0.5">{label}</span>
             </Link>
           )
         })}
