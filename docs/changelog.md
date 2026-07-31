@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.197 — Fix: "Jaarlijks" en "Maandelijks" ontbraken volledig
+**Gemeld: verjaardag toevoegen gaf "wekelijks" i.p.v. jaarlijks.
+Root cause: er was geen "jaarlijks"-optie om te kiezen — de AI koos
+noodgedwongen het minst-foute alternatief. Direct ook gecontroleerd op
+vergelijkbare gaten: "maandelijks" bleek ook te ontbreken.**
+
+### Nieuw
+- **"Jaarlijks"** — zelfde maand+dag, elk jaar (verjaardagen, jubilea,
+  trouwdagen)
+- **"Maandelijks"** — zelfde dag-van-de-maand, elke maand (eenvoudige
+  versie; "elke eerste vrijdag van de maand" is bewust niet
+  meegenomen, complexer patroon, niet gevraagd)
+- Toegevoegd aan: `RECURRENCE_OPTIONS`/`RECURRENCE_LABELS` (UI), de
+  actief/inactief-logica in zowel `life-events/page.tsx` als
+  `life-events-context.ts` (backend, voedt de Coach), en de AI-parse-
+  route (prompt + type + zowel `yearly` als `monthly` expliciet
+  genoemd, met de instructie "kies nooit weekly voor een jaarlijkse/
+  maandelijkse gebeurtenis")
+
+**Gevalideerd — 7 scenario's:**
+- Jaarlijks: zelfde dag volgend jaar (actief), andere dag (inactief),
+  andere maand (inactief)
+- Maandelijks: zelfde dag volgende maand (actief), andere dag
+  (inactief)
+
+Geen SQL nodig — `recurrence` bleek geen database-constraint te hebben
+(vrije tekst-kolom), dus nieuwe waarden zijn direct bruikbaar.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** voeg "Mijn verjaardag" opnieuw toe via AI-invoer —
+zou nu "Jaarlijks" moeten voorstellen, niet "Wekelijks".
+
 ## v2.4.196 — Minuten-precisie voor tijden
 **Aanleiding: AI-invoer met "14:45" kon niet correct worden
 opgeslagen — het systeem ondersteunde alleen hele uren.**

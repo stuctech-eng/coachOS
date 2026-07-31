@@ -131,6 +131,14 @@ export async function fetchTodaysLifeEvents(
       // Even weekverschil = zelfde week als start, of exact 2/4/6... weken later
       return weekVerschil(he.start_time.split('T')[0], vandaag) % 2 === 0
     }
+    // v2.4.197-FIX: "Jaarlijks" ontbrak volledig — een verjaardag had
+    // geen correcte optie, waardoor de AI "wekelijks" gokte
+    if (he.recurrence === 'yearly' && he.start_time) {
+      return vandaag.slice(5) === he.start_time.split('T')[0].slice(5)
+    }
+    if (he.recurrence === 'monthly' && he.start_time) {
+      return vandaag.slice(8) === he.start_time.split('T')[0].slice(8)
+    }
     // 'daily' of geen specifieke regel: altijd relevant
     return true
   })

@@ -149,11 +149,16 @@ const RECURRENCE_OPTIONS = [
   { value: 'biweekly', label: 'Om de week', sub: 'elke 2 weken', needsDay: true },
   { value: 'daily', label: 'Dagelijks', sub: 'elke dag' },
   { value: 'custom', label: 'Aangepast', sub: 'kies dagen', needsDays: true },
+  // v2.4.197-FIX: "maandelijks" ontbrak ook — zelfde soort gat als
+  // "jaarlijks". Simpele versie: zelfde dag-van-de-maand, elke maand
+  // (niet "elke eerste vrijdag" — dat is complexer en niet gevraagd)
+  { value: 'monthly', label: 'Maandelijks', sub: 'zelfde dag v/d maand' },
+  { value: 'yearly', label: 'Jaarlijks', sub: 'zelfde datum, elk jaar' },
 ]
 
 const RECURRENCE_LABELS: Record<string, string> = {
   daily: 'Dagelijks', workdays: 'Werkdagen', weekend: 'Weekend',
-  weekly: 'Wekelijks', biweekly: 'Om de week', custom: 'Aangepast',
+  weekly: 'Wekelijks', biweekly: 'Om de week', custom: 'Aangepast', yearly: 'Jaarlijks', monthly: 'Maandelijks',
 }
 
 // Vriendelijke labels voor de 0-3-impactschaal — geen kale cijfers
@@ -231,6 +236,15 @@ function isHerhalendActiefOpDag(event: LifeEvent, datum: Date): boolean {
     const dagMatcht = event.recurrence_days ? event.recurrence_days.includes(dagNummer) : true
     if (!dagMatcht) return false
     return weekVerschil(startDatum, dagStr) % 2 === 0
+  }
+  if (event.recurrence === 'yearly') {
+    // Zelfde maand+dag als de startdatum, elk jaar — niet
+    // dag-van-de-week-gebaseerd zoals de andere opties
+    return dagStr.slice(5) === startDatum.slice(5)
+  }
+  if (event.recurrence === 'monthly') {
+    // Zelfde dag-van-de-maand als de startdatum, elke maand
+    return dagStr.slice(8) === startDatum.slice(8)
   }
   return true // daily
 }

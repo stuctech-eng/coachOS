@@ -51,7 +51,7 @@ interface ParseResultaat {
   start_minuut?: number | null
   eind_uur?: number | null
   eind_minuut?: number | null
-  recurrence?: 'workdays' | 'weekend' | 'weekly' | 'biweekly' | 'daily' | 'custom' | null
+  recurrence?: 'workdays' | 'weekend' | 'weekly' | 'biweekly' | 'daily' | 'custom' | 'yearly' | 'monthly' | null
   recurrence_dagen?: number[] | null
   eind_datum?: string | null
   prioriteit?: 'laag' | 'normaal' | 'hoog' | null
@@ -82,7 +82,7 @@ BELANGRIJKE REGELS:
 ${TYPE_VOCABULAIRE}
 2. Als de tekst niet duidelijk bij één van deze types past, geef dan "gelukt": false met een reden. Gok niet.
 3. Vandaag is ${vandaag} (dagnummer ${vandaagNummer}, waarbij 0=zondag, 1=maandag, ... 6=zaterdag).
-4. Voor "recurrence": gebruik "weekly" bij "elke [dag]" of "iedere [dag]", "workdays" bij "op werkdagen", "weekend" bij "in het weekend", "daily" bij "elke dag", null bij een eenmalige gebeurtenis. Gebruik "custom" (met meerdere recurrence_dagen) als er meerdere specifieke dagen genoemd worden, bijv. "maandag t/m donderdag" → recurrence "custom", recurrence_dagen [1,2,3,4].
+4. Voor "recurrence": gebruik "weekly" bij "elke [dag]" of "iedere [dag]", "workdays" bij "op werkdagen", "weekend" bij "in het weekend", "daily" bij "elke dag", null bij een eenmalige gebeurtenis. Gebruik "custom" (met meerdere recurrence_dagen) als er meerdere specifieke dagen genoemd worden, bijv. "maandag t/m donderdag" → recurrence "custom", recurrence_dagen [1,2,3,4]. BELANGRIJK: gebruik "yearly" voor alles dat jaarlijks terugkeert op dezelfde datum — verjaardagen, jubilea, trouwdagen, etc. Gebruik "monthly" voor iets dat elke maand op dezelfde dag-van-de-maand terugkeert (bijv. "elke 15e van de maand"). Kies NOOIT "weekly" voor een jaarlijkse of maandelijkse gebeurtenis, ook al klinkt "elke week" verkeerd aanlokkelijk als generieke "herhaling"-optie.
 5. Voor "recurrence_dagen": array met dagnummers (0-6, JS-conventie) als er een specifieke dag genoemd wordt bij een wekelijkse regel — bijv. "elke woensdag" → [3].
 6. Voor "start_datum": bepaal een concrete datum (yyyy-mm-dd) uit relatieve tijdsaanduidingen ("volgende week", "vanaf morgen", etc.) — reken vanaf vandaag.
 7. Geef ALTIJD een korte "samenvatting" in natuurlijke taal die de gebruiker kan bevestigen, bijv. "Fysiotherapeut, elke woensdag, vanaf nu, geen einddatum".
