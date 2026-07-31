@@ -111,7 +111,98 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
-#### Coach Agenda — Fase A + B (tekst) afgerond, spraak/Quick Cards/C/D nog visie
+#### Coach Planning, Coach Vooruitblik, Smart Actions & Coach Forecast — visie (vastgelegd 31 juli 2026, niets hiervan gebouwd)
+
+**Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
+maar is een eindstation — je moet er zelf naartoe om te zien wat eraan
+komt. Deze visie maakt dezelfde data zichtbaar op de plek waar de
+gebruiker daadwerkelijk kijkt (Home, ~10x/dag), niet alleen op de plek
+waar hij 1x/week beheert (de agenda-pagina).
+
+**Belangrijke correctie tijdens het ontwerp:** de bestaande Decision
+Engine (`beslisTussenSpecialisten()`) is **niet** direct herbruikbaar
+voor Smart Actions — die is smal gebouwd voor het vergelijken van
+trainingsspecialisten (velden als `load`/`risk`/`hoogsteImportance`),
+niet voor generieke "actie-voorstellen met een prioriteitscijfer" van
+willekeurige modules. De **filosofie** (deterministisch, geen AI-call)
+is herbruikbaar, de **code** niet — Smart Actions vergt een eigen,
+generieke prioriteit-arbitrage.
+
+##### Coach Planning (nieuwe module, vervangt Levensgebeurtenissen)
+
+```
+Coach Planning
+├── Planning   (agenda: maand/week/lijst, kleurcodering per categorie)
+├── Regels     (= huidige Levensgebeurtenissen-functionaliteit, hernoemd)
+└── Overzicht  (intelligente samenvatting: "komende 14 dagen: 2 trainingen,
+                1 fysio, Build Week, wedstrijd over 11 dagen")
+```
+
+**Bewust géén "Vandaag"-tab** — die informatie staat al op Home en in
+de Today Engine; een tweede "Vandaag"-scherm zou hetzelfde onderhouden
+op twee plekken betekenen, een bekend risico.
+
+##### Coach Vooruitblik (nieuwe Home-kaart)
+
+Toont de eerstvolgende 3-5 relevante gebeurtenissen — **puur feitelijk**,
+geen voorspelling. Bijv. "Morgen: 🌙 Nachtdienst · Woensdag: 🏥 Fysio ·
+Vrijdag: 🔥 Build Week start". Knop "Open Coach Planning" onderaan.
+Gebruikt dezelfde onderliggende data-functie als Tab "Overzicht" —
+één bron, geen dubbele logica.
+
+##### Smart Action Engine (apart, na Coach Planning)
+
+Top 3 context-afhankelijke acties op Home i.p.v. een vast menu —
+**100% deterministisch, geen AI-call**. Elke module (Coach Agenda,
+Performance, Training Platform, Blessures) mag actie-voorstellen met
+een prioriteitscijfer aanleveren; een nieuwe, generieke arbitrage-laag
+(zie correctie hierboven) kiest de top 3. De Master Coach (AI) legt
+vervolgens uit *waarom* — AI interpreteert/verklaart, beslist niet
+zelf welke knoppen verschijnen (zelfde principe als CoachOS' eerste
+kernregel: "AI never creates exercises").
+
+Fase 2 (veel later): een lerend systeem dat prioriteiten licht bijstelt
+op basis van gebruikspatronen (bijv. "je bekijkt na elke fietstraining
+altijd de Ritanalyse" → prioriteit +15) — een kleine correctie op de
+vaste regels, geen vervanging ervan.
+
+##### Coach Forecast (Fase D, ver weg — apart platform)
+
+Een echte voorspeller: "Today Engine laat de komende dagen draaien".
+Bijv. "Overmorgen nachtdienst → verplaats training naar 14:00,
+verwachte Coach Score 82→87". Dit is *simulatie*, geen overzicht meer
+— een compleet nieuwe engine, expliciet losgekoppeld van Coach
+Vooruitblik (die blijft puur feitelijk) om te voorkomen dat er te
+vroeg een complexe voorspeller gebouwd wordt.
+
+##### Definitieve bouwvolgorde (bestemming eerst, dan de snelkoppeling)
+
+```
+Fase A — Coach Planning
+  1. Regels     (bestaande functionaliteit, verplaatst/hernoemd — kleinste stap)
+  2. Planning   (agenda: maand/week/lijst — grootste losse UI-klus)
+  3. Overzicht  (hergebruikt de Fase A.1-databron, andere weergave)
+        ↓
+Fase B — Home: Coach Vooruitblik-kaart
+  (nu heeft "Open Coach Planning" een echte bestemming)
+        ↓
+Fase C — Smart Action Engine
+  (vergt Coach Planning als databron)
+        ↓
+Fase D — Coach Forecast
+  (ver weg, apart platform)
+```
+
+**Navigatie:** geen nieuwe bottom-nav-tab. Coach Planning bereikbaar
+via de Home-kaart (net als vandaag al besloten voor de eerdere Coach
+Agenda-visie). Rolverdeling wordt dan: Home = cockpit ("wat moet ik nu
+weten/doen"), Coach Planning = beheren/vooruitkijken, Specialisten =
+sportinhoud, Trainer = uitvoering, Coach = gesprek met de Master Coach.
+
+**Wanneer dit gebouwd wordt, gebeurt dat stap voor stap volgens
+bovenstaande volgorde — niet als één grote levering.**
+
+
 
 **Fase B, eerste stap (v2.4.188) — tekst-invoer, verplichte
 bevestiging:**
@@ -133,6 +224,8 @@ bevestiging:**
 **Nog niet gebouwd:** spraak (aparte, kleinere stap — browser-eigen
 spraakherkenning, geen nieuwe API nodig), Quick Cards, Fase C (Coach
 Inbox, patroonherkenning), Fase D (externe sync).
+
+#### Coach Agenda — Fase A + B (tekst) afgerond, spraak/Quick Cards/C/D nog visie
 
 **Fase A (v2.4.185) — volledig additief, geen bestaande engines
 gewijzigd:**
