@@ -31,6 +31,9 @@ interface LifeEvent {
   notes: string | null
   start_hour: number | null
   end_hour: number | null
+  // v2.4.196: minuten-precisie — puur additief, default 0
+  start_minute: number
+  end_minute: number
   recurrence: string | null
   recurrence_days: number[] | null
   recurrence_end_date: string | null
@@ -156,9 +159,9 @@ const RECURRENCE_LABELS: Record<string, string> = {
 // Vriendelijke labels voor de 0-3-impactschaal — geen kale cijfers
 const IMPACT_NIVEAUS = ['Geen', 'Licht', 'Matig', 'Zwaar']
 
-function formatUur(uur: number | null): string {
+function formatUur(uur: number | null, minuut: number = 0): string {
   if (uur === null) return ''
-  return `${String(uur).padStart(2, '0')}:00`
+  return `${String(uur).padStart(2, '0')}:${String(minuut).padStart(2, '0')}`
 }
 
 function vandaagStr(): string { return new Date().toISOString().split('T')[0] }
@@ -324,7 +327,9 @@ interface AiVoorstel {
   type?: string
   start_datum?: string
   start_uur?: number | null
+  start_minuut?: number | null
   eind_uur?: number | null
+  eind_minuut?: number | null
   recurrence?: string | null
   recurrence_dagen?: number[] | null
   eind_datum?: string | null
@@ -397,13 +402,19 @@ function AiInvoerKaart({ onSave, onOpenHandmatig }: { onSave: (event: Partial<Li
       // ook (v2.4.192), dit is een extra, client-side vangnet.
       const ruweUur = voorstel.start_uur ?? et?.start_hour ?? 9
       const uur = Number.isInteger(ruweUur) && ruweUur >= 0 && ruweUur <= 23 ? ruweUur : 9
-      const startTimeISO = new Date(`${voorstel.start_datum || vandaagStr()}T${String(uur).padStart(2, '0')}:00:00`).toISOString()
+      // v2.4.196: minuten worden nu ondersteund, met dezelfde
+      // client-side beveiliging als het uur hierboven
+      const ruweMinuut = voorstel.start_minuut ?? 0
+      const minuut = Number.isInteger(ruweMinuut) && ruweMinuut >= 0 && ruweMinuut <= 59 ? ruweMinuut : 0
+      const startTimeISO = new Date(`${voorstel.start_datum || vandaagStr()}T${String(uur).padStart(2, '0')}:${String(minuut).padStart(2, '0')}:00`).toISOString()
       if (isNaN(new Date(startTimeISO).getTime())) throw new Error('Ongeldige datum/tijd in het AI-voorstel')
       await onSave({
         type: voorstel.type,
         start_time: startTimeISO,
         start_hour: voorstel.start_uur ?? et?.start_hour ?? null,
         end_hour: voorstel.eind_uur ?? et?.end_hour ?? null,
+        start_minute: minuut,
+        end_minute: voorstel.eind_minuut ?? 0,
         recovery_impact: et?.recovery_impact ?? 1,
         stress_load: et?.stress_load ?? 1,
         sleep_disruption: et?.sleep_disruption ?? 1,
@@ -642,6 +653,9 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
   const [endDate, setEndDate] = useState('')
   const [startHour, setStartHour] = useState<number | null>(voorgeselecteerdType?.start_hour ?? null)
   const [endHour, setEndHour] = useState<number | null>(voorgeselecteerdType?.end_hour ?? null)
+  // v2.4.196: minuten-precisie
+  const [startMinute, setStartMinute] = useState<number>(0)
+  const [endMinute, setEndMinute] = useState<number>(0)
   const [recurrence, setRecurrence] = useState('')
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([])
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('')
@@ -683,7 +697,8 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
     setSaving(true)
     try {
       const uur = startHour !== null ? startHour : 9
-      const startTimeISO = new Date(`${startDate}T${String(uur).padStart(2,'0')}:00:00`).toISOString()
+      // v2.4.196: minuten nu ook meegenomen
+      const startTimeISO = new Date(`${startDate}T${String(uur).padStart(2,'0')}:${String(startMinute).padStart(2,'0')}:00`).toISOString()
       await onSave({
         type: gekozenType.type,
         start_time: startTimeISO,
@@ -692,6 +707,9 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
         sleep_disruption: sleepDisruption,
         start_hour: startHour,
         end_hour: endHour,
+        // v2.4.196: minuten-precisie
+        start_minute: startMinute,
+        end_minute: endMinute,
         recurrence: recurrence || null,
         recurrence_days: recurrenceDays.length > 0 ? recurrenceDays : null,
         recurrence_end_date: recurrenceEndDate || null,
@@ -795,13 +813,15 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
               {gekozenType.start_hour !== null && (
                 <div className="flex flex-col gap-2">
                   <label className="text-xs text-slate-400 uppercase tracking-wider">Tijden</label>
+                  {/* v2.4.196: native time-input i.p.v. hele-uur-dropdown
+                      — ondersteunt nu ook minuten, betere mobiele UX */}
                   <div className="grid grid-cols-2 gap-3">
-                    <select value={startHour ?? ''} onChange={e => setStartHour(Number(e.target.value))} className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none">
-                      {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2,'0')}:00</option>)}
-                    </select>
-                    <select value={endHour ?? ''} onChange={e => setEndHour(Number(e.target.value))} className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none">
-                      {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2,'0')}:00</option>)}
-                    </select>
+                    <input type="time" value={`${String(startHour ?? 0).padStart(2,'0')}:${String(startMinute).padStart(2,'0')}`}
+                      onChange={e => { const [u, m] = e.target.value.split(':').map(Number); setStartHour(u); setStartMinute(m) }}
+                      className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none" />
+                    <input type="time" value={`${String(endHour ?? 0).padStart(2,'0')}:${String(endMinute).padStart(2,'0')}`}
+                      onChange={e => { const [u, m] = e.target.value.split(':').map(Number); setEndHour(u); setEndMinute(m) }}
+                      className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none" />
                   </div>
                 </div>
               )}
@@ -933,6 +953,9 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
 
   const [startHour, setStartHour] = useState<number>(event.start_hour ?? 9)
   const [endHour, setEndHour] = useState<number>(event.end_hour ?? 17)
+  // v2.4.196: minuten-precisie
+  const [startMinute, setStartMinute] = useState<number>(event.start_minute ?? 0)
+  const [endMinute, setEndMinute] = useState<number>(event.end_minute ?? 0)
   const [startDate, setStartDate] = useState(new Date(event.start_time).toISOString().split('T')[0])
   const [endDate, setEndDate] = useState(event.end_date || '')
   const [recurrence, setRecurrence] = useState(event.recurrence || '')
@@ -967,11 +990,14 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
   async function slaOp() {
     setSaving(true)
     try {
-      const startTimeISO = new Date(`${startDate}T${String(startHour).padStart(2,'0')}:00:00`).toISOString()
+      // v2.4.196: minuten nu ook meegenomen in de opgeslagen start_time zelf
+      const startTimeISO = new Date(`${startDate}T${String(startHour).padStart(2,'0')}:${String(startMinute).padStart(2,'0')}:00`).toISOString()
       const updates: Partial<LifeEvent> = {
         start_time: startTimeISO,
         start_hour: heeftTijden ? startHour : event.start_hour,
         end_hour: heeftTijden ? endHour : event.end_hour,
+        start_minute: heeftTijden ? startMinute : event.start_minute,
+        end_minute: heeftTijden ? endMinute : event.end_minute,
         end_date: endDate || null,
         recurrence: recurrence || null,
         recurrence_days: recurrenceDays.length > 0 ? recurrenceDays : null,
@@ -1152,12 +1178,12 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
 
       {heeftTijden && (
         <div className="grid grid-cols-2 gap-3">
-          <select value={startHour} onChange={e => setStartHour(Number(e.target.value))} className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none">
-            {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2,'0')}:00</option>)}
-          </select>
-          <select value={endHour} onChange={e => setEndHour(Number(e.target.value))} className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none">
-            {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2,'0')}:00</option>)}
-          </select>
+          <input type="time" value={`${String(startHour).padStart(2,'0')}:${String(startMinute).padStart(2,'0')}`}
+            onChange={e => { const [u, m] = e.target.value.split(':').map(Number); setStartHour(u); setStartMinute(m) }}
+            className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none" />
+          <input type="time" value={`${String(endHour).padStart(2,'0')}:${String(endMinute).padStart(2,'0')}`}
+            onChange={e => { const [u, m] = e.target.value.split(':').map(Number); setEndHour(u); setEndMinute(m) }}
+            className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none" />
         </div>
       )}
 
@@ -1379,7 +1405,7 @@ function EventRij({ event, onClick, gepauzeerd }: { event: LifeEvent; onClick: (
             <p className="text-xs text-slate-500 mt-0.5">
               {event.recurrence ? '' : formatDatum(event.start_time)}
               {event.end_date && !event.recurrence && ` → ${formatDatumKort(event.end_date)}`}
-              {event.start_hour !== null && event.end_hour !== null && ` · ${formatUur(event.start_hour)}–${formatUur(event.end_hour)}`}
+              {event.start_hour !== null && event.end_hour !== null && ` · ${formatUur(event.start_hour, event.start_minute)}–${formatUur(event.end_hour, event.end_minute)}`}
               {/* v2.4.185 (Coach Agenda Fase A) */}
               {event.available_time_minutes ? ` · ${event.available_time_minutes} min beschikbaar` : ''}
             </p>

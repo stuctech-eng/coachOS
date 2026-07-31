@@ -94,12 +94,12 @@ export async function POST(req: NextRequest) {
         .eq('user_id', user.id)
         .eq('active', true),
       supabase.from('life_events')
-        .select('type, start_time, recovery_impact, stress_load, sleep_disruption, notes, start_hour, end_hour, recurrence')
+        .select('type, start_time, recovery_impact, stress_load, sleep_disruption, notes, start_hour, end_hour, start_minute, end_minute, recurrence')
         .eq('user_id', user.id)
         .gte('start_time', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
         .order('start_time', { ascending: false }),
       supabase.from('life_events')
-        .select('type, start_hour, end_hour, notes, recurrence')
+        .select('type, start_hour, end_hour, start_minute, end_minute, notes, recurrence')
         .eq('user_id', user.id)
         .not('recurrence', 'is', null),
       supabase.from('health_metrics')
@@ -333,20 +333,21 @@ export async function POST(req: NextRequest) {
         vakantie: 'Vakantie',
       }
       context.push(`LEVENSGEBEURTENISSEN (laatste 3 dagen):`)
-      lifeEvents.forEach((e: { type: string; start_time: string; recovery_impact: number; stress_load: number; sleep_disruption: number; notes: string | null; start_hour?: number | null; end_hour?: number | null; recurrence?: string | null }) => {
+      lifeEvents.forEach((e: { type: string; start_time: string; recovery_impact: number; stress_load: number; sleep_disruption: number; notes: string | null; start_hour?: number | null; end_hour?: number | null; start_minute?: number | null; end_minute?: number | null; recurrence?: string | null }) => {
         const label = EVENT_LABELS[e.type] || e.type
         const datum = new Date(e.start_time).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
+        // v2.4.196: minuten-precisie i.p.v. hardcoded ":00"
         const tijden = e.start_hour !== null && e.start_hour !== undefined && e.end_hour !== null && e.end_hour !== undefined
-          ? ` (${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour).padStart(2,'0')}:00)` : ''
+          ? ` (${String(e.start_hour).padStart(2,'0')}:${String(e.start_minute ?? 0).padStart(2,'0')}-${String(e.end_hour).padStart(2,'0')}:${String(e.end_minute ?? 0).padStart(2,'0')})` : ''
         const notitie = e.notes ? ` — ${e.notes}` : ''
         const herhaling = e.recurrence ? ` [${e.recurrence}]` : ''
         context.push(`- ${datum}: ${label}${tijden}${notitie}${herhaling} (herstelimpact: ${e.recovery_impact}/3)`)
       })
       if (herhalendeEvents.length > 0) {
         context.push(`HERHALENDE LIFE EVENTS:`)
-        herhalendeEvents.forEach((e: { type: string; start_hour?: number | null; end_hour?: number | null; notes?: string | null; recurrence?: string | null }) => {
+        herhalendeEvents.forEach((e: { type: string; start_hour?: number | null; end_hour?: number | null; start_minute?: number | null; end_minute?: number | null; notes?: string | null; recurrence?: string | null }) => {
           const label = EVENT_LABELS[e.type] || e.type
-          const tijden = e.start_hour !== null && e.start_hour !== undefined ? ` ${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour ?? 0).padStart(2,'0')}:00` : ''
+          const tijden = e.start_hour !== null && e.start_hour !== undefined ? ` ${String(e.start_hour).padStart(2,'0')}:${String(e.start_minute ?? 0).padStart(2,'0')}-${String(e.end_hour ?? 0).padStart(2,'0')}:${String(e.end_minute ?? 0).padStart(2,'0')}` : ''
           const notitie = e.notes ? ` — ${e.notes}` : ''
           context.push(`- ${label}${tijden}${notitie} [${e.recurrence}]`)
         })

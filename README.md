@@ -1444,6 +1444,29 @@ werk (werk wint, feestdag overschrijft niet), geen feestdag/geen events
 5. Kettlebell Specialist
 6. Multi-sport Orchestrator
 
+### Minuten-precisie voor tijden (v2.4.196)
+
+**Aanleiding:** AI-invoer met "14:45" kon niet correct worden opgeslagen
+— het systeem ondersteunde alleen hele uren. Onderzocht: 8 bestanden
+raakten `start_hour`/`end_hour`, waarvan er bij nader inzien maar 2
+(`chat/route.ts`, `predictions/route.ts`) de tijden daadwerkelijk
+tóónden — de andere 4 (`weekly`/`predictions` haalden `life_events` op
+zonder het ooit te gebruiken — dode code) hadden geen wijziging nodig.
+
+- **SQL**: `start_minute`/`end_minute`, puur additief, default 0 —
+  bestaande rijen ongewijzigd
+- **Formulieren**: hele-uur-dropdowns vervangen door native
+  `<input type="time">` — betere mobiele UX, ondersteunt nu minuten
+- **AI-invoer**: de v2.4.192-beperking ("rond af naar een heel uur")
+  is niet meer nodig — prompt, validatie en opslag ondersteunen nu
+  echte minuten-precisie
+- **Weergave**: `formatUur()` en de twee echte consumenten tonen nu
+  de werkelijke minuten i.p.v. hardcoded ":00"
+
+**Gevalideerd:** weergave met minuten (14:45), gedrag-behoudendheid
+zonder minuten (blijft :00), en de time-input-parsing — alle drie
+correct. `npx next build` compileert zonder fouten.
+
 ### Weer, Pauzeer/Hervat, en een echte Today Engine-bugfix (v2.4.182-184)
 
 **v2.4.182 — Meer weergegevens.** Gevoelstemperatuur, luchtvochtigheid,

@@ -1,5 +1,54 @@
 # CoachOS — Changelog
 
+## v2.4.196 — Minuten-precisie voor tijden
+**Aanleiding: AI-invoer met "14:45" kon niet correct worden
+opgeslagen — het systeem ondersteunde alleen hele uren.**
+
+### Onderzoek vooraf
+8 bestanden raakten `start_hour`/`end_hour`. Bij nader inzien: 4 ervan
+(`weekly/route.ts`, `memory/route.ts` en gedeeltelijk overlappend)
+haalden `life_events` op maar gebruikten het **nergens** (dode code) —
+geen wijziging nodig. Alleen `chat/route.ts` en `predictions/route.ts`
+tóónden de tijden daadwerkelijk aan de Coach.
+
+### SQL (uitvoeren vóór deze code)
+`supabase/minuten_precisie.sql`:
+```sql
+alter table life_events
+  add column if not exists start_minute integer not null default 0
+    check (start_minute >= 0 and start_minute <= 59),
+  add column if not exists end_minute integer not null default 0
+    check (end_minute >= 0 and end_minute <= 59);
+```
+Puur additief — bestaande rijen krijgen default 0, geen migratie nodig.
+
+### Code
+- `src/app/api/life-events/route.ts` — POST/PATCH slaan `start_minute`/
+  `end_minute` op
+- `src/app/life-events/page.tsx` — hele-uur-`<select>`-dropdowns
+  (4 stuks, 2 formulieren) vervangen door native `<input type="time">`;
+  `formatUur()` toont nu minuten; `start_time`-constructie in beide
+  opslaan-functies neemt nu ook de minuten mee (was voorheen altijd
+  `:00`, ook al koos je een ander uur correct)
+- `src/app/api/life-events/parse/route.ts` — de v2.4.192-beperking
+  ("rond af naar een heel uur") vervangen door echte minuten-
+  ondersteuning: prompt, `ParseResultaat`-interface en de
+  validatielaag (0-59) allemaal bijgewerkt
+- `src/app/api/chat/route.ts` + `src/app/api/predictions/route.ts` —
+  SELECT-queries en weergave bijgewerkt: tonen nu de werkelijke
+  minuten i.p.v. hardcoded ":00"
+
+**Gevalideerd:**
+- Weergave met minuten (14:45) → correct
+- Gedrag-behoudendheid zonder minuten (blijft "09:00") → correct
+- Time-input-parsing ("14:45" → uur 14, minuut 45) → correct
+- `npx next build` — compileert zonder fouten, alle 60 pagina's
+  succesvol gegenereerd
+
+**Test-instructie:** voeg een event toe met een tijd als "14:45" (via
+het formulier of AI-invoer) — zou nu exact zo opgeslagen en getoond
+moeten worden, niet meer afgerond naar 15:00.
+
 ## v2.4.195 — Tik-om-te-vullen suggesties bij "Vertel de Coach"
 **Gevraagd: hulp bij het formuleren, met suggesties. Gekozen optie
 (B van 4 voorgestelde): korte tik-knopjes die een startzin invullen,

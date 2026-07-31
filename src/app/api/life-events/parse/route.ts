@@ -48,7 +48,9 @@ interface ParseResultaat {
   type?: string
   start_datum?: string
   start_uur?: number | null
+  start_minuut?: number | null
   eind_uur?: number | null
+  eind_minuut?: number | null
   recurrence?: 'workdays' | 'weekend' | 'weekly' | 'biweekly' | 'daily' | 'custom' | null
   recurrence_dagen?: number[] | null
   eind_datum?: string | null
@@ -85,7 +87,7 @@ ${TYPE_VOCABULAIRE}
 6. Voor "start_datum": bepaal een concrete datum (yyyy-mm-dd) uit relatieve tijdsaanduidingen ("volgende week", "vanaf morgen", etc.) — reken vanaf vandaag.
 7. Geef ALTIJD een korte "samenvatting" in natuurlijke taal die de gebruiker kan bevestigen, bijv. "Fysiotherapeut, elke woensdag, vanaf nu, geen einddatum".
 8. Verzin GEEN prioriteit, beschikbare tijd of notitie als de gebruiker dat niet noemt — laat dan null.
-9. BELANGRIJK, voorkomt een crash: "start_uur" en "eind_uur" MOETEN gehele getallen zijn van 0 t/m 23 (bijv. 14), NOOIT met minuten (dus NOOIT "14:45" of 14.75). Het systeem ondersteunt alleen hele uren. Rond af naar het dichtstbijzijnde hele uur en noem de exacte tijd (met minuten) apart in de "samenvatting", zodat de gebruiker het zelf ziet — bijv. bij "14:45" → start_uur: 15, samenvatting vermeldt "vanaf ~14:45 (afgerond naar 15:00 in het systeem)".
+9. Voor "start_uur"/"eind_uur": geheel getal 0 t/m 23. Voor "start_minuut"/"eind_minuut": geheel getal 0 t/m 59 (v2.4.196: minuten worden nu ondersteund — "14:45" wordt start_uur: 14, start_minuut: 45, geen afronding meer nodig).
 
 Reageer ALLEEN met geldige JSON, geen uitleg eromheen:
 {
@@ -93,7 +95,9 @@ Reageer ALLEEN met geldige JSON, geen uitleg eromheen:
   "type": "...",
   "start_datum": "yyyy-mm-dd",
   "start_uur": null,
+  "start_minuut": null,
   "eind_uur": null,
+  "eind_minuut": null,
   "recurrence": null,
   "recurrence_dagen": null,
   "eind_datum": null,
@@ -149,11 +153,14 @@ Of bij twijfel:
     // (bijv. bij "14:45") verderop een crash veroorzaken (Invalid Date)
     // vlak vóórdat de gebruiker op Opslaan drukt, zonder duidelijke
     // foutmelding.
+    // v2.4.196: minuten worden nu ondersteund, dus ook die valideren
+    // (0-59), niet alleen afronden naar hele uren
     const isGeldigUur = (u: unknown) => u === null || u === undefined || (Number.isInteger(u) && (u as number) >= 0 && (u as number) <= 23)
-    if (parsed.gelukt && (!isGeldigUur(parsed.start_uur) || !isGeldigUur(parsed.eind_uur))) {
+    const isGeldigeMinuut = (m: unknown) => m === null || m === undefined || (Number.isInteger(m) && (m as number) >= 0 && (m as number) <= 59)
+    if (parsed.gelukt && (!isGeldigUur(parsed.start_uur) || !isGeldigUur(parsed.eind_uur) || !isGeldigeMinuut(parsed.start_minuut) || !isGeldigeMinuut(parsed.eind_minuut))) {
       return NextResponse.json({
         gelukt: false,
-        reden_mislukt: 'Kon de tijd niet correct interpreteren (alleen hele uren worden ondersteund, geen minuten). Probeer het te herformuleren met een heel uur.',
+        reden_mislukt: 'Kon de tijd niet correct interpreteren. Probeer het te herformuleren, bijv. "14:45".',
       } as ParseResultaat)
     }
 

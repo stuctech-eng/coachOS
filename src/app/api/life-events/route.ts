@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
         sleep_disruption: body.sleep_disruption ?? 1,
         start_hour: body.start_hour ?? null,
         end_hour: body.end_hour ?? null,
+        // v2.4.196: minuten-precisie
+        start_minute: body.start_minute ?? 0,
+        end_minute: body.end_minute ?? 0,
         recurrence: body.recurrence ?? null,
         recurrence_days: body.recurrence_days ?? null,
         recurrence_end_date: body.recurrence_end_date ?? null,
@@ -105,6 +108,9 @@ export async function PATCH(req: NextRequest) {
     if (body.notes !== undefined) updates.notes = body.notes
     if (body.start_hour !== undefined) updates.start_hour = body.start_hour
     if (body.end_hour !== undefined) updates.end_hour = body.end_hour
+    // v2.4.196: minuten-precisie
+    if (body.start_minute !== undefined) updates.start_minute = body.start_minute
+    if (body.end_minute !== undefined) updates.end_minute = body.end_minute
     if (body.recurrence !== undefined) updates.recurrence = body.recurrence
     if (body.recurrence_days !== undefined) updates.recurrence_days = body.recurrence_days
     if (body.recurrence_end_date !== undefined) updates.recurrence_end_date = body.recurrence_end_date

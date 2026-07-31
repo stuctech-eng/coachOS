@@ -91,7 +91,7 @@ export async function POST() {
       supabase.from('daily_checkins').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('activity_sessions').select('date, duration, metrics').eq('user_id', user.id).gte('date', dertigDagenGeleden).order('date', { ascending: false }).limit(10),
       supabase.from('injuries').select('body_part, pain_score').eq('user_id', user.id).eq('active', true),
-      supabase.from('life_events').select('type, start_time, recovery_impact, start_hour, end_hour').eq('user_id', user.id).gte('start_time', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()),
+      supabase.from('life_events').select('type, start_time, recovery_impact, start_hour, end_hour, start_minute, end_minute').eq('user_id', user.id).gte('start_time', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()),
       supabase.from('garmin_imports').select('parsed_data, date').eq('user_id', user.id).eq('status', 'confirmed').order('date', { ascending: false }).limit(1).single(),
       supabase.from('training_results').select('rating, actual_duration, completed_at').eq('user_id', user.id).eq('completed', true).order('completed_at', { ascending: false }).limit(5),
       supabase.from('user_goals').select('title').eq('user_id', user.id).eq('status', 'active'),
@@ -141,8 +141,9 @@ export async function POST() {
       ``,
       `TRAININGSBELASTING (7 dagen): ${totaalTraining} minuten totaal`,
       blessures.length > 0 ? `Actieve blessures: ${blessures.map(b => b.body_part).join(', ')}` : '',
-      lifeEvents.length > 0 ? `Life events: ${lifeEvents.map((e: {type: string; start_hour?: number|null; end_hour?: number|null}) => {
-        const tijd = e.start_hour !== null && e.start_hour !== undefined ? ` ${String(e.start_hour).padStart(2,'0')}:00-${String(e.end_hour).padStart(2,'0')}:00` : ''
+      lifeEvents.length > 0 ? `Life events: ${lifeEvents.map((e: {type: string; start_hour?: number|null; end_hour?: number|null; start_minute?: number|null; end_minute?: number|null}) => {
+        // v2.4.196: minuten-precisie i.p.v. hardcoded ":00"
+        const tijd = e.start_hour !== null && e.start_hour !== undefined ? ` ${String(e.start_hour).padStart(2,'0')}:${String(e.start_minute ?? 0).padStart(2,'0')}-${String(e.end_hour).padStart(2,'0')}:${String(e.end_minute ?? 0).padStart(2,'0')}` : ''
         return e.type + tijd
       }).join(', ')}` : '',
       garminLatest ? `Garmin: BB ${garminLatest.body_battery?.current || '?'}, slaap ${garminLatest.sleep?.score || '?'}/100, HRV ${garminLatest.hrv?.avg_7d_ms || '?'}ms, stress ${garminLatest.stress || '?'}` : '',
