@@ -1,5 +1,43 @@
 # CoachOS — Changelog
 
+## v2.4.206 — REGRESSIE-FIX: "Snelle actie naar trainingsplan is weg"
+**Gemeld ná v2.4.204's snelheidsfix. Bevestigd: die fix loste de
+vertraging op, maar liet een echte functie verdwijnen.**
+
+### Root cause
+v2.4.204 verving `bepaalTodayPlan()` (de volledige Today Engine,
+inclusief de Trainer AI-vangnet-laag) door een snelle, directe
+databasecheck op specialist-sessies — om de ~3 seconden AI-vertraging
+te voorkomen. Bijwerking, destijds expliciet als tradeoff benoemd maar
+nu bevestigd als ongewenst: zonder actief specialist-plan (bijv. een
+rustdag binnen het schema) verscheen er helemaal geen trainingsvoorstel
+meer in Smart Actions.
+
+### Fix — snelheid én functionaliteit, beide behouden
+Gevonden: Trainer AI (`api/training/today`) cachet zijn resultaat al
+in `coach_recommendations.training_instruction`
+(`type='training_today'`), en heeft zelfs al een eigen cache-lezende
+`GET`-handler. Smart Actions leest deze cache nu **als tweede stap**
+(alleen als er geen specialist-sessie is) — snelle databaselezing,
+**geen nieuwe AI-call**, dus nog steeds geen vertraging. Als Trainer AI
+vandaag al eerder gegenereerd is (bijv. via Home's eigen
+`/api/today`-aanroep), verschijnt het voorstel alsnog; zo niet, blijft
+het gewoon weg — geen crash, geen gok.
+
+**Gevalideerd — 4 scenario's:**
+- Specialist-sessie aanwezig → toont die (ongewijzigd)
+- Geen specialist, wel Trainer AI-cache (het gemelde geval) → toont
+  die nu ook
+- Geen van beide (nog nooit gegenereerd vandaag) → correct leeg, geen
+  crash
+- Beide aanwezig → specialist wint, geen dubbele voorstellen
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Home op een dag zonder actief specialist-
+plan (of nadat je eerder vandaag al de Trainer-tab hebt bezocht) —
+Smart Actions zou nu weer een trainingsvoorstel moeten tonen.
+
 ## v2.4.205 — REGRESSIE-FIX: "Om de week" werkte niet meer
 **Gemeld: "Bij agenda werkt om de week niet meer" — een regressie ná
 v2.4.193's fix. Gevraagd: alle opties opnieuw checken.**

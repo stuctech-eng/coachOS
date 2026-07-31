@@ -64,6 +64,7 @@ export async function GET(req: NextRequest) {
     const { data: actievePlannen } = await supabase
       .from('training_plans').select('id').eq('athlete_id', user.id).eq('status', 'active')
     const planIds = (actievePlannen || []).map(p => p.id)
+    let training_toegevoegd = false
     if (planIds.length > 0) {
       const { data: sessieVandaag } = await supabase
         .from('training_plan_sessions').select('sport, type')
@@ -75,6 +76,26 @@ export async function GET(req: NextRequest) {
           href: `/coach/${sessieVandaag.sport}/trainingsplan`,
           priority: 95, bron: 'Trainingsplan',
         })
+        training_toegevoegd = true
+      }
+    }
+    // v2.4.206-FIX: gemeld — "snelle actie naar trainingsplan is weg".
+    // v2.4.204's snelheidsfix liet de Trainer AI-vangnet-laag volledig
+    // weg (geen specialist-plan vandaag → geen trainingsvoorstel meer,
+    // waar dat voorheen via de volledige Today Engine wél kwam). Nu:
+    // als er geen specialist-sessie is, wordt de CACHE van Trainer AI
+    // gelezen (coach_recommendations.training_instruction,
+    // type='training_today') — als die al eerder vandaag gegenereerd
+    // is (bijv. via Home's eigen /api/today-aanroep), tonen we 'm hier
+    // ook, zonder zelf een nieuwe, trage AI-call te triggeren. Nog
+    // steeds geen 3-seconden-vertraging — puur een snelle cache-lezing.
+    if (!training_toegevoegd) {
+      const { data: cacheRij } = await supabase
+        .from('coach_recommendations').select('training_instruction')
+        .eq('user_id', user.id).eq('date', vandaagStr).eq('type', 'training_today').maybeSingle()
+      const instr = cacheRij?.training_instruction as { training_allowed?: boolean; title?: string } | null
+      if (instr?.training_allowed) {
+        voorstellen.push({ icon: '💪', label: instr.title || 'Start training', href: '/training', priority: 95, bron: 'Trainer AI (cache)' })
       }
     }
 

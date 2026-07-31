@@ -207,6 +207,19 @@ wat de even/oneven-weekberekening van "om de week" liet omslaan.
 meer de ruwe string-split. Alle 9 scenario's (eenmalig + 8
 herhalingsopties) opnieuw getest, zoals gevraagd — allemaal correct.
 
+**Regressie-fix — v2.4.206: "Snelle actie naar trainingsplan is
+weg".** v2.4.204's snelheidsfix (geen `bepaalTodayPlan()`/Today Engine
+meer in Smart Actions, om de ~3-sec AI-vertraging te voorkomen) liet
+de Trainer AI-vangnet-laag volledig weg — zonder actief specialist-plan
+verscheen er dus geen trainingsvoorstel meer, waar dat eerder via de
+volledige Today Engine wél kwam. **Fix:** als er geen specialist-
+sessie is, leest Smart Actions nu de **cache** van Trainer AI
+(`coach_recommendations.training_instruction`, al bestaand sinds eerder
+— gevuld zodra Home's eigen `/api/today`-aanroep al gedraaid heeft) —
+snelle databaselezing, geen nieuwe AI-call, dus nog steeds geen
+vertraging. 4 scenario's getest (specialist/cache/geen van beide/beide
+tegelijk) — allemaal correct, geen dubbele voorstellen.
+
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan
 komt. Deze visie maakt dezelfde data zichtbaar op de plek waar de
