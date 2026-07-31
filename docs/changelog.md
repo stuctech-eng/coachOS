@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.212 — Nav-uitlijning gefixt + bel-icoon uitgezocht
+
+### Nav-uitlijning
+Gemeld met screenshot: "iets uit lijn". Root cause: v2.4.210's
+`flex-1`-fix introduceerde per ongeluk `items-start` op de nav-
+container (was `items-center`). **Fix:** teruggezet naar
+`items-center`.
+
+### Bel-icoon — bevestigd geen functie
+Gevraagd of de bel rechtsboven op Home iets doet. Gecontroleerd: nee
+— kale `<button>` zonder `onClick`-handler, puur decoratief. Het
+account-icoon ernaast (rond poppetje) linkt wél door naar Instellingen.
+Nog geen actie ondernomen — wacht op keuze van de gebruiker
+(verwijderen tot er een echte notificatiefunctie is, of alvast een
+simpele "geen nieuwe meldingen"-staat).
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** check de bottom-nav — iconen en labels zouden nu
+weer netjes verticaal gecentreerd moeten staan.
+
 ## v2.4.211 — Coach Vooruitblik: werk + medische afspraken toegevoegd
 **Gemeld: het oorspronkelijke voorbeeld voor Coach Vooruitblik (🌙
 Nachtdienst, 🏥 Fysio, 🔥 Build Week) bevatte ook werk en medische

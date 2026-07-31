@@ -34,7 +34,10 @@ export function BottomNav() {
           (gemeld: "Voortgang" viel van het scherm af). Nu flex-1: elke
           tab krijgt gegarandeerd exact 1/5 van de beschikbare breedte
           — kan per definitie nooit meer overlopen, ongeacht labellengte. */}
-      <div className="flex items-start pt-2 pb-1 px-1">
+      {/* v2.4.212-FIX: items-start (per ongeluk geïntroduceerd bij
+          v2.4.210) teruggezet naar items-center — gemeld als "iets uit
+          lijn". */}
+      <div className="flex items-center pt-2 pb-1 px-1">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
           return (

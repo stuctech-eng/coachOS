@@ -111,6 +111,17 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
+#### Kleine fixes — v2.4.212
+
+**Nav-uitlijning.** Gemeld met screenshot: "iets uit lijn". Root
+cause: v2.4.210's fix introduceerde per ongeluk `items-start` op de
+nav-container (was `items-center`). Teruggezet.
+
+**Bel-icoon rechtsboven op Home — bevestigd geen functie.** Gevraagd
+of die iets doet: nee, kale `<button>` zonder `onClick`-handler, puur
+decoratief. Nog geen actie ondernomen — wacht op keuze (verwijderen,
+of alvast een "geen nieuwe meldingen"-staat).
+
 #### Kleine fixes — v2.4.210
 
 **Regressie op v2.4.209's nav-fix.** Gemeld met screenshot: "Voortgang"
