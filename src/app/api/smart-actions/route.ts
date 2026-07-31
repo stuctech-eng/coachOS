@@ -5,7 +5,6 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { haalOverzichtData } from '@/lib/coach-planning-overzicht'
-import { bepaalTodayPlan } from '@/lib/today-engine'
 import { kiesTop3, type ActionProposal } from '@/lib/smart-action-engine'
 
 async function getUser() {
@@ -20,14 +19,26 @@ async function getUser() {
 }
 
 // ── Coach Planning Fase C: Smart Actions ─────────────────────────────
-// Verzamelt actie-voorstellen uit bestaande bronnen (Injuries, Today
-// Engine, Coach Planning-overzicht), geen nieuwe databron. Elke bron
-// levert een vast prioriteitscijfer aan; kiesTop3() (100%
-// deterministisch, geen AI) kiest de uiteindelijke top 3.
+// Verzamelt actie-voorstellen uit bestaande bronnen (Injuries,
+// specialist-trainingsplan, Coach Planning-overzicht), geen nieuwe
+// databron. Elke bron levert een vast prioriteitscijfer aan; kiesTop3()
+// (100% deterministisch, geen AI) kiest de uiteindelijke top 3.
+//
+// v2.4.204-FIX: gebruikte voorheen bepaalTodayPlan() (de volledige
+// Today Engine, inclusief de Trainer AI-vangnet-laag) — die doet bij
+// "geen actief specialist-plan" een ECHTE Claude-aanroep
+// (claude-haiku-4-5, in api/training/today), goed voor de ~3
+// seconden vertraging die gemeld werd. Smart Actions heeft voor het
+// "training vandaag"-signaal geen AI-gepersonaliseerde tekst nodig —
+// alleen een snelle ja/nee. Nu: rechtstreekse databasecheck op een
+// geplande specialist-sessie (geen AI-call, geen Trainer AI-vangnet
+// hier). Als er geen specialist-plan is, laat Smart Actions dit
+// voorstel gewoon weg — de volledige Today Engine (mét Trainer AI)
+// blijft gewoon actief op de bestaande "Vandaag van je Coach"-kaart.
 //
 // Prioriteitstabel (bewust vastgelegd, niet impliciet):
 //   98 — actieve blessure (gezondheid gaat altijd voor)
-//   95 — training vandaag gepland (Today Engine)
+//   95 — training vandaag gepland (specialist-trainingsplan)
 //   85 — wedstrijd binnen 7 dagen
 //   70 — vakantie binnen 3 dagen
 //   30 — altijd beschikbaar: vraag de Coach
@@ -47,16 +58,24 @@ export async function GET(req: NextRequest) {
       voorstellen.push({ icon: '🤕', label: 'Blessure bijwerken', href: '/injuries', priority: 98, bron: 'Injuries' })
     }
 
-    // ── Bron 2: Today Engine — training vandaag gepland ────────────────
-    // Eigen try/catch: mag de rest van Smart Actions nooit blokkeren
-    try {
-      const cookieHeader = req.headers.get('cookie') || ''
-      const todayPlan = await bepaalTodayPlan(user.id, cookieHeader, req.nextUrl.origin)
-      if (todayPlan.source !== 'rust') {
-        voorstellen.push({ icon: todayPlan.source === 'cycling' ? '🚴' : todayPlan.source === 'running' ? '🏃' : '💪', label: todayPlan.actionLabel, href: todayPlan.actionHref, priority: 95, bron: 'Today Engine' })
+    // ── Bron 2: Training vandaag gepland — snelle DB-check, geen AI ────
+    const vandaag = new Date()
+    const vandaagStr = `${vandaag.getFullYear()}-${String(vandaag.getMonth() + 1).padStart(2, '0')}-${String(vandaag.getDate()).padStart(2, '0')}`
+    const { data: actievePlannen } = await supabase
+      .from('training_plans').select('id').eq('athlete_id', user.id).eq('status', 'active')
+    const planIds = (actievePlannen || []).map(p => p.id)
+    if (planIds.length > 0) {
+      const { data: sessieVandaag } = await supabase
+        .from('training_plan_sessions').select('sport, type')
+        .in('plan_id', planIds).eq('date', vandaagStr).neq('status', 'cancelled').maybeSingle()
+      if (sessieVandaag) {
+        voorstellen.push({
+          icon: sessieVandaag.sport === 'cycling' ? '🚴' : sessieVandaag.sport === 'running' ? '🏃' : '💪',
+          label: 'Start training',
+          href: `/coach/${sessieVandaag.sport}/trainingsplan`,
+          priority: 95, bron: 'Trainingsplan',
+        })
       }
-    } catch (err) {
-      console.error('[smart-actions] Today Engine ophalen mislukt:', err)
     }
 
     // ── Bron 3: Coach Planning-overzicht — wedstrijd/vakantie ──────────

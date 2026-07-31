@@ -180,6 +180,19 @@ in de nu-gefixte bestanden; de overige 18 hebben de mildere variant
 (`new Date()`, alleen fout in een venster van enkele uren rond
 middernacht lokale tijd) — een reëel, lager-prioriteit vervolgpunt.
 
+**Home-verfijningen — v2.4.204.**
+- **Snelheidsfix Smart Actions**: gebruikte `bepaalTodayPlan()` (de
+  volledige Today Engine, inclusief de Trainer AI-vangnet-laag), die
+  bij "geen actief specialist-plan" een échte Claude-aanroep deed
+  (~3 sec vertraging, gemeld). Nu: rechtstreekse databasecheck op een
+  geplande specialist-sessie, geen AI-call meer in dit pad.
+- **Navigatie**: "Coach"-tab uit de bottom-nav (6→5 tabs, geen
+  horizontaal scrollen meer) — zelfde bestemming als Smart Actions'
+  "Vraag de Coach" al biedt
+- **Home**: het losse "Coach Chat"-kaartje verwijderd (idem, dubbel
+  met Smart Actions); Smart Actions verplaatst naar direct onder
+  Coach Score; Dagplan start nu standaard ingeklapt
+
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan
 komt. Deze visie maakt dezelfde data zichtbaar op de plek waar de

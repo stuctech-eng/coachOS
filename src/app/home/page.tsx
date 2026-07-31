@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, MessageCircle, AlertTriangle, Camera, BookOpen, Phone, ShieldAlert, CircleUserRound, HeartPulse } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, AlertTriangle, Camera, BookOpen, Phone, ShieldAlert, CircleUserRound, HeartPulse } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -175,6 +175,9 @@ export default function HomePage() {
   // v2.4.201 (Coach Planning Fase B): Coach Vooruitblik — hergebruikt
   // de al-geteste /api/coach-planning/overzicht-route (v2.4.200), geen
   // dubbele logica
+  // v2.4.204-FIX: dagplan startte altijd uitgeklapt — nu standaard
+  // dicht, tik op de header om te openen
+  const [dagplanUitgeklapt, setDagplanUitgeklapt] = useState(false)
   const [vooruitblik, setVooruitblik] = useState<{
     volgendeVakantie: { datum: string; eindDatum: string | null } | null
     volgendEvenement: { datum: string; type: string } | null
@@ -638,6 +641,25 @@ export default function HomePage() {
           </Card>
         </Link>
 
+        {/* v2.4.204: Smart Actions verplaatst naar direct onder Coach
+            Score (v2.4.202 (Coach Planning Fase C): top 3,
+            deterministisch bepaald server-side, geen AI-beslissing hier) */}
+        {smartActions.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">⚡ Snelle acties</p>
+            <div className="grid grid-cols-3 gap-2">
+              {smartActions.map((actie, i) => (
+                <Link key={i} href={actie.href}>
+                  <Card className="p-3 flex flex-col items-center gap-1.5 text-center">
+                    <span className="text-2xl">{actie.icon}</span>
+                    <span className="text-xs text-slate-300 leading-tight">{actie.label}</span>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Vandaag van je Coach */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
@@ -757,8 +779,11 @@ export default function HomePage() {
 
           {/* Dagplan */}
           <div className="border-t border-coach-border pt-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Dagplan</p>
-            {generatingPlan ? (
+            <button onClick={() => setDagplanUitgeklapt(v => !v)} className="w-full flex items-center justify-between mb-3">
+              <p className="text-xs text-slate-500 uppercase tracking-wider">Dagplan</p>
+              {dagplanUitgeklapt ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
+            </button>
+            {dagplanUitgeklapt && (generatingPlan ? (
               <div className="flex flex-col gap-2">
                 {[1, 2, 3].map(i => <div key={i} className="h-10 bg-slate-800 rounded-xl animate-pulse" />)}
               </div>
@@ -776,27 +801,9 @@ export default function HomePage() {
                 className="w-full py-2.5 bg-slate-800 text-slate-300 rounded-xl text-sm active:bg-slate-700 disabled:opacity-50">
                 {generatingPlan ? 'Bezig...' : 'Maak dagplan'}
               </button>
-            )}
+            ))}
           </div>
         </Card>
-
-        {/* v2.4.202 (Coach Planning Fase C): Smart Actions — top 3,
-            deterministisch bepaald server-side, geen AI-beslissing hier */}
-        {smartActions.length > 0 && (
-          <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">⚡ Snelle acties</p>
-            <div className="grid grid-cols-3 gap-2">
-              {smartActions.map((actie, i) => (
-                <Link key={i} href={actie.href}>
-                  <Card className="p-3 flex flex-col items-center gap-1.5 text-center">
-                    <span className="text-2xl">{actie.icon}</span>
-                    <span className="text-xs text-slate-300 leading-tight">{actie.label}</span>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* v2.4.201 (Coach Planning Fase B): Coach Vooruitblik — puur
             feitelijk, geen voorspelling (dat is Fase D/Coach Forecast,
@@ -832,34 +839,23 @@ export default function HomePage() {
         })()}
 
         {/* Snelle links */}
-        <div className="grid grid-cols-2 gap-3">
-          <Link href="/chat">
-            <Card className="px-4 py-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center">
-                  <MessageCircle size={16} className="text-primary-400" />
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium">Coach Chat</p>
-                  <p className="text-slate-500 text-xs">Stel een vraag</p>
-                </div>
+        {/* v2.4.204-FIX: "Coach Chat"-kaart verwijderd — zelfde
+            bestemming (/chat) als Smart Actions' "Vraag de Coach" al
+            biedt. Week-kaart is nu volle breedte i.p.v. een leeg gat
+            in een 2-koloms-grid. */}
+        <Link href="/weekly">
+          <Card className="px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center">
+                <Calendar size={16} className="text-primary-400" />
               </div>
-            </Card>
-          </Link>
-          <Link href="/weekly">
-            <Card className="px-4 py-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-primary-500/20 flex items-center justify-center">
-                  <Calendar size={16} className="text-primary-400" />
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium">Week</p>
-                  <p className="text-slate-500 text-xs">Overzicht</p>
-                </div>
+              <div>
+                <p className="text-white text-sm font-medium">Week</p>
+                <p className="text-slate-500 text-xs">Overzicht</p>
               </div>
-            </Card>
-          </Link>
-        </div>
+            </div>
+          </Card>
+        </Link>
 
       </div>
     </AppShell>

@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Dumbbell, TrendingUp, MessageCircle, Star, Activity } from 'lucide-react'
+import { Home, Dumbbell, TrendingUp, Star, Activity } from 'lucide-react'
 import { cn } from '@/utils'
 import { useEffect, useRef } from 'react'
 
@@ -11,7 +11,9 @@ import { useEffect, useRef } from 'react'
 // een eigen tab, Voortgang toont Activiteiten niet meer als sectie.
 const navItems = [
   { href: '/home',         icon: Home,          label: 'Home' },
-  { href: '/chat',         icon: MessageCircle, label: 'Coach' },
+  // v2.4.204-FIX: 'Coach'-tab verwijderd — zelfde bestemming (/chat) als
+  // Smart Actions' "Vraag de Coach" al biedt, en met 6 tabs moest de
+  // bottom-nav horizontaal scrollen. Met 5 tabs past alles in beeld.
   { href: '/training',     icon: Dumbbell,      label: 'Trainer' },
   { href: '/specialisten', icon: Star,          label: 'Specialisten' },
   { href: '/activities',   icon: Activity,      label: 'Activiteiten' },

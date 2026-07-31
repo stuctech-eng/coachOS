@@ -1,5 +1,48 @@
 # CoachOS — Changelog
 
+## v2.4.204 — Home-verfijningen: snelheid, navigatie, indeling
+**Vijf losse, kleine wijzigingen — allemaal onafhankelijk, low-risk.**
+
+### Snelheidsfix — Smart Actions (was: ~3 seconden vertraging)
+Root cause: `api/smart-actions/route.ts` gebruikte `bepaalTodayPlan()`
+(de volledige Today Engine, inclusief de Trainer AI-vangnet-laag) — die
+doet bij "geen actief specialist-plan" een **echte Claude-aanroep**
+(`claude-haiku-4-5`, in `api/training/today`). Smart Actions heeft voor
+het "training vandaag"-signaal geen AI-gepersonaliseerde tekst nodig,
+alleen een snelle ja/nee.
+
+**Fix:** rechtstreekse databasecheck op een geplande specialist-sessie
+(`training_plan_sessions`, huidige datum) — geen AI-call meer in dit
+pad. Als er geen specialist-plan is, laat Smart Actions dit voorstel
+gewoon weg; de volledige Today Engine (mét Trainer AI) blijft gewoon
+actief op de bestaande "Vandaag van je Coach"-kaart.
+
+### Navigatie
+- **"Coach"-tab uit de bottom-nav** (6→5 tabs) — zelfde bestemming
+  (`/chat`) als Smart Actions' "Vraag de Coach" al biedt, lost het
+  gemelde horizontaal-scrollen op
+
+### Home
+- **"Coach Chat"-kaartje verwijderd** (naast "Week overzicht" in de
+  Snelle links) — idem, dubbel met Smart Actions. "Week"-kaart is nu
+  volle breedte i.p.v. een leeg gat.
+- **Smart Actions verplaatst** naar direct onder Coach Score (was
+  eerst na de volledige "Vandaag van je Coach"-kaart)
+- **Dagplan start nu standaard ingeklapt** — tik op de header om te
+  openen
+
+### Bevestigd, geen wijziging nodig
+Gevraagd: leest de Coach het dagboek? **Ja, al bevestigd aanwezig**
+(`journal_entries` → `journalContext`, al in de prompt sinds eerder).
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten. Bottom-
+nav bevestigd op 5 tabs. Ongebruikte `MessageCircle`-imports
+opgeschoond (2 bestanden).
+
+**Test-instructie:** open Home — Smart Actions zou nu direct moeten
+verschijnen (niet na 3 sec), onder Coach Score. Dagplan begint dicht.
+Bottom-nav toont 5 tabs zonder scrollen.
+
 ## v2.4.203 — KRITIEKE FIX: kalender toonde events op de verkeerde dag + werkdiensten-telling was altijd 0
 **Gemeld: "Ipv maandag pakt hij dinsdag" (vakantie), "twee weken geen
 werkdiensten?" (Overzicht), "kan gemaakte afspraken niet veranderen".
