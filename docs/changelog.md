@@ -1,5 +1,19 @@
 # CoachOS — Changelog
 
+## v2.4.213 — Bel-icoon verwijderd
+**Op verzoek: de bel had geen functie (kale `<button>` zonder
+`onClick`-handler) — weggehaald tot er een echte notificatiefunctie
+is, i.p.v. een knop tonen die niets doet.**
+
+`src/app/home/page.tsx` — bel-knop en de bijbehorende ongebruikte
+`Bell`-import verwijderd. Het account-icoon ernaast (link naar
+Instellingen) blijft ongewijzigd staan.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Home — rechtsboven zou alleen het account-
+icoon (rond poppetje) nu nog moeten staan, geen bel meer.
+
 ## v2.4.212 — Nav-uitlijning gefixt + bel-icoon uitgezocht
 
 ### Nav-uitlijning

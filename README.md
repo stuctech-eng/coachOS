@@ -111,6 +111,12 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
+#### Kleine fixes — v2.4.213
+
+**Bel-icoon verwijderd** (Home, rechtsboven) — had geen functie (kale
+`<button>` zonder `onClick`), op verzoek weggehaald tot er een echte
+notificatiefunctie is, i.p.v. een knop tonen die niets doet.
+
 #### Kleine fixes — v2.4.212
 
 **Nav-uitlijning.** Gemeld met screenshot: "iets uit lijn". Root

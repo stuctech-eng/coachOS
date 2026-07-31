@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Sparkles, Bell, Calendar, RefreshCw, AlertTriangle, Camera, BookOpen, Phone, ShieldAlert, CircleUserRound, HeartPulse } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, Calendar, RefreshCw, AlertTriangle, Camera, BookOpen, Phone, ShieldAlert, CircleUserRound, HeartPulse } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCoach } from '@/hooks/useCoach'
 import { useCoachStore } from '@/store'
@@ -455,10 +455,11 @@ export default function HomePage() {
               </div>
             )}
           </div>
+          {/* v2.4.213-FIX: bel-knop verwijderd — had geen onClick-
+              handler, puur decoratief. Op verzoek weggehaald tot er
+              een echte notificatiefunctie is, i.p.v. een knop tonen
+              die niets doet. */}
           <div className="flex items-center gap-2">
-            <button className="w-11 h-11 rounded-xl bg-coach-card flex items-center justify-center text-slate-400">
-              <Bell size={20} />
-            </button>
             {/* v2.4.93: account-icoon — Navigatie-architectuur v1.0, Stap 5.
                 Instellingen staat niet meer in de onderste navigatiebalk
                 (5-tabs-structuur), dit is nu de ingang. */}
