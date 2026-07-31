@@ -193,6 +193,20 @@ middernacht lokale tijd) — een reëel, lager-prioriteit vervolgpunt.
   met Smart Actions); Smart Actions verplaatst naar direct onder
   Coach Score; Dagplan start nu standaard ingeklapt
 
+**Regressie-fix — v2.4.205: "Om de week" werkte niet meer.** Root
+cause: een inconsistentie tussen twee manieren om een event-begindatum
+te lezen. `isHerhalendActiefOpDag`/`isEenmaligActiefVandaag` gebruikten
+nog `event.start_time.split('T')[0]` (ruwe string-extractie op de
+opgeslagen UTC-tijd) — terwijl v2.4.203's `lokaleDagStr()`-fix daar
+NIET was toegepast. Bij een event met een vroege-ochtend-starttijd
+(bijv. 01:00 lokaal) gaf de ruwe string-methode een dag te vroeg terug,
+wat de even/oneven-weekberekening van "om de week" liet omslaan.
+**Fix, consistent in 3 bestanden** (`coach-planning/page.tsx`,
+`life-events-context.ts`, `coach-planning-overzicht.ts`): elke
+`start_time`-extractie gebruikt nu `lokaleDagStr(new Date(...))`, nooit
+meer de ruwe string-split. Alle 9 scenario's (eenmalig + 8
+herhalingsopties) opnieuw getest, zoals gevraagd — allemaal correct.
+
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan
 komt. Deze visie maakt dezelfde data zichtbaar op de plek waar de

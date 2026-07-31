@@ -205,7 +205,10 @@ function formatHerhaling(event: LifeEvent): string {
 // nu start_date/end_date generiek voor ELK type — was voorheen
 // hardcoded op alleen type==='vakantie' (v2.4.173-fix)
 function isEenmaligActiefVandaag(event: LifeEvent, dagStr: string): boolean {
-  const startDatum = event.start_time.split('T')[0]
+  // v2.4.205-FIX: was event.start_time.split('T')[0] — ruwe string-
+  // extractie op de opgeslagen UTC-tijd, die kan afwijken van de
+  // lokale kalenderdag. Nu consistent met lokaleDagStr() overal elders.
+  const startDatum = lokaleDagStr(new Date(event.start_time))
   const eindDatum = event.end_date || startDatum
   return dagStr >= startDatum && dagStr <= eindDatum
 }
@@ -234,7 +237,11 @@ function isHerhalendActiefOpDag(event: LifeEvent, datum: Date): boolean {
   // regel met een toekomstige startdatum (bijv. "vanaf 10 augustus")
   // werd hierdoor als actief beschouwd vanaf het begin der tijden. Nu:
   // dagen vóór de ingestelde startdatum tellen nooit mee.
-  const startDatum = event.start_time.split('T')[0]
+  // v2.4.205-FIX: zelfde inconsistentie als isEenmaligActiefVandaag —
+  // ruwe string-split kon een ander resultaat geven dan lokaleDagStr(),
+  // waardoor weekVerschil() (de "om de week"-berekening hieronder) een
+  // verkeerd referentiepunt kon gebruiken
+  const startDatum = lokaleDagStr(new Date(event.start_time))
   if (dagStr < startDatum) return false
   // v2.4.190-FIX: zie toelichting in life-events-context.ts — twee
   // aparte einddatum-velden, beide moeten gecheckt worden
@@ -616,7 +623,7 @@ function PlanningView({ events }: { events: LifeEvent[] }) {
   const lijstItems = useMemo(() => {
     const vandaagStr2 = vandaagStr()
     return events
-      .map(e => ({ event: e, datum: e.recurrence ? 'Terugkerend' : e.start_time.split('T')[0] }))
+      .map(e => ({ event: e, datum: e.recurrence ? 'Terugkerend' : lokaleDagStr(new Date(e.start_time)) }))
       .filter(item => item.datum === 'Terugkerend' || item.datum >= vandaagStr2)
       .sort((a, b) => a.datum.localeCompare(b.datum))
   }, [events])
@@ -1578,7 +1585,7 @@ export default function CoachPlanningPage() {
     const herhalend = events.filter(e => e.recurrence)
     return {
       nuActief: eenmalig.filter(e => isEenmaligActiefVandaag(e, vandaag)),
-      binnenkort: eenmalig.filter(e => e.start_time.split('T')[0] > vandaag).sort((a, b) => a.start_time.localeCompare(b.start_time)),
+      binnenkort: eenmalig.filter(e => lokaleDagStr(new Date(e.start_time)) > vandaag).sort((a, b) => a.start_time.localeCompare(b.start_time)),
       // Terugkerend: één regel per event, niet geëxplodeerd per dag
       terugkerend: herhalend,
     }

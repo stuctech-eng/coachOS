@@ -102,7 +102,10 @@ export async function fetchTodaysLifeEvents(
   // gold het voorheen zelfs voor GEEN enkel type correct.
   const eenmaligActiefVandaag = eenmalig.filter(e => {
     if (!e.start_time) return false
-    const startDatum = e.start_time.split('T')[0]
+    // v2.4.205-FIX: was e.start_time.split('T')[0] — ruwe string-
+    // extractie op de opgeslagen UTC-tijd, inconsistent met
+    // lokaleDagStr() elders. Nu overal consistent.
+    const startDatum = lokaleDagStr(new Date(e.start_time))
     const eindDatum = e.end_date || startDatum
     return vandaag >= startDatum && vandaag <= eindDatum
   })
@@ -120,7 +123,9 @@ export async function fetchTodaysLifeEvents(
     // beëindigde regel) werd hierdoor altijd als actief beschouwd,
     // ongeacht wat er werkelijk was ingesteld. Dit voedde rechtstreeks
     // de Context Resolver/Coach Score sinds v2.4.173.
-    if (he.start_time && vandaag < he.start_time.split('T')[0]) return false
+    // v2.4.205-FIX: was he.start_time.split('T')[0] — zelfde
+    // inconsistentie als hierboven
+    if (he.start_time && vandaag < lokaleDagStr(new Date(he.start_time))) return false
     // v2.4.190-FIX: er blijken TWEE aparte "einddatum"-velden te
     // bestaan — end_date (het hoofdveld, in de UI "Einddatum" boven het
     // formulier) en recurrence_end_date (apart, binnen de Herhaling-
@@ -139,16 +144,19 @@ export async function fetchTodaysLifeEvents(
       const days = he.recurrence_days
       const dagMatcht = days ? days.includes(dagNummer) : true
       if (!dagMatcht || !he.start_time) return false
-      // Even weekverschil = zelfde week als start, of exact 2/4/6... weken later
-      return weekVerschil(he.start_time.split('T')[0], vandaag) % 2 === 0
+      // v2.4.205-FIX: was he.start_time.split('T')[0] — de KRITIEKE
+      // plek: een verkeerd referentiepunt hier maakt de hele even/
+      // oneven-weekberekening fout, precies het gemelde "om de week
+      // werkt niet meer"-probleem
+      return weekVerschil(lokaleDagStr(new Date(he.start_time)), vandaag) % 2 === 0
     }
     // v2.4.197-FIX: "Jaarlijks" ontbrak volledig — een verjaardag had
     // geen correcte optie, waardoor de AI "wekelijks" gokte
     if (he.recurrence === 'yearly' && he.start_time) {
-      return vandaag.slice(5) === he.start_time.split('T')[0].slice(5)
+      return vandaag.slice(5) === lokaleDagStr(new Date(he.start_time)).slice(5)
     }
     if (he.recurrence === 'monthly' && he.start_time) {
-      return vandaag.slice(8) === he.start_time.split('T')[0].slice(8)
+      return vandaag.slice(8) === lokaleDagStr(new Date(he.start_time)).slice(8)
     }
     // 'daily' of geen specifieke regel: altijd relevant
     return true

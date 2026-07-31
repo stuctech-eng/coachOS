@@ -45,7 +45,9 @@ function weekVerschil(startDatumStr: string, dagStr: string): number {
 // gedupliceerd (server- vs. client-bestand), geen gedeelde module
 // (zou een grotere refactor zijn, niet gecombineerd met deze bugfix-ronde).
 function isEventActiefOpDag(e: LifeEventRij, dagStr: string): boolean {
-  const startDatum = e.start_time.split('T')[0]
+  // v2.4.205-FIX: was e.start_time.split('T')[0] — ruwe string-
+  // extractie inconsistent met lokaleDagStr() elders
+  const startDatum = lokaleDagStr(new Date(e.start_time))
   if (!e.recurrence) {
     const eindDatum = e.end_date || startDatum
     return dagStr >= startDatum && dagStr <= eindDatum
@@ -144,8 +146,8 @@ export async function haalOverzichtData(supabase: SupabaseClient, userId: string
   const trainingenKomendeWeek = sessies.filter(s => s.date <= over7Dagen).length
 
   return {
-    volgendeVakantie: volgendeVakantie ? { datum: volgendeVakantie.start_time.split('T')[0], eindDatum: volgendeVakantie.end_date } : null,
-    volgendEvenement: volgendEvenement ? { datum: volgendEvenement.start_time.split('T')[0], type: volgendEvenement.type } : null,
+    volgendeVakantie: volgendeVakantie ? { datum: lokaleDagStr(new Date(volgendeVakantie.start_time)), eindDatum: volgendeVakantie.end_date } : null,
+    volgendEvenement: volgendEvenement ? { datum: lokaleDagStr(new Date(volgendEvenement.start_time)), type: volgendEvenement.type } : null,
     huidigeFase,
     volgendeFaseWissel: volgendeFaseWissel ? { datum: volgendeFaseWissel.date, fase: volgendeFaseWissel.mesocycle_type! } : null,
     werkEventsKomende14Dagen,

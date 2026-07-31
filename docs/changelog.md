@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.205 — REGRESSIE-FIX: "Om de week" werkte niet meer
+**Gemeld: "Bij agenda werkt om de week niet meer" — een regressie ná
+v2.4.193's fix. Gevraagd: alle opties opnieuw checken.**
+
+### Root cause
+`isHerhalendActiefOpDag`/`isEenmaligActiefVandaag` in
+`coach-planning/page.tsx` gebruikten nog `event.start_time.split('T')[0]`
+(ruwe string-extractie op de opgeslagen UTC-tijd) om de begindatum van
+een event te bepalen. v2.4.203's `lokaleDagStr()`-fix loste dit al op
+voor de kalender-grid, maar werd **niet** consistent doorgevoerd naar
+deze twee kernfuncties — een inconsistentie tussen "hoe de
+bewerkscherm-datum berekend wordt" en "hoe de actief/inactief-check
+de datum berekent".
+
+**Concreet bewijs:** een event met een vroege-ochtend-starttijd (bijv.
+01:00 lokaal) geeft bij de ruwe string-methode een dag te vroeg terug
+(2026-08-09 i.p.v. 2026-08-10) — dat verkeerde referentiepunt laat de
+even/oneven-weekberekening van `weekVerschil()` (de kern van "om de
+week") omslaan.
+
+### Fix — consistent in 3 bestanden
+- `src/app/coach-planning/page.tsx` — 4 voorkomens gefixt
+  (`isEenmaligActiefVandaag`, `isHerhalendActiefOpDag`, lijstweergave,
+  "binnenkort"-groepering)
+- `src/core/utils/life-events-context.ts` — 2 voorkomens gefixt,
+  inclusief precies de biweekly-berekening die de Coach rechtstreeks
+  voedt
+- `src/lib/coach-planning-overzicht.ts` — 3 voorkomens gefixt
+
+Elke `start_time`-extractie gebruikt nu consistent
+`lokaleDagStr(new Date(...))`, nooit meer de ruwe string-split.
+
+### Volledige hertest, zoals gevraagd
+**Alle 9 scenario's** (eenmalig + 8 herhalingsopties: workdays/
+weekend/weekly/biweekly/daily/custom/yearly/monthly) opnieuw getest
+met de gefixte, consistente logica — allemaal correct. Specifiek
+biweekly: start zelf (week 0, actief), week later (week 1, oneven,
+correct inactief), twee weken later (week 2, even, correct actief).
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** check een bestaande "Om de week"-regel — zou nu
+weer correct om de week moeten afwisselen, ongeacht op welk uur het
+event oorspronkelijk is aangemaakt.
+
 ## v2.4.204 — Home-verfijningen: snelheid, navigatie, indeling
 **Vijf losse, kleine wijzigingen — allemaal onafhankelijk, low-risk.**
 
