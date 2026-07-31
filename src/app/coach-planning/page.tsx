@@ -541,6 +541,187 @@ function SnelInstellenRij({ onSnelToevoegen }: { onSnelToevoegen: (type: string)
 }
 
 // ── Weekstrip — met leesbare labels i.p.v. alleen emoji's ───────────────
+// ── Coach Planning — Planning-tab (Fase A stap 2) ────────────────────
+// Bron: overleg 31 juli 2026. Kleurcodering per categorie, met twee
+// bewuste uitzonderingen (vakantie=geel, evenement=rood) — expliciet
+// zo genoemd in de vastgelegde visie, los van hun categorie-kleur.
+const CATEGORIE_KLEUR: Record<string, string> = {
+  werk: '#60a5fa',      // blauw
+  leven: '#c084fc',     // paars
+  gezondheid: '#fb923c', // oranje
+  medisch: '#fb923c',   // oranje
+  sport: '#4ade80',     // groen
+  omgeving: '#94a3b8',  // grijs
+}
+const TYPE_KLEUR_OVERRIDE: Record<string, string> = {
+  vakantie: '#facc15',   // geel
+  evenement: '#f87171',  // rood (wedstrijd/toertocht)
+}
+
+function kleurVoorType(type: string): string {
+  if (TYPE_KLEUR_OVERRIDE[type]) return TYPE_KLEUR_OVERRIDE[type]
+  const categorie = EVENT_CATEGORIES.find(c => c.events.some(e => e.type === type))
+  return categorie ? CATEGORIE_KLEUR[categorie.id] || '#64748b' : '#64748b'
+}
+
+type PlanningWeergave = 'maand' | 'week' | 'lijst'
+
+function PlanningView({ events }: { events: LifeEvent[] }) {
+  const [weergave, setWeergave] = useState<PlanningWeergave>('maand')
+  const [maandOffset, setMaandOffset] = useState(0)
+  const [geselecteerdeDag, setGeselecteerdeDag] = useState<string | null>(null)
+
+  const basis = new Date()
+  const bekekenMaand = new Date(basis.getFullYear(), basis.getMonth() + maandOffset, 1)
+
+  function eventsOpDag(datum: Date): LifeEvent[] {
+    const dagStr = datum.toISOString().split('T')[0]
+    return events.filter(e => e.recurrence ? isHerhalendActiefOpDag(e, datum) : isEenmaligActiefVandaag(e, dagStr))
+  }
+
+  // Maandgrid: volledige weken (ma-zo), ook dagen uit vorige/volgende maand voor een nette grid
+  const maandDagen = useMemo(() => {
+    const eersteVanMaand = new Date(bekekenMaand.getFullYear(), bekekenMaand.getMonth(), 1)
+    const laatsteVanMaand = new Date(bekekenMaand.getFullYear(), bekekenMaand.getMonth() + 1, 0)
+    const startOffset = (eersteVanMaand.getDay() + 6) % 7 // maandag=0
+    const eindOffset = 6 - ((laatsteVanMaand.getDay() + 6) % 7)
+    const start = new Date(eersteVanMaand); start.setDate(start.getDate() - startOffset)
+    const eind = new Date(laatsteVanMaand); eind.setDate(eind.getDate() + eindOffset)
+    const dagen: Date[] = []
+    const cursor = new Date(start)
+    while (cursor <= eind) { dagen.push(new Date(cursor)); cursor.setDate(cursor.getDate() + 1) }
+    return dagen
+  }, [bekekenMaand.getFullYear(), bekekenMaand.getMonth()])
+
+  const vandaag = new Date()
+  const isVandaag = (d: Date) => d.toDateString() === vandaag.toDateString()
+  const isDezeMaand = (d: Date) => d.getMonth() === bekekenMaand.getMonth()
+
+  const gekozenDagEvents = geselecteerdeDag ? eventsOpDag(new Date(geselecteerdeDag + 'T12:00:00')) : []
+
+  // Lijstweergave: alle events, gesorteerd, met eerstvolgende datum
+  const lijstItems = useMemo(() => {
+    const vandaagStr2 = vandaagStr()
+    return events
+      .map(e => ({ event: e, datum: e.recurrence ? 'Terugkerend' : e.start_time.split('T')[0] }))
+      .filter(item => item.datum === 'Terugkerend' || item.datum >= vandaagStr2)
+      .sort((a, b) => a.datum.localeCompare(b.datum))
+  }, [events])
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Weergave-schakelaar: maand/week/lijst */}
+      <div className="flex gap-2 bg-slate-800/50 rounded-xl p-1">
+        {(['maand', 'week', 'lijst'] as const).map(w => (
+          <button key={w} onClick={() => setWeergave(w)}
+            className={cn('flex-1 py-1.5 rounded-lg text-xs font-medium capitalize', weergave === w ? 'bg-primary-600 text-white' : 'text-slate-400')}>
+            {w}
+          </button>
+        ))}
+      </div>
+
+      {weergave === 'maand' && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={() => setMaandOffset(o => o - 1)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800 text-slate-400 active:bg-slate-700">
+              <ChevronLeft size={14} />
+            </button>
+            <p className="text-sm font-semibold text-white capitalize">
+              {bekekenMaand.toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}
+            </p>
+            <button onClick={() => setMaandOffset(o => o + 1)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800 text-slate-400 active:bg-slate-700">
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 mb-1">
+            {['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'].map(d => (
+              <p key={d} className="text-[10px] text-slate-600 text-center">{d}</p>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {maandDagen.map((dag, i) => {
+              const dagEvents = eventsOpDag(dag)
+              const dagStr = dag.toISOString().split('T')[0]
+              return (
+                <button key={i} onClick={() => setGeselecteerdeDag(dagStr)}
+                  className={cn('aspect-square rounded-lg flex flex-col items-center justify-start pt-1 gap-0.5',
+                    isVandaag(dag) ? 'bg-primary-600/30' : geselecteerdeDag === dagStr ? 'bg-slate-700' : 'bg-slate-800/40',
+                    !isDezeMaand(dag) && 'opacity-30')}>
+                  <span className={cn('text-xs', isVandaag(dag) ? 'text-primary-400 font-bold' : 'text-slate-300')}>{dag.getDate()}</span>
+                  <div className="flex gap-0.5 flex-wrap justify-center px-0.5">
+                    {dagEvents.slice(0, 3).map((e, j) => (
+                      <span key={j} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: kleurVoorType(e.type) }} />
+                    ))}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Legenda */}
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-4 pt-3 border-t border-coach-border">
+            {[
+              { label: 'Werk', kleur: CATEGORIE_KLEUR.werk },
+              { label: 'Vakantie', kleur: TYPE_KLEUR_OVERRIDE.vakantie },
+              { label: 'Medisch', kleur: CATEGORIE_KLEUR.medisch },
+              { label: 'Sport', kleur: CATEGORIE_KLEUR.sport },
+              { label: 'Wedstrijd', kleur: TYPE_KLEUR_OVERRIDE.evenement },
+              { label: 'Privé', kleur: CATEGORIE_KLEUR.leven },
+            ].map(l => (
+              <span key={l.label} className="flex items-center gap-1 text-[10px] text-slate-500">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: l.kleur }} /> {l.label}
+              </span>
+            ))}
+          </div>
+
+          {geselecteerdeDag && (
+            <div className="mt-4 pt-3 border-t border-coach-border">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">
+                {new Date(geselecteerdeDag + 'T12:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+              {gekozenDagEvents.length === 0 && <p className="text-xs text-slate-600">Geen events</p>}
+              {gekozenDagEvents.map(e => {
+                const et = EVENT_TYPES.find(t => t.type === e.type)
+                return (
+                  <div key={e.id} className="flex items-center gap-2 py-1.5">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: kleurVoorType(e.type) }} />
+                    <span className="text-sm text-slate-300">{et?.icon} {et?.label || e.type}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {weergave === 'week' && <WeekKalender events={events} />}
+
+      {weergave === 'lijst' && (
+        <div className="flex flex-col gap-2">
+          {lijstItems.length === 0 && (
+            <Card className="p-6 text-center">
+              <p className="text-sm text-slate-400">Geen aankomende events</p>
+            </Card>
+          )}
+          {lijstItems.map(({ event, datum }) => {
+            const et = EVENT_TYPES.find(t => t.type === event.type)
+            return (
+              <Card key={event.id} className="p-3 flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: kleurVoorType(event.type) }} />
+                <span className="text-xl">{et?.icon}</span>
+                <div className="flex-1">
+                  <p className="text-sm text-white">{et?.label || event.type}</p>
+                  <p className="text-xs text-slate-500">{event.recurrence ? formatHerhaling(event) : formatDatum(event.start_time)}</p>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function WeekKalender({ events }: { events: LifeEvent[] }) {
   // v2.4.187: week-navigatie toegevoegd — kon voorheen niet vooruit/
   // terug bladeren, dus een uitzondering in een toekomstige week (of
@@ -1354,12 +1535,7 @@ export default function CoachPlanningPage() {
           ))}
         </div>
 
-        {tab === 'planning' && (
-          <Card className="p-8 text-center">
-            <Calendar size={32} className="text-slate-600 mx-auto mb-3" />
-            <p className="text-sm text-slate-400">Planning (maand-/weekweergave) volgt in een volgende stap.</p>
-          </Card>
-        )}
+        {tab === 'planning' && <PlanningView events={events} />}
         {tab === 'overzicht' && (
           <Card className="p-8 text-center">
             <Calendar size={32} className="text-slate-600 mx-auto mb-3" />

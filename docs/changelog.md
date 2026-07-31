@@ -1,5 +1,37 @@
 # CoachOS — Changelog
 
+## v2.4.199 — Coach Planning: Fase A, stap 2 (Planning)
+**Vervolg op v2.4.198. De "Planning"-placeholder vervangen door een
+echte maand-/week-/lijstweergave met kleurcodering.**
+
+### Nieuw
+- **Maandweergave**: volledige weken-grid (ma-zo, ook dagen uit de
+  vorige/volgende maand voor een nette grid), kleurpuntjes per
+  categorie op elke dag met events, tik op een dag voor details eronder
+- **Weekweergave**: hergebruikt de bestaande, al-geteste `WeekKalender`
+  — geen dubbele logica
+- **Lijstweergave**: chronologisch, alle aankomende eenmalige events +
+  alle terugkerende regels
+- **Kleurcodering** (`CATEGORIE_KLEUR`/`TYPE_KLEUR_OVERRIDE`): per
+  categorie (werk=blauw, medisch/gezondheid=oranje, sport=groen,
+  leven=paars, omgeving=grijs), met twee bewuste uitzonderingen op
+  type-niveau — Vakantie=geel, Evenement(wedstrijd)=rood — precies
+  zoals expliciet benoemd in de vastgelegde visie, los van hun
+  categorie-kleur
+
+**Gevalideerd:**
+- Maandgrid-berekening: 42 dagen (6 volledige weken), begint op
+  maandag, eindigt op zondag, bevat de volledige maand — getest met
+  augustus 2026
+- Kleurmapping: 4 scenario's, inclusief beide uitzonderingen
+  (vakantie/evenement) correct afwijkend van hun categorie-kleur
+- `npx next build` — compileert zonder fouten
+
+**Test-instructie:** open Coach Planning → tab "Planning" — zou een
+maandkalender moeten tonen met gekleurde puntjes op dagen met events.
+Tik op een dag voor details, wissel naar "week" en "lijst" om de
+andere weergaven te checken.
+
 ## v2.4.198 — Coach Planning: Fase A, stap 1 (Regels)
 **Eerste bouwstap van de vastgelegde Coach Planning-visie. "Eerst de
 bestemming, dan de snelkoppeling" — vandaar dat deze stap begint bij

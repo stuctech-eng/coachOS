@@ -118,14 +118,20 @@ verplaatst naar `/coach-planning` (nieuwe module met 3 tabs: Regels/
 Planning/Overzicht). De "Regels"-tab bevat exact de bestaande, al-
 geteste functionaliteit (categorieën, uitzonderingen, AI-invoer,
 week-navigatie) — een verplaatsing + tab-structuur, geen herbouw.
-"Planning" en "Overzicht" zijn nu placeholders ("volgt in een
-volgende stap"). Oude `/life-events`-route blijft werken als redirect,
-bestaande links breken niet.
+Oude `/life-events`-route blijft werken als redirect, bestaande
+links breken niet.
 
-**Fase A, stap 2 (Planning — maand-/weekagenda) en stap 3 (Overzicht —
-intelligente samenvatting): nog niet gebouwd.** Fase B (Home:
-Vooruitblik-kaart), Fase C (Smart Action Engine) en Fase D (Coach
-Forecast) blijven visie, zoals hieronder vastgelegd.
+**Fase A, stap 2 (Planning) afgerond — v2.4.199.** Drie weergaven:
+maand (grid met kleurpuntjes per categorie, tik op een dag voor
+details), week (hergebruikt de bestaande WeekKalender), lijst
+(chronologisch). Kleurcodering per categorie, met twee bewuste
+uitzonderingen (Vakantie=geel, Evenement/wedstrijd=rood — losstaand
+van hun categorie-kleur, expliciet zo genoemd in de visie).
+
+**Fase A, stap 3 (Overzicht — intelligente samenvatting): nog niet
+gebouwd.** Fase B (Home: Vooruitblik-kaart), Fase C (Smart Action
+Engine) en Fase D (Coach Forecast) blijven visie, zoals hieronder
+vastgelegd.
 
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan
