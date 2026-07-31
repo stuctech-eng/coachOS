@@ -722,6 +722,82 @@ function PlanningView({ events }: { events: LifeEvent[] }) {
   )
 }
 
+// ── Coach Planning — Overzicht-tab (Fase A stap 3) ───────────────────
+// Bron: overleg 31 juli 2026. Intelligente samenvatting, geen kalender
+// — haalt data op via /api/coach-planning/overzicht (bestaande
+// databronnen, geen nieuwe tabel).
+interface OverzichtData {
+  volgendeVakantie: { datum: string; eindDatum: string | null } | null
+  volgendEvenement: { datum: string; type: string } | null
+  huidigeFase: string | null
+  volgendeFaseWissel: { datum: string; fase: string } | null
+  werkEventsKomende14Dagen: number
+  trainingenKomendeWeek: number
+}
+
+const FASE_LABELS: Record<string, string> = { basis: 'Base-week', opbouw: 'Build-week', piek: 'Peak-week', herstel: 'Recovery-week' }
+
+function dagenTot(datumStr: string): number {
+  const nu = new Date(); nu.setHours(0, 0, 0, 0)
+  const doel = new Date(datumStr + 'T00:00:00')
+  return Math.round((doel.getTime() - nu.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function OverzichtView() {
+  const [data, setData] = useState<OverzichtData | null>(null)
+  const [laden, setLaden] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/coach-planning/overzicht')
+      .then(r => r.json())
+      .then(d => { if (!d.error) setData(d) })
+      .finally(() => setLaden(false))
+  }, [])
+
+  if (laden) return <div className="h-40 bg-coach-card rounded-2xl animate-pulse" />
+  if (!data) return <Card className="p-6 text-center"><p className="text-sm text-slate-400">Kon overzicht niet laden</p></Card>
+
+  const items: { icon: string; label: string; waarde: string }[] = []
+
+  if (data.volgendeVakantie) {
+    const dagen = dagenTot(data.volgendeVakantie.datum)
+    items.push({ icon: '🏖️', label: 'Volgende vakantie', waarde: dagen === 0 ? 'Vandaag' : dagen === 1 ? 'Morgen' : `Over ${dagen} dagen` })
+  }
+  if (data.volgendEvenement) {
+    const dagen = dagenTot(data.volgendEvenement.datum)
+    items.push({ icon: '🏁', label: 'Volgende wedstrijd', waarde: dagen === 0 ? 'Vandaag' : dagen === 1 ? 'Morgen' : `Over ${dagen} dagen` })
+  }
+  if (data.huidigeFase) {
+    items.push({ icon: '🔥', label: 'Huidige trainingsfase', waarde: FASE_LABELS[data.huidigeFase] || data.huidigeFase })
+  }
+  if (data.volgendeFaseWissel) {
+    const dagen = dagenTot(data.volgendeFaseWissel.datum)
+    items.push({ icon: '📈', label: `${FASE_LABELS[data.volgendeFaseWissel.fase] || data.volgendeFaseWissel.fase} start`, waarde: dagen === 1 ? 'Morgen' : `Over ${dagen} dagen` })
+  }
+  items.push({ icon: '💼', label: 'Werkdiensten komende 14 dagen', waarde: `${data.werkEventsKomende14Dagen}` })
+  items.push({ icon: '🚴', label: 'Trainingen komende week', waarde: `${data.trainingenKomendeWeek}` })
+
+  return (
+    <Card className="p-4">
+      <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Komende periode</p>
+      <div className="flex flex-col gap-3">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <span className="text-xl">{item.icon}</span>
+            <span className="text-sm text-slate-300 flex-1">{item.label}</span>
+            <span className="text-sm font-semibold text-white">{item.waarde}</span>
+          </div>
+        ))}
+      </div>
+      {items.length <= 2 && (
+        <p className="text-xs text-slate-600 mt-3 pt-3 border-t border-coach-border">
+          Hoe meer je in Regels/Planning invult, hoe rijker dit overzicht wordt.
+        </p>
+      )}
+    </Card>
+  )
+}
+
 function WeekKalender({ events }: { events: LifeEvent[] }) {
   // v2.4.187: week-navigatie toegevoegd — kon voorheen niet vooruit/
   // terug bladeren, dus een uitzondering in een toekomstige week (of
@@ -1536,12 +1612,7 @@ export default function CoachPlanningPage() {
         </div>
 
         {tab === 'planning' && <PlanningView events={events} />}
-        {tab === 'overzicht' && (
-          <Card className="p-8 text-center">
-            <Calendar size={32} className="text-slate-600 mx-auto mb-3" />
-            <p className="text-sm text-slate-400">Overzicht (intelligente samenvatting) volgt in een volgende stap.</p>
-          </Card>
-        )}
+        {tab === 'overzicht' && <OverzichtView />}
 
         {tab === 'regels' && (<>
         {message && (

@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.200 — Coach Planning: Fase A, stap 3 (Overzicht) — Fase A compleet
+**Laatste stap van Fase A. Vervangt de "Overzicht"-placeholder door een
+echte, intelligente samenvatting.**
+
+### Nieuw
+- **`api/coach-planning/overzicht/route.ts`** — combineert bestaande
+  databronnen (life_events, training_plan_sessions), geen nieuwe tabel:
+  - Volgende vakantie + volgende wedstrijd/evenement (dagen-tot-telling)
+  - Huidige trainingsfase + eerstvolgende faseovergang (bijv. "Build-
+    week start over 5 dagen") — robuust tegen het bekende v2.4.176-
+    randgeval: trainingsplannen van vóór die fix hebben geen
+    mesocyclus-data, dit onderdeel toont dan gewoon niets, geen crash
+  - Werkdiensten komende 14 dagen, trainingen komende week
+- **`OverzichtView`** (UI) — toont deze zes signalen als lijst, met een
+  hint ("hoe meer je invult, hoe rijker dit wordt") als er weinig data is
+
+**Herbruikbaarheid, zoals gepland:** deze functie/route wordt in Fase B
+hergebruikt voor de Home "Coach Vooruitblik"-kaart — één bron, geen
+dubbele logica.
+
+**Gevalideerd:**
+- Dagen-tot-berekening: 3 scenario's (12 dagen, morgen, vandaag) — correct
+- Fase-wisseldetectie: vindt de eerstvolgende afwijkende mesocyclus
+  correct
+- Robuustheid: sessies zonder mesocyclus-data geven `undefined` terug,
+  geen crash
+- `npx next build` — compileert zonder fouten, nieuwe route aanwezig
+  in de build-output
+
+**Fase A is hiermee volledig compleet** (Regels/Planning/Overzicht,
+alle drie afgerond en getest). Volgende stap: Fase B (Home: Coach
+Vooruitblik-kaart).
+
 ## v2.4.199 — Coach Planning: Fase A, stap 2 (Planning)
 **Vervolg op v2.4.198. De "Planning"-placeholder vervangen door een
 echte maand-/week-/lijstweergave met kleurcodering.**

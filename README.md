@@ -128,10 +128,19 @@ details), week (hergebruikt de bestaande WeekKalender), lijst
 uitzonderingen (Vakantie=geel, Evenement/wedstrijd=rood — losstaand
 van hun categorie-kleur, expliciet zo genoemd in de visie).
 
-**Fase A, stap 3 (Overzicht — intelligente samenvatting): nog niet
-gebouwd.** Fase B (Home: Vooruitblik-kaart), Fase C (Smart Action
-Engine) en Fase D (Coach Forecast) blijven visie, zoals hieronder
-vastgelegd.
+**Fase A, stap 3 (Overzicht) afgerond — v2.4.200. Daarmee is Fase A
+volledig compleet.** `api/coach-planning/overzicht/route.ts` —
+intelligente samenvatting uit bestaande databronnen (life_events,
+training_plan_sessions), geen nieuwe tabel: volgende vakantie,
+volgende wedstrijd, huidige trainingsfase, eerstvolgende faseovergang,
+werkdiensten komende 14 dagen, trainingen komende week. Deze functie
+voedt straks ook de Home "Coach Vooruitblik"-kaart (Fase B) — één
+bron, geen dubbele logica. Robuust tegen het bekende v2.4.176-
+randgeval (oude trainingsplannen zonder mesocyclus-data — geen crash,
+toont dat onderdeel gewoon niet).
+
+**Fase B (Home: Vooruitblik-kaart), Fase C (Smart Action Engine) en
+Fase D (Coach Forecast) blijven visie**, zoals hieronder vastgelegd.
 
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan
