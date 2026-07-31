@@ -82,6 +82,13 @@ export interface OverzichtData {
   volgendeFaseWissel: { datum: string; fase: string } | null
   werkEventsKomende14Dagen: number
   trainingenKomendeWeek: number
+  // v2.4.211: Coach Vooruitblik toonde alleen vakantie/wedstrijd/fase —
+  // gemeld dat het oorspronkelijke voorbeeld (Nachtdienst, Fysio) ook
+  // werk en medische afspraken bevatte. Nu toegevoegd: eerstvolgende
+  // van elk, binnen 14 dagen, dag-voor-dag gecheckt met dezelfde
+  // isEventActiefOpDag() als de werkdiensten-telling hierboven.
+  volgendeWerkdienst: { datum: string; type: string } | null
+  volgendeMedischeAfspraak: { datum: string; type: string } | null
 }
 
 export async function haalOverzichtData(supabase: SupabaseClient, userId: string): Promise<OverzichtData> {
@@ -138,9 +145,25 @@ export async function haalOverzichtData(supabase: SupabaseClient, userId: string
   const WERK_TYPES = ['nachtdienst', 'avonddienst', 'vroege_dienst', 'dagdienst', 'lange_dag', 'consignatie']
   const werkEvents = [...eenmaligeEvents, ...alleHerhalendeEvents].filter(e => WERK_TYPES.includes(e.type))
   let werkEventsKomende14Dagen = 0
+  let volgendeWerkdienst: { datum: string; type: string } | null = null
   for (let i = 0; i < 14; i++) {
     const dagStr = lokaleDagStr(new Date(Date.now() + i * 24 * 60 * 60 * 1000))
-    if (werkEvents.some(e => isEventActiefOpDag(e, dagStr))) werkEventsKomende14Dagen++
+    const matchVandaag = werkEvents.find(e => isEventActiefOpDag(e, dagStr))
+    if (matchVandaag) {
+      werkEventsKomende14Dagen++
+      if (!volgendeWerkdienst) volgendeWerkdienst = { datum: dagStr, type: matchVandaag.type }
+    }
+  }
+
+  // v2.4.211: eerstvolgende medische afspraak, zelfde dag-voor-dag-
+  // aanpak als werkdiensten hierboven
+  const MEDISCH_TYPES = ['huisarts', 'fysiotherapeut', 'sportarts', 'specialist', 'massage', 'medisch_onderzoek', 'vaccinatie']
+  const medischEvents = [...eenmaligeEvents, ...alleHerhalendeEvents].filter(e => MEDISCH_TYPES.includes(e.type))
+  let volgendeMedischeAfspraak: { datum: string; type: string } | null = null
+  for (let i = 0; i < 14; i++) {
+    const dagStr = lokaleDagStr(new Date(Date.now() + i * 24 * 60 * 60 * 1000))
+    const match = medischEvents.find(e => isEventActiefOpDag(e, dagStr))
+    if (match) { volgendeMedischeAfspraak = { datum: dagStr, type: match.type }; break }
   }
 
   const trainingenKomendeWeek = sessies.filter(s => s.date <= over7Dagen).length
@@ -152,5 +175,7 @@ export async function haalOverzichtData(supabase: SupabaseClient, userId: string
     volgendeFaseWissel: volgendeFaseWissel ? { datum: volgendeFaseWissel.date, fase: volgendeFaseWissel.mesocycle_type! } : null,
     werkEventsKomende14Dagen,
     trainingenKomendeWeek,
+    volgendeWerkdienst,
+    volgendeMedischeAfspraak,
   }
 }

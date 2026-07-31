@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.211 — Coach Vooruitblik: werk + medische afspraken toegevoegd
+**Gemeld: het oorspronkelijke voorbeeld voor Coach Vooruitblik (🌙
+Nachtdienst, 🏥 Fysio, 🔥 Build Week) bevatte ook werk en medische
+afspraken — die ontbraken in de eerste versie (v2.4.201, alleen
+vakantie/wedstrijd/faseovergang).**
+
+### Nieuw
+- **`src/lib/coach-planning-overzicht.ts`** — `volgendeWerkdienst` en
+  `volgendeMedischeAfspraak` toegevoegd aan `OverzichtData`. Elk
+  dag-voor-dag gezocht binnen 14 dagen met de bestaande
+  `isEventActiefOpDag()` — zelfde, al-geteste logica als de
+  werkdiensten-telling, geen nieuwe berekening.
+- **Home** — de Vooruitblik-kaart toont nu alle 5 signalen
+  (vakantie/wedstrijd/faseovergang/werkdienst/medische afspraak),
+  elk met een passend icoon+label (🌙 Nachtdienst, 🏥 Fysio, etc.)
+- **Sortering op eerstkomende datum** i.p.v. een vaste type-volgorde —
+  zo staat bijv. een fysio-afspraak morgen altijd vóór een wedstrijd
+  over drie weken, ongeacht welk type het is. Nog steeds maximaal 3
+  items zichtbaar.
+
+**Gevalideerd:**
+- Sorteer-logica: 5 items door elkaar toegevoegd, correct gesorteerd
+  op datum, top 3 toont de daadwerkelijk eerstkomende — niet de eerst-
+  toegevoegde
+- Eerstvolgende-werkdienst-detectie: een terugkerend "ma-do"-rooster
+  vindt correct de eerstvolgende matchende dag binnen het 14-dagen-
+  venster
+- `npx next build` — compileert zonder fouten
+
+**Test-instructie:** open Home — als je een werkdienst of medische
+afspraak binnen 14 dagen hebt staan in Coach Planning, zou die nu ook
+in de Vooruitblik-kaart moeten verschijnen.
+
 ## v2.4.210 — REGRESSIE-FIX: nav-tabs vielen alsnog van het scherm + Performance-tekst wrapte lelijk
 
 ### Nav-tabs — regressie op v2.4.209

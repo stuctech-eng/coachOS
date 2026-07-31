@@ -185,6 +185,10 @@ export default function HomePage() {
     volgendeFaseWissel: { datum: string; fase: string } | null
     werkEventsKomende14Dagen: number
     trainingenKomendeWeek: number
+    // v2.4.211: uitbreiding — werk en medische afspraken, matcht het
+    // oorspronkelijke Coach Vooruitblik-voorbeeld (Nachtdienst, Fysio)
+    volgendeWerkdienst: { datum: string; type: string } | null
+    volgendeMedischeAfspraak: { datum: string; type: string } | null
   } | null>(null)
   useEffect(() => {
     fetch('/api/coach-planning/overzicht').then(r => r.json()).then(d => { if (!d.error) setVooruitblik(d) }).catch(() => {})
@@ -777,15 +781,38 @@ export default function HomePage() {
             bewust apart gehouden) */}
         {vooruitblik && (() => {
           const FASE_LABELS: Record<string, string> = { basis: 'Base-week', opbouw: 'Build-week', piek: 'Peak-week', herstel: 'Recovery-week' }
+          // v2.4.211: labels/iconen voor werk- en medische types — matcht
+          // het oorspronkelijke Coach Vooruitblik-voorbeeld (🌙 Nachtdienst, 🏥 Fysio)
+          const WERK_LABELS: Record<string, { icon: string; label: string }> = {
+            nachtdienst: { icon: '🌙', label: 'Nachtdienst' }, avonddienst: { icon: '🌆', label: 'Avonddienst' },
+            vroege_dienst: { icon: '🌅', label: 'Vroege dienst' }, dagdienst: { icon: '💼', label: 'Dagdienst' },
+            lange_dag: { icon: '⏰', label: 'Lange dag' }, consignatie: { icon: '📟', label: 'Consignatie' },
+          }
+          const MEDISCH_LABELS: Record<string, { icon: string; label: string }> = {
+            huisarts: { icon: '🩺', label: 'Huisarts' }, fysiotherapeut: { icon: '🏥', label: 'Fysio' },
+            sportarts: { icon: '🏃‍♂️', label: 'Sportarts' }, specialist: { icon: '👨‍⚕️', label: 'Specialist' },
+            massage: { icon: '💆', label: 'Massage' }, medisch_onderzoek: { icon: '🔬', label: 'Onderzoek' }, vaccinatie: { icon: '💉', label: 'Vaccinatie' },
+          }
           const dagenTot = (datumStr: string) => {
             const nu = new Date(); nu.setHours(0, 0, 0, 0)
             return Math.round((new Date(datumStr + 'T00:00:00').getTime() - nu.getTime()) / (1000 * 60 * 60 * 24))
           }
           const labelVoorDagen = (d: number) => d === 0 ? 'Vandaag' : d === 1 ? 'Morgen' : `Over ${d} dagen`
-          const items: { icon: string; tekst: string }[] = []
-          if (vooruitblik.volgendeVakantie) items.push({ icon: '🏖️', tekst: `Vakantie — ${labelVoorDagen(dagenTot(vooruitblik.volgendeVakantie.datum))}` })
-          if (vooruitblik.volgendEvenement) items.push({ icon: '🏁', tekst: `Wedstrijd — ${labelVoorDagen(dagenTot(vooruitblik.volgendEvenement.datum))}` })
-          if (vooruitblik.volgendeFaseWissel) items.push({ icon: '🔥', tekst: `${FASE_LABELS[vooruitblik.volgendeFaseWissel.fase] || vooruitblik.volgendeFaseWissel.fase} — ${labelVoorDagen(dagenTot(vooruitblik.volgendeFaseWissel.datum))}` })
+          const items: { icon: string; tekst: string; datum: string }[] = []
+          if (vooruitblik.volgendeVakantie) items.push({ icon: '🏖️', tekst: `Vakantie — ${labelVoorDagen(dagenTot(vooruitblik.volgendeVakantie.datum))}`, datum: vooruitblik.volgendeVakantie.datum })
+          if (vooruitblik.volgendEvenement) items.push({ icon: '🏁', tekst: `Wedstrijd — ${labelVoorDagen(dagenTot(vooruitblik.volgendEvenement.datum))}`, datum: vooruitblik.volgendEvenement.datum })
+          if (vooruitblik.volgendeFaseWissel) items.push({ icon: '🔥', tekst: `${FASE_LABELS[vooruitblik.volgendeFaseWissel.fase] || vooruitblik.volgendeFaseWissel.fase} — ${labelVoorDagen(dagenTot(vooruitblik.volgendeFaseWissel.datum))}`, datum: vooruitblik.volgendeFaseWissel.datum })
+          if (vooruitblik.volgendeWerkdienst) {
+            const w = WERK_LABELS[vooruitblik.volgendeWerkdienst.type] || { icon: '💼', label: vooruitblik.volgendeWerkdienst.type }
+            items.push({ icon: w.icon, tekst: `${w.label} — ${labelVoorDagen(dagenTot(vooruitblik.volgendeWerkdienst.datum))}`, datum: vooruitblik.volgendeWerkdienst.datum })
+          }
+          if (vooruitblik.volgendeMedischeAfspraak) {
+            const m = MEDISCH_LABELS[vooruitblik.volgendeMedischeAfspraak.type] || { icon: '🏥', label: vooruitblik.volgendeMedischeAfspraak.type }
+            items.push({ icon: m.icon, tekst: `${m.label} — ${labelVoorDagen(dagenTot(vooruitblik.volgendeMedischeAfspraak.datum))}`, datum: vooruitblik.volgendeMedischeAfspraak.datum })
+          }
+          // Sorteren op eerstkomende datum — niet een vaste type-volgorde,
+          // zodat bijv. Fysio morgen altijd vóór een wedstrijd over 3 weken staat
+          items.sort((a, b) => a.datum.localeCompare(b.datum))
           if (items.length === 0) return null // niets relevants — kaart blijft dan bewust weg, geen lege kaart tonen
           return (
             <Card className="p-4">

@@ -194,6 +194,18 @@ ingevuld), blijft de kaart volledig weg — geen lege kaart tonen.
 Knop "Open Coach Planning →" onderaan, geen nieuwe navigatie-tab
 (zoals eerder vastgelegd).
 
+**Uitbreiding — v2.4.211: werk + medische afspraken toegevoegd.**
+Gemeld: het oorspronkelijke voorbeeld voor Coach Vooruitblik (🌙
+Nachtdienst, 🏥 Fysio, 🔥 Build Week) bevatte ook werk en medische
+afspraken — die ontbraken in de eerste versie (alleen vakantie/
+wedstrijd/faseovergang). Nu toegevoegd: eerstvolgende werkdienst en
+eerstvolgende medische afspraak, elk dag-voor-dag gezocht binnen 14
+dagen met dezelfde `isEventActiefOpDag()` als de bestaande
+werkdiensten-telling — geen nieuwe, losse logica. **Alle 5 signalen
+worden nu gesorteerd op eerstkomende datum** (niet een vaste
+type-volgorde) — zo staat bijv. een fysio-afspraak morgen altijd vóór
+een wedstrijd over drie weken, ongeacht welk type het is.
+
 **Fase C (Smart Action Engine) afgerond — v2.4.202.** 100%
 deterministisch, **geen AI-call** — zoals niet-onderhandelbaar
 vastgelegd. `src/lib/smart-action-engine.ts` (generieke `kiesTop3()`)
