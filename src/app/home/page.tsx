@@ -186,6 +186,12 @@ export default function HomePage() {
   useEffect(() => {
     fetch('/api/coach-planning/overzicht').then(r => r.json()).then(d => { if (!d.error) setVooruitblik(d) }).catch(() => {})
   }, [])
+  // v2.4.202 (Coach Planning Fase C): Smart Actions — 100%
+  // deterministisch server-side bepaald, geen AI-call vanuit Home
+  const [smartActions, setSmartActions] = useState<{ icon: string; label: string; href: string }[]>([])
+  useEffect(() => {
+    fetch('/api/smart-actions').then(r => r.json()).then(d => setSmartActions(d.acties || [])).catch(() => {})
+  }, [])
   useEffect(() => {
     fetch('/api/today', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
@@ -773,6 +779,24 @@ export default function HomePage() {
             )}
           </div>
         </Card>
+
+        {/* v2.4.202 (Coach Planning Fase C): Smart Actions — top 3,
+            deterministisch bepaald server-side, geen AI-beslissing hier */}
+        {smartActions.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">⚡ Snelle acties</p>
+            <div className="grid grid-cols-3 gap-2">
+              {smartActions.map((actie, i) => (
+                <Link key={i} href={actie.href}>
+                  <Card className="p-3 flex flex-col items-center gap-1.5 text-center">
+                    <span className="text-2xl">{actie.icon}</span>
+                    <span className="text-xs text-slate-300 leading-tight">{actie.label}</span>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* v2.4.201 (Coach Planning Fase B): Coach Vooruitblik — puur
             feitelijk, geen voorspelling (dat is Fase D/Coach Forecast,

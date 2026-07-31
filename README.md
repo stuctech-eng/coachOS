@@ -148,8 +148,22 @@ ingevuld), blijft de kaart volledig weg — geen lege kaart tonen.
 Knop "Open Coach Planning →" onderaan, geen nieuwe navigatie-tab
 (zoals eerder vastgelegd).
 
-**Fase C (Smart Action Engine) en Fase D (Coach Forecast) blijven
-visie**, zoals hieronder vastgelegd.
+**Fase C (Smart Action Engine) afgerond — v2.4.202.** 100%
+deterministisch, **geen AI-call** — zoals niet-onderhandelbaar
+vastgelegd. `src/lib/smart-action-engine.ts` (generieke `kiesTop3()`)
++ `api/smart-actions/route.ts` (verzamelt voorstellen uit Injuries,
+Today Engine, Coach Planning-overzicht — dezelfde bronnen als Fase A/B,
+geen nieuwe databron). Vaste prioriteitstabel: blessure (98) > training
+vandaag (95) > wedstrijd binnen 7 dagen (85) > vakantie binnen 3 dagen
+(70) > altijd-beschikbaar-fallbacks (30/20). **Bevestigde correctie
+uit het ontwerp:** de bestaande Decision Engine (voor trainings-
+specialisten) is hier NIET hergebruikt — te smal getypeerd voor
+generieke actie-voorstellen; wel dezelfde filosofie (deterministisch),
+eigen nieuwe code. Bijvangst: de dataverzameling van Fase A stap 3 is
+geëxtraheerd naar `src/lib/coach-planning-overzicht.ts`, nu gedeeld
+tussen Overzicht en Smart Actions — geen dubbele logica.
+
+**Fase D (Coach Forecast) blijft visie**, zoals hieronder vastgelegd.
 
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan

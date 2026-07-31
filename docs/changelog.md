@@ -1,5 +1,57 @@
 # CoachOS — Changelog
 
+## v2.4.202 — Coach Planning Fase C: Smart Action Engine
+**Grootste losse stap van de hele Coach Planning-visie. 100%
+deterministisch — geen AI-call, zoals niet-onderhandelbaar
+vastgelegd in het ontwerp.**
+
+### Nieuw
+- **`src/lib/smart-action-engine.ts`** — generieke `kiesTop3()`. Puur
+  arbitrage: sorteert voorstellen op prioriteitscijfer, geen
+  intelligentie.
+- **`api/smart-actions/route.ts`** — verzamelt actie-voorstellen uit
+  bestaande bronnen, geen nieuwe databron:
+  - **98** — actieve blessure (`injuries`-tabel)
+  - **95** — training vandaag gepland (Today Engine, hergebruikt
+    `bepaalTodayPlan()` met de v2.4.184-fix voor de baseUrl)
+  - **85** — wedstrijd binnen 7 dagen (Coach Planning-overzicht)
+  - **70** — vakantie binnen 3 dagen (Coach Planning-overzicht)
+  - **30/20** — altijd-beschikbaar-fallbacks (Vraag de Coach / Open
+    Coach Planning) — vullen de resterende plekken
+- **Home**: nieuwe "⚡ Snelle acties"-sectie, 3 tegels, tussen de
+  Coach-advies-kaart en de Coach Vooruitblik-kaart (per de vastgelegde
+  Home-volgorde)
+
+### Bevestigde architectuurcorrectie (uit het ontwerpoverleg)
+De bestaande Decision Engine (`beslisTussenSpecialisten()`, voor
+trainingsspecialisten) is hier **niet hergebruikt** — te smal
+getypeerd (velden als `load`/`risk`/`hoogsteImportance`, specifiek
+voor specialist-vergelijking). Smart Actions gebruikt dezelfde
+filosofie (deterministisch, geen AI), maar eigen, generieke code.
+
+### Bijvangst
+De dataverzameling van Fase A stap 3 (Overzicht) is geëxtraheerd naar
+`src/lib/coach-planning-overzicht.ts` — nu gedeeld tussen de Overzicht-
+route en Smart Actions, geen dubbele logica, geen kwetsbare interne
+HTTP-self-call (dat patroon veroorzaakte eerder de v2.4.184-bug).
+
+**Gevalideerd — 3 scenario's, inclusief het "wat als meerdere
+situaties tegelijk gelden"-conflictgeval dat we bij het ontwerp als
+risico benoemden:**
+- Normale mix (blessure + training + fallbacks) → juiste top 3
+- Rustige dag (alleen fallbacks) → geen crash bij minder dan 3
+  voorstellen
+- Alles tegelijk (blessure + training + wedstrijd + vakantie +
+  fallbacks) → precies de drie hoogste, correct genegeerd wat lager
+  scoort
+
+`npx next build` — compileert zonder fouten, beide routes (nieuw +
+herschreven) bevestigd in de build-output.
+
+**Test-instructie:** open Home — zou nu een "⚡ Snelle acties"-rij met
+3 tegels moeten tonen, gebaseerd op je huidige situatie (blessures,
+trainingsplan, aankomende vakantie/wedstrijd).
+
 ## v2.4.201 — Coach Planning Fase B: Home — Coach Vooruitblik-kaart
 **Eerste stap na Fase A. "Eerst de bestemming, dan de snelkoppeling" —
 nu heeft de knop een echte bestemming (Coach Planning bestaat al).**
