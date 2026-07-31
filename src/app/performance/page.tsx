@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { Menu, Calendar, Flame, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 
@@ -11,6 +11,10 @@ import { Card } from '@/components/ui'
 // de oorspronkelijke, eenvoudigere berekening direct op ruwe data
 // (v2.4.142/143) — dit is nu de ENIGE plek die deze cijfers berekent,
 // geen twee verschillende versies van dezelfde waarheid meer.
+//
+// v2.4.208: visuele herbouw naar een gedecoreerde weergave (cirkel-
+// gauges, voortgangsbalken, losse factor-pillen) — puur presentatie,
+// dezelfde onderliggende data/API, geen logica-wijziging.
 //
 // Bewust GEEN onderdeel van Cycling of Running — dit is platformbreed,
 // hoort bij de Master Coach.
@@ -52,6 +56,7 @@ const KLEUR_CLASSES: Record<Kleur, string> = {
   rood: 'text-red-400 bg-red-500/10 border-red-500/20',
   neutraal: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
 }
+const KLEUR_HEX: Record<Kleur, string> = { groen: '#4ade80', amber: '#fb923c', rood: '#f87171', neutraal: '#94a3b8' }
 function confidenceKleur(level: string): Kleur {
   if (level === 'HIGH') return 'groen'
   if (level === 'MEDIUM') return 'amber'
@@ -67,9 +72,41 @@ function labelKleur(label: string): Kleur {
 
 function ConfidenceBadge({ confidence }: { confidence: Confidence }) {
   return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${KLEUR_CLASSES[confidenceKleur(confidence.level)]}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${KLEUR_CLASSES[confidenceKleur(confidence.level)]}`}>
       {confidence.level} · {confidence.score}%
     </span>
+  )
+}
+
+// v2.4.208: cirkel-gauge (SVG ring), hergebruikt voor Herstelscore en Consistentie
+function CirkelGauge({ percentage, label, sublabel, kleur = '#4ade80', grootte = 128 }: { percentage: number; label: string; sublabel?: string; kleur?: string; grootte?: number }) {
+  const straal = (grootte - 12) / 2
+  const omtrek = 2 * Math.PI * straal
+  const gevuld = (Math.min(100, Math.max(0, percentage)) / 100) * omtrek
+  return (
+    <div className="relative flex-shrink-0" style={{ width: grootte, height: grootte }}>
+      <svg width={grootte} height={grootte} className="-rotate-90">
+        <circle cx={grootte / 2} cy={grootte / 2} r={straal} fill="none" stroke="#334155" strokeWidth="10" />
+        <circle cx={grootte / 2} cy={grootte / 2} r={straal} fill="none" stroke={kleur} strokeWidth="10"
+          strokeDasharray={`${gevuld} ${omtrek}`} strokeLinecap="round" />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <p className="text-3xl font-bold text-white">{label}</p>
+        {sublabel && <p className="text-[10px] text-slate-500 text-center px-2">{sublabel}</p>}
+      </div>
+    </div>
+  )
+}
+
+// v2.4.208: voortgangsbalk onder CTL/ATL/TSB/Vermoeidheid — max is een
+// redelijke, vaste schaal (geen exacte wetenschappelijke normering,
+// puur visueel — de kale cijfers ernaast blijven de waarheid)
+function VoortgangsBalk({ waarde, max, kleur = '#60a5fa' }: { waarde: number; max: number; kleur?: string }) {
+  const pct = Math.min(100, Math.max(0, (waarde / max) * 100))
+  return (
+    <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden mt-2">
+      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: kleur }} />
+    </div>
   )
 }
 
@@ -82,6 +119,9 @@ function ScoreKaart({ titel, score, sub, label, kleur }: { titel: string; score:
         {label && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${KLEUR_CLASSES[kleur]}`}>{label}</span>}
       </div>
       {sub && <p className="text-[10px] text-slate-600 mt-0.5">{sub}</p>}
+      {/* v2.4.208: kleine visuele balk — puur decoratief, geen echte
+          historische sparkline (die data bestaat niet per indicator) */}
+      {typeof score === 'number' && <VoortgangsBalk waarde={score} max={100} kleur={KLEUR_HEX[kleur === 'neutraal' ? 'groen' : kleur]} />}
     </Card>
   )
 }
@@ -103,6 +143,22 @@ function TrendGrafiek({ data, kleur = '#f43f5e', hoogte = 60 }: { data: Historie
   )
 }
 
+// v2.4.208: gemiddelde + trend (laatste 7 dagen t.o.v. de 7 dagen
+// daarvoor) — puur afgeleid van bestaande recoveryHistorie-data, geen
+// nieuwe databron
+function berekenTrend(data: HistoriePunt[]): { gemiddelde: number; trendPct: number | null; richting: 'stijgend' | 'stabiel' | 'dalend' } {
+  if (data.length === 0) return { gemiddelde: 0, trendPct: null, richting: 'stabiel' }
+  const gemiddelde = Math.round(data.reduce((a, p) => a + p.score, 0) / data.length)
+  if (data.length < 14) return { gemiddelde, trendPct: null, richting: 'stabiel' }
+  const laatste7 = data.slice(-7)
+  const vorige7 = data.slice(-14, -7)
+  const gemLaatste = laatste7.reduce((a, p) => a + p.score, 0) / laatste7.length
+  const gemVorige = vorige7.reduce((a, p) => a + p.score, 0) / vorige7.length
+  const trendPct = gemVorige === 0 ? 0 : Math.round(((gemLaatste - gemVorige) / gemVorige) * 100)
+  const richting = trendPct > 2 ? 'stijgend' : trendPct < -2 ? 'dalend' : 'stabiel'
+  return { gemiddelde, trendPct, richting }
+}
+
 export default function PerformancePage() {
   const [laden, setLaden] = useState(true)
   const [data, setData] = useState<DashboardData | null>(null)
@@ -116,17 +172,26 @@ export default function PerformancePage() {
       .finally(() => setLaden(false))
   }, [])
 
+  const trend = data ? berekenTrend(data.recoveryHistorie) : null
+  // v2.4.208: top-3 factoren op bijdrage_score, als losse pillen
+  const topFactoren = data?.recovery.value.breakdown
+    ? [...data.recovery.value.breakdown].sort((a, b) => b.bijdrage_score - a.bijdrage_score).slice(0, 3)
+    : []
+
   return (
     <AppShell>
       <div className="px-5 py-6 flex flex-col gap-5">
-        <div className="flex items-center gap-3">
-          <Link href="/home" className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
-            <ArrowLeft size={18} className="text-slate-400" />
-          </Link>
-          <div>
-            <h1 className="text-lg font-bold text-white">Performance</h1>
-            <p className="text-xs text-slate-500">Herstel &amp; belastbaarheid, platformbreed</p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link href="/home" className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+              <Menu size={18} className="text-slate-400" />
+            </Link>
+            <div>
+              <h1 className="text-lg font-bold text-white">Performance</h1>
+              <p className="text-xs text-slate-500">Herstel &amp; belastbaarheid</p>
+            </div>
           </div>
+          {data && <ConfidenceBadge confidence={data.recovery.confidence} />}
         </div>
 
         {laden && <div className="h-64 bg-slate-800/50 rounded-2xl animate-pulse" />}
@@ -141,31 +206,48 @@ export default function PerformancePage() {
 
         {!laden && data && (
           <>
-            {/* Vandaag — Recovery + Readiness, het meest actionable */}
+            {/* Vandaag — Recovery + Readiness + cirkel-gauge */}
             <Card className="p-5">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-slate-500 uppercase tracking-wider">Vandaag</p>
-                <ConfidenceBadge confidence={data.recovery.confidence} />
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Vandaag</p>
+              <div className="flex items-center justify-between gap-4 mb-3">
+                <div className="flex-1 flex flex-col gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Herstel</p>
+                    <p className="text-2xl font-bold text-white">{data.recovery.value.score}<span className="text-sm text-slate-500 font-normal">/100</span></p>
+                    <p className="text-[10px] text-slate-500">{data.recovery.value.status}</p>
+                    <VoortgangsBalk waarde={data.recovery.value.score} max={100} kleur={KLEUR_HEX[data.recovery.value.color === 'green' ? 'groen' : data.recovery.value.color === 'orange' ? 'amber' : 'rood']} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Klaar om te presteren</p>
+                    <p className="text-2xl font-bold text-white">{data.readiness.value.score}<span className="text-sm text-slate-500 font-normal">/100</span></p>
+                    <p className="text-[10px] text-slate-500">{data.readiness.value.label}</p>
+                    <VoortgangsBalk waarde={data.readiness.value.score} max={100} kleur="#4ade80" />
+                  </div>
+                </div>
+                <CirkelGauge percentage={data.recovery.value.score} label={String(data.recovery.value.score)} sublabel="Herstelscore /100"
+                  kleur={KLEUR_HEX[data.recovery.value.color === 'green' ? 'groen' : data.recovery.value.color === 'orange' ? 'amber' : 'rood']} />
               </div>
-              <div className="grid grid-cols-2 gap-4 mb-3">
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Herstel</p>
-                  <p className="text-2xl font-bold text-white">{data.recovery.value.score}<span className="text-sm text-slate-500 font-normal">/100</span></p>
-                  <p className="text-[10px] text-slate-500">{data.recovery.value.status}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Klaar om te presteren</p>
-                  <p className="text-2xl font-bold text-white">{data.readiness.value.score}<span className="text-sm text-slate-500 font-normal">/100</span></p>
-                  <p className="text-[10px] text-slate-500">{data.readiness.value.label}</p>
-                </div>
+
+              <div className="flex items-start justify-between gap-4 pt-3 border-t border-coach-border">
+                {data.recovery.explanation && (
+                  <div className="flex items-start gap-2 flex-1">
+                    <span className="text-lg flex-shrink-0">🧠</span>
+                    <p className="text-xs text-slate-300">{data.recovery.explanation.coachMessage}</p>
+                  </div>
+                )}
+                {topFactoren.length > 0 && (
+                  <div className="flex-shrink-0">
+                    <p className="text-[10px] text-slate-500 mb-1.5">Belangrijkste factoren:</p>
+                    <div className="flex flex-wrap gap-1.5 justify-end">
+                      {topFactoren.map((f, i) => (
+                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">+ {f.factor}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              {data.recovery.explanation && (
-                <div className="p-3 bg-primary-500/5 border border-primary-500/20 rounded-xl mb-2">
-                  <p className="text-sm text-slate-200 mb-1">{data.recovery.explanation.summary}</p>
-                  <p className="text-xs text-primary-400 font-medium">{data.recovery.explanation.coachMessage}</p>
-                </div>
-              )}
-              <p className="text-[10px] text-slate-600">Max. intensiteit vandaag (CoachPolicy): <span className="text-slate-400 font-medium">{data.readiness.value.policy_maxIntensity}</span></p>
+
+              <p className="text-[10px] text-slate-600 mt-3">Max. intensiteit vandaag (CoachPolicy): <span className="text-slate-400 font-medium">{data.readiness.value.policy_maxIntensity}</span></p>
               {data.recovery.confidence.limitations.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-coach-border">
                   {data.recovery.confidence.limitations.slice(0, 2).map((l, i) => <p key={i} className="text-[10px] text-slate-600">• {l}</p>)}
@@ -173,33 +255,94 @@ export default function PerformancePage() {
               )}
             </Card>
 
-            {/* Belastbaarheid */}
+            {/* Belastbaarheid — met voortgangsbalken, 4 kolommen */}
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Belastbaarheid</p>
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                <div><p className="text-xs text-slate-500">CTL</p><p className="text-lg font-bold text-white">{data.load.value.ctl}</p></div>
-                <div><p className="text-xs text-slate-500">ATL</p><p className="text-lg font-bold text-white">{data.load.value.atl}</p></div>
-                <div><p className="text-xs text-slate-500">TSB</p><p className="text-lg font-bold text-white">{data.load.value.tsb}</p></div>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-coach-border">
-                <span className="text-sm text-slate-300">Vermoeidheid</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${KLEUR_CLASSES[labelKleur(data.fatigue.value.label)]}`}>{data.fatigue.value.score}/100 — {data.fatigue.value.label}</span>
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <p className="text-xs text-slate-500">CTL</p>
+                  <p className="text-lg font-bold text-white">{data.load.value.ctl}</p>
+                  <p className="text-[9px] text-slate-600">Korte termijn</p>
+                  <VoortgangsBalk waarde={data.load.value.ctl} max={20} kleur="#60a5fa" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">ATL</p>
+                  <p className="text-lg font-bold text-white">{data.load.value.atl}</p>
+                  <p className="text-[9px] text-slate-600">Middellange termijn</p>
+                  <VoortgangsBalk waarde={data.load.value.atl} max={20} kleur="#60a5fa" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">TSB</p>
+                  <p className="text-lg font-bold text-white">{data.load.value.tsb}</p>
+                  <p className="text-[9px] text-slate-600">Vermoeidheid</p>
+                  <VoortgangsBalk waarde={data.load.value.tsb + 20} max={40} kleur="#60a5fa" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Vermoeidheid</p>
+                  <p className="text-lg font-bold text-amber-400">{data.fatigue.value.score}/100</p>
+                  <p className="text-[9px] text-slate-600">{data.fatigue.value.label}</p>
+                  <VoortgangsBalk waarde={data.fatigue.value.score} max={100} kleur="#fb923c" />
+                </div>
               </div>
             </Card>
 
-            {/* Trends */}
+            {/* Trends — met gemiddelde/trend-paneel */}
             <Card className="p-5">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Herstel — 30 dagen</p>
-              <TrendGrafiek data={data.recoveryHistorie} kleur="#22c55e" />
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <TrendGrafiek data={data.recoveryHistorie} kleur="#22c55e" />
+                  <div className="flex justify-between text-[10px] text-slate-600 mt-1">
+                    <span>30 dgn geleden</span>
+                    <span>Vandaag</span>
+                  </div>
+                </div>
+                {trend && (
+                  <div className="flex-shrink-0 w-28 bg-slate-800/50 rounded-xl p-3 flex flex-col gap-3">
+                    <div>
+                      <p className="text-[10px] text-slate-500">Gemiddelde</p>
+                      <p className="text-lg font-bold text-green-400">{trend.gemiddelde}/100</p>
+                    </div>
+                    {trend.trendPct !== null && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 mb-0.5">Trend</p>
+                        <div className="flex items-center gap-1">
+                          {trend.richting === 'stijgend' ? <TrendingUp size={12} className="text-green-400" /> : trend.richting === 'dalend' ? <TrendingDown size={12} className="text-amber-400" /> : <Minus size={12} className="text-slate-400" />}
+                          <span className={`text-xs font-medium ${trend.richting === 'stijgend' ? 'text-green-400' : trend.richting === 'dalend' ? 'text-amber-400' : 'text-slate-400'}`}>
+                            {trend.richting === 'stabiel' ? 'Stabiel' : `${trend.trendPct! > 0 ? '+' : ''}${trend.trendPct}%`}
+                          </span>
+                        </div>
+                        <p className="text-[9px] text-slate-600 mt-0.5">vs. vorige week</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </Card>
 
-            {/* Consistentie */}
+            {/* Consistentie — cirkel-gauge */}
             <Card className="p-5">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Consistentie (8 weken)</p>
-              <p className="text-2xl font-bold text-white mb-2">{data.consistency.value.percentage}%</p>
-              <div className="flex gap-4 text-xs text-slate-500">
-                <span>Huidige streak: {data.consistency.value.huidigeStreakWeken} wk</span>
-                <span>Langste onderbreking: {data.consistency.value.langsteOnderbrekingWeken} wk</span>
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Consistentie (8 weken)</p>
+              <div className="flex items-center gap-5">
+                <CirkelGauge percentage={data.consistency.value.percentage} label={`${data.consistency.value.percentage}%`}
+                  sublabel={data.consistency.value.percentage >= 80 ? 'Goed' : data.consistency.value.percentage >= 50 ? 'Matig' : 'Laag'}
+                  kleur={data.consistency.value.percentage >= 80 ? '#4ade80' : data.consistency.value.percentage >= 50 ? '#fb923c' : '#f87171'} grootte={112} />
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} className="text-green-400" />
+                    <div>
+                      <p className="text-[10px] text-slate-500">Huidige streak</p>
+                      <p className="text-sm font-semibold text-white">{data.consistency.value.huidigeStreakWeken} week{data.consistency.value.huidigeStreakWeken === 1 ? '' : 'en'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Flame size={16} className="text-amber-400" />
+                    <div>
+                      <p className="text-[10px] text-slate-500">Langste onderbreking</p>
+                      <p className="text-sm font-semibold text-white">{data.consistency.value.langsteOnderbrekingWeken} week{data.consistency.value.langsteOnderbrekingWeken === 1 ? '' : 'en'}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </Card>
 
@@ -224,6 +367,20 @@ export default function PerformancePage() {
                 <p className="text-[10px] text-slate-500">t.o.v. de 14 dagen daarvoor — {data.progress.value.richting}</p>
               </Card>
             )}
+
+            {/* v2.4.208: Focus vandaag — afgeleid van bestaande readiness/
+                fatigue-labels, geen nieuwe databron */}
+            <Card className="p-4 flex items-start gap-3">
+              <span className="text-xl flex-shrink-0">💡</span>
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  Focus vandaag: {data.readiness.value.policy_maxIntensity === 'high' ? 'ruimte voor een pittige training' : data.readiness.value.policy_maxIntensity === 'low' ? 'actief herstel' : 'basisduur of techniektraining in Z2'}.
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {data.fatigue.value.score >= 60 ? 'Vermijd hoge intensiteit — je vermoeidheid loopt op.' : 'Luister naar je lichaam en pas aan waar nodig.'}
+                </p>
+              </div>
+            </Card>
 
             <p className="text-[10px] text-slate-600 text-center px-4">
               Deze cijfers zijn dezelfde data die Coach AI, Cycling Coach en Running Coach al gebruiken in hun advies.

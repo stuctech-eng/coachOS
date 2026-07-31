@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.208 — Performance-pagina: visuele herbouw naar gedecoreerde stijl
+**Gevraagd met referentie-screenshot: "alles erop en eraan". Puur
+presentatie — dezelfde onderliggende data/API, geen logica-wijziging.**
+
+### Nieuw
+- **`CirkelGauge`** — herbruikbaar SVG-ring-component, gebruikt voor
+  zowel Herstelscore (Vandaag-kaart) als Consistentie
+- **`VoortgangsBalk`** — kleine balkjes onder Herstel/Klaar om te
+  presteren en alle vier Belastbaarheid-cijfers (CTL/ATL/TSB/
+  Vermoeidheid)
+- **Belangrijkste factoren als losse pillen** — afgeleid van de
+  bestaande `recovery.value.breakdown`-data (top 3 op
+  `bijdrage_score`), geen nieuwe berekening
+- **Gemiddelde/trend-paneel** naast de Herstel-30-dagen-grafiek —
+  vergelijkt de laatste 7 dagen met de 7 dagen daarvoor, met
+  stijgend/dalend/stabiel-indicator
+- **"Focus vandaag"-tip** — afgeleid van bestaande
+  `readiness.policy_maxIntensity`/`fatigue`-labels
+- HIGH·90%-badge verplaatst naar rechtsboven de hele pagina (was:
+  in de kaart)
+
+### Bewuste beperking, eerlijk vermeld
+De balkjes onder de Fitness-indicatoren-kaarten zijn puur decoratief
+(tonen de huidige score als vulling), **geen echte historische
+sparkline** — die data (per-indicator tijdreeks) bestaat niet in de
+huidige API. De kale cijfers blijven de waarheid.
+
+**Gevalideerd:**
+- Trend-detectie: dalend/stijgend/stabiel correct herkend, inclusief
+  het randgeval <14 dagen data (geeft `trendPct: null`, geen crash)
+- Cirkel-gauge-omtrekberekening: 0%/64%/100% allemaal correct
+- `npx next build` — compileert zonder fouten
+
+**Test-instructie:** open Performance vanaf Home — zou nu de
+gedecoreerde weergave moeten tonen (cirkel-gauges, balkjes, pillen)
+i.p.v. de eerdere, minimalere versie.
+
 ## v2.4.207 — Definitieve fix trainingsvoorstel + Performance/Dagboek verplaatst
 **Gemeld met screenshot: nog steeds geen trainingsvoorstel in Smart
 Actions, ondanks v2.4.206's fix. Root cause: een race condition.**

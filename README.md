@@ -111,6 +111,20 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
+#### Performance-pagina — visuele herbouw (v2.4.208)
+
+Op verzoek: de weergave (`/performance`) omgezet naar een meer
+gedecoreerde stijl — cirkel-gauges (Herstelscore, Consistentie),
+voortgangsbalken onder Belastbaarheid-cijfers, "Belangrijkste
+factoren" als losse pillen (afgeleid van de bestaande
+`recovery.breakdown`-data, top 3 op bijdrage_score), een gemiddelde/
+trend-paneel naast de 30-dagen-grafiek, en een "Focus vandaag"-tip
+(afgeleid van bestaande readiness/fatigue-labels). **Puur presentatie
+— dezelfde onderliggende data/API (`/api/performance-engine`), geen
+logica-wijziging.** Gevalideerd: trend-detectie (dalend/stijgend/
+stabiel, met randgeval <14 dagen data) en de cirkel-gauge-wiskunde
+(omtrek-berekening bij 0%/64%/100%) — beide correct.
+
 #### Coach Planning, Coach Vooruitblik, Smart Actions & Coach Forecast
 
 **Fase A, stap 1 (Regels) afgerond — v2.4.198.** `/life-events` is
