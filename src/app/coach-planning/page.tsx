@@ -169,7 +169,20 @@ function formatUur(uur: number | null, minuut: number = 0): string {
   return `${String(uur).padStart(2, '0')}:${String(minuut).padStart(2, '0')}`
 }
 
-function vandaagStr(): string { return new Date().toISOString().split('T')[0] }
+// v2.4.203-FIX: KRITIEKE datumbug — .toISOString().split('T')[0] op een
+// lokaal geconstrueerde Date (bijv. lokale middernacht) converteert naar
+// UTC en kan daardoor een dag TERUGSPRINGEN (bijv. in Nederland, UTC+2:
+// 10 aug 00:00 lokaal -> 9 aug 22:00 UTC -> "2026-08-09"). Gevolg:
+// events verschenen een dag te laat in de maandkalender (bijv. een
+// vakantie die op maandag begint, verscheen op dinsdag). Deze functie
+// gebruikt lokale datumcomponenten (getFullYear/getMonth/getDate),
+// nooit een UTC-conversie — de enige juiste manier om "welke
+// kalenderdag is dit lokaal" te bepalen.
+function lokaleDagStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function vandaagStr(): string { return lokaleDagStr(new Date()) }
 
 function formatDatum(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
@@ -214,7 +227,7 @@ function isHerhalendActiefOpDag(event: LifeEvent, datum: Date): boolean {
   if (!event.recurrence) return false
   const dagNummer = datum.getDay()
   const isWeekend = dagNummer === 0 || dagNummer === 6
-  const dagStr = datum.toISOString().split('T')[0]
+  const dagStr = lokaleDagStr(datum)
   // v2.4.185 (Coach Agenda Fase A): uitzonderingen eerst checken
   if (event.recurrence_exceptions?.includes(dagStr)) return false
   // v2.4.189-FIX: begindatum werd nooit gecheckt — een terugkerende
@@ -575,7 +588,7 @@ function PlanningView({ events }: { events: LifeEvent[] }) {
   const bekekenMaand = new Date(basis.getFullYear(), basis.getMonth() + maandOffset, 1)
 
   function eventsOpDag(datum: Date): LifeEvent[] {
-    const dagStr = datum.toISOString().split('T')[0]
+    const dagStr = lokaleDagStr(datum)
     return events.filter(e => e.recurrence ? isHerhalendActiefOpDag(e, datum) : isEenmaligActiefVandaag(e, dagStr))
   }
 
@@ -641,7 +654,7 @@ function PlanningView({ events }: { events: LifeEvent[] }) {
           <div className="grid grid-cols-7 gap-1">
             {maandDagen.map((dag, i) => {
               const dagEvents = eventsOpDag(dag)
-              const dagStr = dag.toISOString().split('T')[0]
+              const dagStr = lokaleDagStr(dag)
               return (
                 <button key={i} onClick={() => setGeselecteerdeDag(dagStr)}
                   className={cn('aspect-square rounded-lg flex flex-col items-center justify-start pt-1 gap-0.5',
@@ -813,10 +826,10 @@ function WeekKalender({ events }: { events: LifeEvent[] }) {
   const feestdagen = getNederlandseFeestdagen(jaar)
 
   function getEventsVoorDag(dag: Date) {
-    const dagStr = dag.toISOString().split('T')[0]
+    const dagStr = lokaleDagStr(dag)
     return events.filter(e => e.recurrence ? isHerhalendActiefOpDag(e, dag) : isEenmaligActiefVandaag(e, dagStr))
   }
-  function getFeestdag(dag: Date) { return feestdagen.find(f => f.date === dag.toISOString().split('T')[0]) }
+  function getFeestdag(dag: Date) { return feestdagen.find(f => f.date === lokaleDagStr(dag)) }
   function isVandaag(dag: Date) { return dag.toDateString() === vandaag.toDateString() }
   function isWeekend(dag: Date) { const dn = dag.getDay(); return dn === 0 || dn === 6 }
 
@@ -1227,7 +1240,7 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
   // v2.4.196: minuten-precisie
   const [startMinute, setStartMinute] = useState<number>(event.start_minute ?? 0)
   const [endMinute, setEndMinute] = useState<number>(event.end_minute ?? 0)
-  const [startDate, setStartDate] = useState(new Date(event.start_time).toISOString().split('T')[0])
+  const [startDate, setStartDate] = useState(lokaleDagStr(new Date(event.start_time)))
   const [endDate, setEndDate] = useState(event.end_date || '')
   const [recurrence, setRecurrence] = useState(event.recurrence || '')
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>(event.recurrence_days || [])

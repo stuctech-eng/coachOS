@@ -165,6 +165,21 @@ tussen Overzicht en Smart Actions — geen dubbele logica.
 
 **Fase D (Coach Forecast) blijft visie**, zoals hieronder vastgelegd.
 
+**Kritieke fix — v2.4.203.** Gemeld: kalender toonde events een dag te
+laat (maandag → dinsdag), Overzicht toonde altijd 0 werkdiensten.
+Root cause 1: `.toISOString().split('T')[0]` op een lokaal
+geconstrueerde middernacht-Date springt in Nederland (UTC+2) een dag
+terug — elke dag in de maandkalender checkte intern de verkeerde
+datum. Root cause 2: de werkdiensten-telling sloot terugkerende events
+volledig uit (`!e.recurrence`), terwijl werkroosters vrijwel altijd
+terugkerend zijn. Beide gefixt en getest met het exacte gerapporteerde
+scenario. **Bredere bevinding, bewust NIET nu meegenomen:** hetzelfde
+`.toISOString().split('T')[0]`-patroon komt voor in 20 bestanden
+door de codebase — de ernstige variant (fout voor élke dag) zat alleen
+in de nu-gefixte bestanden; de overige 18 hebben de mildere variant
+(`new Date()`, alleen fout in een venster van enkele uren rond
+middernacht lokale tijd) — een reëel, lager-prioriteit vervolgpunt.
+
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan
 komt. Deze visie maakt dezelfde data zichtbaar op de plek waar de

@@ -1,5 +1,55 @@
 # CoachOS — Changelog
 
+## v2.4.203 — KRITIEKE FIX: kalender toonde events op de verkeerde dag + werkdiensten-telling was altijd 0
+**Gemeld: "Ipv maandag pakt hij dinsdag" (vakantie), "twee weken geen
+werkdiensten?" (Overzicht), "kan gemaakte afspraken niet veranderen".
+Alle drie onderzocht en bevestigd — twee echte, aparte bugs.**
+
+### Bug 1 — datum-conversiefout in de Coach Planning-kalender
+`dag.toISOString().split('T')[0]` op een lokaal geconstrueerde
+middernacht-Date (bijv. `new Date(2026, 7, 10)` voor 10 augustus)
+converteert naar UTC en springt daardoor in Nederland (UTC+2) een dag
+terug: 10 aug 00:00 lokaal → 9 aug 22:00 UTC → "2026-08-09". Gevolg:
+elke dag in de maandkalender-grid checkte intern de VERKEERDE datum —
+een vakantie die op maandag begint, verscheen op dinsdag.
+
+**Fix:** nieuwe `lokaleDagStr()`-helper (lokale datumcomponenten,
+nooit een UTC-conversie) — vervangt alle 6 voorkomens van dit patroon
+in `coach-planning/page.tsx`, plus 2 in `life-events-context.ts`
+(kleinere impact, alleen fout rond middernacht lokale tijd, maar voedt
+de Coach rechtstreeks) en 4 in `coach-planning-overzicht.ts`.
+
+**Waarschijnlijke verklaring voor "kan gemaakte afspraken niet
+veranderen":** een symptoom van dezelfde bug — na een wijziging bleef
+de kalender het event op de (verkeerde) dag tonen, wat leek alsof de
+wijziging niet werkte. De opslag-mechaniek zelf (`PATCH /api/life-
+events`) bleek ongewijzigd en correct.
+
+### Bug 2 — Overzicht's werkdiensten-telling sloot recurrente events uit
+`werkEventsKomende14Dagen` filterde op `!e.recurrence` — alleen
+**eenmalige** werk-events werden geteld. Werkroosters zijn vrijwel
+altijd terugkerend ingesteld, dus de telling gaf stelselmatig **0**
+terug, ongeacht een actief rooster.
+
+**Fix:** `src/lib/coach-planning-overzicht.ts` volledig herschreven —
+nieuwe `isEventActiefOpDag()` (dezelfde logica als `isHerhalendActiefOpDag`
+in coach-planning/page.tsx, hier bewust gedupliceerd voor server-side
+gebruik) checkt nu elke van de 14 dagen apart tegen zowel eenmalige als
+terugkerende werk-events. Ook: `recurrence_days`/`recurrence_end_date`/
+`recurrence_exceptions` toegevoegd aan de select (ontbraken volledig).
+
+**Gevalideerd:**
+- Datumfix: exact het gerapporteerde scenario (maandag 10 augustus,
+  Europe/Amsterdam) — toont nu correct "2026-08-10" i.p.v. het foute
+  "2026-08-09"
+- Werkdiensten-telling: een terugkerend Avonddienst-rooster (ma-do,
+  "Aangepast") geeft nu 8 werkdiensten in 14 dagen i.p.v. de foute 0
+- `npx next build` — compileert zonder fouten
+
+**Test-instructie:** open Coach Planning → Planning-tab — je vakantie
+zou nu op de juiste dag moeten staan. Check Overzicht — werkdiensten
+komende 14 dagen zou nu een reëel aantal moeten tonen, niet 0.
+
 ## v2.4.202 — Coach Planning Fase C: Smart Action Engine
 **Grootste losse stap van de hele Coach Planning-visie. 100%
 deterministisch — geen AI-call, zoals niet-onderhandelbaar

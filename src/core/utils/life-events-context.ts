@@ -2,6 +2,17 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { bepaalDagContext, type ResolvedContext } from './context-resolver'
 import { isFeestdag } from '@/lib/feestdagen'
 
+// v2.4.203-FIX: new Date().toISOString().split('T')[0] geeft de datum
+// in UTC, niet de lokale kalenderdag — kan rond middernacht lokale tijd
+// (bijv. Nederland, UTC+2) een dag te vroeg/laat rapporteren aan de
+// Coach. Kleinere impact dan de kritiekere versie in de Coach Planning-
+// kalender (v2.4.203, coach-planning/page.tsx — daar was het fout voor
+// élke dag, hier alleen in een venster van enkele uren rond
+// middernacht) maar wel gefixt, want dit voedt de Coach rechtstreeks.
+function lokaleDagStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 /**
  * Haalt ALLE levensgebeurtenissen op voor een gebruiker — alle categorieën
  * (Werk, Leven, Gezondheid, Omgeving), zowel eenmalige als herhalende events
@@ -61,7 +72,7 @@ export async function fetchTodaysLifeEvents(
   isWeekend: boolean
 ): Promise<LifeEventRow[]> {
   const SELECT_FIELDS = 'type, start_hour, end_hour, notes, recurrence, recurrence_days, recovery_impact, stress_load, sleep_disruption, start_time, end_date, recurrence_exceptions, recurrence_end_date'
-  const vandaag = new Date().toISOString().split('T')[0]
+  const vandaag = lokaleDagStr(new Date())
   const negentigDagenGeleden = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
 
   const [eenmaligRes, herhalendRes] = await Promise.all([
@@ -198,7 +209,7 @@ export async function haalDagContext(
 
   // v2.4.175 (Coach Agenda Fase 2, eerste stap): puur wiskundig, geen
   // extra databron of API-call nodig — zelfde berekening als de UI
-  const vandaag = new Date().toISOString().split('T')[0]
+  const vandaag = lokaleDagStr(new Date())
   const feestdag = isFeestdag(vandaag)
 
   return bepaalDagContext({
