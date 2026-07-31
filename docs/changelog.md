@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.198 — Coach Planning: Fase A, stap 1 (Regels)
+**Eerste bouwstap van de vastgelegde Coach Planning-visie. "Eerst de
+bestemming, dan de snelkoppeling" — vandaar dat deze stap begint bij
+de nieuwe module zelf, niet bij de Home-kaart.**
+
+### Wat er gebeurd is
+- `/life-events` (1441 regels) verplaatst naar `/coach-planning` —
+  **verplaatsing + tab-structuur, geen herbouw**. Alle onderliggende
+  functionaliteit (categorieën, Coach-properties, uitzonderingen,
+  AI-invoer met verplichte bevestiging, week-navigatie) blijft exact
+  zoals getest.
+- **Nieuwe tab-bar**: Regels (bestaand, actief) / Planning (placeholder)
+  / Overzicht (placeholder) — bewust géén "Vandaag"-tab (zou Home/
+  Today Engine dupliceren, eerder afgesproken)
+- Titel "Levensgebeurtenissen" → "Coach Planning"
+- `/life-events` blijft bestaan als **redirect** naar `/coach-planning`
+  — bestaande links/bladwijzers breken niet
+- `settings/page.tsx` — link en label bijgewerkt
+
+### Nog te bouwen (volgende stappen, per het vastgelegde plan)
+- Fase A, stap 2: Planning (maand-/weekagenda, kleurcodering)
+- Fase A, stap 3: Overzicht (intelligente samenvatting)
+- Fase B: Home — Coach Vooruitblik-kaart
+- Fase C: Smart Action Engine
+- Fase D: Coach Forecast
+
+**Gevalideerd:** `npx next build` — compileert zonder fouten. Beide
+routes bevestigd in de build-output (`/coach-planning` nieuw,
+`/life-events` nu een lichte 350B-redirect i.p.v. de oude ~70KB
+pagina). JSX-fragment-balans (voor de tab-conditionele weergave)
+bevestigd correct — 1 opening, 1 sluiting.
+
+**Test-instructie:** open Instellingen → "Coach Planning" — zou de
+vertrouwde Levensgebeurtenissen-functionaliteit moeten tonen onder een
+nieuwe tab-bar. Test ook of een oude link naar `/life-events` correct
+doorverwijst.
+
 ## v2.4.197 — Fix: "Jaarlijks" en "Maandelijks" ontbraken volledig
 **Gemeld: verjaardag toevoegen gaf "wekelijks" i.p.v. jaarlijks.
 Root cause: er was geen "jaarlijks"-optie om te kiezen — de AI koos

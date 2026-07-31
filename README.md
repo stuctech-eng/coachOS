@@ -111,7 +111,21 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
-#### Coach Planning, Coach Vooruitblik, Smart Actions & Coach Forecast — visie (vastgelegd 31 juli 2026, niets hiervan gebouwd)
+#### Coach Planning, Coach Vooruitblik, Smart Actions & Coach Forecast
+
+**Fase A, stap 1 (Regels) afgerond — v2.4.198.** `/life-events` is
+verplaatst naar `/coach-planning` (nieuwe module met 3 tabs: Regels/
+Planning/Overzicht). De "Regels"-tab bevat exact de bestaande, al-
+geteste functionaliteit (categorieën, uitzonderingen, AI-invoer,
+week-navigatie) — een verplaatsing + tab-structuur, geen herbouw.
+"Planning" en "Overzicht" zijn nu placeholders ("volgt in een
+volgende stap"). Oude `/life-events`-route blijft werken als redirect,
+bestaande links breken niet.
+
+**Fase A, stap 2 (Planning — maand-/weekagenda) en stap 3 (Overzicht —
+intelligente samenvatting): nog niet gebouwd.** Fase B (Home:
+Vooruitblik-kaart), Fase C (Smart Action Engine) en Fase D (Coach
+Forecast) blijven visie, zoals hieronder vastgelegd.
 
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan
