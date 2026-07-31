@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.209 — Kleine fixes: "Indoor Fiets" hernoemd + bottom-nav scrollde nog
+
+### "Indoor Fiets" → "Fietsen"
+Gemeld: waarom heet het "Indoor Fiets" — moet dat niet gesplitst in
+Indoor/Buiten? Onderzocht: de onderliggende oefeningen (`cycling-
+drills.ts`) zijn op één na (Enkel Been Drill, expliciet "gebruik een
+indoor trainer") allemaal generiek geschreven — Recovery Ride, Sweet
+Spot, VO2max-intervallen, zelfs "Lange Rit" (spreekt over "langere
+routes", eerder buiten-taal). De naam suggereerde dus een onderscheid
+dat er niet is.
+
+**Fix:** `src/app/settings/equipment/page.tsx` — hernoemd naar
+"Fietsen" / "Indoor of buiten". Bewust **niet** gesplitst in twee
+losse toggles — dat zou een schijn-onderscheid zijn zonder functioneel
+verschil, aangezien dezelfde oefeningen-lijst er toch achter zit.
+
+### Bottom-nav scrollde nog steeds
+Gemeld ná v2.4.204's verwijdering van de "Coach"-tab (6→5 tabs).
+Root cause: `src/components/layout/index.tsx` had `overflow-x-auto`
+nog hard aanstaan — oorspronkelijk bewust ingebouwd (v2.4.111) als
+vangnet voor 6 tabs, nooit verwijderd toen dat naar 5 ging.
+
+**Fix:** `overflow-x-auto` verwijderd, nav gebruikt nu `justify-around`
+voor een gelijkmatige verdeling. Gevalideerd: 5 tabs × 68px minimale
+breedte = 340px, past ruim op zelfs het smalste huidige iPhone-model
+(SE 2020+, 375px breed) — geen scroll-vangnet meer nodig.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** check de equipment-instellingen (nu "Fietsen"
+i.p.v. "Indoor Fiets"), en swipe over de bottom-nav — zou nu niet meer
+moeten scrollen, alle 5 tabs gelijkmatig verdeeld in beeld.
+
 ## v2.4.208 — Performance-pagina: visuele herbouw naar gedecoreerde stijl
 **Gevraagd met referentie-screenshot: "alles erop en eraan". Puur
 presentatie — dezelfde onderliggende data/API, geen logica-wijziging.**

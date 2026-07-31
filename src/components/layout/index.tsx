@@ -5,8 +5,9 @@ import { Home, Dumbbell, TrendingUp, Star, Activity } from 'lucide-react'
 import { cn } from '@/utils'
 import { useEffect, useRef } from 'react'
 
-// v2.4.111: Activiteiten terug als eigen tab, op verzoek — de balk is
-// al horizontaal scrollbaar (overflow-x-auto), dus 6 items is prima.
+// v2.4.111: Activiteiten terug als eigen tab, op verzoek.
+// v2.4.204: "Coach"-tab verwijderd (6→5 tabs) — de horizontale scroll
+// was destijds bedoeld als vangnet voor 6 items, niet meer nodig.
 // Was in v2.4.93 verplaatst naar een sectie binnen Voortgang; nu weer
 // een eigen tab, Voortgang toont Activiteiten niet meer als sectie.
 const navItems = [
@@ -27,7 +28,7 @@ export function BottomNav() {
       {/* no-scrollbar is optioneel/niet gedefinieerd in dit project — geen
           probleem, iOS Safari verbergt scrollbars al standaard. Puur ter
           documentatie van de intentie, geen functionele afhankelijkheid. */}
-      <div className="flex items-center overflow-x-auto pt-2 pb-1 px-1 no-scrollbar">
+      <div className="flex items-center justify-around pt-2 pb-1 px-1">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
           return (

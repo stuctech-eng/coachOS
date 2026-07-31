@@ -111,6 +111,21 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
+#### Kleine fixes — v2.4.209
+
+- **"Indoor Fiets" hernoemd naar "Fietsen"** (equipment-instellingen):
+  de onderliggende oefeningen (Recovery Ride, Sweet Spot, VO2max-
+  intervallen, etc.) zijn op één na allemaal generiek geschreven, niet
+  indoor-specifiek — de oude naam suggereerde een onderscheid dat er
+  niet is. Bewust hernoemd i.p.v. gesplitst in Indoor/Buiten — dat zou
+  een schijn-onderscheid zijn zonder functioneel verschil.
+- **Bottom-nav scrollde nog steeds**, ook na v2.4.204's verwijdering
+  van de Coach-tab (6→5 tabs). Root cause: `overflow-x-auto` stond nog
+  hard aan, oorspronkelijk bedoeld als vangnet voor 6 items — met 5
+  tabs (340px minimale breedte) is dat niet meer nodig, past ruim op
+  zelfs het smalste huidige iPhone-model (375px). Verwijderd, nav
+  gebruikt nu `justify-around` voor een nette, gelijkmatige verdeling.
+
 #### Performance-pagina — visuele herbouw (v2.4.208)
 
 Op verzoek: de weergave (`/performance`) omgezet naar een meer

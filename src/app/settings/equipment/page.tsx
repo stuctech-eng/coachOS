@@ -27,7 +27,13 @@ interface EquipmentState {
 const EQUIPMENT_LIJST: Equipment[] = [
   { id: 'kettlebell_available', label: 'Kettlebell', sub: 'Kettlebell training', emoji: '🏋️' },
   { id: 'concept2_available', label: 'Concept2 Roeimachine', sub: 'Indoor roeien', emoji: '🚣' },
-  { id: 'cycling_available', label: 'Indoor Fiets', sub: 'Indoor fietsen', emoji: '🚴' },
+  // v2.4.209-FIX: "Indoor Fiets" was een verkeerde naam — de
+  // onderliggende oefeningen (Recovery Ride, Sweet Spot, VO2max-
+  // intervallen, etc.) zijn op één na (Enkel Been Drill) allemaal
+  // generiek geschreven, niet indoor-specifiek. Simpelweg hernoemd
+  // i.p.v. gesplitst — een indoor/buiten-onderscheid zou hier een
+  // schijn-verschil zijn zonder functionele betekenis.
+  { id: 'cycling_available', label: 'Fietsen', sub: 'Indoor of buiten', emoji: '🚴' },
   { id: 'running_available', label: 'Hardlopen', sub: 'Buiten of op loopband', emoji: '🏃' },
   { id: 'dumbbell_available', label: 'Dumbbells', sub: 'Vrije gewichten', emoji: '💪' },
   { id: 'barbell_available', label: 'Barbell + Gewichten', sub: 'Olympische stang', emoji: '🏋️' },
