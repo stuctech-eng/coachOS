@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.207 — Definitieve fix trainingsvoorstel + Performance/Dagboek verplaatst
+**Gemeld met screenshot: nog steeds geen trainingsvoorstel in Smart
+Actions, ondanks v2.4.206's fix. Root cause: een race condition.**
+
+### Root cause
+v2.4.206's cache-lezing (`coach_recommendations.training_instruction`)
+liep **parallel** met Home's eigen `/api/today`-aanroep, die diezelfde
+cache vult. Als Smart Actions eerder klaar was dan die aanroep, las het
+een nog lege cache — verscheen alsnog geen trainingsvoorstel, ondanks
+dat de fix op zich correct was.
+
+### Definitieve fix
+`src/app/api/smart-actions/route.ts` — de volledige Today Engine
+(`bepaalTodayPlan()`, inclusief Trainer AI) rechtstreeks aanroepen,
+maar met een **harde tijdslimiet** via `Promise.race` (2,5 sec):
+- **Binnen de limiet**: correct, volledig resultaat — trainingsvoorstel
+  verschijnt, ongeacht of het via een specialist-plan of Trainer AI komt
+- **Buiten de limiet** (trage AI-generatie): alleen het
+  trainingsvoorstel wordt overgeslagen, de rest van Smart Actions
+  (blessures/wedstrijd/vakantie/fallbacks) blijft snel — geen totale
+  blokkade meer op één trage bron
+
+Dit vervangt zowel v2.4.204's aanpak (geen Trainer AI, te weinig) als
+v2.4.206's aanpak (cache-lezing, race condition) door een robuustere
+oplossing die snelheid EN correctheid combineert.
+
+### Ook in deze levering
+**Performance en Dagboek verplaatst** naar onderaan Home, bij "Week
+overzicht" — waren eerder los bovenaan Home gebundeld, gevraagd om ze
+samen te groeperen bij de andere "ga ergens anders naartoe"-links.
+
+**Gevalideerd:**
+- Tijdslimiet-logica: snel resultaat (100ms) komt correct door; traag
+  resultaat (3000ms, tegen een 500ms testlimiet) wordt correct na de
+  limiet afgekapt zonder de rest te blokkeren
+- `npx next build` — compileert zonder fouten
+
+**Test-instructie:** open Home — Smart Actions zou nu (binnen ~2,5
+sec) een trainingsvoorstel moeten tonen, ongeacht of er een actief
+specialist-plan is. Performance en Dagboek staan nu onderaan, bij Week
+overzicht.
+
 ## v2.4.206 — REGRESSIE-FIX: "Snelle actie naar trainingsplan is weg"
 **Gemeld ná v2.4.204's snelheidsfix. Bevestigd: die fix loste de
 vertraging op, maar liet een echte functie verdwijnen.**

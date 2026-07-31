@@ -544,21 +544,6 @@ export default function HomePage() {
           </Link>
         )}
 
-        {/* v2.4.142: Performance — platformniveau, geen Cycling/Running-
-            specifieke plek. Altijd zichtbaar, niet afhankelijk van
-            garminImported — de pagina zelf toont een nette lege staat. */}
-        <Link href={'/performance'}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-left active:bg-rose-500/15 transition-colors">
-          <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center flex-shrink-0">
-            <HeartPulse size={16} className="text-rose-400" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-rose-400">Performance</p>
-            <p className="text-xs text-slate-500 mt-0.5">Herstel &amp; belastbaarheid</p>
-          </div>
-          <ChevronDown size={16} className="text-rose-400/50 -rotate-90 flex-shrink-0" />
-        </Link>
-
         {/* Coach Score */}
         <Card className={cn('p-5', getScoreBg(score))}>
           <div className="flex items-center justify-between mb-4">
@@ -622,24 +607,6 @@ export default function HomePage() {
             </div>
           </div>
         )}
-
-        {/* Dagboek */}
-        <Link href="/dagboek">
-          <Card className="px-5 py-4 border border-slate-700/50 active:bg-slate-800/80 transition-colors">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
-                  <BookOpen size={16} className="text-violet-400" />
-                </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">Dagboek</p>
-                  <p className="text-slate-400 text-xs mt-0.5">Hoe was je dag?</p>
-                </div>
-              </div>
-              <ChevronDown size={16} className="text-slate-500 -rotate-90" />
-            </div>
-          </Card>
-        </Link>
 
         {/* v2.4.204: Smart Actions verplaatst naar direct onder Coach
             Score (v2.4.202 (Coach Planning Fase C): top 3,
@@ -853,6 +820,38 @@ export default function HomePage() {
                 <p className="text-white text-sm font-medium">Week</p>
                 <p className="text-slate-500 text-xs">Overzicht</p>
               </div>
+            </div>
+          </Card>
+        </Link>
+
+        {/* v2.4.207: Performance en Dagboek verplaatst naar hier, bij
+            Week overzicht — waren eerder los bovenaan Home, gebundeld
+            met de andere "ga ergens anders naartoe"-links */}
+        <Link href={'/performance'}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-left active:bg-rose-500/15 transition-colors">
+          <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center flex-shrink-0">
+            <HeartPulse size={16} className="text-rose-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-rose-400">Performance</p>
+            <p className="text-xs text-slate-500 mt-0.5">Herstel &amp; belastbaarheid</p>
+          </div>
+          <ChevronDown size={16} className="text-rose-400/50 -rotate-90 flex-shrink-0" />
+        </Link>
+
+        <Link href="/dagboek">
+          <Card className="px-5 py-4 border border-slate-700/50 active:bg-slate-800/80 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                  <BookOpen size={16} className="text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold text-sm">Dagboek</p>
+                  <p className="text-slate-400 text-xs mt-0.5">Hoe was je dag?</p>
+                </div>
+              </div>
+              <ChevronDown size={16} className="text-slate-500 -rotate-90" />
             </div>
           </Card>
         </Link>

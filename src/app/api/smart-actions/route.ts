@@ -5,6 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { haalOverzichtData } from '@/lib/coach-planning-overzicht'
+import { bepaalTodayPlan } from '@/lib/today-engine'
 import { kiesTop3, type ActionProposal } from '@/lib/smart-action-engine'
 
 async function getUser() {
@@ -20,29 +21,43 @@ async function getUser() {
 
 // ── Coach Planning Fase C: Smart Actions ─────────────────────────────
 // Verzamelt actie-voorstellen uit bestaande bronnen (Injuries,
-// specialist-trainingsplan, Coach Planning-overzicht), geen nieuwe
-// databron. Elke bron levert een vast prioriteitscijfer aan; kiesTop3()
-// (100% deterministisch, geen AI) kiest de uiteindelijke top 3.
+// specialist-trainingsplan/Today Engine, Coach Planning-overzicht),
+// geen nieuwe databron. Elke bron levert een vast prioriteitscijfer
+// aan; kiesTop3() (100% deterministisch, geen AI) kiest de
+// uiteindelijke top 3.
 //
-// v2.4.204-FIX: gebruikte voorheen bepaalTodayPlan() (de volledige
-// Today Engine, inclusief de Trainer AI-vangnet-laag) — die doet bij
-// "geen actief specialist-plan" een ECHTE Claude-aanroep
-// (claude-haiku-4-5, in api/training/today), goed voor de ~3
-// seconden vertraging die gemeld werd. Smart Actions heeft voor het
-// "training vandaag"-signaal geen AI-gepersonaliseerde tekst nodig —
-// alleen een snelle ja/nee. Nu: rechtstreekse databasecheck op een
-// geplande specialist-sessie (geen AI-call, geen Trainer AI-vangnet
-// hier). Als er geen specialist-plan is, laat Smart Actions dit
-// voorstel gewoon weg — de volledige Today Engine (mét Trainer AI)
-// blijft gewoon actief op de bestaande "Vandaag van je Coach"-kaart.
+// v2.4.204-FIX: gebruikte oorspronkelijk bepaalTodayPlan() (de
+// volledige Today Engine, inclusief de Trainer AI-vangnet-laag) — die
+// doet bij "geen actief specialist-plan" een échte Claude-aanroep
+// (~3 sec vertraging, gemeld).
+// v2.4.206-FIX: verving dit door een cache-lezing
+// (coach_recommendations.training_instruction) — bleek een race
+// condition te hebben: als Home's eigen /api/today-aanroep de cache
+// nog niet gevuld had op het moment dat Smart Actions las, verscheen
+// er alsnog geen trainingsvoorstel (gemeld, met screenshot).
+// v2.4.207-FIX: definitieve oplossing — de volledige Today Engine
+// (bepaalTodayPlan, inclusief Trainer AI) rechtstreeks aanroepen, maar
+// met een HARDE TIJDSLIMIET (Promise.race, 2.5 sec). Binnen de
+// limiet: correct, volledig resultaat. Buiten de limiet (trage
+// AI-generatie): het trainingsvoorstel wordt overgeslagen, de rest
+// van Smart Actions (blessures/wedstrijd/vakantie/fallbacks) blijft
+// gewoon snel. Geen race condition meer, en nooit meer een totale
+// blokkade op een trage AI-call.
 //
 // Prioriteitstabel (bewust vastgelegd, niet impliciet):
 //   98 — actieve blessure (gezondheid gaat altijd voor)
-//   95 — training vandaag gepland (specialist-trainingsplan)
+//   95 — training vandaag gepland (Today Engine, met tijdslimiet)
 //   85 — wedstrijd binnen 7 dagen
 //   70 — vakantie binnen 3 dagen
 //   30 — altijd beschikbaar: vraag de Coach
 //   20 — altijd beschikbaar: open Coach Planning
+
+function metTijdslimiet<T>(belofte: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([
+    belofte,
+    new Promise<null>(resolve => setTimeout(() => resolve(null), ms)),
+  ])
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -58,45 +73,20 @@ export async function GET(req: NextRequest) {
       voorstellen.push({ icon: '🤕', label: 'Blessure bijwerken', href: '/injuries', priority: 98, bron: 'Injuries' })
     }
 
-    // ── Bron 2: Training vandaag gepland — snelle DB-check, geen AI ────
-    const vandaag = new Date()
-    const vandaagStr = `${vandaag.getFullYear()}-${String(vandaag.getMonth() + 1).padStart(2, '0')}-${String(vandaag.getDate()).padStart(2, '0')}`
-    const { data: actievePlannen } = await supabase
-      .from('training_plans').select('id').eq('athlete_id', user.id).eq('status', 'active')
-    const planIds = (actievePlannen || []).map(p => p.id)
-    let training_toegevoegd = false
-    if (planIds.length > 0) {
-      const { data: sessieVandaag } = await supabase
-        .from('training_plan_sessions').select('sport, type')
-        .in('plan_id', planIds).eq('date', vandaagStr).neq('status', 'cancelled').maybeSingle()
-      if (sessieVandaag) {
+    // ── Bron 2: Today Engine — training vandaag gepland, met tijdslimiet ──
+    try {
+      const cookieHeader = req.headers.get('cookie') || ''
+      const todayPlan = await metTijdslimiet(bepaalTodayPlan(user.id, cookieHeader, req.nextUrl.origin), 2500)
+      if (todayPlan && todayPlan.source !== 'rust') {
         voorstellen.push({
-          icon: sessieVandaag.sport === 'cycling' ? '🚴' : sessieVandaag.sport === 'running' ? '🏃' : '💪',
-          label: 'Start training',
-          href: `/coach/${sessieVandaag.sport}/trainingsplan`,
-          priority: 95, bron: 'Trainingsplan',
+          icon: todayPlan.source === 'cycling' ? '🚴' : todayPlan.source === 'running' ? '🏃' : '💪',
+          label: todayPlan.actionLabel, href: todayPlan.actionHref, priority: 95, bron: 'Today Engine',
         })
-        training_toegevoegd = true
+      } else if (!todayPlan) {
+        console.error('[smart-actions] Today Engine binnen 2.5 sec geen resultaat — trainingsvoorstel overgeslagen, rest gaat door')
       }
-    }
-    // v2.4.206-FIX: gemeld — "snelle actie naar trainingsplan is weg".
-    // v2.4.204's snelheidsfix liet de Trainer AI-vangnet-laag volledig
-    // weg (geen specialist-plan vandaag → geen trainingsvoorstel meer,
-    // waar dat voorheen via de volledige Today Engine wél kwam). Nu:
-    // als er geen specialist-sessie is, wordt de CACHE van Trainer AI
-    // gelezen (coach_recommendations.training_instruction,
-    // type='training_today') — als die al eerder vandaag gegenereerd
-    // is (bijv. via Home's eigen /api/today-aanroep), tonen we 'm hier
-    // ook, zonder zelf een nieuwe, trage AI-call te triggeren. Nog
-    // steeds geen 3-seconden-vertraging — puur een snelle cache-lezing.
-    if (!training_toegevoegd) {
-      const { data: cacheRij } = await supabase
-        .from('coach_recommendations').select('training_instruction')
-        .eq('user_id', user.id).eq('date', vandaagStr).eq('type', 'training_today').maybeSingle()
-      const instr = cacheRij?.training_instruction as { training_allowed?: boolean; title?: string } | null
-      if (instr?.training_allowed) {
-        voorstellen.push({ icon: '💪', label: instr.title || 'Start training', href: '/training', priority: 95, bron: 'Trainer AI (cache)' })
-      }
+    } catch (err) {
+      console.error('[smart-actions] Today Engine ophalen mislukt:', err)
     }
 
     // ── Bron 3: Coach Planning-overzicht — wedstrijd/vakantie ──────────

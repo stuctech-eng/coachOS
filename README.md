@@ -220,6 +220,21 @@ snelle databaselezing, geen nieuwe AI-call, dus nog steeds geen
 vertraging. 4 scenario's getest (specialist/cache/geen van beide/beide
 tegelijk) — allemaal correct, geen dubbele voorstellen.
 
+**Definitieve fix — v2.4.207: v2.4.206's cache-lezing bleek een race
+condition te hebben.** Home's eigen `/api/today`-aanroep (die de cache
+vult) en Smart Actions' cache-lezing liepen parallel — als Smart
+Actions eerder klaar was, las die een nog lege cache, dus verscheen
+er alsnog geen trainingsvoorstel (opnieuw gemeld, met screenshot).
+**Definitieve oplossing:** de volledige Today Engine rechtstreeks
+aanroepen (inclusief Trainer AI), maar met een **harde tijdslimiet**
+(`Promise.race`, 2,5 sec) — binnen de limiet een correct, volledig
+resultaat; erbuiten wordt alleen het trainingsvoorstel overgeslagen,
+de rest van Smart Actions (blessures/wedstrijd/vakantie/fallbacks)
+blijft snel. Geen race condition meer, en nooit meer een totale
+blokkade op een trage AI-generatie. Ook: **Performance en Dagboek
+verplaatst** naar onderaan Home, bij "Week overzicht" (waren eerder
+los bovenaan gebundeld).
+
 **Aanleiding:** Levensgebeurtenissen werkt goed (Fase A/B hierboven),
 maar is een eindstation — je moet er zelf naartoe om te zien wat eraan
 komt. Deze visie maakt dezelfde data zichtbaar op de plek waar de
