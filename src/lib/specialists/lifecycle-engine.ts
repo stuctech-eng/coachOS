@@ -1,5 +1,6 @@
 import { haalCyclingData } from './cycling-data'
 import { haalRunningData } from './running-data'
+import { haalRowingData } from './rowing-data'
 
 // ── Specialist Lifecycle Engine ─────────────────────────────────────────
 // Bewust GEEN opgeslagen status-veld in de database — de levenscyclus is
@@ -102,4 +103,10 @@ export async function bepaalCyclingLifecycle(userId: string, isActief: boolean):
 
 export async function bepaalRunningLifecycle(userId: string, isActief: boolean): Promise<LifecycleResult> {
   return berekenLifecycle(haalRunningData, userId, isActief)
+}
+
+// v2.4.216 (Rowing Platform Fase 1, stap 1): identiek patroon aan
+// Cycling/Running — geen aparte logica nodig
+export async function bepaalRowingLifecycle(userId: string, isActief: boolean): Promise<LifecycleResult> {
+  return berekenLifecycle(haalRowingData, userId, isActief)
 }

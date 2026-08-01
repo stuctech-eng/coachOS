@@ -628,7 +628,23 @@ vormen ze de volledige, actuele status.*
 | Rowing/Strength/Kettlebell als volwaardige specialisten | ⏳ Niet gestart | Elk net zo groot als de Cycling/Running-pariteitsronde — vergt concrete aanleiding |
 | Multi-sport Orchestrator (`TodaySchedule`) | ⏳ Niet gestart | Pas zinvol zodra er meerdere volwassen specialisten zijn |
 
-#### Rowing Platform — Master Vision (vastgelegd 1 augustus 2026, niets gebouwd)
+#### Rowing Platform — Master Vision, Fase 1 stap 1 (basisstructuur) afgerond v2.4.216
+
+**Wat er nu staat:** `rowing` geactiveerd als derde specialist
+(`status: 'active'` in `api/specialists/route.ts`, bereikbaar via
+Specialisten → tikbaar i.p.v. gedimd in "Binnenkort"). Nieuwe
+`src/lib/specialists/rowing-data.ts` (spiegelbeeld van running-data.ts,
+leest bestaande `activity_sessions` met naam "Roeien") en
+`bepaalRowingLifecycle()` toegevoegd aan de lifecycle-engine — zelfde
+patroon als Cycling/Running. `/coach/rowing` toont een **eerlijke lege
+staat** (geen Concept2-koppeling nog, geen nepdata) met een korte
+"Binnenkort"-lijst.
+
+**Bewust NOG NIET gebouwd** (volgende stappen): Training Plan Engine,
+Workout Builder, Analyse-engine, Concept2 OAuth-koppeling (wacht op
+developer-sleutels — moet door de gebruiker zelf aangevraagd worden
+via `log.concept2.com/developers/documentation/`), Coach Memory,
+Today Engine-integratie.
 
 **Filosofie:** CoachOS krijgt geen "PM5-ondersteuning" — het krijgt een
 volledig Rowing Platform. De Rowing Specialist blijft altijd eigenaar

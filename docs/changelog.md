@@ -1,5 +1,46 @@
 # CoachOS — Changelog
 
+## v2.4.216 — Rowing Platform Fase 1, stap 1: basisstructuur
+**Eerste bouwstap van de Rowing Platform Master Vision (vastgelegd
+1 augustus 2026). Derde specialist naast Cycling en Running.**
+
+### Nieuw
+- **`src/lib/specialists/rowing-data.ts`** — data-layer, spiegelbeeld
+  van running-data.ts. Leest bestaande `activity_sessions` gefilterd
+  op activiteitnaam "Roeien" (geverifieerd tegen strava-activity-
+  processor.ts en tcx-parser.ts) + `training_results` waar
+  `training_type='rowing'`.
+- **`bepaalRowingLifecycle()`** toegevoegd aan `lifecycle-engine.ts` —
+  exact zelfde patroon als Cycling/Running, geen nieuwe logica.
+- **`api/specialists/route.ts`** — rowing's status van `'development'`
+  naar `'active'` gezet, nu tikbaar in Specialisten i.p.v. gedimd in
+  "Binnenkort".
+- **`/coach/rowing`** (nieuw dashboard) + **`api/specialists/rowing/
+  data`** (dunne route, hergebruikt `haalRowingData()`) — toont een
+  **eerlijke lege staat**: geen Concept2-koppeling, geen nepdata, wel
+  een korte "Binnenkort"-lijst (Concept2-koppeling/trainingsplan/
+  analyse).
+
+### Bewust nog niet gebouwd (volgende stappen)
+Training Plan Engine (periodisering), Workout Builder, Analyse-engine,
+Concept2 OAuth-koppeling — wacht op developer-sleutels die de
+gebruiker zelf moet aanvragen via `log.concept2.com/developers/
+documentation/` (OAuth2, Client ID + Secret nodig) — Coach Memory,
+Today Engine-integratie.
+
+**Onderzocht tijdens deze stap:** Concept2 heeft een echte, bruikbare
+API (`/api/users/me/results`, Bearer-token, OAuth2) — bevestigt dat
+Fase 1's ErgData/Cloud-sync-aanpak haalbaar is zodra de sleutels er
+zijn. Beperking: stroke-detail alleen voor ErgData-sessies, bulk-
+download geeft alleen samenvattingen.
+
+`npx next build` — compileert zonder fouten. Beide nieuwe routes
+bevestigd in de build-output.
+
+**Test-instructie:** open Specialisten — Rowing zou nu tikbaar moeten
+zijn (niet meer gedimd). Tik erop — zou een nette lege staat moeten
+tonen, geen foutmelding.
+
 ## v2.4.215 — Fix: sport-terminologie-verwarring in coach-berichten
 **Gemeld met screenshot: Trainer AI noemde "je FTP gaat omhoog" bij
 een hardloopsessie — FTP (Functional Threshold Power) is een

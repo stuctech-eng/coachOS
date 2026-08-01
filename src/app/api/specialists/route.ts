@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
-import { bepaalCyclingLifecycle, bepaalRunningLifecycle } from '@/lib/specialists/lifecycle-engine'
+import { bepaalCyclingLifecycle, bepaalRunningLifecycle, bepaalRowingLifecycle } from '@/lib/specialists/lifecycle-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -20,17 +20,21 @@ async function getUser() {
 // v2.4.83: running geactiveerd — tweede specialist, referentie-
 // implementatie voor de "invuloefening"-belofte uit
 // specialist-engine-architecture.md
+// v2.4.216 (Rowing Platform Fase 1, stap 1): rowing geactiveerd —
+// derde specialist. Nog geen Concept2-koppeling (wacht op API-
+// sleutels), maar de basisstructuur (dashboard/lege staat) is er.
 const SPECIALIST_CONFIG: Record<string, { label: string; status: 'active' | 'development' }> = {
   cycling:  { label: 'Cycling Coach',  status: 'active' },
   running:  { label: 'Running Coach',  status: 'active' },
-  rowing:   { label: 'Rowing Coach',   status: 'development' },
+  rowing:   { label: 'Rowing Coach',   status: 'active' },
   strength: { label: 'Strength Coach', status: 'development' },
 }
 
-// v2.4.83: running toegevoegd — heeft nu een werkende Data Layer
+// v2.4.216: rowing toegevoegd
 const LIFECYCLE_ONDERSTEUND: Record<string, (userId: string, actief: boolean) => Promise<unknown>> = {
   cycling: bepaalCyclingLifecycle,
   running: bepaalRunningLifecycle,
+  rowing: bepaalRowingLifecycle,
 }
 
 export async function GET() {
