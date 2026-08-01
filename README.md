@@ -714,6 +714,18 @@ aanbevolen, "om potentiële problemen te voorkomen"). Volgende sync-
 poging zou nu een concreet, bruikbaar signaal moeten geven i.p.v. een
 ambigue "0/0".
 
+**Root cause gevonden — v2.4.221.** De diagnostiek werkte precies
+zoals bedoeld: "56 gevonden bij Concept2. Fout bij opslaan: new row
+for relation 'activity_sessions' violates check constraint
+'activity_sessions_source_check'". Een database-constraint stond
+alleen `manual`/`garmin`/`apple_health`/`strava` toe als `source` —
+`'concept2'` ontbrak. **SQL-fix** (`supabase/
+fix_source_check_concept2.sql`): huidige toegestane waarden bevestigd
+via `pg_get_constraintdef` vóór het schrijven van de fix (niets per
+ongeluk verwijderd), constraint uitgebreid met `'concept2'`. Geen
+codewijziging nodig — de sync-route gebruikte al correct
+`source: 'concept2'`, exact matchend met de nieuwe constraint.
+
 **Filosofie:** CoachOS krijgt geen "PM5-ondersteuning" — het krijgt een
 volledig Rowing Platform. De Rowing Specialist blijft altijd eigenaar
 van trainingsplanning, coaching, analyse en progressie; apparaten

@@ -1,5 +1,36 @@
 # CoachOS — Changelog
 
+## v2.4.221 — SQL-fix: root cause van de "0/0"-sync gevonden
+**v2.4.220's diagnostiek werkte precies zoals bedoeld — direct de
+exacte oorzaak teruggekregen: "56 gevonden bij Concept2. Fout bij
+opslaan: new row for relation 'activity_sessions' violates check
+constraint 'activity_sessions_source_check'".**
+
+### Root cause
+Een database-constraint op `activity_sessions.source` stond alleen
+`manual`/`garmin`/`apple_health`/`strava` toe. `'concept2'` ontbrak —
+alle 56 gevonden sessies werden dus gevonden, maar geen van alle kon
+worden opgeslagen.
+
+### Fix — SQL only, geen codewijziging
+Vóór het schrijven van de fix eerst de huidige constraint-definitie
+opgevraagd (`pg_get_constraintdef`) om zeker te weten welke waarden
+al toegestaan waren — niets per ongeluk verwijderd:
+
+```sql
+alter table activity_sessions drop constraint activity_sessions_source_check;
+alter table activity_sessions add constraint activity_sessions_source_check
+  check (source = ANY (ARRAY['manual'::text, 'garmin'::text, 'apple_health'::text, 'strava'::text, 'concept2'::text]));
+```
+
+Geen codewijziging nodig — de sync-route (`v2.4.219`) gebruikte al
+correct `source: 'concept2'`, exact matchend met de nieuwe,
+uitgebreide constraint.
+
+**Test-instructie:** voer de SQL uit, tik daarna nogmaals op "Sync nu"
+bij Rowing Coach — zou nu daadwerkelijk sessies moeten importeren
+(bron "concept2" i.p.v. "strava").
+
 ## v2.4.220 — Diagnose-fix: sync gaf "0/0" ondanks echte data in Concept2
 **Gemeld met screenshot: 9+ echte sessies zichtbaar in het Concept2
 Logbook (o.a. 5000m/25:12, 4290m), maar de sync meldde "0 nieuwe
