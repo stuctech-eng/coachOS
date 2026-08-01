@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.214 — Performance-kaart consistent gemaakt met Week/Dagboek
+**Gemeld: de vier onderste kaarten op Home pasten niet mooi bij
+elkaar. Root cause: Performance had als enige een volledig gekleurde
+(roze) achtergrond, terwijl Week en Dagboek altijd al neutraal waren.**
+
+### Overweging
+Twee opties besproken: (A) alles neutraal, alleen icoontjes gekleurd,
+of (B) alle kaarten consistent kleuren per categorie. Gekozen voor
+**A** — sluit beter aan bij de rest van Home (Smart Actions, Coach
+Vooruitblik, Coach Score gebruiken ook allemaal neutrale kaarten met
+gekleurde accenten, nooit een hele kaart in kleur). Optie B zou de
+inconsistentie ook oplossen, maar voegt visuele ruis toe op een
+pagina die juist rustiger moest worden.
+
+### Fix
+`src/app/home/page.tsx` — Performance-kaart omgezet naar exact
+hetzelfde `<Card>`-patroon als Week en Dagboek: neutrale, donkere
+achtergrond, alleen het hart-icoontje blijft roze (`bg-rose-500/20`
+rondom het icoon, niet meer om de hele kaart).
+
+### Nav-uitlijning — onderzocht, bewust geen wijziging
+Gemeld: ruimte tussen Home en Trainer lijkt groter dan de rest. Code
+opnieuw grondig gecontroleerd (`flex-1` op alle 5 kolommen — wiskundig
+gegarandeerd gelijke breedte, icoon gecentreerd binnen eigen kolom).
+Geen code-fout gevonden. Vermoedelijke verklaring: visueel effect van
+de actieve-staat-styling (strokeWidth 2.5 vs 1.5 bij inactieve
+iconen), geen structureel probleem. Bewust **niet** blind verder
+aangepast — na twee eerdere regressierondes op dit component (v2.4.209/
+210) is een derde ongefundeerde wijziging een groter risico dan
+waarde.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Home — Performance zou er nu hetzelfde uit
+moeten zien als Week en Dagboek eronder, alleen het icoontje in kleur.
+
 ## v2.4.213 — Bel-icoon verwijderd
 **Op verzoek: de bel had geen functie (kale `<button>` zonder
 `onClick`-handler) — weggehaald tot er een echte notificatiefunctie

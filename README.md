@@ -111,6 +111,28 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
+#### Kleine fixes — v2.4.214
+
+**Performance-kaart consistent gemaakt met Week/Dagboek.** Gemeld:
+de vier onderste kaarten op Home pasten niet mooi bij elkaar —
+Performance had als enige een volledig gekleurde (roze) achtergrond.
+Overwogen: alles kleuren vs. alles neutraal. Gekozen voor neutraal —
+sluit beter aan bij de rest van Home (Smart Actions, Coach
+Vooruitblik, Coach Score gebruiken ook allemaal neutrale kaarten met
+gekleurde accenten, nooit een hele kaart in kleur). Performance
+gebruikt nu hetzelfde Card-patroon als Week en Dagboek — alleen het
+icoontje blijft roze.
+
+**Nav-uitlijning — onderzocht, geen code-fout gevonden.** Gemeld: de
+ruimte tussen Home en Trainer lijkt groter dan de rest. Code
+gecontroleerd: alle 5 kolommen zijn met `flex-1` wiskundig exact
+gelijk breed, elk icoon gecentreerd binnen zijn eigen kolom. Geen
+verdere wijziging doorgevoerd — vermoedelijk een visueel effect van
+de actieve-staat-styling (dikkere lijnen bij het actieve icoon), geen
+structurele fout. Blind verder sleutelen zonder concrete code-oorzaak
+zou eerder een nieuwe regressie riskeren dan een echte verbetering
+opleveren.
+
 #### Kleine fixes — v2.4.213
 
 **Bel-icoon verwijderd** (Home, rechtsboven) — had geen functie (kale
