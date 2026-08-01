@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.219 — Concept2 data-sync
+**Vervolg op v2.4.218's OAuth-koppeling, die bevestigd end-to-end
+werkt in de praktijk. Nu het daadwerkelijk ophalen van resultaten.**
+
+### Nieuw
+- **`api/specialists/rowing/concept2/sync`** (POST) — haalt resultaten
+  op bij Concept2 (`GET /api/users/me/results?type=rower`, laatste 2
+  jaar, met paginering — max 20 pagina's per sync-aanroep), slaat ze
+  op in `activity_sessions`. **Exact hetzelfde patroon als
+  `strava-activity-processor.ts`** — geen nieuwe insert-logica
+  verzonnen: idempotency-check via `notes ilike '%concept2:{id}%'`,
+  zoek-of-maak de "Roeien"-activiteit aan, metrics als JSON
+  (afstand/stroke rate/hartslag/calorieën/drag factor).
+- **Token-vernieuwing** ingebouwd — als het access-token binnen 5
+  minuten verloopt, wordt automatisch de `refresh_token`-grant
+  gebruikt om een nieuwe te krijgen, vóór de eigenlijke data-aanroep.
+- **"Sync nu"-knop** op `/coach/rowing` (vervangt "Verbind" zodra
+  gekoppeld) — herlaadt de sessielijst na afloop, toont hoeveel nieuwe
+  sessies geïmporteerd zijn.
+
+### Belangrijk eenheidsverschil, bewust verwerkt
+Concept2's `time`-veld is in **tienden van een seconde** (hun eigen
+documentatie: "e.g. one minute would be 600"), **niet seconden** zoals
+Strava's `moving_time`. Duur-berekening gebruikt daarom `/600`
+i.p.v. Strava's `/60` — een simpele kopieerfout hier zou dezelfde
+"0 min"-bug hebben gegeven als v2.4.217, nu bewust voorkomen.
+
+**Gevalideerd:**
+- Tijd-conversie getest tegen Concept2's eigen documentatie-voorbeeld
+  (600 tienden = 1 minuut) én een realistisch scenario (25 minuten) —
+  beide correct
+- Token-geldigheidscheck: 3 scenario's (nog geldig/al verlopen/binnen
+  de 5-min-veiligheidsmarge) — allemaal correct
+- `npx next build` — compileert zonder fouten, nieuwe route bevestigd
+  in de build-output
+
+### Bewust nog niet gebouwd
+Training Plan Engine, Workout Builder, Analyse-engine, Coach Memory,
+Today Engine-integratie, automatische/periodieke sync (nu alleen
+handmatig via "Sync nu").
+
+**Test-instructie:** open Rowing Coach (al gekoppeld) → tik "Sync nu"
+→ zou moeten melden hoeveel nieuwe sessies geïmporteerd zijn, en die
+zouden in de lijst moeten verschijnen (met bron "concept2").
+
 ## v2.4.218 — Concept2 OAuth-koppeling
 **Developer-sleutels aangevraagd en in Vercel gezet. Volledige
 Authorization Code-flow gebouwd tegen de exacte, officiële Concept2-

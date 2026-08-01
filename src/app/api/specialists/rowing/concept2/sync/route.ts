@@ -1,0 +1,183 @@
+export const dynamic = 'force-dynamic'
+
+import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { createAdminClient } from '@/lib/supabase'
+import { cookies } from 'next/headers'
+
+async function getUser() {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
+}
+
+interface Concept2Result {
+  id: number
+  date: string // "2013-06-21 00:00:00"
+  distance: number // meters
+  type: string // 'rower' | 'skierg' | 'bike' | ...
+  time: number // TIENDEN VAN EEN SECONDE — 600 = 1 minuut
+  workout_type: string
+  stroke_rate?: number
+  heart_rate?: { average?: number; min?: number; max?: number; ending?: number; recovery?: number }
+  calories_total?: number
+  drag_factor?: number
+}
+
+// v2.4.219 (Rowing Platform Fase 1, stap 2 — data-sync): haalt
+// resultaten op bij Concept2 (GET /api/users/me/results?type=rower) en
+// slaat ze op in activity_sessions — exact hetzelfde patroon als
+// strava-activity-processor.ts (idempotency via notes, activities-
+// koppeling, metrics als JSON), geen nieuwe insert-logica verzonnen.
+//
+// Belangrijk eenheidsverschil met Strava: Concept2's "time"-veld is
+// in TIENDEN VAN EEN SECONDE (600 = 1 minuut), niet seconden — vandaar
+// /600 i.p.v. Strava's /60 (die begint al in seconden).
+
+async function haalGeldigToken(userId: string): Promise<string | null> {
+  const supabase = createAdminClient()
+  const { data: tokenRij } = await supabase
+    .from('concept2_tokens')
+    .select('access_token, refresh_token, expires_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!tokenRij) return null
+
+  // Nog geldig? (met 5 min marge)
+  if (new Date(tokenRij.expires_at).getTime() > Date.now() + 5 * 60 * 1000) {
+    return tokenRij.access_token
+  }
+
+  // Verlopen — vernieuwen via refresh_token grant
+  const clientId = process.env.CONCEPT2_CLIENT_ID
+  const clientSecret = process.env.CONCEPT2_CLIENT_SECRET
+  if (!clientId || !clientSecret) return null
+
+  const refreshRes = await fetch('https://log.concept2.com/oauth/access_token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: tokenRij.refresh_token,
+      scope: 'results:read',
+    }),
+  })
+  if (!refreshRes.ok) {
+    console.error('[concept2/sync] Token-vernieuwing mislukt:', refreshRes.status, await refreshRes.text())
+    return null
+  }
+  const nieuweTokens = await refreshRes.json() as { access_token: string; refresh_token: string; expires_in: number }
+  const nieuweExpiresAt = new Date(Date.now() + nieuweTokens.expires_in * 1000).toISOString()
+
+  await supabase.from('concept2_tokens').update({
+    access_token: nieuweTokens.access_token,
+    refresh_token: nieuweTokens.refresh_token,
+    expires_at: nieuweExpiresAt,
+    updated_at: new Date().toISOString(),
+  }).eq('user_id', userId)
+
+  return nieuweTokens.access_token
+}
+
+export async function POST() {
+  try {
+    const user = await getUser()
+    if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+
+    const accessToken = await haalGeldigToken(user.id)
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Geen geldige Concept2-koppeling — verbind opnieuw' }, { status: 400 })
+    }
+
+    const supabase = createAdminClient()
+
+    // Laatste 2 jaar ophalen — ruim genoeg voor een eerste sync,
+    // voorkomt onnodig grote responses bij lange logbook-historie
+    const van = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    let alleResultaten: Concept2Result[] = []
+    let volgendeUrl: string | null =
+      `https://log.concept2.com/api/users/me/results?type=rower&from=${van}&number=100`
+
+    // Pagination volgen, met een redelijke limiet (voorkomt oneindige loop)
+    let paginas = 0
+    while (volgendeUrl && paginas < 20) {
+      const res: Response = await fetch(volgendeUrl, { headers: { Authorization: `Bearer ${accessToken}` } })
+      if (!res.ok) {
+        const tekst = await res.text()
+        console.error('[concept2/sync] Ophalen resultaten mislukt:', res.status, tekst)
+        return NextResponse.json({ error: 'Ophalen bij Concept2 mislukt' }, { status: 502 })
+      }
+      const json = await res.json() as { data: Concept2Result[]; meta?: { pagination?: { links?: { next?: string } } } }
+      alleResultaten = alleResultaten.concat(json.data)
+      volgendeUrl = json.meta?.pagination?.links?.next || null
+      paginas++
+    }
+
+    // Zoek of maak de "Roeien"-activiteit voor deze gebruiker aan
+    let { data: userActivity } = await supabase
+      .from('activities').select('id').eq('user_id', user.id).eq('name', 'Roeien').maybeSingle()
+
+    if (!userActivity) {
+      const { data: template } = await supabase
+        .from('activity_templates').select('id').eq('name', 'Roeien').maybeSingle()
+      const { data: newActivity } = await supabase
+        .from('activities').insert({ user_id: user.id, template_id: template?.id || null, name: 'Roeien' })
+        .select().single()
+      userActivity = newActivity
+    }
+
+    let geimporteerd = 0
+    let overgeslagen = 0
+
+    for (const resultaat of alleResultaten) {
+      // Idempotency-check — zelfde patroon als Strava
+      const { data: bestaat } = await supabase
+        .from('activity_sessions').select('id')
+        .eq('user_id', user.id).eq('source', 'concept2')
+        .ilike('notes', `%concept2:${resultaat.id}%`)
+        .maybeSingle()
+
+      if (bestaat) { overgeslagen++; continue }
+
+      const metrics: Record<string, unknown> = { distance: resultaat.distance }
+      if (resultaat.stroke_rate) metrics.avg_stroke_rate = resultaat.stroke_rate
+      if (resultaat.heart_rate?.average) metrics.avg_hr = resultaat.heart_rate.average
+      if (resultaat.heart_rate?.max) metrics.max_hr = resultaat.heart_rate.max
+      if (resultaat.calories_total) metrics.calories = resultaat.calories_total
+      if (resultaat.drag_factor) metrics.drag_factor = resultaat.drag_factor
+
+      const { error } = await supabase.from('activity_sessions').insert({
+        user_id: user.id,
+        activity_id: userActivity?.id || null,
+        date: resultaat.date.split(' ')[0],
+        // v2.4.219: Concept2's "time" is in tienden van een seconde,
+        // NIET seconden (anders dan Strava's moving_time) — /600 geeft
+        // direct minuten (/10 voor seconden, /60 voor minuten)
+        duration: Math.round(resultaat.time / 600),
+        metrics,
+        source: 'concept2',
+        notes: `concept2:${resultaat.id}`,
+      })
+
+      if (error) {
+        console.error('[concept2/sync] Insert mislukt voor resultaat', resultaat.id, error)
+        continue
+      }
+      geimporteerd++
+    }
+
+    return NextResponse.json({ geimporteerd, overgeslagen, totaalGevonden: alleResultaten.length })
+  } catch (err) {
+    console.error('[concept2/sync]', err)
+    return NextResponse.json({ error: 'Sync mislukt' }, { status: 500 })
+  }
+}

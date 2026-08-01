@@ -676,11 +676,29 @@ documentatie-voorbeeld (klopt), `expires_at`-berekening getest met hun
 eigen voorbeeldwaarde (604800 sec = exact 7 dagen). `npx next build`
 — compileert zonder fouten, alle 3 routes bevestigd in de build-output.
 
-**Bewust NOG NIET gebouwd** (volgende stappen): daadwerkelijke
-**data-sync** (resultaten ophalen via `/api/users/me/results` en
-opslaan in `activity_sessions` — de koppeling zelf staat, het
-periodiek/on-demand ophalen nog niet), Training Plan Engine, Workout
-Builder, Analyse-engine, Coach Memory, Today Engine-integratie.
+**Data-sync afgerond — v2.4.219.** Bevestigd end-to-end werkend in de
+praktijk (screenshot: "Concept2 succesvol gekoppeld!", sessies tonen
+correcte duur). **`api/specialists/rowing/concept2/sync`** — haalt
+resultaten op (`GET /api/users/me/results?type=rower`, met paginering,
+max 20 pagina's), slaat op in `activity_sessions` via exact hetzelfde
+patroon als `strava-activity-processor.ts` (idempotency-check via
+`notes ilike '%concept2:{id}%'`, activities-koppeling, metrics als
+JSON). **Belangrijk eenheidsverschil met Strava, bewust verwerkt:**
+Concept2's `time`-veld is in **tienden van een seconde** (600 = 1
+minuut), niet seconden zoals Strava's `moving_time` — `/600` i.p.v.
+`/60`. Token-vernieuwing ingebouwd (`refresh_token`-grant, 5 minuten
+veiligheidsmarge vóór expiry). "Sync nu"-knop op `/coach/rowing`,
+herlaadt de sessielijst na afloop.
+
+**Gevalideerd:** tijd-conversie getest tegen Concept2's eigen
+documentatie-voorbeeld (600 tienden = 1 minuut, correct) én een
+realistisch scenario (25 minuten, correct). Token-geldigheidscheck
+getest — 3 scenario's (geldig/verlopen/binnen-veiligheidsmarge),
+allemaal correct.
+
+**Bewust NOG NIET gebouwd** (volgende stappen): Training Plan Engine,
+Workout Builder, Analyse-engine, Coach Memory, Today Engine-integratie,
+automatische/periodieke sync (nu alleen handmatig via "Sync nu").
 
 **Filosofie:** CoachOS krijgt geen "PM5-ondersteuning" — het krijgt een
 volledig Rowing Platform. De Rowing Specialist blijft altijd eigenaar

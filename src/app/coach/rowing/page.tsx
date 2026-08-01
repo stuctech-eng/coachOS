@@ -34,6 +34,7 @@ export default function RowingPage() {
   // v2.4.218: Concept2-koppelingsstatus
   const [concept2Verbonden, setConcept2Verbonden] = useState<boolean | null>(null)
   const [urlMelding, setUrlMelding] = useState<string | null>(null)
+  const [syncBezig, setSyncBezig] = useState(false)
 
   useEffect(() => {
     fetch('/api/specialists/rowing/data')
@@ -59,6 +60,29 @@ export default function RowingPage() {
     }
   }, [])
 
+  // v2.4.219 (data-sync): haalt nieuwe resultaten op bij Concept2,
+  // herlaadt daarna de sessielijst zodat nieuwe data direct zichtbaar is
+  async function syncConcept2() {
+    setSyncBezig(true)
+    setUrlMelding(null)
+    try {
+      const res = await fetch('/api/specialists/rowing/concept2/sync', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setUrlMelding('Sync mislukt: ' + (data.error || 'onbekende fout'))
+      } else {
+        setUrlMelding(`Sync voltooid — ${data.geimporteerd} nieuwe sessie(s), ${data.overgeslagen} al bekend`)
+        const dataRes = await fetch('/api/specialists/rowing/data')
+        const nieuweData = await dataRes.json()
+        if (!nieuweData.error) setActiviteiten(nieuweData.activiteiten || [])
+      }
+    } catch {
+      setUrlMelding('Sync mislukt: verbindingsfout')
+    } finally {
+      setSyncBezig(false)
+    }
+  }
+
   const heeftData = activiteiten.length > 0
 
   return (
@@ -80,7 +104,7 @@ export default function RowingPage() {
         {laden && <div className="h-40 bg-slate-800/50 rounded-2xl animate-pulse" />}
 
         {urlMelding && (
-          <Card className={`p-3 text-sm ${urlMelding.startsWith('Concept2 succesvol') ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+          <Card className={`p-3 text-sm ${urlMelding.includes('mislukt') ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
             {urlMelding}
           </Card>
         )}
@@ -95,11 +119,18 @@ export default function RowingPage() {
                 {concept2Verbonden ? '✓ Gekoppeld' : 'Nog niet gekoppeld'}
               </p>
             </div>
-            {!concept2Verbonden && (
+            {!concept2Verbonden ? (
               <a href="/api/specialists/rowing/concept2/authorize"
                 className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold active:bg-primary-700">
                 Verbind
               </a>
+            ) : (
+              // v2.4.219 (data-sync): haalt nieuwe resultaten op bij
+              // Concept2 en herlaadt de lijst
+              <button onClick={syncConcept2} disabled={syncBezig}
+                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold active:bg-slate-700 disabled:opacity-50">
+                {syncBezig ? 'Bezig...' : 'Sync nu'}
+              </button>
             )}
           </Card>
         )}
