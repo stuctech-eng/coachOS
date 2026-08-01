@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.230 — UI voor de concrete workout (Rowing Fase 2)
+**Vervolg op v2.4.229's backend-koppeling. Eerste keer dat een
+gebruiker het Core Platform daadwerkelijk te zien krijgt.**
+
+### Nieuw
+`src/app/coach/rowing/trainingsplan/page.tsx`:
+- Elke sessie in de lijst is nu **tikbaar** — klapt uit naar de
+  concrete workout
+- **`WorkoutDetail`**-component — haalt op bij `api/specialists/
+  rowing/training-plan/workout`, toont per blok: type/duur/herhalingen/
+  rustpauzes/instructie/SPM-bereik
+- Ontbrekend materiaal wordt bovenaan getoond als waarschuwing
+- Uitvoeringshints (volgorde/audio-cues) onderaan
+
+**Voor:** "Interval, 60 min" (alleen een type-label)
+**Na:** "Intervallen · 5× 9 min (2 min rust ertussen), 28-32 SPM,
+gecontroleerd tempo — niet forceren in de eerste herhalingen"
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Rowing Coach → Trainingsplan → tik op een
+sessie — zou nu de concrete workout-opbouw moeten tonen, niet alleen
+type+duur.
+
 ## v2.4.229 — Rowing Fase 2: eerste echte aansluiting op de Workout Platform
 **De eerste plek waar het Core Platform (v2.4.224-228) daadwerkelijk
 sportspecifieke betekenis krijgt.**

@@ -752,6 +752,12 @@ de fix fout zou gaan), SPM-vertaling getest (zone 2→20-24 SPM, zone
 4→28-32 SPM, niet-zone-targets geven bewust niets terug). `npx next
 build` — compileert zonder fouten, route bevestigd in de build-output.
 
+**UI voor de concrete workout — v2.4.230.** `/coach/rowing/
+trainingsplan` — elke sessie is nu tikbaar, klapt uit naar de
+daadwerkelijke, concrete workout (blokken/SPM-targets/uitvoerings-
+hints/ontbrekend materiaal) i.p.v. alleen "Interval, 60 min". Eerste
+keer dat een gebruiker het Core Platform daadwerkelijk te zien krijgt.
+
 **Filosofie:** Master Coach bepaalt WAT, Training Plan Engine bepaalt
 WANNEER/WAAROM, de **Workout Platform** bepaalt HOE. Bouwt voort op
 het bewezen Adapter-patroon van de Training Plan Engine (`core.ts`

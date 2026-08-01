@@ -39,6 +39,70 @@ function StatusIcoon({ status }: { status: Sessie['status'] }) {
   return null
 }
 
+// v2.4.230 (Rowing Fase 2, UI): toont de concrete workout van de
+// nieuwe Workout Platform — eerste keer dat een gebruiker dit
+// daadwerkelijk te zien krijgt, niet alleen "Interval, 60 min".
+const BLOK_TYPE_LABEL: Record<string, string> = {
+  warmup: 'Warming-up', hoofdblok: 'Hoofdblok', interval: 'Intervallen',
+  herstel: 'Herstel', techniek: 'Techniek', cadans: 'Cadans',
+  mobiliteit: 'Mobiliteit', cooldown: 'Cooling-down',
+}
+
+interface VertaaldBlok {
+  id: string; type: string; duration_sec: number
+  repeat?: number; rust_na_repeat_sec?: number
+  instruction: string
+  roeiVertaling: { spm?: { van: number; tot: number } }[]
+}
+
+function WorkoutDetail({ sessieId }: { sessieId: string }) {
+  const [laden, setLaden] = useState(true)
+  const [data, setData] = useState<{ vertaaldeBlokken: VertaaldBlok[]; uitvoeringsHints: string[]; materiaal: { benodigd: string[]; ontbreekt: string[] } } | null>(null)
+  const [fout, setFout] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/specialists/rowing/training-plan/workout?sessieId=${sessieId}`)
+      .then(r => r.json())
+      .then(d => { if (d.error) setFout(d.error); else setData(d) })
+      .catch(() => setFout('Kon workout niet laden'))
+      .finally(() => setLaden(false))
+  }, [sessieId])
+
+  if (laden) return <div className="h-24 bg-slate-800/30 rounded-xl animate-pulse mt-1" />
+  if (fout) return <Card className="p-3 mt-1 bg-red-500/10 text-red-400 border-red-500/20 text-xs">{fout}</Card>
+  if (!data) return null
+
+  return (
+    <Card className="p-4 mt-1 flex flex-col gap-3">
+      {data.materiaal.ontbreekt.length > 0 && (
+        <p className="text-xs text-amber-400">⚠️ Ontbrekend materiaal: {data.materiaal.ontbreekt.join(', ')}</p>
+      )}
+      <div className="flex flex-col gap-2">
+        {data.vertaaldeBlokken.map(blok => {
+          const spm = blok.roeiVertaling.find(v => v.spm)?.spm
+          return (
+            <div key={blok.id} className="border-l-2 border-primary-500/50 pl-3">
+              <p className="text-sm text-white font-medium">
+                {BLOK_TYPE_LABEL[blok.type] || blok.type}
+                {blok.repeat && blok.repeat > 1 ? ` · ${blok.repeat}× ${Math.round(blok.duration_sec / 60)} min` : ` · ${Math.round(blok.duration_sec / 60)} min`}
+                {blok.rust_na_repeat_sec ? ` (${Math.round(blok.rust_na_repeat_sec / 60)} min rust ertussen)` : ''}
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">{blok.instruction}</p>
+              {spm && <p className="text-xs text-primary-400 mt-0.5">{spm.van}-{spm.tot} SPM</p>}
+            </div>
+          )
+        })}
+      </div>
+      {data.uitvoeringsHints.length > 0 && (
+        <div className="pt-2 border-t border-coach-border">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Uitvoering</p>
+          {data.uitvoeringsHints.map((hint, i) => <p key={i} className="text-xs text-slate-500">• {hint}</p>)}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function RowingTrainingsplanPage() {
   const [laden, setLaden] = useState(true)
   const [plan, setPlan] = useState<Plan | null>(null)
@@ -47,6 +111,8 @@ export default function RowingTrainingsplanPage() {
   const [genererenBezig, setGenererenBezig] = useState(false)
   const [pauzeerBezig, setPauzeerBezig] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
+  // v2.4.230 (Rowing Fase 2, UI): welke sessie toont de concrete workout
+  const [uitgeklapteSessieId, setUitgeklapteSessieId] = useState<string | null>(null)
 
   useEffect(() => { laadPlan() }, [])
 
@@ -133,18 +199,23 @@ export default function RowingTrainingsplanPage() {
 
             <div className="flex flex-col gap-2">
               {toekomstigeSessies.slice(0, 14).map(s => (
-                <Card key={s.id} className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <StatusIcoon status={s.status} />
-                    <div>
-                      <p className="text-sm text-white capitalize">{formatDatum(s.date)}</p>
-                      <p className="text-xs text-slate-500">
-                        {TYPE_LABEL[s.type] || s.type} · {s.duration} min
-                        {s.adjustment_reason && ` · ${REASON_LABEL[s.adjustment_reason] || s.adjustment_reason}`}
-                      </p>
+                <div key={s.id}>
+                  <Card className="p-3 flex items-center justify-between cursor-pointer"
+                    onClick={() => setUitgeklapteSessieId(uitgeklapteSessieId === s.id ? null : s.id)}>
+                    <div className="flex items-center gap-2">
+                      <StatusIcoon status={s.status} />
+                      <div>
+                        <p className="text-sm text-white capitalize">{formatDatum(s.date)}</p>
+                        <p className="text-xs text-slate-500">
+                          {TYPE_LABEL[s.type] || s.type} · {s.duration} min
+                          {s.adjustment_reason && ` · ${REASON_LABEL[s.adjustment_reason] || s.adjustment_reason}`}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </Card>
+                    <span className="text-slate-500 text-xs">{uitgeklapteSessieId === s.id ? '▲' : '▼'}</span>
+                  </Card>
+                  {uitgeklapteSessieId === s.id && <WorkoutDetail sessieId={s.id} />}
+                </div>
               ))}
               {toekomstigeSessies.length === 0 && (
                 <Card className="p-6 text-center"><p className="text-sm text-slate-400">Geen aankomende sessies</p></Card>
