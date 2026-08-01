@@ -668,6 +668,24 @@ al heeft. Integratietest bevestigt: Builder + Validation Engine werken
 samen correct (een gebouwde 60-minuten-workout klopt exact op 3600s,
 en wordt terecht geblokkeerd bij een lage-intensiteit-CoachPolicy-dag).
 
+**Fase 1, stap 4 (Adaptation Engine) afgerond — v2.4.227.**
+`src/core/workout-builder/adaptation.ts` — `pasWorkoutAan()`, bewust
+EXACT de twee voorbeelden uit de Master Vision, niet meer: (1)
+**slechte slaap** → kortere warming-up (-30%, ondergrens 3 min) →
+minder intervallen (-1 herhaling, ondergrens 2) → lagere intensiteit
+(-1 zone); (2) **extra beschikbare tijd** → hoofdblok verlengd (50%
+van de extra tijd) → cooling-down verlengd (30%) → mobiliteitsblok
+toegevoegd (resterende ~20%, alleen als er nog geen mobility-blok is).
+Ook het omgekeerde afgehandeld: minder tijd dan gepland verkort het
+hoofdblok proportioneel (ondergrens 5 min). Elke wijziging wordt
+vastgelegd in `workout.adaptations` (transparantie, zelfde principe
+als de Training Plan Engine's REASON_CODE_UITLEG). **Immutability
+gegarandeerd** — het originele workout-object wordt nooit gemuteerd,
+bevestigd in de integratietest. Volledige keten getest (Builder →
+Adaptation → Validation): beide scenario's geven exact de verwachte
+aanpassingen, en de aangepaste workout blijft geldig volgens de
+Validation Engine.
+
 **Filosofie:** Master Coach bepaalt WAT, Training Plan Engine bepaalt
 WANNEER/WAAROM, de **Workout Platform** bepaalt HOE. Bouwt voort op
 het bewezen Adapter-patroon van de Training Plan Engine (`core.ts`

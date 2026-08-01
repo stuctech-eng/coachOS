@@ -1,5 +1,51 @@
 # CoachOS — Changelog
 
+## v2.4.227 — CoachOS Workout Platform: Fase 1, stap 4 (Adaptation Engine)
+**Vervolg op Validation Engine (v2.4.226). Past een al-gebouwde workout
+automatisch aan — draait ná de Builder, vóór de Validation Engine.**
+
+### Nieuw
+`src/core/workout-builder/adaptation.ts` — `pasWorkoutAan()`, bewust
+EXACT de twee voorbeelden uit de Master Vision:
+
+**Slechte slaap:**
+1. Kortere warming-up (-30%, ondergrens 3 min)
+2. Minder intervallen (-1 herhaling, ondergrens 2)
+3. Lagere intensiteit (-1 zone op alle hoofdblok-targets)
+
+**Extra beschikbare tijd:**
+1. Hoofdblok verlengd (50% van de extra tijd)
+2. Cooling-down verlengd (30%)
+3. Mobiliteitsblok toegevoegd (resterende ~20%, alleen als er nog geen
+   mobility-blok bestaat)
+
+Ook het omgekeerde afgehandeld (niet expliciet in de visie genoemd,
+maar een logische tegenhanger): **minder tijd dan gepland** verkort
+het hoofdblok proportioneel, met een praktische ondergrens van 5 min.
+
+### Transparantie + veiligheid
+Elke wijziging wordt vastgelegd in `workout.adaptations` — matcht het
+al-bestaande principe van de Training Plan Engine's
+REASON_CODE_UITLEG ("waarom ziet mijn training er zo uit"). Het
+originele workout-object wordt **nooit gemuteerd** (diepe kopie vóór
+elke wijziging) — de aanroeper behoudt altijd de ongewijzigde versie.
+
+**Gevalideerd — volledige ketentest (Builder → Adaptation →
+Validation):**
+- Slechte slaap: warmup 360→252s (exact -30%), herhalingen 5→4, zone
+  4→3 — alle drie de vision-voorbeelden bevestigd, origineel blijft
+  ongewijzigd (immutability bevestigd)
+- Extra tijd (+20 min): hoofdblok +10 min, cooldown +6 min,
+  mobiliteitsblok van 4 min toegevoegd — alle drie bevestigd
+- De aangepaste workout blijft geldig volgens de Validation Engine
+
+`npx next build` — compileert zonder fouten.
+
+**Daarmee is Fase 1 (Core Platform: Object/Builder/Validation/
+Adaptation) compleet.** Resterende, kleinere Core-onderdelen
+(Alternative/Equipment/Execution Engine) en Fase 2 (Rowing als
+referentie-implementatie) volgen als losse vervolgstappen.
+
 ## v2.4.226 — CoachOS Workout Platform: Fase 1, stap 3 (Validation Engine)
 **Vervolg op Builder (v2.4.225). Controleert of een gebouwde workout
 compleet en veilig is.**
