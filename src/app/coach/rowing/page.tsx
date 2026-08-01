@@ -98,7 +98,11 @@ export default function RowingPage() {
                     <p className="text-sm text-white">{new Date(a.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</p>
                     <p className="text-xs text-slate-500">{a.source}</p>
                   </div>
-                  <p className="text-sm text-slate-300">{Math.round(a.duration / 60)} min</p>
+                  {/* v2.4.217-FIX: duration staat al in MINUTEN
+                      (zie strava-activity-processor.ts: moving_time/60
+                      bij opslag) — de extra /60 hier rondde elke
+                      normale sessie af naar 0 min */}
+                  <p className="text-sm text-slate-300">{a.duration} min</p>
                 </div>
               ))}
             </div>

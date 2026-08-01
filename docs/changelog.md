@@ -1,5 +1,30 @@
 # CoachOS — Changelog
 
+## v2.4.217 — Fix: Rowing-sessies toonden "0 min"
+**Bevestigd via screenshot: Rowing Coach werkt — 2 echte Strava-
+sessies zichtbaar (9 en 30 juni). Maar de duur toonde bij beide "0
+min".**
+
+### Root cause
+`duration` in `activity_sessions` staat al opgeslagen in **minuten**
+(`strava-activity-processor.ts`: `Math.round(activity.moving_time /
+60)` bij import — Strava's `moving_time` is seconden, wordt dus al
+naar minuten omgerekend vóór opslag). `coach/rowing/page.tsx` deelde
+deze waarde nogmaals door 60 (`Math.round(a.duration / 60)`) — voor
+elke normale sessie (bijv. 30 minuten: 30/60 = 0,5 → rondt af naar 0)
+gaf dit "0 min".
+
+### Fix
+`src/app/coach/rowing/page.tsx` — de overbodige `/60` verwijderd,
+toont nu direct `{a.duration} min`. Ter controle ook de TCX-import
+nagekeken (`duration_min`, zelfde minuten-conventie) — consistent
+overal in de codebase.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Rowing Coach — de 9 juni/30 juni-sessies
+zouden nu hun echte duur moeten tonen, niet meer "0 min".
+
 ## v2.4.216 — Rowing Platform Fase 1, stap 1: basisstructuur
 **Eerste bouwstap van de Rowing Platform Master Vision (vastgelegd
 1 augustus 2026). Derde specialist naast Cycling en Running.**

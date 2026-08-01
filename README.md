@@ -640,6 +640,14 @@ patroon als Cycling/Running. `/coach/rowing` toont een **eerlijke lege
 staat** (geen Concept2-koppeling nog, geen nepdata) met een korte
 "Binnenkort"-lijst.
 
+**Bevestigd werkend in de praktijk** — screenshot toont 2 echte Strava-
+sessies (9 en 30 juni). **Fix v2.4.217:** duur toonde "0 min" voor
+elke sessie — `duration` staat al in minuten opgeslagen (zie
+`strava-activity-processor.ts`: `moving_time / 60` bij import), de
+pagina deelde per ongeluk nogmaals door 60. Gefixt, en ter
+bevestiging ook de TCX-import gecontroleerd (zelfde conventie,
+minuten overal consistent).
+
 **Bewust NOG NIET gebouwd** (volgende stappen): Training Plan Engine,
 Workout Builder, Analyse-engine, Concept2 OAuth-koppeling (wacht op
 developer-sleutels — moet door de gebruiker zelf aangevraagd worden
