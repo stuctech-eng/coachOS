@@ -111,6 +111,30 @@ ook niet moeten.
 - Multi-sport Orchestrator (`TodaySchedule`) — pas zinvol met
   meerdere volwassen specialisten
 
+#### Kleine fixes — v2.4.215
+
+**Sport-terminologie-verwarring in coach-berichten.** Gemeld met
+screenshot: Trainer AI noemde "je FTP gaat omhoog" bij een
+**hardloop**sessie — FTP is een fietsspecifieke term (Functional
+Threshold Power), niet toepasbaar op running. Geen hardcoded bug,
+de AI verzon dit zelf als generieke motiverende taal, zonder te
+beseffen dat het sport-specifiek is.
+
+**Fix, op twee niveaus:**
+1. `api/training/today/route.ts` — expliciete regel toegevoegd: geen
+   fietstermen (FTP/watt/W-per-kg/cadans) bij running/kettlebell/
+   rowing, geen looptermen (pace/tempo-per-km/VO2max) bij cycling
+2. **`COACH_CORE_IDENTITY`** (`coach-personality.ts`) — dezelfde regel
+   toegevoegd aan de gedeelde kern-identiteit die **9 plekken**
+   tegelijk gebruiken, inclusief de Cycling- en Running-specialisten
+   zelf. Bij twijfel: generieke, sport-neutrale taal i.p.v. een
+   specifieke metric noemen.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** vraag een hardloop- of kettlebell-sessie aan —
+het coach-bericht zou nu geen fietstermen meer moeten bevatten.
+
 #### Kleine fixes — v2.4.214
 
 **Performance-kaart consistent gemaakt met Week/Dagboek.** Gemeld:

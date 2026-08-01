@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.215 — Fix: sport-terminologie-verwarring in coach-berichten
+**Gemeld met screenshot: Trainer AI noemde "je FTP gaat omhoog" bij
+een hardloopsessie — FTP (Functional Threshold Power) is een
+fietsspecifieke term, niet van toepassing op running.**
+
+### Root cause
+Geen hardcoded template-bug — de AI genereerde dit zelf als generieke
+motiverende afsluiter, zonder te "weten" dat FTP specifiek aan fietsen
+gekoppeld is. Geen enkele prompt instrueerde expliciet om sport-
+specifieke metrics te vermijden bij een andere sport.
+
+### Fix — twee niveaus
+1. **`api/training/today/route.ts`** (Trainer AI, de directe bron van
+   het gemelde geval): regel toegevoegd — geen fietstermen (FTP/watt/
+   W-per-kg/cadans) bij running/kettlebell/rowing, geen looptermen
+   (pace/tempo-per-km/VO2max) bij cycling
+2. **`src/core/prompts/coach-personality.ts`** —
+   `COACH_CORE_IDENTITY` uitgebreid met dezelfde regel. Dit is de
+   gedeelde kern-identiteit, gebruikt door **9 plekken tegelijk**
+   (`daily-coach.ts`, `coach-call-reaction.ts`, en beide Cycling- en
+   Running-specialisten: coach, rit-analyse, training-plan/explain) —
+   één wijziging beschermt de hele Coach-communicatielaag, niet alleen
+   de plek waar het gemeld werd.
+
+Bij twijfel: instructie is generieke, sport-neutrale taal (bijv. "je
+uithoudingsvermogen groeit door slimme trainingen + slimme rest")
+i.p.v. een specifieke metric te noemen.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** vraag een hardloop- of kettlebell-sessie aan —
+het coach-bericht zou nu geen fietstermen (FTP, watt, etc.) meer
+moeten bevatten.
+
 ## v2.4.214 — Performance-kaart consistent gemaakt met Week/Dagboek
 **Gemeld: de vier onderste kaarten op Home pasten niet mooi bij
 elkaar. Root cause: Performance had als enige een volledig gekleurde

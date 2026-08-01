@@ -388,6 +388,7 @@ ${moduleKeuze}
 
 REGELS:
 - training_type MOET "${isLibrary && forcedModule ? forcedModule : 'de gekozen module'}" zijn — niet wijzigen
+- BELANGRIJK in "coach_message": gebruik UITSLUITEND terminologie die past bij de daadwerkelijk gekozen module. FTP, watt, W/kg, cadans zijn fietsspecifiek — noem deze NOOIT bij een RUNNING/KETTLEBELL/ROWING-sessie. Pace, tempo/km, VO2max zijn hardloop-specifiek — noem deze NOOIT bij een CYCLING-sessie. Bij twijfel: gebruik generieke, sport-neutrale motiverende taal (bijv. "je uithoudingsvermogen groeit door slimme trainingen + slimme rest") in plaats van een specifieke metric te noemen.
 - Coach sturing bepaalt intensiteit en sessietype, NIET het training_type bij library-keuze
 - Bij lage energie of herstel: lichtere intensiteit, recovery sessietype
 - duration = totale sessieduur in minuten
