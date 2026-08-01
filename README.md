@@ -636,6 +636,21 @@ vormen ze de volledige, actuele status.*
 (Builder/Validation/Adaptation-Engines volgen als aparte, latere
 stappen).
 
+**Fase 1, stap 2 (Workout Builder — de assemblagelogica) afgerond —
+v2.4.225.** `src/core/workout-builder/builder.ts` — `bouwWorkout()`,
+bewust met een KLEINE, concrete input-set (sport/trainingType/duur/
+mesocyclus/niveau) — niet meteen alle 18 inputs uit de visie (Coach
+Policy/Weer/Terrein/etc.) tegelijk aangesloten, die volgen als latere,
+losse integratiestappen. 100% deterministisch, geen AI-aanroep.
+Verdeelt de gevraagde duur in warmup (10%, 5-15 min)/hoofdblok(ken)/
+cooldown (5%, 3-10 min); intervallen krijgen een aantal-herhalingen
+afhankelijk van mesocyclus + niveau. **Randgeval gevonden én gefixt
+tijdens het testen:** bij een extreem korte sessie (<8 min) konden de
+vaste ondergrenzen van warmup+cooldown samen de gevraagde totale duur
+overschrijden — nu worden ze evenredig verkleind zodat de totale duur
+altijd exact klopt, ook bij zulke randgevallen. Normale sessies (bijv.
+60 min) blijven volledig ongewijzigd door deze fix.
+
 **Filosofie:** Master Coach bepaalt WAT, Training Plan Engine bepaalt
 WANNEER/WAAROM, de **Workout Platform** bepaalt HOE. Bouwt voort op
 het bewezen Adapter-patroon van de Training Plan Engine (`core.ts`

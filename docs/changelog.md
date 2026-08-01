@@ -1,5 +1,51 @@
 # CoachOS — Changelog
 
+## v2.4.225 — CoachOS Workout Platform: Fase 1, stap 2 (Workout Builder)
+**Vervolg op v2.4.224's typedefinities. De daadwerkelijke assemblage-
+logica die het datamodel vult.**
+
+### Nieuw
+`src/core/workout-builder/builder.ts` — `bouwWorkout()`:
+- **Bewust een kleine, concrete input-set** (sport/trainingType/duur/
+  mesocyclus/niveau) — niet meteen alle 18 inputs uit de Master Vision
+  (Coach Policy/Weer/Terrein/Beschikbare locatie/etc.) tegelijk
+  aangesloten. Die volgen als losse, latere integratiestappen, zodra
+  er een concrete specialist is die ze nodig heeft.
+- **100% deterministisch** — geen AI-aanroep, matcht de Kernregel uit
+  de Master Vision
+- Verdeelt de gevraagde totale duur: warmup (10%, geklemd tussen 5-15
+  min) / hoofdblok(ken) / cooldown (5%, geklemd tussen 3-10 min)
+- Interval-sessies krijgen een aantal herhalingen afhankelijk van
+  mesocyclus (basis 4 / opbouw 5 / piek 6 / herstel 3) + niveau
+  (beginner -1, gevorderd +1), met automatisch berekende werk/rust-
+  verdeling die binnen het beschikbare hoofdblok-budget blijft
+- Targets blijven generiek (`zone`-nummers, geen sportspecifieke
+  waarden) — de Specialist Adapter (latere stap) vertaalt dit naar
+  sportspecifieke targets
+
+### Randgeval gevonden én gefixt tijdens het testen
+Bij een extreem korte sessie (<8 min totaal) konden de vaste
+ondergrenzen van warmup (min 5 min) + cooldown (min 3 min) samen de
+gevraagde totale duur overschrijden — een 5-minuten-sessie werd dan
+in werkelijkheid 9 minuten. **Fix:** als warmup+cooldown samen meer
+dan 50% van de totale duur zouden innemen, worden ze evenredig
+verkleind. Normale sessies (bijv. 60 min) blijven volledig ongewijzigd
+door deze fix — alleen het randgeval wordt geraakt.
+
+**Gevalideerd — 3 scenario's:**
+- 60 minuten (normale sessie): warmup 6 min/cooldown 3 min/hoofdblok
+  51 min, totaal klopt exact
+- Interval-verdeling (opbouw-mesocyclus, gemiddeld niveau): 5
+  herhalingen, werk/rust-tijd past exact binnen het beschikbare budget
+- 5 minuten (het gevonden randgeval): vóór de fix zou dit 9 minuten
+  worden, ná de fix klopt de totale duur exact (300s)
+
+`npx next build` — compileert zonder fouten.
+
+**Volgende stap:** Validation Engine (controleert of een gebouwde
+workout wel past binnen beschikbare tijd/herstel, warmup/cooldown
+aanwezig zijn, etc.).
+
 ## v2.4.224 — CoachOS Workout Platform: Fase 1, stap 1 (typedefinities)
 **Eerste bouwstap van de nieuwe, vijfde platformlaag (Context/Training/
 Workout/Performance/Intelligence). Puur datamodel, nog geen logica.**
