@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.224 — CoachOS Workout Platform: Fase 1, stap 1 (typedefinities)
+**Eerste bouwstap van de nieuwe, vijfde platformlaag (Context/Training/
+Workout/Performance/Intelligence). Puur datamodel, nog geen logica.**
+
+### Nieuw
+`src/core/workout-builder/types.ts`:
+- **`UniversalWorkout`** — het sport-onafhankelijke centrale object
+  (id/sport/goal/mesocycle/trainingType/duration/warmup/mainBlocks/
+  cooldown/targets/coachNotes/equipment/metrics/adaptations/alternatives)
+- **`WorkoutBlock`** — elk blok (warmup/hoofdblok/interval/herstel/
+  techniek/cadans/mobiliteit/cooldown), met `duration_sec` (bewust
+  seconden, niet minuten — voorkomt het soort eenheidsverwarring dat we
+  eerder tegenkwamen bij Concept2/Strava's duration-velden)
+- **`WorkoutTarget`** — universele targettypen (heart_rate/power/
+  cadence/pace/speed/stroke_rate/rpm/rpe/ftp_percentage/
+  critical_power_percentage/zone), geen sportspecifieke namen
+- Ondersteunende types: `WorkoutTrainingType`, `WorkoutExecutionType`,
+  `WorkoutMesocycle`, `WorkoutDifficulty`, `WorkoutMetrics`,
+  `WorkoutEquipment`
+
+### Bewuste architectuurkeuzes, vastgelegd in commentaar
+- Geen sportlogica in dit bestand — dat hoort uitsluitend bij een
+  latere Specialist Adapter (matcht de "Kernregel" uit de Master Vision)
+- `coachMessage` op blok-niveau mag door AI geschreven worden, de
+  `instruction` (structuur/uitvoering) nooit — zelfde AI-grens als
+  overal elders in CoachOS
+
+`npx next build` — compileert zonder fouten (puur een type-bestand,
+de TypeScript-compilatie zelf is hier de validatie).
+
+**Volgende stap:** Workout Builder (de daadwerkelijke assemblage-
+logica die dit datamodel vult).
+
 ## v2.4.223 — Rowing Platform Fase 1, stap 3: Training Plan Engine
 **Grote, onverwachte versnelling: de bestaande Training Plan Engine
 bleek al een adapter-patroon te gebruiken — Rowing kon aansluiten

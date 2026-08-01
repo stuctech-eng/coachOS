@@ -628,6 +628,74 @@ vormen ze de volledige, actuele status.*
 | Rowing/Strength/Kettlebell als volwaardige specialisten | ⏳ Niet gestart | Elk net zo groot als de Cycling/Running-pariteitsronde — vergt concrete aanleiding |
 | Multi-sport Orchestrator (`TodaySchedule`) | ⏳ Niet gestart | Pas zinvol zodra er meerdere volwassen specialisten zijn |
 
+#### CoachOS Workout Platform — Master Vision (vastgelegd 1 augustus 2026)
+
+**Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
+`src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/
+`WorkoutTarget` en bijbehorende types. Puur datamodel, nog geen logica
+(Builder/Validation/Adaptation-Engines volgen als aparte, latere
+stappen).
+
+**Filosofie:** Master Coach bepaalt WAT, Training Plan Engine bepaalt
+WANNEER/WAAROM, de **Workout Platform** bepaalt HOE. Bouwt voort op
+het bewezen Adapter-patroon van de Training Plan Engine (`core.ts`
+sport-agnostisch + per-sport adapters) — één laag dieper doorgetrokken.
+Sluit CoachOS' vijf-platformen-architectuur:
+
+```
+1. Context Platform      — bepaalt de context van de gebruiker
+2. Training Platform     — bepaalt wanneer/waarom een training plaatsvindt
+3. Workout Platform      — bouwt de training zelf op (NIEUW)
+4. Performance Platform  — analyseert uitgevoerde training + fysieke toestand
+5. Intelligence Platform — neemt beslissingen, stuurt de gebruiker aan
+```
+
+**Onderdelen van de Workout Platform** (`src/core/workout-builder/`,
+plugin-architectuur voor Specialist Adapters — nieuwe sporten toevoegen
+zonder de kern aan te passen):
+
+```
+CoachOS Workout Platform
+│
+├── Workout Builder            (bouwt het Universal Workout Object)
+├── Workout Object              (sport-onafhankelijk: blocks/targets/metrics/etc.) ✅ v2.4.224
+├── Workout Block Engine        (Warm-up/Hoofdblok/Interval/Herstel/Cooldown/...)
+├── Target Engine                (HR/Power/Cadence/Pace/SPM/RPE/Zone — geen sportnamen)
+├── Adaptation Engine            (slechte slaap → korter/lichter; extra tijd → langer)
+├── Validation Engine            (warming-up/cooling-down aanwezig, past binnen tijd/herstel)
+├── Alternative Engine           (fietsen→roeien bij slecht weer, etc.)
+├── Equipment Engine              (PM5/Concept2/Racefiets/Kettlebell/geen materiaal)
+├── Execution Engine              (volgorde/rust/timer/audio cues)
+└── Specialist Adapter Framework  (elke sport vertaalt naar zijn eigen taal)
+```
+
+**Kernregel, niet-onderhandelbaar (matcht CoachOS' bestaande AI-principe):**
+de Builder zelf bevat NOOIT sportlogica (geen FTP/SPM/pace-kennis) — dat
+zit uitsluitend in de Specialist Adapter. AI schrijft alleen coachnotes/
+motivatie/uitleg, bouwt NOOIT zelfstandig een workout — de opbouw blijft
+volledig deterministisch en reproduceerbaar, zelfde filosofie als overal
+elders in CoachOS.
+
+**Roadmap — migratie is een KEUZE, geen verplicht eindpunt:**
+
+```
+Fase 1 — Core Platform bouwen (Builder/Object/Block/Target/Validation/Adaptation-Engine)
+Fase 2 — Rowing als referentie-implementatie (nieuw, geen bestaande code geraakt)
+Fase 3 — Evaluatie: levert migratie van Cycling/Running aantoonbaar
+          minder code, betere onderhoudbaarheid, meer functionaliteit
+          op, bij gelijke of betere performance?
+Fase 4 — Gecontroleerde migratie (ALLEEN als Fase 3 "ja" zegt — Cycling/
+          Running blijven tot die tijd ongewijzigd functioneren)
+Fase 5 — Nieuwe specialisten (Strength/Kettlebell/Swimming/Hyrox/etc.)
+          bouwen altijd direct op de Workout Platform
+```
+
+**Bewuste correctie tijdens het ontwerp:** de oorspronkelijke visie
+plande Cycling/Running-migratie als vaststaand vervolg (Fase 3/4) —
+dat raakt bestaande, stabiele productiecode zonder concrete noodzaak.
+Aangescherpt: migratie gebeurt uitsluitend na bewezen praktijkwaarde
+bij Rowing, per specialist apart beoordeeld — nooit automatisch.
+
 #### Rowing Platform — Master Vision, Fase 1 stap 1-3 afgerond (v2.4.216-223)
 
 **Stap 3 (Training Plan Engine) afgerond — v2.4.223.** Grote,
