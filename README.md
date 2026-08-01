@@ -686,6 +686,31 @@ Adaptation → Validation): beide scenario's geven exact de verwachte
 aanpassingen, en de aangepaste workout blijft geldig volgens de
 Validation Engine.
 
+**Fase 1, stap 5 (Equipment/Execution/Alternative Engine) afgerond —
+v2.4.228. Daarmee is Fase 1 (Core Platform) volledig compleet.**
+
+- **`equipment.ts`** — `bepaalMateriaal()`: filtert een aangeleverde
+  benodigd/optioneel-materiaallijst tegen wat de gebruiker
+  daadwerkelijk beschikbaar heeft, geeft ook een `ontbreekt`-lijst
+  terug. Geen hardcoded sport-materiaalkennis — de aanroeper levert de
+  mapping aan
+- **`execution.ts`** — `genereerUitvoeringsHints()`: leesbare volgorde-
+  omschrijving + audio-cue-momenten, 100% afgeleid uit de workout-
+  structuur zelf (geen AI, geen sportlogica)
+- **`alternative.ts`** — `bepaalAlternatieven()`: filtert/matcht een
+  aangeleverde lijst mogelijke alternatieven tegen de huidige context
+  (materiaal ontbreekt/slecht weer/locatie onbeschikbaar), met
+  deduplicatie. Bewust geen eigen kennis over WELKE alternatieven er
+  zijn — dat levert de Specialist Adapter aan, matcht de Kernregel
+  (geen sportlogica in de Core)
+
+**Gevalideerd:** alle drie los getest — Equipment Engine matcht
+correct (materiaal dat ontbreekt komt in de juiste lijst terecht),
+Execution Engine geeft een nette, leesbare volgorde inclusief correcte
+herhalings-/rust-vermelding, Alternative Engine filtert correct op de
+gegeven reden en geeft niets terug als er niets aan de hand is.
+`npx next build` — compileert zonder fouten.
+
 **Filosofie:** Master Coach bepaalt WAT, Training Plan Engine bepaalt
 WANNEER/WAAROM, de **Workout Platform** bepaalt HOE. Bouwt voort op
 het bewezen Adapter-patroon van de Training Plan Engine (`core.ts`

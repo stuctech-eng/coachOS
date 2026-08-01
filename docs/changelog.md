@@ -1,5 +1,43 @@
 # CoachOS — Changelog
 
+## v2.4.228 — CoachOS Workout Platform: Fase 1, stap 5 — Fase 1 compleet
+**Laatste drie onderdelen van het Core Platform: Equipment/Execution/
+Alternative Engine.**
+
+### Nieuw
+- **`equipment.ts`** — `bepaalMateriaal()`: filtert een aangeleverde
+  benodigd/optioneel-lijst tegen daadwerkelijk beschikbaar materiaal,
+  geeft ook een `ontbreekt`-lijst terug voor eventuele vervolgstappen
+  (bijv. de Alternative Engine inschakelen)
+- **`execution.ts`** — `genereerUitvoeringsHints()`: leesbare volgorde-
+  omschrijving + audio-cue-momenten, 100% afgeleid uit de bestaande
+  workout-structuur
+- **`alternative.ts`** — `bepaalAlternatieven()`: filtert/matcht
+  aangeleverde alternatieven tegen de huidige context, met
+  deduplicatie op workout_id
+
+Alle drie bewust GEEN eigen sport- of materiaalkennis — matcht de
+Kernregel die door heel Fase 1 is aangehouden: de aanroeper (later:
+Specialist Adapter) levert de sportspecifieke kennis aan, de Core
+Platform-laag past 'm alleen consistent toe.
+
+**Gevalideerd:** alle drie los getest met concrete scenario's —
+Equipment Engine (materiaal dat ontbreekt komt correct in de
+`ontbreekt`-lijst), Execution Engine (nette volgorde inclusief
+herhalings-/rust-vermelding, gebouwd op een echte Builder-output),
+Alternative Engine (filtert correct op reden, geeft niets terug als
+er niets aan de hand is). `npx next build` — compileert zonder
+fouten.
+
+### Fase 1 (Core Platform) is hiermee volledig compleet
+Object (v2.4.224) → Builder (v2.4.225) → Validation (v2.4.226) →
+Adaptation (v2.4.227) → Equipment/Execution/Alternative (v2.4.228).
+
+**Volgende stap: Fase 2 — Rowing als referentie-implementatie.** De
+Rowing Specialist gebruikt de Workout Platform als eerste, echte
+aanroeper — de eerste plek waar dit Core Platform daadwerkelijk
+sportspecifieke betekenis krijgt.
+
 ## v2.4.227 — CoachOS Workout Platform: Fase 1, stap 4 (Adaptation Engine)
 **Vervolg op Validation Engine (v2.4.226). Past een al-gebouwde workout
 automatisch aan — draait ná de Builder, vóór de Validation Engine.**
