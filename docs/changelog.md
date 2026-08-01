@@ -1,5 +1,59 @@
 # CoachOS — Changelog
 
+## v2.4.223 — Rowing Platform Fase 1, stap 3: Training Plan Engine
+**Grote, onverwachte versnelling: de bestaande Training Plan Engine
+bleek al een adapter-patroon te gebruiken — Rowing kon aansluiten
+i.p.v. een hele nieuwe engine te bouwen.**
+
+### Ontdekking
+`src/lib/specialists/training-plan-engine/core.ts` is al 100% sport-
+agnostisch (periodisering/mesocycli/adaptieve aanpassingen), met
+Cycling en Running elk een eigen, kleine adapter (`cycling-adapter.ts`/
+`running-adapter.ts`, ~55 regels elk). Rowing kon hetzelfde patroon
+volgen.
+
+### Nieuw
+- **`training-plan-engine/rowing-adapter.ts`** — terminologie
+  afgestemd op de al-bestaande `rowing-drills.ts` (session_type:
+  recovery/endurance/interval/test), geen nieuwe, parallelle
+  vocabulaire verzonnen. `lange_afstand` toegevoegd als vierde type
+  (matcht de al-bestaande "Lange Afstand Row"-drill). Gebruikt de
+  al-bestaande `haalRowingData()` rechtstreeks voor wekelijkse-uren-
+  berekening — geen vooruitgebouwde analyse-engine
+- **`api/specialists/rowing/training-plan`** (GET/POST/PATCH) — exact
+  het Running-patroon (rechtstreeks `genereerTrainingsplanCore()`/
+  `voerDailyAdjustmentUitCore()`, niet de Cycling-route die nog een
+  legacy-wrapper gebruikt)
+- **`api/specialists/rowing/profile`** + **`/settings/rowing-profile`**
+  — bewust MINIMAAL: alleen trainingsdagen + beschikbare uren. Een
+  2k-testtijd-gebaseerd "FTP-equivalent voor roeien" (uit de Master
+  Vision) is bewust NIET meegebouwd — hoort bij een latere,
+  intensiteits-gerichte verfijning
+- **`/coach/rowing/trainingsplan`** — genereren/tonen/pauzeren/
+  hervatten, spiegelbeeld van de Cycling-pagina, bewust compacter (nog
+  geen AI-uitleglaag)
+- Link vanaf `/coach/rowing` naar zowel het nieuwe trainingsplan als
+  het profiel
+
+### Bug gevonden en gefixt in de Core zelf
+Eén hardcoded `cycling`/`running`-ternary in de foutmelding bij "geen
+trainingsdagen ingesteld" — zou bij Rowing altijd "Running Profile"
+tonen, óók voor een Rowing-gebruiker. Ironisch genoeg precies wat de
+Core's eigen documentatie al zei te willen voorkomen ("geen enkele
+sportnaam-check hoort in de Core"). Nu echt generiek
+(`adapter.sport`-gebaseerd).
+
+**Gevalideerd:**
+- Sessietype-verdeling: 3 scenario's (normale opbouw-week met
+  interval, herstelweek waarin geen enkele sessie meer 'interval' is,
+  0 trainingsdagen zonder crash)
+- `npx next build` — compileert zonder fouten, alle 6 nieuwe routes/
+  pagina's bevestigd in de build-output
+
+**Test-instructie:** ga naar Rowing Coach → Rowing Profiel, stel
+trainingsdagen in, sla op. Ga terug, tik op "Trainingsplan" → "Genereer
+trainingsplan" — zou een periodisering-gebaseerd schema moeten tonen.
+
 ## v2.4.222 — Structurele dedup-fix: geen dubbele roeisessies meer
 **Gevraagd: "En Garmin?" + "structureel goed" i.p.v. alleen een
 weergave-fix. Beide kanten aangepakt.**

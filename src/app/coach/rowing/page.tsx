@@ -121,10 +121,21 @@ export default function RowingPage() {
             <h1 className="text-xl font-bold text-white">Rowing Coach</h1>
             <p className="text-xs text-slate-500">Nieuw — basisstructuur</p>
           </div>
-          <Link href="/settings/equipment" className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center">
+          <Link href="/settings/rowing-profile" className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center">
             <Settings size={18} className="text-slate-400" />
           </Link>
         </div>
+
+        {/* v2.4.223 (Fase 1, stap 3): link naar het nieuwe trainingsplan */}
+        <Link href="/coach/rowing/trainingsplan">
+          <Card className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">Trainingsplan</p>
+              <p className="text-xs text-slate-400 mt-0.5">Periodisering, sessies per week</p>
+            </div>
+            <span className="text-slate-500">→</span>
+          </Card>
+        </Link>
 
         {laden && <div className="h-40 bg-slate-800/50 rounded-2xl animate-pulse" />}
 

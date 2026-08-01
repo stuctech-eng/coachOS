@@ -628,7 +628,39 @@ vormen ze de volledige, actuele status.*
 | Rowing/Strength/Kettlebell als volwaardige specialisten | ⏳ Niet gestart | Elk net zo groot als de Cycling/Running-pariteitsronde — vergt concrete aanleiding |
 | Multi-sport Orchestrator (`TodaySchedule`) | ⏳ Niet gestart | Pas zinvol zodra er meerdere volwassen specialisten zijn |
 
-#### Rowing Platform — Master Vision, Fase 1 stap 1 (basisstructuur) afgerond v2.4.216
+#### Rowing Platform — Master Vision, Fase 1 stap 1-3 afgerond (v2.4.216-223)
+
+**Stap 3 (Training Plan Engine) afgerond — v2.4.223.** Grote,
+onverwachte versnelling: de bestaande Training Plan Engine bleek al
+een **adapter-patroon** te gebruiken (`core.ts` volledig sport-
+agnostisch, Cycling/Running elk een eigen kleine adapter) — Rowing kon
+daarom aansluiten met een nieuwe adapter i.p.v. een hele nieuwe engine.
+
+- **`training-plan-engine/rowing-adapter.ts`** — terminologie afgestemd
+  op de al-bestaande `rowing-drills.ts` (session_type: recovery/
+  endurance/interval/test), geen nieuwe parallelle vocabulaire.
+  `haalHuidigeWekelijkseUren()` hergebruikt de al-bestaande
+  `haalRowingData()` rechtstreeks — geen aparte analyse-functie
+  vooruitgebouwd (die hoort bij een latere stap)
+- **Bug gevonden en gefixt in de Core zelf**: één hardcoded cycling/
+  running-ternary in de foutmelding (`core.ts`) zou bij Rowing altijd
+  "Running Profile" tonen, ook voor een Rowing-gebruiker — nu echt
+  generiek, ondanks de Core's eigen documentatie die dit al beloofde
+- **`api/specialists/rowing/training-plan`** (GET/POST/PATCH) — exact
+  hetzelfde patroon als de Running-route (niet de Cycling-route, die
+  gebruikt nog een legacy-wrapper)
+- **`api/specialists/rowing/profile`** + **`/settings/rowing-profile`**
+  — bewust MINIMAAL (alleen trainingsdagen + beschikbare uren, geen
+  2k-testtijd/zones-berekening — dat hoort bij een latere,
+  intensiteits-gerichte verfijning)
+- **`/coach/rowing/trainingsplan`** — genereren/tonen/pauzeren/hervatten,
+  spiegelbeeld van de Cycling-pagina, bewust compacter (geen AI-
+  uitleglaag hier nog)
+
+**Gevalideerd:** sessietype-verdeling getest (3 scenario's: normale
+opbouw-week, herstelweek met correct geen interval-sessies, 0
+trainingsdagen zonder crash). `npx next build` — compileert zonder
+fouten, alle 6 nieuwe routes/pagina's bevestigd in de build-output.
 
 **Wat er nu staat:** `rowing` geactiveerd als derde specialist
 (`status: 'active'` in `api/specialists/route.ts`, bereikbaar via

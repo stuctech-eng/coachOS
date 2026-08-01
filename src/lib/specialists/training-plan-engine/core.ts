@@ -73,7 +73,13 @@ export async function genereerTrainingsplanCore(userId: string, adapter: Trainin
   const beschikbareUren = profiel.beschikbare_uren_per_week || 4
 
   if (trainingsdagen.length === 0) {
-    throw new Error(`Geen trainingsdagen ingesteld in het ${adapter.sport === 'cycling' ? 'Cycling' : 'Running'} Profile — vul dit eerst in via Instellingen`)
+    // v2.4.223-FIX: was een hardcoded cycling/running-ternary — bij een
+    // derde sport (rowing) zou dit altijd "Running Profile" tonen, ook
+    // voor een Rowing-gebruiker. De Core-documentatie zegt zelf "geen
+    // enkele sportnaam-check hoort in de Core" — dit was daar een
+    // uitzondering op. Nu echt generiek: eerste letter hoofdletter.
+    const sportLabel = adapter.sport.charAt(0).toUpperCase() + adapter.sport.slice(1)
+    throw new Error(`Geen trainingsdagen ingesteld in het ${sportLabel} Profile — vul dit eerst in via Instellingen`)
   }
 
   const specialistDoelen = goalProgress.filter(g => g.goal_scope === 'specialist')
