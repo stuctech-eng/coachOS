@@ -711,6 +711,47 @@ herhalings-/rust-vermelding, Alternative Engine filtert correct op de
 gegeven reden en geeft niets terug als er niets aan de hand is.
 `npx next build` — compileert zonder fouten.
 
+**Fase 2 (Rowing als referentie-implementatie) — eerste stap afgerond
+— v2.4.229.** `api/specialists/rowing/training-plan/workout` — de
+eerste plek waar het Core Platform daadwerkelijk sportspecifieke
+betekenis krijgt: bouwt een concrete workout voor een gegeven
+trainingsplan-sessie (Builder), valideert 'm (Validation Engine),
+vertaalt targets naar SPM (nieuwe `src/lib/specialists/rowing-
+workout-adapter.ts`).
+
+**Belangrijke inconsistentie gevonden vóór het bouwen, opgelost:** de
+Training Plan Engine's rowing-adapter gebruikt `'recovery'` als
+sessietype (matcht de al-bestaande `rowing-drills.ts`), maar de
+Workout Platform's `WorkoutTrainingType` verwacht `'herstel'`. Zonder
+mapping zou een herstel-sessie stil in de verkeerde tak van
+`bouwHoofdblokken()` terechtkomen. Opgelost met een expliciete
+`TRAININGTYPE_MAP` bij de koppeling zelf — bevestigd met een test die
+expliciet aantoont dat `'recovery'` zónder de mapping niet herkend
+zou worden.
+
+**Twee fouten gevonden en gefixt tijdens het bouwen zelf (vóór
+oplevering):**
+1. Aangenomen tabel `user_equipment` bestaat niet — equipment staat
+   als boolean-kolommen in `profiles` (bijv. `concept2_available`),
+   hergebruikt de al-bestaande structuur uit `api/equipment/route.ts`
+2. Ongeteste Supabase-join-syntax (`training_plans!inner(...)`)
+   vervangen door twee losse, simpele queries — hetzelfde bewezen
+   patroon dat vandaag al vaker succesvol gebruikt is (bijv. bij de
+   Concept2-sync)
+
+**Eerlijke beperking, bewust zo gehouden:** alleen SPM (stroke rate)
+kan vertaald worden — dat vergt geen persoonlijke baseline. Split en
+Power vereisen een 2k-testtijd-referentiepunt ("FTP-equivalent voor
+roeien"), dat bewust nog niet gebouwd is (zie Rowing Profiel-
+instellingen, ook bewust minimaal). Die targettypen geven nu netjes
+niets terug in plaats van een verzonnen waarde.
+
+**Gevalideerd:** type-mapping getest (alle 4 Training Plan Engine-
+types matchen correct na mapping, met expliciet bewijs dat het zonder
+de fix fout zou gaan), SPM-vertaling getest (zone 2→20-24 SPM, zone
+4→28-32 SPM, niet-zone-targets geven bewust niets terug). `npx next
+build` — compileert zonder fouten, route bevestigd in de build-output.
+
 **Filosofie:** Master Coach bepaalt WAT, Training Plan Engine bepaalt
 WANNEER/WAAROM, de **Workout Platform** bepaalt HOE. Bouwt voort op
 het bewezen Adapter-patroon van de Training Plan Engine (`core.ts`

@@ -1,5 +1,51 @@
 # CoachOS — Changelog
 
+## v2.4.229 — Rowing Fase 2: eerste echte aansluiting op de Workout Platform
+**De eerste plek waar het Core Platform (v2.4.224-228) daadwerkelijk
+sportspecifieke betekenis krijgt.**
+
+### Nieuw
+- **`src/lib/specialists/rowing-workout-adapter.ts`** — vertaalt
+  generieke `WorkoutTarget`s naar roeispecifieke SPM-bereiken (zone 1
+  t/m 5, generieke vuistregels uit de roeiwereld, geen persoonlijke
+  baseline nodig). Split/Power geven bewust `{}` terug — die vereisen
+  een 2k-testtijd-referentiepunt dat nog niet bestaat
+- **`api/specialists/rowing/training-plan/workout`** — bouwt een
+  concrete workout voor een gegeven sessie (Builder), valideert 'm
+  (Validation Engine), vertaalt targets (Rowing Adapter), geeft
+  materiaal + uitvoeringshints mee
+
+### Belangrijke inconsistentie gevonden vóór het bouwen, opgelost
+De Training Plan Engine's rowing-adapter gebruikt `'recovery'` als
+sessietype, de Workout Platform's `WorkoutTrainingType` verwacht
+`'herstel'`. Zonder mapping zou een herstel-sessie stil verkeerd
+verwerkt worden. **Fix:** expliciete `TRAININGTYPE_MAP` bij de
+koppeling. Getest met expliciet bewijs dat `'recovery'` zónder de
+mapping niet herkend zou worden door de Workout Platform.
+
+### Twee fouten gevonden en gefixt tijdens het bouwen zelf
+1. Aangenomen tabel `user_equipment` bestaat niet — equipment staat
+   als boolean-kolommen in `profiles` (`concept2_available`),
+   gecorrigeerd naar de al-bestaande structuur
+2. Ongeteste Supabase-join-syntax vervangen door twee losse, simpele
+   queries — bewezen patroon, consistent met eerdere routes vandaag
+
+### Eerlijke beperking
+Alleen SPM vertaalbaar (geen baseline nodig). Split/Power wachten op
+het 2k-testtijd-referentiepunt — bewust nog niet gebouwd.
+
+**Gevalideerd:**
+- Type-mapping: alle 4 Training Plan Engine-types matchen correct na
+  mapping, met expliciet bewijs van het probleem zonder de fix
+- SPM-vertaling: zone 2→20-24 SPM, zone 4→28-32 SPM, niet-zone-targets
+  geven terecht niets terug
+- `npx next build` — compileert zonder fouten, route bevestigd in de
+  build-output
+
+**Test-instructie:** roep `/api/specialists/rowing/training-plan/
+workout?sessieId=X` aan voor een bestaande Rowing-sessie — zou een
+concrete, gevalideerde workout met SPM-targets moeten teruggeven.
+
 ## v2.4.228 — CoachOS Workout Platform: Fase 1, stap 5 — Fase 1 compleet
 **Laatste drie onderdelen van het Core Platform: Equipment/Execution/
 Alternative Engine.**
