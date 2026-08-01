@@ -180,6 +180,19 @@ export async function POST(req: NextRequest) {
         .eq('name', activityLabel)
         .single()
 
+      // v2.4.222 (structurele dedup-fix): zelfde bescherming als bij
+      // Strava/Garmin TCX — Concept2 is de meest betrouwbare bron voor
+      // roeien. Bewust ALLEEN voor 'Roeien', geen invloed op andere sporten.
+      if (activityLabel === 'Roeien') {
+        const { data: concept2Bestaat } = await adminSupabase
+          .from('activity_sessions').select('id')
+          .eq('user_id', user.id).eq('date', today).eq('source', 'concept2')
+          .maybeSingle()
+        if (concept2Bestaat) {
+          return NextResponse.json({ imported: false, skipped: true, reason: 'concept2_heeft_voorrang' })
+        }
+      }
+
       if (!userActivity) {
         const { data: template } = await adminSupabase
           .from('activity_templates')

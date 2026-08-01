@@ -71,6 +71,23 @@ export async function processStravaActivity(
     return { imported: false, skipped: true, reason: 'already_exists' }
   }
 
+  // v2.4.222 (structurele dedup-fix): Concept2 is de meest betrouwbare
+  // bron voor roeien (het apparaat zelf, met stroke rate/drag factor).
+  // Als er voor dezelfde dag al een Concept2-sessie bestaat, slaat
+  // Strava's import over — voorkomt de dubbele "9 juni: strava 25 min
+  // + concept2 25 min"-situatie structureel, i.p.v. achteraf op te
+  // ruimen. Bewust ALLEEN voor 'Roeien' — geen enkele invloed op de
+  // import van andere sporten (Cycling/Running/etc.).
+  if (activityName === 'Roeien') {
+    const { data: concept2Bestaat } = await supabase
+      .from('activity_sessions').select('id')
+      .eq('user_id', userId).eq('date', date).eq('source', 'concept2')
+      .maybeSingle()
+    if (concept2Bestaat) {
+      return { imported: false, skipped: true, reason: 'concept2_heeft_voorrang' }
+    }
+  }
+
   // Zoek of gebruiker deze activiteitssoort al heeft
   let { data: userActivity } = await supabase
     .from('activities')

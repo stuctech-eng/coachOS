@@ -726,6 +726,40 @@ ongeluk verwijderd), constraint uitgebreid met `'concept2'`. Geen
 codewijziging nodig — de sync-route gebruikte al correct
 `source: 'concept2'`, exact matchend met de nieuwe constraint.
 
+**Structurele dedup-fix — v2.4.222.** Na de eerste succesvolle sync
+bleek dezelfde training dubbel te verschijnen (9/30 juni: zowel via
+Strava als Concept2 — verwacht, want twee losse bronnen). Gevraagd:
+structureel voorkomen, niet alleen verbergen. **Prioriteitsvolgorde**
+vastgelegd: Concept2 (3, het apparaat zelf) > Garmin (2) > Strava/
+Apple Health (1) > handmatig (0).
+
+**Twee-kanten-fix, bewust op BEIDE momenten:**
+1. **Concept2-sync** (`concept2/sync/route.ts`) — na een succesvolle
+   import, worden bestaande lagere-prioriteit-records voor diezelfde
+   dag (Strava/Garmin/handmatig) verwijderd. Vangt "Strava was er
+   eerder dan Concept2".
+2. **Import-preventie** — `strava-activity-processor.ts`,
+   `garmin-activity-tcx/route.ts` en `garmin-activity-vision/route.ts`
+   checken nu vóór het opslaan of Concept2 die dag al een sessie heeft;
+   zo ja, wordt de import overgeslagen. Vangt "Concept2 was er eerder
+   dan Strava/Garmin". **Bewust ALLEEN voor `'Roeien'`** — geen enkele
+   invloed op de import van andere sporten.
+3. **Extra vangnet op weergaveniveau** (`coach/rowing/page.tsx`,
+   `dedupliceerOpDatum()`) — blijft ook staan, voor records die al vóór
+   deze fix zijn geïmporteerd.
+
+**Eerlijk benoemde beperking:** dedup werkt per **datum**, niet per
+exacte sessie. Twee echte, verschillende trainingen op één dag (bijv.
+ochtend + avond) zouden ten onrechte als duplicaat behandeld kunnen
+worden. Bewuste, pragmatische keuze — dekt de overgrote meerderheid
+van gevallen (één sessie per dag). Een preciezere fix (matchen op
+starttijd i.p.v. alleen datum) is aanzienlijk complexer en bewust niet
+stilzwijgend meegebouwd.
+
+`npx next build` — compileert zonder fouten. Dedup-logica getest met
+exact het gerapporteerde scenario (9/30 juni) — geeft correct 2
+records terug, beide bron Concept2.
+
 **Filosofie:** CoachOS krijgt geen "PM5-ondersteuning" — het krijgt een
 volledig Rowing Platform. De Rowing Specialist blijft altijd eigenaar
 van trainingsplanning, coaching, analyse en progressie; apparaten

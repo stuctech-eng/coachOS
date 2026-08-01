@@ -193,6 +193,17 @@ export async function POST() {
         continue
       }
       geimporteerd++
+
+      // v2.4.222 (structurele dedup-fix): Concept2 is de meest
+      // betrouwbare bron voor roeien (het apparaat zelf). Als er voor
+      // dezelfde dag al een lagere-prioriteit-record bestaat (Strava/
+      // Garmin/handmatig — bijv. omdat die eerder is binnengekomen dan
+      // deze Concept2-sync), wordt die nu verwijderd. Voorkomt dubbele
+      // sessies structureel, niet alleen in de weergave.
+      const dagStr = resultaat.date.split(' ')[0]
+      await supabase.from('activity_sessions').delete()
+        .eq('user_id', user.id).eq('date', dagStr).eq('activity_id', userActivity?.id || null)
+        .in('source', ['strava', 'garmin', 'apple_health', 'manual'])
     }
 
     return NextResponse.json({

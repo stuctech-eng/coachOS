@@ -27,6 +27,25 @@ interface RowingActiviteit {
   source: string
 }
 
+// v2.4.222: extra vangnet op weergaveniveau — de structurele fix
+// (hieronder, bij de sync-routes zelf) voorkomt dubbele records al bij
+// het importeren, maar deze functie blijft als extra zekerheid staan
+// (bijv. voor records die al vóór deze fix zijn geïmporteerd).
+const BRON_PRIORITEIT: Record<string, number> = { concept2: 3, garmin: 2, strava: 1, apple_health: 1, manual: 0 }
+
+function dedupliceerOpDatum(activiteiten: RowingActiviteit[]): RowingActiviteit[] {
+  const perDatum = new Map<string, RowingActiviteit>()
+  for (const a of activiteiten) {
+    const bestaande = perDatum.get(a.date)
+    const huidigePrioriteit = BRON_PRIORITEIT[a.source] ?? 0
+    const bestaandePrioriteit = bestaande ? (BRON_PRIORITEIT[bestaande.source] ?? 0) : -1
+    if (!bestaande || huidigePrioriteit > bestaandePrioriteit) {
+      perDatum.set(a.date, a)
+    }
+  }
+  return Array.from(perDatum.values())
+}
+
 export default function RowingPage() {
   const [laden, setLaden] = useState(true)
   const [activiteiten, setActiviteiten] = useState<RowingActiviteit[]>([])
@@ -173,7 +192,7 @@ export default function RowingPage() {
           <Card className="p-5">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Recente sessies</p>
             <div className="flex flex-col gap-2">
-              {activiteiten.slice(0, 10).map(a => (
+              {dedupliceerOpDatum(activiteiten).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10).map(a => (
                 <div key={a.id} className="flex items-center justify-between py-2 border-b border-coach-border last:border-0">
                   <div>
                     <p className="text-sm text-white">{new Date(a.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</p>

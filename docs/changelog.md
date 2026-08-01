@@ -1,5 +1,51 @@
 # CoachOS — Changelog
 
+## v2.4.222 — Structurele dedup-fix: geen dubbele roeisessies meer
+**Gevraagd: "En Garmin?" + "structureel goed" i.p.v. alleen een
+weergave-fix. Beide kanten aangepakt.**
+
+### Prioriteitsvolgorde
+Concept2 (3, het apparaat zelf — meest betrouwbaar voor roeien) >
+Garmin (2) > Strava/Apple Health (1) > handmatig (0).
+
+### Fix 1 — Concept2-sync ruimt lagere-prioriteit-duplicaten op
+`api/specialists/rowing/concept2/sync/route.ts` — na een succesvolle
+import wordt nu ook gecheckt of er voor diezelfde dag al een Strava/
+Garmin/handmatig-record bestaat; zo ja, wordt dat verwijderd. Vangt
+het geval "Strava was er eerder dan Concept2".
+
+### Fix 2 — import-preventie bij Strava/Garmin
+Drie bestanden aangepast, allemaal met exact dezelfde check (vóór het
+opslaan: bestaat er al een Concept2-sessie voor deze dag?), **bewust
+alleen voor `'Roeien'`**, geen invloed op andere sporten:
+- `src/lib/strava-activity-processor.ts`
+- `src/app/api/health/garmin-activity-tcx/route.ts`
+- `src/app/api/health/garmin-activity-vision/route.ts`
+
+Vangt het geval "Concept2 was er eerder dan Strava/Garmin".
+
+### Fix 3 — extra vangnet op weergaveniveau
+`coach/rowing/page.tsx` — `dedupliceerOpDatum()` blijft ook staan,
+voor records die al vóór deze fix zijn geïmporteerd (dubbel-op-dubbel
+is geen probleem, puur presentatie).
+
+### Eerlijk benoemde beperking
+Dedup werkt per **datum**, niet per exacte sessie. Twee echte,
+verschillende trainingen op één dag zouden ten onrechte als duplicaat
+behandeld kunnen worden. Bewuste, pragmatische keuze — een preciezere
+fix (matchen op starttijd) is aanzienlijk complexer en bewust niet
+stilzwijgend meegebouwd.
+
+**Gevalideerd:** dedup-logica getest met exact het gerapporteerde
+scenario (9/30 juni, dubbel via strava+concept2) — geeft correct 2
+records terug, beide bron concept2. `npx next build` — compileert
+zonder fouten.
+
+**Test-instructie:** open Rowing Coach — de eerder dubbele 9/30 juni-
+sessies zouden nu nog maar één keer moeten verschijnen (bron
+"concept2"). Nieuwe Strava/Garmin-imports van roei-sessies die
+Concept2 al heeft, zouden vanaf nu stil overgeslagen moeten worden.
+
 ## v2.4.221 — SQL-fix: root cause van de "0/0"-sync gevonden
 **v2.4.220's diagnostiek werkte precies zoals bedoeld — direct de
 exacte oorzaak teruggekregen: "56 gevonden bij Concept2. Fout bij
