@@ -31,6 +31,9 @@ export default function RowingPage() {
   const [laden, setLaden] = useState(true)
   const [activiteiten, setActiviteiten] = useState<RowingActiviteit[]>([])
   const [fout, setFout] = useState<string | null>(null)
+  // v2.4.218: Concept2-koppelingsstatus
+  const [concept2Verbonden, setConcept2Verbonden] = useState<boolean | null>(null)
+  const [urlMelding, setUrlMelding] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/specialists/rowing/data')
@@ -38,6 +41,22 @@ export default function RowingPage() {
       .then(d => { if (d.error) setFout(d.error); else setActiviteiten(d.activiteiten || []) })
       .catch(() => setFout('Kon Rowing-data niet ophalen'))
       .finally(() => setLaden(false))
+
+    fetch('/api/specialists/rowing/concept2/status')
+      .then(r => r.json())
+      .then(d => setConcept2Verbonden(!!d.verbonden))
+      .catch(() => setConcept2Verbonden(false))
+
+    // Melding tonen na terugkomst van de OAuth-flow
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('concept2_verbonden')) {
+      setUrlMelding('Concept2 succesvol gekoppeld!')
+      setConcept2Verbonden(true)
+      window.history.replaceState({}, '', '/coach/rowing')
+    } else if (params.get('concept2_error')) {
+      setUrlMelding('Koppelen mislukt: ' + params.get('concept2_error'))
+      window.history.replaceState({}, '', '/coach/rowing')
+    }
   }, [])
 
   const heeftData = activiteiten.length > 0
@@ -59,6 +78,31 @@ export default function RowingPage() {
         </div>
 
         {laden && <div className="h-40 bg-slate-800/50 rounded-2xl animate-pulse" />}
+
+        {urlMelding && (
+          <Card className={`p-3 text-sm ${urlMelding.startsWith('Concept2 succesvol') ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+            {urlMelding}
+          </Card>
+        )}
+
+        {/* v2.4.218: Concept2-koppelingskaart — enige plek die de OAuth-
+            flow triggert, altijd zichtbaar zodra de status bekend is */}
+        {concept2Verbonden !== null && (
+          <Card className="p-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">Concept2 Logbook</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {concept2Verbonden ? '✓ Gekoppeld' : 'Nog niet gekoppeld'}
+              </p>
+            </div>
+            {!concept2Verbonden && (
+              <a href="/api/specialists/rowing/concept2/authorize"
+                className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold active:bg-primary-700">
+                Verbind
+              </a>
+            )}
+          </Card>
+        )}
 
         {!laden && fout && (
           <Card className="p-6 text-center">

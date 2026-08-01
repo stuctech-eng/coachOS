@@ -1,5 +1,69 @@
 # CoachOS — Changelog
 
+## v2.4.218 — Concept2 OAuth-koppeling
+**Developer-sleutels aangevraagd en in Vercel gezet. Volledige
+Authorization Code-flow gebouwd tegen de exacte, officiële Concept2-
+documentatie.**
+
+### SQL (uitvoeren vóór deze code)
+`supabase/concept2_tokens.sql`:
+```sql
+create table if not exists concept2_tokens (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  access_token text not null,
+  refresh_token text not null,
+  expires_at timestamptz not null,
+  concept2_user_id integer,
+  scope text not null,
+  connected_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table concept2_tokens enable row level security;
+create policy "Gebruikers zien alleen hun eigen Concept2-token"
+  on concept2_tokens for all using (auth.uid() = user_id);
+```
+
+### Nieuw — 3 routes
+- **`api/specialists/rowing/concept2/authorize`** — stuurt door naar
+  Concept2's inlog-/toestemmingsscherm. `GET /oauth/authorize?
+  client_id=...&scope=results:read&response_type=code&redirect_uri=...`
+  Scope bewust beperkt tot `results:read` (minst-nodige-rechten —
+  geen schrijftoegang nodig)
+- **`api/specialists/rowing/concept2/callback`** — wisselt de
+  authorization code om voor een access/refresh-token via `POST
+  /oauth/access_token` (form-urlencoded body). Slaat op in
+  `concept2_tokens` (RLS aan). Redirect terug naar `/coach/rowing`
+  met een succes- of foutmelding als query-param
+- **`api/specialists/rowing/concept2/status`** — laat de UI weten of
+  er al een koppeling bestaat — **geeft nooit de token zelf terug**
+- **`/coach/rowing`** — "Verbind Concept2"-kaart + terugkoppeling na
+  de OAuth-flow
+
+### Bewuste architectuurkeuze
+User-identiteit in de callback komt via de **sessie-cookie**
+(consistent met elke andere route in CoachOS), niet via de OAuth
+`state`-parameter — state zou de user_id blootgeven en is geen
+betrouwbaar CSRF-mechanisme zonder een server-side opgeslagen nonce
+om tegen te verifiëren.
+
+**Gevalideerd:**
+- Token-request-structuur (form-urlencoded body) getest tegen
+  Concept2's eigen documentatie-voorbeeld — komt overeen
+- `expires_at`-berekening getest met hun eigen voorbeeldwaarde
+  (`expires_in: 604800`) — geeft correct exact 7 dagen
+- `npx next build` — compileert zonder fouten, alle 3 nieuwe routes
+  bevestigd in de build-output
+
+### Bewust nog niet gebouwd
+Daadwerkelijke **data-sync** (resultaten ophalen via `/api/users/me/
+results` en opslaan in `activity_sessions`) — de koppeling zelf staat,
+het periodiek/on-demand ophalen van resultaten is de logische
+volgende stap.
+
+**Test-instructie:** open Rowing Coach → tik "Verbind" bij Concept2
+Logbook → log in bij Concept2 → zou je terug moeten sturen naar
+CoachOS met "Concept2 succesvol gekoppeld!".
+
 ## v2.4.217 — Fix: Rowing-sessies toonden "0 min"
 **Bevestigd via screenshot: Rowing Coach werkt — 2 echte Strava-
 sessies zichtbaar (9 en 30 juni). Maar de duur toonde bij beide "0

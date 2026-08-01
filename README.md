@@ -648,11 +648,39 @@ pagina deelde per ongeluk nogmaals door 60. Gefixt, en ter
 bevestiging ook de TCX-import gecontroleerd (zelfde conventie,
 minuten overal consistent).
 
-**Bewust NOG NIET gebouwd** (volgende stappen): Training Plan Engine,
-Workout Builder, Analyse-engine, Concept2 OAuth-koppeling (wacht op
-developer-sleutels — moet door de gebruiker zelf aangevraagd worden
-via `log.concept2.com/developers/documentation/`), Coach Memory,
-Today Engine-integratie.
+**Concept2 OAuth-koppeling afgerond — v2.4.218.** Developer-sleutels
+aangevraagd en in Vercel gezet (`CONCEPT2_CLIENT_ID`/
+`CONCEPT2_CLIENT_SECRET`). Volledige Authorization Code-flow gebouwd
+tegen de exacte, officiële documentatie
+(`log.concept2.com/developers/documentation/`):
+- **`api/specialists/rowing/concept2/authorize`** — stuurt door naar
+  Concept2's inlog-/toestemmingsscherm (`GET /oauth/authorize`,
+  scope `results:read` — minst-nodige-rechten, geen schrijftoegang)
+- **`api/specialists/rowing/concept2/callback`** — wisselt de
+  authorization code om voor een access/refresh-token (`POST /oauth/
+  access_token`, form-urlencoded), slaat op in nieuwe tabel
+  `concept2_tokens` (RLS aan, alleen de eigen rij zichtbaar)
+- **`api/specialists/rowing/concept2/status`** — laat de UI weten of
+  er al een koppeling bestaat, **geeft nooit de token zelf terug**
+- **`/coach/rowing`** — "Verbind Concept2"-kaart, met terugkoppeling
+  na de OAuth-flow (succes/foutmelding)
+
+**Bewuste architectuurkeuze:** user-identiteit in de callback komt via
+de sessie-cookie (consistent met elke andere route in CoachOS), niet
+via de OAuth `state`-parameter — state zou de user_id blootgeven en
+is geen betrouwbaar CSRF-mechanisme zonder een server-side opgeslagen
+nonce.
+
+**Gevalideerd:** token-request-structuur getest tegen Concept2's eigen
+documentatie-voorbeeld (klopt), `expires_at`-berekening getest met hun
+eigen voorbeeldwaarde (604800 sec = exact 7 dagen). `npx next build`
+— compileert zonder fouten, alle 3 routes bevestigd in de build-output.
+
+**Bewust NOG NIET gebouwd** (volgende stappen): daadwerkelijke
+**data-sync** (resultaten ophalen via `/api/users/me/results` en
+opslaan in `activity_sessions` — de koppeling zelf staat, het
+periodiek/on-demand ophalen nog niet), Training Plan Engine, Workout
+Builder, Analyse-engine, Coach Memory, Today Engine-integratie.
 
 **Filosofie:** CoachOS krijgt geen "PM5-ondersteuning" — het krijgt een
 volledig Rowing Platform. De Rowing Specialist blijft altijd eigenaar
