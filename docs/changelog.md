@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.220 — Diagnose-fix: sync gaf "0/0" ondanks echte data in Concept2
+**Gemeld met screenshot: 9+ echte sessies zichtbaar in het Concept2
+Logbook (o.a. 5000m/25:12, 4290m), maar de sync meldde "0 nieuwe
+sessie(s), 0 al bekend".**
+
+### Het probleem met de vorige versie
+`geimporteerd`/`overgeslagen` waren allebei 0, maar dat kon **twee
+volledig verschillende oorzaken** hebben — en de UI liet geen
+onderscheid zien:
+1. Concept2's API gaf 0 resultaten terug (query/filter probleem)
+2. Concept2 gaf wél resultaten terug, maar elke `insert` naar
+   `activity_sessions` mislukte stil (de `continue` bij een fout
+   sloeg zowel `geimporteerd` als `overgeslagen` over)
+
+Zonder dit onderscheid was verder debuggen puur gokken.
+
+### Fix — diagnostiek zichtbaar maken, niet de oorzaak zelf gokken
+- **`totaalGevonden`** gaat nu altijd mee in de respons — laat direct
+  zien of Concept2 daadwerkelijk data teruggaf
+- **`eersteInsertFout`** — als opslaan mislukt, wordt de eerste
+  concrete Postgres-foutmelding nu getoond i.p.v. verborgen in
+  server-logs
+- Ruwe eerste API-respons wordt gelogd zodra er 0 resultaten
+  binnenkomen (voor server-side diagnose)
+- **`Accept: application/vnd.c2logbook.v1+json`**-header toegevoegd —
+  door Concept2's eigen documentatie aanbevolen ("to avoid potential
+  issues"), ontbrak in de vorige versie
+- UI-melding en kleur-logica bijgewerkt om deze extra info netjes te
+  tonen
+
+`npx next build` — compileert zonder fouten.
+
+**Belangrijk, eerlijk:** de exacte root cause is hiermee nog niet
+gevonden — dat kon niet zonder toegang tot de live respons. Deze
+levering maakt het probleem **zichtbaar** zodat de volgende sync-
+poging een concreet signaal geeft (bijv. "47 gevonden, 0 opgeslagen,
+fout: ...") i.p.v. het ambigue "0/0" van daarvoor.
+
+**Test-instructie:** tik nogmaals op "Sync nu" bij Rowing Coach — de
+melding zou nu moeten laten zien hoeveel Concept2 daadwerkelijk
+teruggaf, en bij een opslagfout de concrete reden.
+
 ## v2.4.219 — Concept2 data-sync
 **Vervolg op v2.4.218's OAuth-koppeling, die bevestigd end-to-end
 werkt in de praktijk. Nu het daadwerkelijk ophalen van resultaten.**

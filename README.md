@@ -700,6 +700,20 @@ allemaal correct.
 Workout Builder, Analyse-engine, Coach Memory, Today Engine-integratie,
 automatische/periodieke sync (nu alleen handmatig via "Sync nu").
 
+**Diagnose-fix — v2.4.220: sync gaf "0/0" terwijl er wél data in
+Concept2 stond.** Bevestigd met screenshot: 9+ echte sessies zichtbaar
+in het Concept2 Logbook, maar de sync meldde "0 nieuwe sessie(s), 0 al
+bekend". Root cause nog niet met zekerheid vastgesteld — de vorige
+respons **verborg** het verschil tussen "Concept2 gaf niets terug" en
+"wel gevonden, maar opslaan mislukte" (beide zagen er als "0/0" uit).
+**Fix:** `totaalGevonden` en de eerste opslag-foutmelding gaan nu mee
+in de respons/UI-melding, en de ruwe eerste API-respons wordt gelogd
+zodra er 0 resultaten binnenkomen. Ook: `Accept: application/
+vnd.c2logbook.v1+json`-header toegevoegd (door Concept2's documentatie
+aanbevolen, "om potentiële problemen te voorkomen"). Volgende sync-
+poging zou nu een concreet, bruikbaar signaal moeten geven i.p.v. een
+ambigue "0/0".
+
 **Filosofie:** CoachOS krijgt geen "PM5-ondersteuning" — het krijgt een
 volledig Rowing Platform. De Rowing Specialist blijft altijd eigenaar
 van trainingsplanning, coaching, analyse en progressie; apparaten

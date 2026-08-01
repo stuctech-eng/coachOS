@@ -107,19 +107,37 @@ export async function POST() {
     let volgendeUrl: string | null =
       `https://log.concept2.com/api/users/me/results?type=rower&from=${van}&number=100`
 
-    // Pagination volgen, met een redelijke limiet (voorkomt oneindige loop)
+    // v2.4.220-FIX: gemeld — sync gaf "0 nieuwe, 0 al bekend" terug
+    // terwijl er wél degelijk 9+ sessies in het Concept2 Logbook
+    // stonden (bevestigd met screenshot). De vorige versie verborg de
+    // precieze oorzaak: als totaalGevonden al 0 was (API gaf niets
+    // terug), zag dat er in de UI hetzelfde uit als "alles al bekend".
+    // Nu: de ruwe API-respons van de EERSTE pagina wordt gelogd zodra
+    // er 0 resultaten binnenkomen, en totaalGevonden gaat mee in de
+    // respons naar de UI.
+    let ruweEersteRespons: unknown = null
     let paginas = 0
     while (volgendeUrl && paginas < 20) {
-      const res: Response = await fetch(volgendeUrl, { headers: { Authorization: `Bearer ${accessToken}` } })
+      const res: Response = await fetch(volgendeUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.c2logbook.v1+json',
+        },
+      })
       if (!res.ok) {
         const tekst = await res.text()
         console.error('[concept2/sync] Ophalen resultaten mislukt:', res.status, tekst)
-        return NextResponse.json({ error: 'Ophalen bij Concept2 mislukt' }, { status: 502 })
+        return NextResponse.json({ error: `Ophalen bij Concept2 mislukt (${res.status}): ${tekst.slice(0, 200)}` }, { status: 502 })
       }
       const json = await res.json() as { data: Concept2Result[]; meta?: { pagination?: { links?: { next?: string } } } }
-      alleResultaten = alleResultaten.concat(json.data)
+      if (paginas === 0) ruweEersteRespons = json
+      alleResultaten = alleResultaten.concat(json.data || [])
       volgendeUrl = json.meta?.pagination?.links?.next || null
       paginas++
+    }
+
+    if (alleResultaten.length === 0) {
+      console.error('[concept2/sync] 0 resultaten van Concept2 — ruwe respons:', JSON.stringify(ruweEersteRespons).slice(0, 1000))
     }
 
     // Zoek of maak de "Roeien"-activiteit voor deze gebruiker aan
@@ -137,6 +155,7 @@ export async function POST() {
 
     let geimporteerd = 0
     let overgeslagen = 0
+    let eersteInsertFout: string | null = null
 
     for (const resultaat of alleResultaten) {
       // Idempotency-check — zelfde patroon als Strava
@@ -170,12 +189,17 @@ export async function POST() {
 
       if (error) {
         console.error('[concept2/sync] Insert mislukt voor resultaat', resultaat.id, error)
+        if (!eersteInsertFout) eersteInsertFout = error.message
         continue
       }
       geimporteerd++
     }
 
-    return NextResponse.json({ geimporteerd, overgeslagen, totaalGevonden: alleResultaten.length })
+    return NextResponse.json({
+      geimporteerd, overgeslagen, totaalGevonden: alleResultaten.length,
+      // v2.4.220: diagnostiek, zodat "0/0" niet langer ambigu is
+      eersteInsertFout,
+    })
   } catch (err) {
     console.error('[concept2/sync]', err)
     return NextResponse.json({ error: 'Sync mislukt' }, { status: 500 })

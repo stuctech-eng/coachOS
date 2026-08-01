@@ -71,7 +71,13 @@ export default function RowingPage() {
       if (!res.ok) {
         setUrlMelding('Sync mislukt: ' + (data.error || 'onbekende fout'))
       } else {
-        setUrlMelding(`Sync voltooid — ${data.geimporteerd} nieuwe sessie(s), ${data.overgeslagen} al bekend`)
+        // v2.4.220-FIX: "0/0" was ambigu — kon betekenen "Concept2 gaf
+        // niets terug" OF "wel gevonden, maar opslaan mislukte". Nu
+        // altijd totaalGevonden erbij, en de eerste opslag-fout indien
+        // van toepassing — zichtbaar i.p.v. verborgen in server-logs.
+        let melding = `Sync voltooid — ${data.geimporteerd} nieuwe sessie(s), ${data.overgeslagen} al bekend (${data.totaalGevonden} gevonden bij Concept2)`
+        if (data.eersteInsertFout) melding += `. Fout bij opslaan: ${data.eersteInsertFout}`
+        setUrlMelding(melding)
         const dataRes = await fetch('/api/specialists/rowing/data')
         const nieuweData = await dataRes.json()
         if (!nieuweData.error) setActiviteiten(nieuweData.activiteiten || [])
@@ -104,7 +110,7 @@ export default function RowingPage() {
         {laden && <div className="h-40 bg-slate-800/50 rounded-2xl animate-pulse" />}
 
         {urlMelding && (
-          <Card className={`p-3 text-sm ${urlMelding.includes('mislukt') ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+          <Card className={`p-3 text-sm ${(urlMelding.includes('mislukt') || urlMelding.includes('Fout bij')) ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
             {urlMelding}
           </Card>
         )}
