@@ -628,6 +628,71 @@ vormen ze de volledige, actuele status.*
 | Rowing/Strength/Kettlebell als volwaardige specialisten | ⏳ Niet gestart | Elk net zo groot als de Cycling/Running-pariteitsronde — vergt concrete aanleiding |
 | Multi-sport Orchestrator (`TodaySchedule`) | ⏳ Niet gestart | Pas zinvol zodra er meerdere volwassen specialisten zijn |
 
+#### Rowing Platform — Master Vision (vastgelegd 1 augustus 2026, niets gebouwd)
+
+**Filosofie:** CoachOS krijgt geen "PM5-ondersteuning" — het krijgt een
+volledig Rowing Platform. De Rowing Specialist blijft altijd eigenaar
+van trainingsplanning, coaching, analyse en progressie; apparaten
+(PM5, WaterRower, Technogym, etc.) zijn uitsluitend uitvoerders, nooit
+de bron van intelligentie. Communicatie verloopt altijd via een
+**Device Adapter Layer** — de specialist praat nooit rechtstreeks met
+hardware.
+
+**Kritieke technische beperking, ontdekt tijdens het ontwerp:** Safari
+op iOS ondersteunt **geen Web Bluetooth** (bevestigd: "not supported
+and no plan to support it in the near future" — geldt voor alle iOS-
+versies). Een PWA kan dus niet rechtstreeks live met een PM5 praten
+via BLE. Dit betekent niet dat de architectuur fout is — het betekent
+dat de Device Adapter per platform verschilt:
+
+```
+                 Rowing Specialist
+                        │
+                 Device Adapter Layer
+                        │
+        ┌───────────────┼────────────────┐
+        │               │                │
+     PWA Adapter    Native Adapter   Cloud Adapter
+        │               │                │
+ ErgData Sync      PM5 via BLE      Concept2 Cloud/API
+```
+
+**Fase 1 — CoachOS PWA (het platform van vandaag):**
+- Rowing Specialist: volwaardig, net zo groot als Cycling/Running
+- Training Plan Engine: volledige periodisering (Base/Build/Peak/
+  Recovery/Deload/Race/Testweken), FTP-equivalent voor roeien
+- Workout Builder: automatisch trainingen samenstellen (intervallen,
+  piramides, etc.)
+- Analyse ná de training (niet live): pacing, cadans-stabiliteit,
+  techniek- en vermogensontwikkeling
+- Synchronisatie via **ErgData of Concept2 Cloud/API** — geen live
+  verbinding, wel volledige nasynchronisatie (zelfde patroon als de
+  bestaande "Concept2 Roeimachine"-koppeling in Equipment)
+- Dashboard/records/progressie — net als Cycling/Running
+- **Geen** live BLE naar de PM5, **geen** live coaching tijdens de
+  sessie — technisch niet haalbaar binnen een iOS-PWA
+
+**Fase 2 — CoachOS Native (toekomst, apart traject):**
+- Rechtstreekse BLE-verbinding met de PM5 (en later andere apparaten)
+- Live metrics elke seconde (tijd/afstand/split/stroke rate/power/
+  hartslag)
+- Live coaching tijdens de sessie ("Stroke rate iets lager", "Nog 3
+  intervallen") — rustige, niet-schreeuwerige toon
+- Workout-object rechtstreeks naar het apparaat sturen
+
+**Waarom dit toekomstbestendig is:** de Rowing Specialist zelf hoeft
+bij een latere native app **niet aangepast** te worden — alleen de
+Device Adapter verandert (PWA Adapter → Native Adapter). Dat is exact
+het voordeel van deze architectuurkeuze.
+
+**Coach Memory voor Rowing** (net als bij Cycling/Running): favoriete
+trainingen, sterke/zwakke punten, technische aandachtspunten,
+blessuregevoeligheid, doelwedstrijden, records, voorkeuren.
+
+**Today Engine ontvangt** bij een voltooide sessie alleen een
+samenvatting (voltooid/execution score/recovery impact/coach-advies),
+nooit ruwe data — zelfde principe als de rest van CoachOS.
+
 **Nog niet in de praktijk bevestigd** (wel gebouwd en getest in code):
 ACWR-correctie in de Recovery Score bij een echt hoge belastingsverhouding
 — wacht op een natuurlijke gelegenheid, geen bekend probleem.
