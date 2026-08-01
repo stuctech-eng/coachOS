@@ -651,6 +651,23 @@ overschrijden — nu worden ze evenredig verkleind zodat de totale duur
 altijd exact klopt, ook bij zulke randgevallen. Normale sessies (bijv.
 60 min) blijven volledig ongewijzigd door deze fix.
 
+**Fase 1, stap 3 (Validation Engine) afgerond — v2.4.226.**
+`src/core/workout-builder/validation.ts` — `valideerWorkout()`:
+controleert of warmup/cooldown/hoofdblokken bestaan, of elk blok een
+geldige duur/herhalingsaantal heeft, en (optioneel, via `ValidationContext`)
+of de workout past binnen de beschikbare tijd en de huidige
+CoachPolicy-intensiteitsgrens ("veilige belasting" — blokkeert bijv.
+een interval-sessie op een dag met `maxIntensiteit: 'low'`).
+`berekenWerkelijkeTotaleDuur()` rekent correct met `repeat`/
+`rust_na_repeat_sec` (een interval-blok van 540s met 5 herhalingen
+duurt in werkelijkheid geen 540s maar 3060s inclusief rust). **Bewust
+klein gehouden:** context is nu alleen `beschikbareTijd_sec`/
+`maxIntensiteit` — geen volledige Recovery/Fatigue/Coach Agenda-
+koppeling, die volgt zodra er een concrete aanroeper is die deze data
+al heeft. Integratietest bevestigt: Builder + Validation Engine werken
+samen correct (een gebouwde 60-minuten-workout klopt exact op 3600s,
+en wordt terecht geblokkeerd bij een lage-intensiteit-CoachPolicy-dag).
+
 **Filosofie:** Master Coach bepaalt WAT, Training Plan Engine bepaalt
 WANNEER/WAAROM, de **Workout Platform** bepaalt HOE. Bouwt voort op
 het bewezen Adapter-patroon van de Training Plan Engine (`core.ts`

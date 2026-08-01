@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.226 — CoachOS Workout Platform: Fase 1, stap 3 (Validation Engine)
+**Vervolg op Builder (v2.4.225). Controleert of een gebouwde workout
+compleet en veilig is.**
+
+### Nieuw
+`src/core/workout-builder/validation.ts`:
+- **`valideerWorkout()`** — structurele checks (warmup/cooldown/
+  hoofdblokken bestaan, elk blok heeft een geldige duur/herhalings-
+  aantal) + optionele context-checks (past binnen beschikbare tijd,
+  past binnen de huidige CoachPolicy-intensiteitsgrens — "veilige
+  belasting")
+- **`berekenWerkelijkeTotaleDuur()`** — rekent correct met `repeat`/
+  `rust_na_repeat_sec`: een interval-blok van 540s met 5 herhalingen
+  duurt in werkelijkheid geen 540s maar 3060s inclusief rustpauzes
+- **`ValidationContext`** — bewust klein gehouden (alleen
+  `beschikbareTijd_sec`/`maxIntensiteit`), geen volledige Recovery/
+  Fatigue/Coach Agenda-koppeling — die volgt zodra er een concrete
+  aanroeper is die deze data al heeft
+
+### Gevalideerd
+- Werkelijke-duur-berekening: interval-blok (5×540s, 90s rust) geeft
+  correct 3060s, een niet-herhalend blok blijft ongewijzigd
+- Tijdsvalidatie: workout die te lang duurt wordt correct gemeld,
+  workout die past geeft geen probleem
+- **Integratietest** (Builder + Validation samen): een gebouwde 60-
+  minuten-workout klopt exact op 3600s werkelijke duur en krijgt groen
+  licht; dezelfde workout wordt terecht geblokkeerd op een dag met
+  `maxIntensiteit: 'low'` ("Trainingstype interval is een hoge-
+  intensiteit-sessie, maar CoachPolicy staat vandaag alleen lage
+  intensiteit toe")
+
+`npx next build` — compileert zonder fouten.
+
+**Volgende stap:** Adaptation Engine (past een workout automatisch
+aan bij bijv. slechte slaap of extra beschikbare tijd).
+
 ## v2.4.225 — CoachOS Workout Platform: Fase 1, stap 2 (Workout Builder)
 **Vervolg op v2.4.224's typedefinities. De daadwerkelijke assemblage-
 logica die het datamodel vult.**
