@@ -793,9 +793,22 @@ bronnen — CoachOS blijft eigenaar van de context.
 
 **Bewuste, expliciet vastgelegde eerste scope:** het Universal Athlete
 Platform begint klein (Running, Cycling, Rowing) en breidt geleidelijk
-uit — ambitieuze architectuur, beheersbare implementatie. Niets van
-deze visie is gebouwd; dit is een referentiekader voor toekomstige
-stappen.
+uit — ambitieuze architectuur, beheersbare implementatie.
+
+**Eerste bouwstap afgerond — v2.4.234.**
+`src/core/athlete-platform/types.ts` — `UniversalAthleteState` en de
+acht categorieën (Cardiovasculair/Spieren/Mechanisch/Neurologisch/
+Herstel/Mentaal/Training/Omgeving). Puur datamodel, nog geen logica
+(Universal Impact Engine/Learning Rules Engine volgen als aparte,
+latere stappen). **Beide kernregels uit het ontwerpoverleg direct in
+de types verankerd:** (1) `UniverseleWaarde` bevat verplicht een
+`niveau` (kwalitatief label) + `confidence` — een los getal
+(`ruweWaarde`) is uitsluitend intern, expliciet gemarkeerd als "NOOIT
+rechtstreeks tonen aan de gebruiker"; (2) `bepaalPersonalisatieStatus()`
+implementeert de minimum-datapunten-drempel (Running/Cycling/Rowing:
+20, Strength: 15) — `population_model` vs. `learning_enabled`,
+getest inclusief het exacte grensgeval (19 vs. 20 trainingen) en een
+fallback-drempel voor toekomstige, nog onbekende sporten.
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/

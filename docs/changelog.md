@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.234 — Universal Athlete Platform: eerste bouwstap (typedefinities)
+**Eerste bouwstap van de nieuwe Universal Athlete Platform-laag
+(vastgelegd 2 augustus 2026). Puur datamodel, nog geen logica.**
+
+### Nieuw
+`src/core/athlete-platform/types.ts`:
+- **`UniversalAthleteState`** — het digitale model van de sporter, acht
+  categorieën: Cardiovasculair, Spieren, Mechanisch, Neurologisch,
+  Herstel, Mentaal, Training, Omgeving (rechtstreeks uit de Master
+  Vision, geen sport-specifieke velden — dat hoort bij de latere
+  Specialist Adapters)
+- **`UniverseleWaarde`** — het kern-datatype: verplicht een kwalitatief
+  `niveau` + `confidence`, geen los getal. `ruweWaarde` bestaat alleen
+  voor intern engine-gebruik, expliciet gemarkeerd als "NOOIT
+  rechtstreeks tonen aan de gebruiker" — implementeert de "geen
+  schijnprecisie"-kernregel direct in het type zelf
+- **`bepaalPersonalisatieStatus()`** — de minimum-datapunten-drempel
+  (Running/Cycling/Rowing: 20 trainingen, Strength: 15) —
+  `population_model` vs. `learning_enabled`
+
+### Kernregels direct in de types verankerd
+1. Universal Athlete Platform is een Observer — dit datamodel bevat
+   zelf geen beslislogica, alleen beschrijving
+2. Geen schijnprecisie — elke waarde is verplicht een label +
+   confidence, nooit een kaal getal
+3. Personalisatie pas na een bewezen datadrempel — voorkomt overtuigde,
+   foute personalisatie op toeval
+
+**Gevalideerd:** drempel-functie getest — 5 scenario's, inclusief het
+exacte grensgeval (19 vs. 20 trainingen), een sport met een eigen,
+lagere drempel (Strength: 15), en een fallback-drempel voor
+toekomstige, nog onbekende sporten. `npx next build` — compileert
+zonder fouten.
+
+**Volgende stap:** Universal Impact Engine (vertaalt een voltooide
+specialist-sessie naar wijzigingen in de Universal Athlete State).
+
 ## v2.4.233 — Rowing dashboard-verrijking
 **Volgende stap in de vastgelegde volgorde.**
 
