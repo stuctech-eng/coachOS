@@ -1,5 +1,54 @@
 # CoachOS — Changelog
 
+## v2.4.242 — Running gelijkwaardig aan Rowing op Workout Platform-niveau
+**Bewuste architectuurkeuze: niet een simpele demo binnen één sport,
+maar de fundering waarop het kruis-sport-principe daadwerkelijk kan
+bestaan.**
+
+> "Een simpele Rowing-demo zou technisch sneller zijn, maar
+> strategisch minder sterk. Dan bewijs je alleen: 'CoachOS kan binnen
+> één sport aanpassen.' Terwijl de echte visie is: 'CoachOS begrijpt
+> de complete atleet, ongeacht de sport.'"
+
+### Nieuw
+**`src/lib/specialists/running-workout-adapter.ts`** —
+`vertaalTarget()`. Belangrijk verschil met Rowing: Running had al een
+gevalideerde persoonlijke baseline (VDOT, Daniels/Gilbert-model,
+`running-zones.ts`) — de vertaling geeft daarom een **echte pace**
+(bijv. "4:16/km - 4:26/km"), niet alleen een generiek zone-label. Geen
+VDOT bekend → eerlijk niets teruggeven.
+
+**`api/specialists/running/training-plan/workout`** — mirror van
+Rowing's route (v2.4.229), zelfde `TRAININGTYPE_MAP`/`MESOCYCLE_MAP`-
+patroon (Running's vocabulaire bleek al grotendeels te matchen:
+interval/herstel/tempo zijn identiek, alleen `easy_run`→`endurance` en
+`lange_duurloop`→`lange_afstand` nodig).
+
+### Het kruis-sport-signaal, voor het eerst écht toegepast
+Na het bouwen van de workout wordt de Universal Athlete State
+gecheckt (`bepaalKruisSportSignaal()`, v2.4.241). Als een andere sport
+het lichaam al belast heeft, wordt de Running-workout automatisch
+afgezwakt via de Adaptation Engine — geen nieuwe logica, hergebruikt
+wat al gebouwd en getest was. In een try/catch: een fout in deze
+nieuwe laag mag het bouwen van de workout zelf nooit laten falen.
+
+**Gevalideerd:**
+- VDOT getest tegen het eigen, geverifieerde worked example (5K in
+  20:00 → VDOT 49,8) — exacte match
+- Pace-vertaling: concrete bereiken bij bekende VDOT, lege vertaling
+  zonder VDOT
+- **Volledige cross-sport-keten**, exact zoals de route 'm uitvoert:
+  90 min roeien → Universal Athlete State → signaal → Running-workout
+  5→4 herhalingen, met kloppende toelichting
+
+`npx next build` — compileert zonder fouten, nieuwe route bevestigd
+in de build-output.
+
+**Test-instructie:** roep `/api/specialists/running/training-plan/
+workout?sessieId=X` aan voor een Running-sessie, ná een recente
+Rowing-sessie — de workout zou nu afgezwakt moeten zijn met een
+toelichting die "lichaam al belast" noemt.
+
 ## v2.4.241 — Kern van de visie werkend: cross-sport-invloed
 **Exact het centrale voorbeeld uit de Universal Athlete Platform
 Master Vision, nu een echte, geteste keten i.p.v. theorie.**

@@ -958,6 +958,43 @@ belasting aangenomen), en `slechteSlaap` blijft exact hetzelfde
 werken als vóór de generalisatie. Immutability bevestigd. `npx next
 build` — compileert zonder fouten.
 
+**Running gelijkwaardig aan Rowing — v2.4.242.** Bewuste
+architectuurkeuze uit het overleg: eerst Running gelijkwaardig maken
+op Workout Platform-niveau, vóórdat het kruis-sport-voorbeeld "echte
+waarde" heeft ("Dan bewijs je alleen: CoachOS kan binnen één sport
+aanpassen. Terwijl de echte visie is: CoachOS begrijpt de complete
+atleet, ongeacht de sport").
+
+`api/specialists/running/training-plan/workout` — mirror van Rowing's
+route, met twee verschillen:
+1. **Echte pace i.p.v. een generiek zone-label** — Running had al een
+   gevalideerde persoonlijke baseline (VDOT, Daniels/Gilbert-model,
+   `running-zones.ts`, geverifieerd tegen een onafhankelijke bron)
+   die Rowing nog mist. `src/lib/specialists/running-workout-adapter.ts`
+   vertaalt zone-targets naar concrete pace-bereiken (bijv. "4:16/km -
+   4:26/km"). Geen VDOT bekend → eerlijk niets teruggeven, geen gegokte
+   pace
+2. **Het kruis-sport-signaal wordt hier voor het eerst ECHT
+   toegepast** — na het bouwen van de workout wordt de Universal
+   Athlete State gecheckt; als een andere sport (bijv. Rowing) het
+   lichaam al belast heeft, wordt de Running-workout automatisch
+   afgezwakt via de al-bestaande Adaptation Engine. In een try/catch —
+   een fout hier mag het bouwen van de workout zelf nooit laten falen
+
+**Gevalideerd:**
+- VDOT-berekening getest tegen het eigen, geverifieerde worked
+  example uit `running-zones.ts`'s documentatie (5K in 20:00 → VDOT
+  49,8) — exacte match
+- Pace-vertaling geeft concrete, realistische bereiken; geen VDOT
+  bekend geeft terecht een lege vertaling
+- **Volledige cross-sport-keten** exact zoals de route 'm uitvoert:
+  90 min roeien → Universal Athlete State → kruis-sport-signaal →
+  Running-workout gaat van 5 naar 4 herhalingen, met kloppende
+  toelichting
+
+`npx next build` — compileert zonder fouten, nieuwe route bevestigd
+in de build-output.
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/
