@@ -628,7 +628,174 @@ vormen ze de volledige, actuele status.*
 | Rowing/Strength/Kettlebell als volwaardige specialisten | ⏳ Niet gestart | Elk net zo groot als de Cycling/Running-pariteitsronde — vergt concrete aanleiding |
 | Multi-sport Orchestrator (`TodaySchedule`) | ⏳ Niet gestart | Pas zinvol zodra er meerdere volwassen specialisten zijn |
 
-#### CoachOS Workout Platform — Master Vision (vastgelegd 1 augustus 2026)
+#### CoachOS Universal Athlete Platform — Definitieve Referentie-Architectuur (vastgelegd 2 augustus 2026)
+
+**Kernvraag die tot deze visie leidde:** trainen we sporten, of trainen
+we één mens? Antwoord: **CoachOS denkt niet in sporten, niet in
+trainingen, zelfs niet in workouts — CoachOS denkt in de ontwikkeling
+van de sporter.** Sporten/trainingen/workouts zijn allemaal middelen;
+het échte product is de ontwikkeling van de mens erachter.
+
+**Geen Multi Sport Specialist.** Bewust afgewogen en verworpen — dat
+zou zelf weer een specialist worden (extra logica/beslissingen/
+complexiteit). De Master Coach **is al** de multisport-regisseur; wat
+ontbrak was één gezamenlijke, sport-onafhankelijke taal tussen de
+specialisten.
+
+**De hoofdlijn — een beslissings- en ontwikkelingsketen:**
+
+```
+Coach Agenda
+      │
+      ▼
+Context Platform
+      │
+      ▼
+Training Plan Platform      — "Wat moet ik trainen?"
+      │
+      ▼
+Workout Platform             — "Hoe ziet die training eruit?" (al gebouwd, v2.4.224-230)
+      │
+      ▼
+Performance Platform         — analyseert uitgevoerde training + fysieke toestand
+      │
+      ▼
+Universal Athlete Platform   — het digitale model van de sporter (NIEUW)
+      │
+      ▼
+Learning Rules Engine        — persoonlijke patronen, 100% uitlegbaar (NIEUW)
+      │
+      ▼
+Intelligence Platform        — interpretatie, welke actie volgt hieruit
+      │
+      ▼
+Master Coach                 — menselijke vertaling/communicatie
+      │
+ ┌────┼────────┬────────┐
+ ▼    ▼        ▼        ▼
+Running Cycling Rowing Strength
+```
+
+**Daarnaast, als zijlaag — géén stap in de ketting, een raadpleegbare
+bron:**
+
+```
+              Knowledge Platform          — bron van waarheid, geen proces-stap
+                     │
+       ┌─────────────┼─────────────┐
+       ▼             ▼             ▼
+Workout        Learning       Specialisten
+Platform       Rules Engine
+```
+
+**Bewuste architectuurcorrectie tijdens het ontwerp:** Knowledge
+Platform stond oorspronkelijk als sequentiële stap tussen Intelligence
+Platform en Master Coach getekend. Aangescherpt: het is een gedeelde
+kennisbron (sportwetenschap/herstelkennis/voedingskennis) die door
+meerdere lagen tegelijk geraadpleegd wordt (Workout Platform, Learning
+Rules Engine, Specialisten) — een lineaire pijl ernaartoe zou
+suggereren dat elke beslissing er letterlijk doorheen stroomt, terwijl
+het eerder werkt als een naslagwerk.
+
+**Niet-onderhandelbare rolverdeling — geen enkele laag beslist buiten
+zijn verantwoordelijkheid:**
+- **Universal Athlete Platform** → uitsluitend Observer: verzamelt,
+  analyseert, observeert. **Neemt nooit zelf beslissingen.**
+- **Knowledge Platform** → levert wetenschappelijke context
+- **Learning Rules Engine** → ontdekt patronen (ontdekking, geen besluit)
+- **Intelligence Platform** → maakt voorstellen/beslissingen
+- **Master Coach** → geeft richting en communiceert naar de sporter
+
+**Universal Athlete State — het digitale lichaam van de sporter, niet
+van de sport:**
+
+```
+Cardiovascular: Aerobic Load, Anaerobic Load, VO₂ Adaptation, Cardio Fatigue
+Muscular: Leg/Core/Upper Body/Lower Back/Grip Fatigue
+Mechanical: Joint Impact, Tendon Load, Bone Stress, Muscle Damage
+Neurological: Neuromuscular Fatigue, Coordination, Motor Control, Explosiveness
+Recovery: Recovery, Sleep Debt, HRV Trend, Resting HR, Body Battery, Recovery Capacity
+Mental: Stress, Motivation, Focus, Cognitive Fatigue
+Training: Acute/Chronic Load, ACWR, Consistency, Training Monotony, Training Strain
+Environment: Heat/Cold/Altitude Adaptation, Hydration Status, Energy Availability
+```
+
+**Kritieke correctie tijdens het ontwerp — geen schijnprecisie:** ruwe
+getallen zoals "Rowing → Cardio +65, Core +80" worden **nooit** aan de
+gebruiker getoond. Intern mogen ze bestaan; zichtbaar wordt altijd een
+kwalitatief label + expliciete confidence, matchend het al-bestaande
+Performance Platform-patroon (HIGH/MEDIUM/LOW):
+
+```
+Cardio: Hoog · Confidence 96%
+Leg fatigue: Gemiddeld · Confidence 71%
+Hydration: Laag · Confidence 28% (onvoldoende data)
+```
+
+**Confidence op élk universeel getal, niet alleen Recovery** — anders
+erft de hele Universal Athlete State hetzelfde nepprecisie-risico.
+
+**Learning Rules Engine — bewust NIET "AI" genoemd, geen black box:**
+100% reproduceerbaar en uitlegbaar, exact dezelfde filosofie als elke
+engine die vandaag al gebouwd is (Training Plan Engine, Workout
+Platform — allebei 100% deterministisch). Voorbeeld:
+
+```
+if runningSessions > 30 AND recoveryTrend > baseline AND RPE stable
+then Recovery Factor Running +4%
+```
+
+**Minimum-datapunten vóór personalisatie geactiveerd wordt — bewust
+vastgelegd, niet impliciet:**
+
+```
+Running: 20 trainingen | Cycling: 20 | Rowing: 20 | Strength: 15
+```
+
+Tot die drempel: **Population Model** ("CoachOS weet nog niets van
+JOU, gebruikt algemene sportwetenschap"). Daarna: **Learning Enabled**
+("CoachOS kent JOU"). Voorkomt overtuigde, foute personalisatie op
+basis van toeval bij te weinig data.
+
+**Workflow — hoe een training het digitale model verandert:**
+
+```
+Training voltooid → Sport Specialist → Universal Impact Engine →
+Universal Athlete State → Universal Adaptation Engine → Master Coach →
+Today Engine → Volgende Specialist
+```
+
+Concreet voorbeeld uit de visie: na 90 minuten roeien schrijft Rowing
+Specialist `Cardio +65, Core +80, Upper Body +75, Legs +45, Impact +5`.
+Als de gebruiker morgen Running opent, leest Running **niet** "gisteren
+geroeid" — het leest de Universal Athlete State direct (Cardio hoog,
+Core/Upper Body vermoeid, Legs matig belast) en kiest een rustige
+duurloop, niet omdat er geroeid is, maar omdat het lichaam al belast is.
+
+**Workout Builder wordt universeel** (grotendeels al gebouwd,
+v2.4.224-230) — Training Plan bepaalt WAT (bijv. "VO₂max Training"),
+elke Specialist Adapter vertaalt naar zijn eigen sport (Running: 5×1000m,
+Cycling: 5×4min @110% FTP, Rowing: 5×1000m @2k Pace) — zelfde
+trainingsdoel, andere uitvoering.
+
+**Device Adapter Layer + CoachOS Connect** — apparaten worden nooit
+onderdeel van specialisten, altijd een aparte laag. Live hardware-
+communicatie (Bluetooth/PM5/Garmin/Wahoo) hoort bij een toekomstige
+**native companion-app** ("CoachOS Connect"), niet bij de PWA — sluit
+aan bij de al-vastgelegde Web Bluetooth/iOS-beperking uit de Rowing
+Platform-visie (zie hieronder).
+
+**Coach Agenda blijft het centrale contextplatform** — niet alleen
+afspraken, alle gebeurtenissen met invloed op training (werk/vakantie/
+medisch/reizen/herstel/periodisering/wedstrijden/weer). Externe
+agenda's (Apple/Google/Outlook) worden uitsluitend synchronisatie-
+bronnen — CoachOS blijft eigenaar van de context.
+
+**Bewuste, expliciet vastgelegde eerste scope:** het Universal Athlete
+Platform begint klein (Running, Cycling, Rowing) en breidt geleidelijk
+uit — ambitieuze architectuur, beheersbare implementatie. Niets van
+deze visie is gebouwd; dit is een referentiekader voor toekomstige
+stappen.
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/
