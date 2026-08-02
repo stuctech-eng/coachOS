@@ -780,6 +780,15 @@ als "matig" i.p.v. "licht" intensiteit gemeld hebben. Ook: rowing-
 icoon (🚣) toegevoegd aan zowel Smart Actions als Home's advieskaart
 (vielen eerder terug op het generieke 💪/"Trainer AI"-label).
 
+**Coach Memory — v2.4.232.** `api/specialists/rowing/memory` — dunne
+wrapper, exact het patroon van Cycling/Running. De onderliggende
+Learning Engine (`verwerkKandidaatInzicht()`/`haalMemoryOp()`) bleek
+al volledig sport-onafhankelijk (`specialist_type: string`, geen
+hardcoded union) — Rowing sluit aan zonder wijziging aan de Engine
+zelf. **Nog niet gebouwd:** automatische inzicht-generatie via een
+Rowing-coach-conversatieroute (bij Cycling/Running ook nog als
+"tijdelijk, handmatig testbaar" gemarkeerd) — apart, later traject.
+
 **Gevalideerd:** 4 scenario's — Rowing-label correct, reden-tekst
 noemt correct "Rowing" (niet "Running"), Rowing-recovery-sessie krijgt
 correct lichte intensiteit, Cycling/Running-gedrag blijft ongewijzigd.

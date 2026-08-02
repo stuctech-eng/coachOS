@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.232 — Rowing Coach Memory
+**Volgende stap in de logische volgorde (geen tussentijdse bevestiging
+meer nodig, op verzoek).**
+
+### Nieuw
+`api/specialists/rowing/memory` — dunne wrapper, exact het patroon van
+`cycling/memory`/`running/memory`. De onderliggende Learning Engine
+(`verwerkKandidaatInzicht()`/`haalMemoryOp()`) bleek al volledig
+sport-onafhankelijk (`specialist_type: string`, geen hardcoded
+cycling/running-union) — Rowing sluit gewoon aan, geen wijziging aan
+de Engine zelf nodig.
+
+### Nog niet gebouwd
+Automatische inzicht-generatie via een Rowing-coach-conversatieroute —
+bij Cycling/Running is dit ook nog gemarkeerd als "tijdelijk, alleen
+handmatig testbaar via POST" (de Coach Layer-koppeling is daar zelf
+ook nog een aparte, latere stap). Rowing volgt dezelfde status.
+
+`npx next build` — compileert zonder fouten, nieuwe route bevestigd
+in de build-output.
+
 ## v2.4.231 — REGRESSIE-FIX: Smart Actions/Home miste actieve Rowing-sessies
 **Gemeld: "bij Snelle Acties is training schema weg."**
 
