@@ -3,6 +3,19 @@
 // (/api/strava/webhook). Idempotent — dubbele activiteiten worden overgeslagen.
 
 import { createAdminClient } from '@/lib/supabase'
+import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/storage'
+import { pasImpactToe, type ImpactBijdrage } from '@/core/athlete-platform/impact-engine'
+import { vertaalRunningSessieNaarImpact } from './specialists/running-impact-adapter'
+
+// v2.4.243 (Universal Athlete Platform — wederzijdse koppeling): welke
+// sporten voeden de Universal Impact Engine, en met welke adapter.
+// Generieke dispatch-tabel i.p.v. sportlogica in de processor zelf —
+// nieuwe sporten toevoegen betekent alleen een regel hier toevoegen,
+// niet de processor zelf aanpassen. Roeien loopt via Concept2 (aparte
+// sync-route, niet via Strava), dus staat hier bewust niet in.
+const IMPACT_ADAPTERS: Record<string, (duurMinuten: number) => ImpactBijdrage[]> = {
+  Hardlopen: vertaalRunningSessieNaarImpact,
+}
 
 const SPORT_TYPE_MAP: Record<string, string> = {
   Run: 'Hardlopen',
@@ -147,6 +160,24 @@ export async function processStravaActivity(
       resting_hr: null,
       source: 'strava',
     }, { onConflict: 'user_id,date', ignoreDuplicates: true })
+  }
+
+  // v2.4.243 (Universal Athlete Platform): als deze sport een impact-
+  // adapter heeft, wordt de Universal Athlete State bijgewerkt. Bewust
+  // in een try/catch — een fout hier mag de Strava-import zelf (de
+  // kernfunctionaliteit) nooit laten falen, zelfde voorzichtigheids-
+  // principe als bij de Concept2-sync-koppeling.
+  const impactAdapter = IMPACT_ADAPTERS[activityName]
+  if (impactAdapter) {
+    try {
+      const duurMinuten = Math.round(activity.moving_time / 60)
+      const huidigeState = await haalAthleteState(supabase, userId)
+      const bijdragen = impactAdapter(duurMinuten)
+      const nieuweState = pasImpactToe(huidigeState, bijdragen)
+      await slaAthleteStateOp(supabase, userId, nieuweState)
+    } catch (athleteStateErr) {
+      console.error('[strava-activity-processor] Universal Athlete State bijwerken mislukt (import zelf blijft werken):', athleteStateErr)
+    }
   }
 
   return { imported: true, skipped: false, activity_session_id: session?.id }

@@ -995,6 +995,44 @@ route, met twee verschillen:
 `npx next build` — compileert zonder fouten, nieuwe route bevestigd
 in de build-output.
 
+**Wederzijdse koppeling — v2.4.243.** Tot nu toe voedde alleen Rowing
+(via Concept2) de Universal Impact Engine — het cross-sport-principe
+werkte dus maar één kant op. Nu ook Running.
+
+**`src/lib/specialists/running-impact-adapter.ts`** —
+`vertaalRunningSessieNaarImpact()`. **Eerlijk, anders dan Rowing's
+adapter:** voor Rowing kon de Master Vision letterlijk geciteerd
+worden (exacte cijfers stonden al in het document); voor Running
+bestaat zo'n vastgelegd voorbeeld niet — dit zijn eigen, redelijke
+inschattingen op basis van bekende looptrainingsfysiologie (hoge
+cardio/beenbelasting, lage bovenlichaam/core-belasting vergeleken met
+roeien, hogere mechanische impact door grondcontact), expliciet GEEN
+citaat. Confidence-score bewust iets lager gezet dan Rowing's (55 t.o.v.
+60) om dit verschil te weerspiegelen.
+
+**Generieke dispatch-tabel in `strava-activity-processor.ts`** —
+`IMPACT_ADAPTERS: Record<string, ...>` i.p.v. sportlogica in de
+processor zelf; nieuwe sporten toevoegen betekent alleen een regel
+toevoegen aan de tabel. In een try/catch — een fout hier mag de
+Strava-import zelf nooit laten falen.
+
+**Bug gevonden en gefixt tijdens het testen van de nieuwe richting:**
+`bepaalKruisSportSignaal()` checkte **geen beenvermoeidheid** — ondanks
+dat het eigen commentaar dit al noemde ("core/bovenlichaam/benen").
+Omdat Running's belasting primair in de benen zit, zou het signaal
+voor Running-sessies zo goed als nooit zijn afgegaan. Gefixt: benen
+nu ook gecheckt.
+
+**Gevalideerd:**
+- Vóór de fix: 60 min hardlopen gaf `null` als signaal ondanks hoge
+  beenvermoeidheid — bevestigt de bug bestond
+- Ná de fix: zelfde scenario geeft correct een signaal, Rowing-workout
+  wordt terecht afgezwakt (5→4 herhalingen)
+- **Regressietest**: de al-werkende Rowing→Running-richting blijft
+  exact hetzelfde functioneren na deze wijziging
+
+`npx next build` — compileert zonder fouten.
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/

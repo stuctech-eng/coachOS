@@ -1,5 +1,45 @@
 # CoachOS — Changelog
 
+## v2.4.243 — Wederzijdse cross-sport-koppeling + kritieke bugfix
+**Tot nu toe voedde alleen Rowing de Universal Impact Engine — het
+cross-sport-principe werkte dus maar één kant op. Nu ook Running.**
+
+### Nieuw
+- **`src/lib/specialists/running-impact-adapter.ts`** —
+  `vertaalRunningSessieNaarImpact()`. Eerlijk anders dan Rowing's
+  adapter: geen citaat uit een brondocument (dat bestaat niet voor
+  Running), maar eigen, redelijke inschattingen op basis van bekende
+  looptrainingsfysiologie. Confidence-score bewust iets lager (55 vs.
+  Rowing's 60) om dit verschil te weerspiegelen
+- **Generieke dispatch-tabel** in `strava-activity-processor.ts`
+  (`IMPACT_ADAPTERS`) — nieuwe sporten toevoegen betekent alleen een
+  regel toevoegen, geen sportlogica in de processor zelf. In een
+  try/catch, zelfde voorzichtigheidsprincipe als de Concept2-koppeling
+
+### Kritieke bug gevonden en gefixt tijdens het testen
+`bepaalKruisSportSignaal()` checkte **geen beenvermoeidheid** — ondanks
+dat het eigen commentaar dit al noemde. Omdat Running's belasting
+primair in de benen zit (been_vermoeidheid: 70 in de nieuwe adapter),
+zou het signaal voor Running-sessies zo goed als nooit zijn afgegaan.
+Gevonden door de nieuwe richting (Running→Rowing) te testen — de test
+gaf `null` terug ondanks hoge beenvermoeidheid, wat de bug direct
+zichtbaar maakte.
+
+**Fix:** `spieren.been_vermoeidheid` toegevoegd aan de conditiecheck.
+
+**Gevalideerd:**
+- Vóór de fix: bevestigd dat het scenario `null` gaf (de bug bestond
+  echt, niet alleen in theorie)
+- Ná de fix: zelfde scenario geeft correct een signaal, Rowing-workout
+  wordt terecht afgezwakt
+- **Regressietest**: de al-werkende Rowing→Running-richting (v2.4.241/
+  242) blijft exact hetzelfde functioneren na deze wijziging
+
+`npx next build` — compileert zonder fouten.
+
+**Daarmee is het cross-sport-principe nu écht wederzijds**, in beide
+richtingen getest en werkend: Rowing↔Running.
+
 ## v2.4.242 — Running gelijkwaardig aan Rowing op Workout Platform-niveau
 **Bewuste architectuurkeuze: niet een simpele demo binnen één sport,
 maar de fundering waarop het kruis-sport-principe daadwerkelijk kan
