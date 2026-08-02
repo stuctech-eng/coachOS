@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.236 — Universal Athlete Platform: Learning Rules Engine
+**Vervolg op typedefinities (v2.4.234) en Universal Impact Engine
+(v2.4.235). Ontdekt persoonlijke patronen — bewust NIET "AI" genoemd.**
+
+### Nieuw
+`src/core/athlete-platform/learning-rules-engine.ts`:
+- **`evalueerRegels()`** — evalueert `LearningRule`s tegen een
+  `LearningContext` (sport/aantalSessies/recoveryTrend/RPE-stabiliteit)
+- **`STANDAARD_REGELS`** — eerste regel is letterlijk het voorbeeld uit
+  de Master Vision zelf: `aantalSessies > 30 AND recoveryTrend >
+  baseline AND RPE stabiel → herstel_capaciteit +4%`
+- Elke regel heeft een **verplichte, mens-leesbare `beschrijving`** —
+  100% reproduceerbaar en uitlegbaar, geen black box
+
+### Drempel-gate direct toegepast
+Hergebruikt `bepaalPersonalisatieStatus()` uit v2.4.234 — onder de
+minimum-datapunten-drempel wordt **geen enkele regel geëvalueerd**,
+expliciet `population_model` in de uitkomst (geen stilzwijgende lege
+lijst zonder verklaring).
+
+### Onderscheid vastgelegd
+Niet te verwarren met de al-bestaande `src/lib/specialists/
+learning-engine.ts` (Coach Memory — AI-gegenereerde inzichten voor
+coach-gesprekken). Dit hier: statistische, regelgebaseerde patronen op
+de Universal Athlete State, geen AI-tekst, geen conversatie-geheugen.
+Expliciet in commentaar vastgelegd om toekomstige verwarring te
+voorkomen.
+
+**Gevalideerd — 4 scenario's:**
+- Onder de drempel (10 sessies): 0 regels geëvalueerd, expliciet
+  `population_model`
+- Exact het visie-scenario (35 sessies, positieve trend, stabiele
+  RPE): regel vuurt, geeft het juiste `+4%`-effect
+- Zelfde situatie maar instabiele RPE: regel vuurt terecht niet
+- Grensgeval (31 sessies, net boven de `>30`-conditie): regel vuurt
+  correct
+
+`npx next build` — compileert zonder fouten.
+
+**Volgende stap:** Knowledge Platform (de zijlaag met sportwetenschap,
+geraadpleegd door Workout Platform/Learning Rules Engine/Specialisten).
+
 ## v2.4.235 — Universal Athlete Platform: Universal Impact Engine
 **Vervolg op de typedefinities (v2.4.234). Vertaalt een voltooide
 sessie naar wijzigingen in het digitale model van de sporter.**

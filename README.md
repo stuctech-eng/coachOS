@@ -835,6 +835,30 @@ kunstmatig-garantie) + volledige integratietest op een echte
 onbekend pad dat netjes wordt overgeslagen, en de immutability-
 garantie bevestigd). `npx next build` — compileert zonder fouten.
 
+**Derde bouwstap afgerond — v2.4.236: Learning Rules Engine.**
+`src/core/athlete-platform/learning-rules-engine.ts` — `evalueerRegels()`,
+bewust NIET "AI" genoemd: expliciete if-conditie → effect-regels,
+100% reproduceerbaar en uitlegbaar (elke regel heeft een verplichte,
+mens-leesbare `beschrijving`). Eerste regel is letterlijk het
+visie-voorbeeld: `aantalSessies > 30 AND recoveryTrend > baseline AND
+RPE stabiel → herstel_capaciteit +4%`. **Drempel-gate uit v2.4.234
+direct toegepast** — onder de personalisatie-drempel wordt géén
+enkele regel geëvalueerd (expliciet `population_model` in de uitkomst,
+geen stilzwijgende lege lijst zonder verklaring).
+
+**Onderscheid vastgelegd in commentaar:** niet te verwarren met de
+al-bestaande `src/lib/specialists/learning-engine.ts` (Coach Memory —
+AI-gegenereerde inzichten voor coach-gesprekken) — dit hier is iets
+anders: statistische, regelgebaseerde patronen op de Universal Athlete
+State, geen AI-tekst.
+
+**Gevalideerd — 4 scenario's:** onder de drempel (0 regels
+geëvalueerd, expliciet population_model), exact het visie-scenario
+(regel vuurt, geeft het juiste +4%-effect), dezelfde situatie maar met
+instabiele RPE (regel vuurt terecht niet), en het exacte grensgeval
+(31 sessies, net boven de `>30`-conditie). `npx next build` —
+compileert zonder fouten.
+
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/
 `WorkoutTarget` en bijbehorende types. Puur datamodel, nog geen logica
