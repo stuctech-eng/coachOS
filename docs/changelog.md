@@ -1,5 +1,43 @@
 # CoachOS — Changelog
 
+## v2.4.241 — Kern van de visie werkend: cross-sport-invloed
+**Exact het centrale voorbeeld uit de Universal Athlete Platform
+Master Vision, nu een echte, geteste keten i.p.v. theorie.**
+
+> "90 min roeien → morgen opent de gebruiker Running. Running leest
+> niet 'gisteren geroeid', maar leest de Universal Athlete State
+> (Cardio hoog/Core vermoeid/Upper Body vermoeid) en kiest daarom een
+> rustige duurloop — niet omdat er geroeid is, maar omdat het lichaam
+> al belast is."
+
+### Nieuw
+**`src/core/athlete-platform/cross-sport-bridge.ts`** —
+`bepaalKruisSportSignaal()`: leest de Universal Athlete State,
+bepaalt of "lichaam al belast" van toepassing is (cardiovasculaire
+belasting + core/bovenlichaam-vermoeidheid, bewust NIET mechanische
+impact — dat is sport-specifiek en hoort bij een latere verfijning).
+Puur signaal-aflevering, geen beslissing (Observer-grens).
+
+### Workout Platform's Adaptation Engine gegeneraliseerd
+`pasSlechteSlaapToe()` was hardcoded op de tekst "slecht geslapen" —
+omgedoopt naar `pasDownscaleToe(workout, redenLabel)`, met een nieuw
+`lichaamAlBelast`-signaal naast het bestaande `slechteSlaap`. **Geen
+nieuwe downscale-logica verzonnen** — zelfde, al-geteste mechaniek
+(korter/minder herhalingen/lager), nu met een kloppende, specifieke
+reden-tekst per trigger.
+
+**Gevalideerd — volledige end-to-end-keten:**
+- 90 min roeien → Universal Athlete State → kruis-sport-signaal
+  ("cardio al belast, core vermoeid, bovenlichaam vermoeid") →
+  Running-workout: 5→4 herhalingen, zone 4→3, met kloppende toelichting
+- Regressietest: lege staat (geen sessies) geeft terecht **geen**
+  signaal — geen data betekent geen aangenomen belasting
+- Regressietest: `slechteSlaap` blijft exact hetzelfde werken als
+  vóór de generalisatie
+- Immutability bevestigd (origineel ongewijzigd)
+
+`npx next build` — compileert zonder fouten.
+
 ## v2.4.240 — FIX: terugknoppen gingen altijd naar Home
 **Gemeld: op zowel Performance als Athlete Platform ging de terugknop
 altijd naar Home, i.p.v. één stap terug naar waar je vandaan kwam.**

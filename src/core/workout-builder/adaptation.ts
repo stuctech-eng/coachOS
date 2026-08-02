@@ -18,6 +18,12 @@ import type { UniversalWorkout, WorkoutBlock, WorkoutTarget } from './types'
 export interface AdaptationSignals {
   /** Matcht exact het Master Vision-voorbeeld: slechte slaap → korter/lichter */
   slechteSlaap?: boolean
+  /** v2.4.241 (Universal Athlete Platform-koppeling): generieke variant
+   * van dezelfde downscale-mechaniek, voor ELKE andere reden dat het
+   * lichaam al belast is — bijv. "gisteren 90 min geroeid" bij een
+   * Running-workout van vandaag. Zelfde mechaniek als slechteSlaap
+   * (korter/minder herhalingen/lager), andere, specifieke reden-tekst. */
+  lichaamAlBelast?: { reden: string }
   /** Positief = meer tijd dan oorspronkelijk gepland (seconden), negatief
    * = minder tijd. 0/undefined = geen aanpassing. */
   extraBeschikbareTijd_sec?: number
@@ -35,14 +41,19 @@ function verlaagZoneTargets(targets: WorkoutTarget[]): WorkoutTarget[] {
     : t)
 }
 
-function pasSlechteSlaapToe(workout: UniversalWorkout): string[] {
+/** v2.4.241: was pasSlechteSlaapToe() — gegeneraliseerd met een
+ * `redenLabel`-parameter, zodat dezelfde downscale-mechaniek voor
+ * meerdere triggers (slechte slaap, lichaam al belast door een andere
+ * sport) herbruikt kan worden, elk met een eigen, kloppende
+ * toelichtingstekst i.p.v. altijd "slecht geslapen" te zeggen. */
+function pasDownscaleToe(workout: UniversalWorkout, redenLabel: string): string[] {
   const toelichtingen: string[] = []
 
   // 1. Kortere warming-up (-30%, ondergrens 3 min)
   if (workout.warmup.length > 0) {
     const oud = workout.warmup[0].duration_sec
     workout.warmup[0].duration_sec = Math.max(180, Math.round(oud * 0.7))
-    if (workout.warmup[0].duration_sec !== oud) toelichtingen.push('Kortere warming-up (slecht geslapen — lichaam heeft minder opbouwtijd nodig bij een lagere intensiteit).')
+    if (workout.warmup[0].duration_sec !== oud) toelichtingen.push(`Kortere warming-up (${redenLabel} — lichaam heeft minder opbouwtijd nodig bij een lagere intensiteit).`)
   }
 
   // 2. Minder intervallen (repeat verminderen, ondergrens 2) + 3. lagere intensiteit
@@ -50,7 +61,7 @@ function pasSlechteSlaapToe(workout: UniversalWorkout): string[] {
     if (blok.repeat && blok.repeat > 2) {
       const oudAantal = blok.repeat
       blok.repeat = Math.max(2, blok.repeat - 1)
-      if (blok.repeat !== oudAantal) toelichtingen.push(`Aantal herhalingen verlaagd van ${oudAantal} naar ${blok.repeat} — minder belasting bij onvoldoende herstel.`)
+      if (blok.repeat !== oudAantal) toelichtingen.push(`Aantal herhalingen verlaagd van ${oudAantal} naar ${blok.repeat} — minder belasting (${redenLabel}).`)
     }
     const oudeTargets = JSON.stringify(blok.targets)
     blok.targets = verlaagZoneTargets(blok.targets)
@@ -107,7 +118,10 @@ export function pasWorkoutAan(origineel: UniversalWorkout, signalen: AdaptationS
   const nieuweAanpassingen: string[] = []
 
   if (signalen.slechteSlaap) {
-    nieuweAanpassingen.push(...pasSlechteSlaapToe(workout))
+    nieuweAanpassingen.push(...pasDownscaleToe(workout, 'slecht geslapen'))
+  }
+  if (signalen.lichaamAlBelast) {
+    nieuweAanpassingen.push(...pasDownscaleToe(workout, signalen.lichaamAlBelast.reden))
   }
   if (signalen.extraBeschikbareTijd_sec) {
     nieuweAanpassingen.push(...pasBeschikbareTijdToe(workout, signalen.extraBeschikbareTijd_sec))

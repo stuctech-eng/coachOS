@@ -927,6 +927,37 @@ bestemming — gaat altijd één stap terug naar waar je vandaan kwam.
 Ongebruikte `Link`-import opgeschoond in `athlete-platform/page.tsx`
 (niet meer nodig na deze wijziging).
 
+**Kern van de visie zelf werkend gemaakt — v2.4.241.** Exact het
+centrale cross-sport-voorbeeld uit de Master Vision: "90 min roeien →
+morgen Running leest niet 'gisteren geroeid', maar leest de Universal
+Athlete State (Cardio hoog/Core vermoeid) en kiest een rustige
+duurloop." Dit is nu een echte, geteste keten, geen theorie meer.
+
+**`core/athlete-platform/cross-sport-bridge.ts`** —
+`bepaalKruisSportSignaal()`: leest de Universal Athlete State, bepaalt
+of "lichaam al belast" van toepassing is (cardiovasculaire belasting +
+core/bovenlichaam-vermoeidheid). Puur signaal-aflevering — de functie
+beslist zelf niets, de aanroeper bepaalt wat ermee gebeurt (Observer-
+grens, zelfde principe als de rest van het platform).
+
+**Workout Platform's Adaptation Engine gegeneraliseerd, geen nieuwe
+logica verzonnen:** `pasSlechteSlaapToe()` was hardcoded op de tekst
+"slecht geslapen" — omgedoopt naar `pasDownscaleToe(workout,
+redenLabel)`, met een nieuw `lichaamAlBelast`-signaal naast het
+bestaande `slechteSlaap`. Zelfde, al-geteste downscale-mechaniek
+(korter/minder herhalingen/lager), nu met een kloppende, specifieke
+reden-tekst per trigger i.p.v. altijd "slecht geslapen" te zeggen ook
+als de ware oorzaak een andere sport was.
+
+**Gevalideerd — volledige end-to-end-keten:** 90 min roeien →
+Universal Athlete State → kruis-sport-signaal ("cardio al belast, core
+vermoeid, bovenlichaam vermoeid") → Running-workout gaat van 5 naar 4
+herhalingen, zone 4 naar zone 3, met een kloppende toelichting.
+Regressietests: lege staat geeft terecht geen signaal (geen data, geen
+belasting aangenomen), en `slechteSlaap` blijft exact hetzelfde
+werken als vóór de generalisatie. Immutability bevestigd. `npx next
+build` — compileert zonder fouten.
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/
