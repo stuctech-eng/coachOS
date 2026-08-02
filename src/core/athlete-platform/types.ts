@@ -27,6 +27,13 @@ export interface UniverseleWaarde {
   niveau: KwalitatiefNiveau
   confidence: ConfidenceNiveau
   confidence_score: number // 0-100, voor sortering/drempels
+  /** v2.4.245-FIX: aantal keer dat deze waarde is bijgewerkt met een
+   * echte sessie-bijdrage. Nodig om confidence daadwerkelijk te laten
+   * GROEIEN met meer data — de oorspronkelijke opzet (confidence =
+   * altijd de laagste van bestaand/nieuw) zorgde ervoor dat confidence
+   * nooit boven het startpunt kon uitkomen, ook niet na tientallen
+   * sessies. Zie impact-engine.ts's combineerWaarde(). */
+  aantal_observaties?: number
   /** Intern, voor engine-berekeningen — NOOIT rechtstreeks tonen aan de
    * gebruiker (zie Kernregel 2 hierboven) */
   ruweWaarde?: number

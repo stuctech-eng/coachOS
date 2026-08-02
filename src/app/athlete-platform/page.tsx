@@ -78,14 +78,30 @@ export default function AthletePlatformPage() {
   const [laden, setLaden] = useState(true)
   const [state, setState] = useState<AthleteState | null>(null)
   const [fout, setFout] = useState<string | null>(null)
+  const [terugvulBezig, setTerugvulBezig] = useState(false)
+  const [terugvulMelding, setTerugvulMelding] = useState<string | null>(null)
 
-  useEffect(() => {
+  function laadState() {
+    setLaden(true)
     fetch('/api/athlete-platform/state')
       .then(r => r.json())
       .then(d => { if (d.error) setFout(d.error); else setState(d.state) })
       .catch(() => setFout('Kon niet laden'))
       .finally(() => setLaden(false))
-  }, [])
+  }
+
+  useEffect(() => { laadState() }, [])
+
+  async function terugvullen() {
+    setTerugvulBezig(true)
+    setTerugvulMelding(null)
+    try {
+      const res = await fetch('/api/specialists/rowing/athlete-platform-backfill', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) setTerugvulMelding('Mislukt: ' + (data.error || 'onbekende fout'))
+      else { setTerugvulMelding(data.boodschap); laadState() }
+    } catch { setTerugvulMelding('Mislukt: verbindingsfout') } finally { setTerugvulBezig(false) }
+  }
 
   return (
     <AppShell showNav={false}>
@@ -108,6 +124,23 @@ export default function AthletePlatformPage() {
             <Card className="p-3 text-xs text-slate-400">
               Dit is een vroege, experimentele weergave van hoe CoachOS je lichaam over alle sporten heen modelleert — sport-onafhankelijk. Hoe meer sessies, hoe hoger de confidence.
             </Card>
+
+            <Card className="p-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-white">Terugvullen met bestaande sessies</p>
+                <p className="text-xs text-slate-400 mt-0.5">Eenmalig — verwerkt je Concept2-historie alsnog</p>
+              </div>
+              <button onClick={terugvullen} disabled={terugvulBezig}
+                className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold active:bg-primary-700 disabled:opacity-50 flex-shrink-0">
+                {terugvulBezig ? 'Bezig...' : 'Terugvullen'}
+              </button>
+            </Card>
+            {terugvulMelding && (
+              <Card className={`p-3 text-sm ${terugvulMelding.startsWith('Mislukt') ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                {terugvulMelding}
+              </Card>
+            )}
+
             {Object.entries(CATEGORIE_LABEL).map(([categorie, label]) => (
               <Card key={categorie} className="p-4">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">{label}</p>

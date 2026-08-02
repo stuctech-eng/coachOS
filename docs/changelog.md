@@ -1,5 +1,52 @@
 # CoachOS — Changelog
 
+## v2.4.245 — FIX: confidence kon nooit groeien + terugvul-functie
+**Gemeld tijdens het testen van een terugvul-idee: na 56
+gesimuleerde sessies bleef confidence op LOW staan, in tegenspraak
+met de UI-tekst "hoe meer sessies, hoe hoger de confidence".**
+
+### Root cause
+`combineerWaarde()` nam altijd de láágste confidence van bestaand/
+nieuw — dat kan per definitie nooit boven het startpunt uitkomen,
+hoeveel sessies er ook bijkomen. Een échte, inhoudelijke bug, geen
+edge case.
+
+### Fix
+- **`types.ts`** — `UniverseleWaarde` kreeg een nieuw veld
+  `aantal_observaties`
+- **`impact-engine.ts`**'s `combineerWaarde()` — confidence groeit nu
+  daadwerkelijk met het aantal observaties (`CONFIDENCE_STARTPUNT=15`,
+  `+7` per observatie), met de bijdrage's EIGEN `confidence_score` als
+  eerlijk plafond. Een reeks MEDIUM-kwaliteit-observaties (alle
+  huidige impact-adapters: Rowing/Running/Cycling) kan nooit tot HIGH
+  oplopen, ongeacht het aantal sessies — het plafond weerspiegelt de
+  kwaliteit van de individuele meting, niet het volume
+
+### Nieuw: terugvul-functie
+**`api/specialists/rowing/athlete-platform-backfill`** (POST) —
+eenmalige, door de gebruiker getriggerde actie: verwerkt bestaande
+Concept2-sessies (van vóór de Impact Engine-koppeling, v2.4.238)
+alsnog chronologisch, zodat de staat evolueert zoals 'ie zou hebben
+gedaan als de koppeling er vanaf het begin was geweest. Nieuwe knop
+op `/athlete-platform` ("Terugvullen met bestaande sessies").
+
+**Gevalideerd:**
+- Confidence-groei over 56 gesimuleerde sessies: LOW (22%) na sessie
+  1 → MEDIUM (50%) na sessie 5 → bereikt en blijft op het eerlijke
+  plafond van 60% (Rowing's eigen MEDIUM-claim) vanaf sessie 10
+- Plafond-check: gaat nooit boven de 60%-grens, ook niet na 56
+  sessies
+- Regressietest: het eerste-sessie-scenario (geen bestaande staat)
+  blijft correct werken
+
+`npx next build` — compileert zonder fouten, nieuwe route bevestigd
+in de build-output.
+
+**Test-instructie:** open `/athlete-platform` → tik "Terugvullen" →
+zou moeten melden hoeveel sessies verwerkt zijn. Ga terug naar de
+pagina — de categorieën zouden nu waarden en een gegroeide confidence
+moeten tonen i.p.v. "Nog geen data".
+
 ## v2.4.244 — Cycling als derde gelijkwaardige sport
 **Zelfde patroon als Running (v2.4.242). Daarmee zijn alle drie de
 huidige specialisten (Rowing/Running/Cycling) gelijkwaardig op
