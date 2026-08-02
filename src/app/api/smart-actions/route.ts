@@ -78,8 +78,11 @@ export async function GET(req: NextRequest) {
       const cookieHeader = req.headers.get('cookie') || ''
       const todayPlan = await metTijdslimiet(bepaalTodayPlan(user.id, cookieHeader, req.nextUrl.origin), 2500)
       if (todayPlan && todayPlan.source !== 'rust') {
+        // v2.4.231-FIX: rowing-icoon toegevoegd — viel eerder terug op
+        // het generieke 💪, nu een eigen 🚣
+        const icoon = todayPlan.source === 'cycling' ? '🚴' : todayPlan.source === 'running' ? '🏃' : todayPlan.source === 'rowing' ? '🚣' : '💪'
         voorstellen.push({
-          icon: todayPlan.source === 'cycling' ? '🚴' : todayPlan.source === 'running' ? '🏃' : '💪',
+          icon: icoon,
           label: todayPlan.actionLabel, href: todayPlan.actionHref, priority: 95, bron: 'Today Engine',
         })
       } else if (!todayPlan) {

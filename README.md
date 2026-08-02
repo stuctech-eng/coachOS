@@ -758,6 +758,33 @@ daadwerkelijke, concrete workout (blokken/SPM-targets/uitvoerings-
 hints/ontbrekend materiaal) i.p.v. alleen "Interval, 60 min". Eerste
 keer dat een gebruiker het Core Platform daadwerkelijk te zien krijgt.
 
+**REGRESSIE-FIX — v2.4.231: Smart Actions/Home miste actieve Rowing-
+sessies.** Gemeld: "bij Snelle Acties is training schema weg." Root
+cause: `today-engine.ts` (gebruikt door zowel Smart Actions als Home's
+hoofdadvies-kaart) kende hardcoded alleen `'cycling' | 'running'` —
+`haalSpecialistSessieVanVandaag()` werd nooit met `'rowing'`
+aangeroepen, dus een actief Rowing-trainingsplan werd volledig
+genegeerd. Code was hier overigens al expliciet op voorbereid
+("proposals[] i.p.v. losse if/else, klaar voor meer specialisten
+later") — Rowing sluit nu gewoon aan op hetzelfde patroon, bevestigd
+dat `kiesTussenProposals()`/de Decision Engine al generiek met een
+array werken (geen aanname van precies 2).
+
+**Twee extra instanties van dezelfde vocabulaire-mismatch gevonden en
+gefixt** (zelfde bug-klasse als eerder vandaag bij de Training Plan
+Engine-koppeling): (1) een hardcoded cycling/running-ternary in de
+reden-tekst zou bij Rowing altijd "Running" tonen — nu generiek via
+`SPORT_NAAM_LABEL`; (2) de intensiteitsbepaling checkte alleen
+`'herstel'`, niet Rowing's `'recovery'` — zou een Rowing-hersteldag
+als "matig" i.p.v. "licht" intensiteit gemeld hebben. Ook: rowing-
+icoon (🚣) toegevoegd aan zowel Smart Actions als Home's advieskaart
+(vielen eerder terug op het generieke 💪/"Trainer AI"-label).
+
+**Gevalideerd:** 4 scenario's — Rowing-label correct, reden-tekst
+noemt correct "Rowing" (niet "Running"), Rowing-recovery-sessie krijgt
+correct lichte intensiteit, Cycling/Running-gedrag blijft ongewijzigd.
+`npx next build` — compileert zonder fouten.
+
 **Filosofie:** Master Coach bepaalt WAT, Training Plan Engine bepaalt
 WANNEER/WAAROM, de **Workout Platform** bepaalt HOE. Bouwt voort op
 het bewezen Adapter-patroon van de Training Plan Engine (`core.ts`

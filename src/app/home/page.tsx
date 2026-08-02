@@ -676,7 +676,10 @@ export default function HomePage() {
                 // dit stilzwijgend alleen in de routing te verwerken.
                 return todayPlan && todayPlan.source !== 'rust' && actie === 'trainen' ? (
                   <div className="bg-slate-800/50 rounded-xl p-3 mb-3 flex items-center gap-3">
-                    <span className="text-xl">{todayPlan.source === 'cycling' ? '🚴' : todayPlan.source === 'running' ? '🏃' : '💪'}</span>
+                    {/* v2.4.231-FIX: rowing-icoon/-label toegevoegd — zelfde
+                        vocabulaire-mismatch als bij Smart Actions, viel
+                        eerder terug op het generieke 💪/"Trainer AI" */}
+                    <span className="text-xl">{todayPlan.source === 'cycling' ? '🚴' : todayPlan.source === 'running' ? '🏃' : todayPlan.source === 'rowing' ? '🚣' : '💪'}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white">{todayPlan.title}</p>
                       <p className="text-xs text-slate-400">
@@ -684,7 +687,7 @@ export default function HomePage() {
                       </p>
                     </div>
                     <span className="text-[10px] text-slate-500 flex-shrink-0 text-right">
-                      {todayPlan.source === 'cycling' ? 'Cycling Coach' : todayPlan.source === 'running' ? 'Running Coach' : 'Trainer AI'}
+                      {todayPlan.source === 'cycling' ? 'Cycling Coach' : todayPlan.source === 'running' ? 'Running Coach' : todayPlan.source === 'rowing' ? 'Rowing Coach' : 'Trainer AI'}
                       {todayPlan.trainingPhase && <><br /><span className="text-primary-400">{{ basis: 'Base-week', opbouw: 'Build-week', piek: 'Peak-week', herstel: 'Recovery-week' }[todayPlan.trainingPhase.mesocycleType] || todayPlan.trainingPhase.mesocycleType}</span></>}
                     </span>
                   </div>

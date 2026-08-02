@@ -1,5 +1,59 @@
 # CoachOS — Changelog
 
+## v2.4.231 — REGRESSIE-FIX: Smart Actions/Home miste actieve Rowing-sessies
+**Gemeld: "bij Snelle Acties is training schema weg."**
+
+### Root cause
+`src/lib/today-engine.ts` — gebruikt door zowel Smart Actions als
+Home's hoofdadvies-kaart — kende hardcoded alleen `'cycling' |
+'running'`. `haalSpecialistSessieVanVandaag()` werd nooit met
+`'rowing'` aangeroepen, dus een actief Rowing-trainingsplan werd
+volledig genegeerd door de Today Engine.
+
+De code was hier overigens al expliciet op voorbereid (bestaand
+commentaar: "proposals[] i.p.v. losse if/else, klaar voor meer
+specialisten later") — Rowing toevoegen was daardoor een kwestie van
+hetzelfde patroon volgen, niet een herontwerp. Bevestigd:
+`kiesTussenProposals()`/de Decision Engine werken al generiek met een
+array, geen aanname van precies 2 specialisten.
+
+### Fix
+- `TodayPlan['source']` en `SpecialistProposal['sport']` uitgebreid
+  met `'rowing'`
+- `haalSpecialistSessieVanVandaag(userId, 'rowing', vandaag)`
+  toegevoegd aan de parallelle Promise.all-aanroep
+- Rowing-sessietype-labels toegevoegd aan `SPORT_LABELS` (endurance/
+  recovery/lange_afstand/test — exact matchend met training-plan-
+  engine/rowing-adapter.ts's vocabulaire)
+
+### Twee extra instanties van dezelfde vocabulaire-mismatch gevonden
+**Zelfde bug-klasse als eerder vandaag bij de Training Plan Engine-
+koppeling (v2.4.229):**
+1. Hardcoded cycling/running-ternary in de reden-tekst ("Onderdeel van
+   je Cycling/Running-trainingsplan") zou bij Rowing altijd "Running"
+   tonen — vervangen door generieke `SPORT_NAAM_LABEL`-mapping
+2. Intensiteitsbepaling checkte alleen `'herstel'`, niet Rowing's
+   `'recovery'` — een Rowing-hersteldag zou als "matig" i.p.v. "licht"
+   intensiteit gemeld zijn
+
+### UI
+Rowing-icoon (🚣) toegevoegd aan zowel `api/smart-actions/route.ts`
+als `home/page.tsx`'s advieskaart — vielen eerder terug op het
+generieke 💪/"Trainer AI"-label.
+
+**Gevalideerd — 4 scenario's:**
+- Rowing endurance-sessie krijgt correct label "Duurtraining"
+- Reden-tekst noemt correct "Rowing" (niet "Running")
+- Rowing recovery-sessie krijgt correct lichte intensiteit (niet matig)
+- Cycling herstel-sessie blijft ongewijzigd correct werken (regressie-
+  vrij bevestigd)
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Home met een actief Rowing-trainingsplan
+met een sessie voor vandaag — zou nu weer moeten verschijnen bij
+Smart Actions én Home's hoofdadvies-kaart, met een 🚣-icoon.
+
 ## v2.4.230 — UI voor de concrete workout (Rowing Fase 2)
 **Vervolg op v2.4.229's backend-koppeling. Eerste keer dat een
 gebruiker het Core Platform daadwerkelijk te zien krijgt.**

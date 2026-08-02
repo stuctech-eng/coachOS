@@ -39,7 +39,7 @@ import { beslisTussenSpecialisten, type SpecialistSummaryVoorBeslissing } from '
 // tegen te testen.
 
 export interface TodayPlan {
-  source: 'cycling' | 'running' | 'trainer' | 'rust'
+  source: 'cycling' | 'running' | 'rowing' | 'trainer' | 'rust'
   title: string
   duration: number | null
   intensity: 'licht' | 'matig' | 'hoog' | null
@@ -65,16 +65,21 @@ interface TrainingPlanSessie {
 }
 
 interface SpecialistProposal {
-  sport: 'cycling' | 'running'
+  sport: 'cycling' | 'running' | 'rowing'
   sessie: TrainingPlanSessie
 }
 
 const SPORT_LABELS: Record<string, string> = {
   interval: 'Interval', duurtraining: 'Duurtraining', lange_duurtraining: 'Lange duurtraining', herstel: 'Herstel', // cycling
   easy_run: 'Easy Run', lange_duurloop: 'Lange duurloop', tempo: 'Tempo', // running (interval/herstel gedeeld)
+  // v2.4.231-FIX: rowing ontbrak volledig — Today Engine (en dus ook
+  // Smart Actions/Home) miste elke actieve Rowing-trainingsplansessie.
+  // Labels exact matchend met training-plan-engine/rowing-adapter.ts's
+  // vocabulaire (endurance/interval/recovery/lange_afstand/test).
+  endurance: 'Duurtraining', recovery: 'Herstel', lange_afstand: 'Lange afstand', test: 'Test', // rowing (interval gedeeld)
 }
 
-async function haalSpecialistSessieVanVandaag(userId: string, sport: 'cycling' | 'running', vandaag: string): Promise<TrainingPlanSessie | null> {
+async function haalSpecialistSessieVanVandaag(userId: string, sport: 'cycling' | 'running' | 'rowing', vandaag: string): Promise<TrainingPlanSessie | null> {
   const supabase = createAdminClient()
 
   const { data: actievePlannen } = await supabase
@@ -101,16 +106,25 @@ async function haalSpecialistSessieVanVandaag(userId: string, sport: 'cycling' |
 const MESOCYCLE_LABELS: Record<string, string> = { basis: 'Base-week', opbouw: 'Build-week', piek: 'Peak-week', herstel: 'Recovery-week' }
 
 function proposalNaarTodayPlan(proposal: SpecialistProposal): TodayPlan {
+  // v2.4.231-FIX: Rowing gebruikt 'recovery' i.p.v. 'herstel' voor
+  // hetzelfde concept (zie SPORT_LABELS hierboven) — zonder deze
+  // toevoeging zou een Rowing-hersteldag als 'matig' (i.p.v. 'licht')
+  // intensiteit gelden, exact hetzelfde soort vocabulaire-mismatch als
+  // eerder vandaag gevonden bij de Training Plan Engine-koppeling.
   const intensiteit: TodayPlan['intensity'] = proposal.sessie.type === 'interval' ? 'hoog'
-    : proposal.sessie.type === 'herstel' ? 'licht' : 'matig'
+    : (proposal.sessie.type === 'herstel' || proposal.sessie.type === 'recovery') ? 'licht' : 'matig'
   const fase = proposal.sessie.mesocycle_type
   const faseLabel = fase ? MESOCYCLE_LABELS[fase] : null
+  // v2.4.231-FIX: was een hardcoded cycling/running-ternary, exact
+  // dezelfde bug-klasse als eerder vandaag gevonden in training-plan-
+  // engine/core.ts — zou bij Rowing altijd "Running" tonen. Nu generiek.
+  const SPORT_NAAM_LABEL: Record<string, string> = { cycling: 'Cycling', running: 'Running', rowing: 'Rowing' }
   return {
     source: proposal.sport,
     title: SPORT_LABELS[proposal.sessie.type] || proposal.sessie.type,
     duration: proposal.sessie.duration,
     intensity: intensiteit,
-    reason: `Onderdeel van je ${proposal.sport === 'cycling' ? 'Cycling' : 'Running'}-trainingsplan${faseLabel ? ` (${faseLabel})` : ''}`,
+    reason: `Onderdeel van je ${SPORT_NAAM_LABEL[proposal.sport] || proposal.sport}-trainingsplan${faseLabel ? ` (${faseLabel})` : ''}`,
     coachMessage: proposal.sessie.adjustment_reason
       ? 'Deze sessie is aangepast op basis van je herstel — zie het trainingsplan voor de volledige uitleg.'
       : 'Volgens schema — ga ervoor!',
@@ -182,14 +196,19 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
 
   // ── Laag 2: Specialist-trainingsplannen — proposals[] i.p.v. losse
   // if/else, klaar voor meer specialisten later ───────────────────────
-  const [cyclingSessie, runningSessie] = await Promise.all([
+  // v2.4.231-FIX: rowing toegevoegd — de code was hier al expliciet op
+  // voorbereid ("proposals[] i.p.v. losse if/else, klaar voor meer
+  // specialisten later"), Rowing sluit gewoon aan op hetzelfde patroon
+  const [cyclingSessie, runningSessie, rowingSessie] = await Promise.all([
     haalSpecialistSessieVanVandaag(userId, 'cycling', vandaag),
     haalSpecialistSessieVanVandaag(userId, 'running', vandaag),
+    haalSpecialistSessieVanVandaag(userId, 'rowing', vandaag),
   ])
 
   const proposals: SpecialistProposal[] = []
   if (cyclingSessie) proposals.push({ sport: 'cycling', sessie: cyclingSessie })
   if (runningSessie) proposals.push({ sport: 'running', sessie: runningSessie })
+  if (rowingSessie) proposals.push({ sport: 'rowing', sessie: rowingSessie })
 
   if (proposals.length > 0) {
     const gekozenProposal = await kiesTussenProposals(userId, proposals)
