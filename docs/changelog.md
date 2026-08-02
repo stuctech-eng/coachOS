@@ -1,5 +1,32 @@
 # CoachOS — Changelog
 
+## v2.4.239 — Universal Athlete Platform: eerste UI-koppeling
+**Vervolg op v2.4.238's echte data-verwerking. Nu voor het eerst
+zichtbaar voor de gebruiker.**
+
+### Nieuw
+- **`/athlete-platform`** (nieuwe pagina, link vanaf `/coach/rowing`)
+  — toont de Universal Athlete State, exact het format uit het
+  ontwerpoverleg: kwalitatieve balk (1-5) + label + confidence-
+  percentage. **Geen los getal ooit zichtbaar.** Alle 8 categorieën
+  (Cardiovasculair/Spieren/Mechanisch/Neurologisch/Herstel/Mentaal/
+  Training/Omgeving), elk veld met een leesbaar Nederlands label
+- **`api/athlete-platform/state`** — dunne route, hergebruikt
+  `haalAthleteState()` rechtstreeks
+
+### Bewuste scheiding van verantwoordelijkheid
+De route geeft de volledige `UniverseleWaarde` terug, inclusief
+`ruweWaarde` — de UI-laag is verantwoordelijk om dat veld nooit te
+tonen (vastgelegd in commentaar), niet de route zelf. De route hoeft
+niet te weten wat "veilig tonen" betekent.
+
+`npx next build` — compileert zonder fouten, beide nieuwe routes
+bevestigd in de build-output.
+
+**Test-instructie:** sync een Rowing-sessie via Concept2, open dan
+Rowing Coach → "🧬 Jouw digitale model" — zou nu balken/labels/
+confidence-percentages moeten tonen voor alle 8 categorieën.
+
 ## v2.4.238 — Universal Athlete Platform: écht werkend, eerste keer
 **Alle vorige Athlete Platform-bouwstappen (v2.4.234-236) waren pure
 functies zonder aanroeper. Deze levering maakt het platform voor het

@@ -907,6 +907,17 @@ Body 75/Legs 45/Impact 5/Fatigue 60), de 60-min-referentiewaarde klopt
 min), en de volledige keten (adapter → Impact Engine → opslagformaat)
 sluit naadloos aan. `npx next build` — compileert zonder fouten.
 
+**Eerste UI-koppeling — v2.4.239.** `/athlete-platform` (link vanaf
+`/coach/rowing`) — toont de Universal Athlete State voor het eerst
+daadwerkelijk aan de gebruiker, exact het format uit het
+ontwerpoverleg zelf: kwalitatieve balk + label + confidence-percentage,
+**nooit een los getal**. Alle 8 categorieën, elk veld met een Nederlands
+label. `api/athlete-platform/state` — dunne route, hergebruikt
+`haalAthleteState()` rechtstreeks; geeft de volledige waarde inclusief
+`ruweWaarde` terug, met expliciete afspraak in commentaar dat de
+UI-laag verantwoordelijk is om dat veld nooit te tonen (niet de route
+zelf — bewuste scheiding van verantwoordelijkheid).
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/

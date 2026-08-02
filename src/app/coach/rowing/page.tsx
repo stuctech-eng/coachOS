@@ -178,6 +178,11 @@ export default function RowingPage() {
               <Link href="/performance" className="text-xs text-primary-400 mt-4 inline-block">
                 Herstel &amp; Coach Score bekijken →
               </Link>
+              {/* v2.4.239: link naar de nieuwe, experimentele Universal
+                  Athlete Platform-weergave */}
+              <Link href="/athlete-platform" className="text-xs text-slate-500 mt-2 block">
+                🧬 Jouw digitale model (experimenteel) →
+              </Link>
             </Card>
           )
         })()}
