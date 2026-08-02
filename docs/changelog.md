@@ -1,5 +1,45 @@
 # CoachOS — Changelog
 
+## v2.4.244 — Cycling als derde gelijkwaardige sport
+**Zelfde patroon als Running (v2.4.242). Daarmee zijn alle drie de
+huidige specialisten (Rowing/Running/Cycling) gelijkwaardig op
+Workout Platform-niveau, en voedt/ontvangt elke sport de Universal
+Impact Engine.**
+
+### Nieuw
+- **`src/lib/specialists/cycling-workout-adapter.ts`** —
+  `vertaalTarget()`. Cycling had al een gevalideerde FTP-gebaseerde
+  vermogenszone-berekening (Coggan 7-zone-model, `cycling-zones.ts`)
+  — vertaalt naar concrete vermogenswaarden (bijv. "228W - 263W" bij
+  FTP 250W). Geen FTP bekend → eerlijk niets teruggeven
+- **`api/specialists/cycling/training-plan/workout`** — mirror van
+  Rowing/Running's route, inclusief het kruis-sport-signaal
+- **`src/lib/specialists/cycling-impact-adapter.ts`** — Cycling voedt
+  nu ook zelf de Universal Impact Engine (`Fietsen` toegevoegd aan de
+  generieke dispatch-tabel in `strava-activity-processor.ts`)
+
+### Daarmee: volledig wederzijdse driehoek
+Rowing↔Running↔Cycling — elke sport kan nu elke andere sport
+beïnvloeden via de Universal Athlete State.
+
+### Kalibratie-observatie, geen bug
+Bij 60 minuten (de referentiewaarde) triggert Cycling's eigen kruis-
+sport-signaal nog niet — pas bij ~90 minuten (het schaal-plafond)
+wordt de 'hoog'-drempel bereikt. Fysiologisch redelijk (minder
+belastend dan 90 min roeien/hardlopen), bewust milder gekalibreerd
+dan Rowing/Running, geen kunstmatige gelijktrekking.
+
+**Gevalideerd:**
+- Vermogenszone-vertaling: correcte Coggan-percentages (zone 2 =
+  56-75% van FTP, zone 4 = 91-105%)
+- Geen-FTP-scenario geeft terecht een lege vertaling
+- Volledige Cycling→Rowing-keten getest: bij 60 min nog geen signaal
+  (bevestigt de kalibratie-observatie), bij 90 min (plafond) wél een
+  correct signaal met afgezwakte workout
+
+`npx next build` — compileert zonder fouten, nieuwe route bevestigd
+in de build-output.
+
 ## v2.4.243 — Wederzijdse cross-sport-koppeling + kritieke bugfix
 **Tot nu toe voedde alleen Rowing de Universal Impact Engine — het
 cross-sport-principe werkte dus maar één kant op. Nu ook Running.**

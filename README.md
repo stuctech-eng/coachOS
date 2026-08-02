@@ -1033,6 +1033,38 @@ nu ook gecheckt.
 
 `npx next build` — compileert zonder fouten.
 
+**Cycling als derde gelijkwaardige sport — v2.4.244.** Zelfde patroon
+als Running (v2.4.242). `src/lib/specialists/cycling-workout-adapter.ts`
+— Cycling had al een gevalideerde FTP-gebaseerde vermogenszone-
+berekening (Coggan 7-zone-model, `cycling-zones.ts`) — net als
+Running's VDOT, een échte persoonlijke baseline. Vertaalt naar
+concrete vermogenswaarden (bijv. "228W - 263W" bij FTP 250W). Geen
+FTP bekend → eerlijk niets teruggeven.
+
+`api/specialists/cycling/training-plan/workout` — mirror van Rowing/
+Running's route, inclusief het kruis-sport-signaal.
+
+**`src/lib/specialists/cycling-impact-adapter.ts`** — Cycling voedt nu
+ook ZELF de Universal Impact Engine (via de generieke dispatch-tabel
+in `strava-activity-processor.ts`, `Fietsen` toegevoegd naast
+`Hardlopen`) — niet alleen ontvangen, ook leveren. Daarmee is de
+driehoek Rowing↔Running↔Cycling voor het eerst volledig wederzijds.
+
+**Kalibratie-observatie, geen bug:** bij 60 minuten (de referentiewaarde)
+triggert Cycling's eigen kruis-sport-signaal nog niet (blijft net onder
+de 'hoog'-drempel) — pas bij ~90 minuten (het schaal-plafond) wordt
+'hoog'/'zeer_hoog' bereikt. Fysiologisch redelijk (een gemiddelde
+uurtje fietsen is minder belastend dan 90 min roeien/hardlopen), maar
+wel merkbaar milder gekalibreerd dan Rowing/Running's adapters —
+bewust zo gelaten, geen kunstmatige gelijktrekking.
+
+**Gevalideerd:** vermogenszone-vertaling getest (correcte Coggan-
+percentages: zone 2 = 56-75% van FTP, zone 4 = 91-105%), geen-FTP-
+scenario geeft terecht een lege vertaling, volledige Cycling→Rowing-
+keten getest (bevestigt bij 90 min wél een correct signaal + afgezwakte
+workout). `npx next build` — compileert zonder fouten, nieuwe route
+bevestigd in de build-output.
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/

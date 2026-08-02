@@ -6,15 +6,13 @@ import { createAdminClient } from '@/lib/supabase'
 import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/storage'
 import { pasImpactToe, type ImpactBijdrage } from '@/core/athlete-platform/impact-engine'
 import { vertaalRunningSessieNaarImpact } from './specialists/running-impact-adapter'
+import { vertaalCyclingSessieNaarImpact } from './specialists/cycling-impact-adapter'
 
-// v2.4.243 (Universal Athlete Platform — wederzijdse koppeling): welke
-// sporten voeden de Universal Impact Engine, en met welke adapter.
-// Generieke dispatch-tabel i.p.v. sportlogica in de processor zelf —
-// nieuwe sporten toevoegen betekent alleen een regel hier toevoegen,
-// niet de processor zelf aanpassen. Roeien loopt via Concept2 (aparte
-// sync-route, niet via Strava), dus staat hier bewust niet in.
+// v2.4.244: Cycling toegevoegd — derde sport in de dispatch-tabel,
+// zelfde generieke patroon, geen wijziging aan de processor zelf nodig
 const IMPACT_ADAPTERS: Record<string, (duurMinuten: number) => ImpactBijdrage[]> = {
   Hardlopen: vertaalRunningSessieNaarImpact,
+  Fietsen: vertaalCyclingSessieNaarImpact,
 }
 
 const SPORT_TYPE_MAP: Record<string, string> = {
