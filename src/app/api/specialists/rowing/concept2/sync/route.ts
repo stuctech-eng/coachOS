@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/storage'
-import { pasImpactToe } from '@/core/athlete-platform/impact-engine'
+import { pasImpactToe, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platform/impact-engine'
 import { vertaalRowingSessieNaarImpact } from '@/lib/specialists/rowing-impact-adapter'
 
 async function getUser() {
@@ -207,13 +207,18 @@ export async function POST() {
       // try/catch — een fout hier mag de sync zelf nooit laten falen,
       // de kernfunctionaliteit (data importeren) blijft altijd werken
       // ook als deze nieuwe, experimentele laag een probleem heeft.
-      try {
-        const huidigeState = await haalAthleteState(supabase, user.id)
-        const bijdragen = vertaalRowingSessieNaarImpact(duurMinuten)
-        const nieuweState = pasImpactToe(huidigeState, bijdragen)
-        await slaAthleteStateOp(supabase, user.id, nieuweState)
-      } catch (athleteStateErr) {
-        console.error('[concept2/sync] Universal Athlete State bijwerken mislukt (sync zelf blijft werken):', athleteStateErr)
+      // v2.4.246-FIX: sessies onder MINIMUM_SESSIE_DUUR_MINUTEN
+      // (vermoedelijk test/kalibratie, geen echte training) worden
+      // overgeslagen — trokken eerder het gemiddelde onterecht omlaag.
+      if (duurMinuten >= MINIMUM_SESSIE_DUUR_MINUTEN) {
+        try {
+          const huidigeState = await haalAthleteState(supabase, user.id)
+          const bijdragen = vertaalRowingSessieNaarImpact(duurMinuten)
+          const nieuweState = pasImpactToe(huidigeState, bijdragen)
+          await slaAthleteStateOp(supabase, user.id, nieuweState)
+        } catch (athleteStateErr) {
+          console.error('[concept2/sync] Universal Athlete State bijwerken mislukt (sync zelf blijft werken):', athleteStateErr)
+        }
       }
 
       // v2.4.222 (structurele dedup-fix): Concept2 is de meest

@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { legeAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/storage'
-import { pasImpactToe } from '@/core/athlete-platform/impact-engine'
+import { pasImpactToe, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platform/impact-engine'
 import { vertaalRowingSessieNaarImpact } from '@/lib/specialists/rowing-impact-adapter'
 
 async function getUser() {
@@ -52,14 +52,23 @@ export async function POST() {
     }
 
     let state = legeAthleteState(user.id)
+    let overgeslagen = 0
     for (const sessie of sessies) {
+      // v2.4.246-FIX: zelfde drempel als de live-koppeling — anders
+      // zou de terugvul-functie ruis (bijv. een 1-minuut-testsessie)
+      // alsnog meenemen terwijl nieuwe syncs die al negeren
+      if (sessie.duration < MINIMUM_SESSIE_DUUR_MINUTEN) { overgeslagen++; continue }
       const bijdragen = vertaalRowingSessieNaarImpact(sessie.duration)
       state = pasImpactToe(state, bijdragen)
     }
 
     await slaAthleteStateOp(supabase, user.id, state)
 
-    return NextResponse.json({ verwerkt: sessies.length, boodschap: `${sessies.length} bestaande sessies verwerkt.` })
+    const verwerkt = sessies.length - overgeslagen
+    return NextResponse.json({
+      verwerkt, overgeslagen,
+      boodschap: `${verwerkt} sessies verwerkt${overgeslagen > 0 ? `, ${overgeslagen} overgeslagen (korter dan ${MINIMUM_SESSIE_DUUR_MINUTEN} min)` : ''}.`,
+    })
   } catch (err) {
     console.error('[rowing/athlete-platform-backfill]', err)
     return NextResponse.json({ error: 'Terugvullen mislukt' }, { status: 500 })

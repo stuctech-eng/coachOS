@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.246 — FIX: minimale-sessieduur-drempel tegen ruis
+**Gemeld met echte data: een sessie van 1 minuut in de Concept2-
+historie trok het gemiddelde onterecht mee.**
+
+### Root cause
+Gebruiker vroeg letterlijk "kun je dat zien?" — antwoord: nee, geen
+live databasetoegang, dus een SQL-query gedeeld om zelf te checken.
+Resultaat bevestigde: tussen de echte, langere sessies (45-60 min)
+zat één sessie van precies 1 minuut — vermoedelijk een test/
+kalibratie-poging, geen echte training.
+
+### Fix
+`impact-engine.ts` — nieuwe, gedeelde constante
+`MINIMUM_SESSIE_DUUR_MINUTEN = 3`. Toegepast op alle drie de plekken
+die sessies naar de Impact Engine sturen:
+- `concept2/sync/route.ts`
+- `strava-activity-processor.ts` (Running/Cycling)
+- `athlete-platform-backfill/route.ts` — geeft nu ook `overgeslagen`
+  mee in de respons/melding
+
+Eén bron van waarheid — geen los, dupliceerbaar getal per aanroeper.
+
+**Gevalideerd met de daadwerkelijke, gerapporteerde sessiedata:**
+filter slaat correct exact 1 sessie over. **Eerlijke bevinding:** het
+"Zeer laag"-resultaat verandert nauwelijks na filtering — de overige
+recente sessies (16-25 min) zijn zelf ook al aan de korte kant. Dit
+bevestigt dat het eerdere resultaat al grotendeels correct was; deze
+fix verwijdert specifiek de échte ruis (de 1-minuut-uitschieter), niet
+een onderliggend probleem.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** tik nogmaals op "Terugvullen" op `/athlete-
+platform` — de melding zou nu moeten vermelden dat 1 sessie is
+overgeslagen (korter dan 3 min).
+
 ## v2.4.245 — FIX: confidence kon nooit groeien + terugvul-functie
 **Gemeld tijdens het testen van een terugvul-idee: na 56
 gesimuleerde sessies bleef confidence op LOW staan, in tegenspraak

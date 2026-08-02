@@ -1095,6 +1095,24 @@ gaat nooit erover heen. Regressietest: het eerste-sessie-scenario
 (geen bestaande staat) blijft correct werken. `npx next build` —
 compileert zonder fouten.
 
+**FIX — v2.4.246: minimale-sessieduur-drempel tegen ruis.** Gemeld met
+echte data (SQL-query op eigen verzoek): een sessie van **1 minuut**
+in de Concept2-historie (vermoedelijk een test/kalibratie, geen echte
+training) trok het gemiddelde onterecht mee. `impact-engine.ts` kreeg
+een gedeelde `MINIMUM_SESSIE_DUUR_MINUTEN = 3`-constante — één bron
+van waarheid, toegepast op alle drie de plekken die sessies naar de
+Impact Engine sturen: Concept2-sync, Strava-import (Running/Cycling),
+en de terugvul-functie.
+
+**Gevalideerd met de daadwerkelijke, gerapporteerde sessiedata:**
+filter slaat correct exact 1 sessie over (de 1-minuut-uitschieter).
+Opvallende, eerlijke bevinding: het "Zeer laag"-resultaat verandert
+nauwelijks na filtering — de overige recente sessies (16-25 min) zijn
+zelf ook al aan de korte kant, dus het eerdere resultaat was al
+grotendeels correct; deze fix verwijdert specifiek de échte ruis,
+niet een onderliggend probleem. `npx next build` — compileert zonder
+fouten.
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/

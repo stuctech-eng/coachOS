@@ -4,7 +4,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/storage'
-import { pasImpactToe, type ImpactBijdrage } from '@/core/athlete-platform/impact-engine'
+import { pasImpactToe, type ImpactBijdrage, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platform/impact-engine'
 import { vertaalRunningSessieNaarImpact } from './specialists/running-impact-adapter'
 import { vertaalCyclingSessieNaarImpact } from './specialists/cycling-impact-adapter'
 
@@ -166,9 +166,12 @@ export async function processStravaActivity(
   // kernfunctionaliteit) nooit laten falen, zelfde voorzichtigheids-
   // principe als bij de Concept2-sync-koppeling.
   const impactAdapter = IMPACT_ADAPTERS[activityName]
-  if (impactAdapter) {
+  const duurMinuten = Math.round(activity.moving_time / 60)
+  // v2.4.246-FIX: zelfde drempel als Concept2/terugvullen — een zeer
+  // korte sessie (bijv. per ongeluk gestarte tracking) mag het
+  // gemiddelde niet onterecht naar beneden trekken
+  if (impactAdapter && duurMinuten >= MINIMUM_SESSIE_DUUR_MINUTEN) {
     try {
-      const duurMinuten = Math.round(activity.moving_time / 60)
       const huidigeState = await haalAthleteState(supabase, userId)
       const bijdragen = impactAdapter(duurMinuten)
       const nieuweState = pasImpactToe(huidigeState, bijdragen)

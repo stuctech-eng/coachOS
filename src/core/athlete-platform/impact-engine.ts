@@ -21,6 +21,14 @@ import type { UniversalAthleteState, UniverseleWaarde, KwalitatiefNiveau, Confid
 // individuele bijdrage (zie combineerWaarde() hieronder voor de
 // volledige toelichting, incl. de v2.4.245-fix van dit gedrag).
 
+/** v2.4.246: sessies korter dan dit worden NIET meegenomen door de
+ * Impact Engine — gemeld: een sessie van 1 minuut (vermoedelijk een
+ * test/kalibratie, geen echte training) trok het gemiddelde onterecht
+ * naar beneden. Eén gedeelde constante, gebruikt door elke plek die
+ * sessies naar de Impact Engine stuurt (Concept2-sync, Strava-import,
+ * terugvul-functie) — geen los, dupliceerbaar getal per aanroeper. */
+export const MINIMUM_SESSIE_DUUR_MINUTEN = 3
+
 /** Wat een Specialist Adapter aanlevert voor één dimensie van de
  * Universal Athlete State — AL vertaald naar universele taal, deze
  * Engine kent zelf geen FTP/SPM/pace. */
