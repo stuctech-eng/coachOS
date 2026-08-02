@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.233 — Rowing dashboard-verrijking
+**Volgende stap in de vastgelegde volgorde.**
+
+### Nieuw
+`/coach/rowing` toont nu een "Trainingsbelasting"-kaart met week-/
+maandstatistieken (aantal sessies, minuten, afstand — indien
+beschikbaar via Concept2-metrics). Puur afgeleid uit de al-opgehaalde
+90-dagen-activiteitendata (`haalRowingData()`) — **geen nieuwe route
+of databron**.
+
+### Bewuste keuze
+Recovery/Readiness/Coach Score worden hier NIET herberekend — die zijn
+platformbreed, niet sport-specifiek. Een link naar het al-bestaande
+`/performance` voorkomt dubbele logica in plaats van dezelfde cijfers
+op twee plekken te berekenen.
+
+### Opgeschoond
+Lege-staat- en "Binnenkort"-teksten bijgewerkt — vermeldden nog
+Concept2-koppeling en Trainingsplan als toekomstige features, terwijl
+beide al weken eerder in deze sessie af waren.
+
+**Gevalideerd:** week-/maandvenster-berekening getest met een
+realistische datumspreiding (sessies binnen/buiten beide vensters) —
+correcte telling en correcte uitsluiting van data buiten het venster.
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Rowing Coach — zou nu een "Trainingsbelasting"-
+kaart moeten tonen met week-/maandcijfers, met een link naar Performance.
+
 ## v2.4.232 — Rowing Coach Memory
 **Volgende stap in de logische volgorde (geen tussentijdse bevestiging
 meer nodig, op verzoek).**

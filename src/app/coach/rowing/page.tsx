@@ -46,6 +46,32 @@ function dedupliceerOpDatum(activiteiten: RowingActiviteit[]): RowingActiviteit[
   return Array.from(perDatum.values())
 }
 
+// v2.4.233 (Rowing Fase 2 — dashboard-verrijking): week-/maandstatistieken,
+// berekend uit de al-opgehaalde 90-dagen-activiteiten (haalRowingData) —
+// geen nieuwe route/databron. Recovery/Readiness/Coach Score blijven
+// bewust bij /performance (platformbreed, geen dubbele berekening hier).
+interface RowingStatistieken {
+  weekSessies: number; weekMinuten: number; weekAfstand: number
+  maandSessies: number; maandMinuten: number; maandAfstand: number
+}
+
+function berekenStatistieken(activiteiten: RowingActiviteit[]): RowingStatistieken {
+  const nu = new Date()
+  const weekGeleden = new Date(nu.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const maandGeleden = new Date(nu.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+  const opWeek = activiteiten.filter(a => a.date >= weekGeleden)
+  const opMaand = activiteiten.filter(a => a.date >= maandGeleden)
+
+  const som = (lijst: RowingActiviteit[], veld: 'duration' | 'afstand') =>
+    lijst.reduce((totaal, a) => totaal + (veld === 'duration' ? a.duration : (a.metrics?.distance || 0)), 0)
+
+  return {
+    weekSessies: opWeek.length, weekMinuten: som(opWeek, 'duration'), weekAfstand: som(opWeek, 'afstand'),
+    maandSessies: opMaand.length, maandMinuten: som(opMaand, 'duration'), maandAfstand: som(opMaand, 'afstand'),
+  }
+}
+
 export default function RowingPage() {
   const [laden, setLaden] = useState(true)
   const [activiteiten, setActiviteiten] = useState<RowingActiviteit[]>([])
@@ -119,12 +145,42 @@ export default function RowingPage() {
           </Link>
           <div className="flex-1">
             <h1 className="text-xl font-bold text-white">Rowing Coach</h1>
-            <p className="text-xs text-slate-500">Nieuw — basisstructuur</p>
+            <p className="text-xs text-slate-500">Trainingsbelasting &amp; sessies</p>
           </div>
           <Link href="/settings/rowing-profile" className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center">
             <Settings size={18} className="text-slate-400" />
           </Link>
         </div>
+
+        {/* v2.4.233: dashboard-verrijking — week-/maandbelasting, puur
+            afgeleid uit de al-opgehaalde data. Recovery/Readiness/Coach
+            Score bewust NIET hier herberekend — dat is platformbreed,
+            zie /performance (link onderaan deze kaart). */}
+        {!laden && heeftData && (() => {
+          const stats = berekenStatistieken(activiteiten)
+          return (
+            <Card className="p-5">
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Trainingsbelasting</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Deze week</p>
+                  <p className="text-2xl font-bold text-white">{stats.weekSessies}</p>
+                  <p className="text-xs text-slate-400">sessie{stats.weekSessies === 1 ? '' : 's'}</p>
+                  <p className="text-xs text-slate-500 mt-1">{stats.weekMinuten} min{stats.weekAfstand > 0 ? ` · ${(stats.weekAfstand / 1000).toFixed(1)} km` : ''}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Deze maand</p>
+                  <p className="text-2xl font-bold text-white">{stats.maandSessies}</p>
+                  <p className="text-xs text-slate-400">sessie{stats.maandSessies === 1 ? '' : 's'}</p>
+                  <p className="text-xs text-slate-500 mt-1">{stats.maandMinuten} min{stats.maandAfstand > 0 ? ` · ${(stats.maandAfstand / 1000).toFixed(1)} km` : ''}</p>
+                </div>
+              </div>
+              <Link href="/performance" className="text-xs text-primary-400 mt-4 inline-block">
+                Herstel &amp; Coach Score bekijken →
+              </Link>
+            </Card>
+          )
+        })()}
 
         {/* v2.4.223 (Fase 1, stap 3): link naar het nieuwe trainingsplan */}
         <Link href="/coach/rowing/trainingsplan">
@@ -186,14 +242,12 @@ export default function RowingPage() {
               <p className="text-white font-semibold">Nog geen roeidata</p>
               <p className="text-sm text-slate-400 mt-1">
                 Rowing Coach is net gestart. Zodra je een roeisessie logt
-                (handmatig, via Strava, of straks via Concept2), verschijnt
-                hier je dashboard.
+                (handmatig, via Strava, of via Concept2, hierboven te
+                koppelen), verschijnt hier je dashboard.
               </p>
             </div>
             <div className="w-full pt-3 mt-1 border-t border-coach-border flex flex-col gap-2 text-left">
               <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Binnenkort</p>
-              <p className="text-sm text-slate-400">🔗 Directe Concept2-koppeling (wacht op API-sleutels)</p>
-              <p className="text-sm text-slate-400">📋 Trainingsplan met periodisering</p>
               <p className="text-sm text-slate-400">📊 Analyse na elke sessie</p>
             </div>
           </Card>
@@ -218,8 +272,7 @@ export default function RowingPage() {
               ))}
             </div>
             <p className="text-xs text-slate-600 mt-4">
-              Uitgebreid dashboard (records/grafieken/trainingsbelasting)
-              volgt in een volgende stap.
+              Records en grafieken volgen in een volgende stap.
             </p>
           </Card>
         )}

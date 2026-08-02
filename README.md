@@ -789,6 +789,18 @@ zelf. **Nog niet gebouwd:** automatische inzicht-generatie via een
 Rowing-coach-conversatieroute (bij Cycling/Running ook nog als
 "tijdelijk, handmatig testbaar" gemarkeerd) — apart, later traject.
 
+**Dashboard-verrijking — v2.4.233.** `/coach/rowing` toont nu
+week-/maandtrainingsbelasting (sessies/minuten/afstand), puur afgeleid
+uit de al-opgehaalde 90-dagen-activiteitendata — geen nieuwe route of
+databron. **Bewuste keuze:** Recovery/Readiness/Coach Score NIET hier
+herberekend — die zijn platformbreed (niet sport-specifiek), een link
+naar het al-bestaande `/performance` voorkomt dubbele logica. Lege-
+staat- en "Binnenkort"-teksten bijgewerkt (Concept2-koppeling en
+Trainingsplan waren daar nog vermeld als toekomstig, terwijl beide al
+weken eerder af waren). Gevalideerd: week-/maandvenster-berekening
+getest met een realistische datumspreiding, inclusief correcte
+uitsluiting van data buiten het venster.
+
 **Gevalideerd:** 4 scenario's — Rowing-label correct, reden-tekst
 noemt correct "Rowing" (niet "Running"), Rowing-recovery-sessie krijgt
 correct lichte intensiteit, Cycling/Running-gedrag blijft ongewijzigd.
