@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
+import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/storage'
+import { pasImpactToe } from '@/core/athlete-platform/impact-engine'
+import { vertaalRowingSessieNaarImpact } from '@/lib/specialists/rowing-impact-adapter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -174,6 +177,10 @@ export async function POST() {
       if (resultaat.calories_total) metrics.calories = resultaat.calories_total
       if (resultaat.drag_factor) metrics.drag_factor = resultaat.drag_factor
 
+      // v2.4.238: duur naar een eigen variabele — nu ook hergebruikt
+      // voor de Universal Athlete Platform-koppeling hieronder
+      const duurMinuten = Math.round(resultaat.time / 600)
+
       const { error } = await supabase.from('activity_sessions').insert({
         user_id: user.id,
         activity_id: userActivity?.id || null,
@@ -181,7 +188,7 @@ export async function POST() {
         // v2.4.219: Concept2's "time" is in tienden van een seconde,
         // NIET seconden (anders dan Strava's moving_time) — /600 geeft
         // direct minuten (/10 voor seconden, /60 voor minuten)
-        duration: Math.round(resultaat.time / 600),
+        duration: duurMinuten,
         metrics,
         source: 'concept2',
         notes: `concept2:${resultaat.id}`,
@@ -193,6 +200,21 @@ export async function POST() {
         continue
       }
       geimporteerd++
+
+      // v2.4.238 (Universal Athlete Platform, eerste echte koppeling):
+      // vertaalt deze sessie naar universele impact-bijdragen en werkt
+      // de opgeslagen Universal Athlete State bij. Bewust in een
+      // try/catch — een fout hier mag de sync zelf nooit laten falen,
+      // de kernfunctionaliteit (data importeren) blijft altijd werken
+      // ook als deze nieuwe, experimentele laag een probleem heeft.
+      try {
+        const huidigeState = await haalAthleteState(supabase, user.id)
+        const bijdragen = vertaalRowingSessieNaarImpact(duurMinuten)
+        const nieuweState = pasImpactToe(huidigeState, bijdragen)
+        await slaAthleteStateOp(supabase, user.id, nieuweState)
+      } catch (athleteStateErr) {
+        console.error('[concept2/sync] Universal Athlete State bijwerken mislukt (sync zelf blijft werken):', athleteStateErr)
+      }
 
       // v2.4.222 (structurele dedup-fix): Concept2 is de meest
       // betrouwbare bron voor roeien (het apparaat zelf). Als er voor

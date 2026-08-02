@@ -879,6 +879,34 @@ instructietekst** als vóór de refactor — de centralisatie heeft geen
 enkele gedragswijziging veroorzaakt, alleen de bron is nu
 gecentraliseerd. `npx next build` — compileert zonder fouten.
 
+**Universal Athlete Platform écht werkend — v2.4.238.** Eerste keer
+dat het platform daadwerkelijk data verwerkt, niet alleen pure
+functies zonder aanroeper.
+
+- **`supabase/universal_athlete_state.sql`** — opslag, één JSONB-rij
+  per gebruiker (RLS aan)
+- **`core/athlete-platform/storage.ts`** — `haalAthleteState()`/
+  `slaAthleteStateOp()`, met `legeAthleteState()` als fallback voor
+  nieuwe gebruikers (elk veld LOW-confidence, "nog geen data")
+- **`src/lib/specialists/rowing-impact-adapter.ts`** —
+  `vertaalRowingSessieNaarImpact()`, EXACT de verhoudingen uit het
+  oorspronkelijke visie-voorbeeld overgenomen (niet zelf verzonnen),
+  duur-geschaald met een plafond op 150% (voorkomt dat een extreem
+  lange sessie de staat onrealistisch laat pieken). Confidence bewust
+  op MEDIUM (geen gevalideerde formule, eerlijk zo benoemd in
+  commentaar)
+- **Koppeling in `concept2/sync/route.ts`** — na elke nieuw
+  geïmporteerde sessie wordt de Universal Athlete State bijgewerkt.
+  **Bewust in een try/catch** — een fout in deze nieuwe, experimentele
+  laag mag de sync zelf (de kernfunctionaliteit) nooit laten falen
+
+**Gevalideerd — 4 scenario's:** bij exact 90 minuten matchen **alle**
+waarden precies de originele visie-cijfers (Cardio 65/Core 80/Upper
+Body 75/Legs 45/Impact 5/Fatigue 60), de 60-min-referentiewaarde klopt
+(43), het 150%-plafond werkt (180 min geeft identieke output aan 90
+min), en de volledige keten (adapter → Impact Engine → opslagformaat)
+sluit naadloos aan. `npx next build` — compileert zonder fouten.
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/

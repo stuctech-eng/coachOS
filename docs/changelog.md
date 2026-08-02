@@ -1,5 +1,56 @@
 # CoachOS — Changelog
 
+## v2.4.238 — Universal Athlete Platform: écht werkend, eerste keer
+**Alle vorige Athlete Platform-bouwstappen (v2.4.234-236) waren pure
+functies zonder aanroeper. Deze levering maakt het platform voor het
+eerst daadwerkelijk actief.**
+
+### Nieuw
+**SQL:** `supabase/universal_athlete_state.sql` — opslag, één JSONB-rij
+per gebruiker (RLS aan):
+```sql
+create table if not exists universal_athlete_state (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  state jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table universal_athlete_state enable row level security;
+create policy "Gebruikers zien alleen hun eigen Athlete State"
+  on universal_athlete_state for all using (auth.uid() = user_id);
+```
+
+**`core/athlete-platform/storage.ts`** — `haalAthleteState()`/
+`slaAthleteStateOp()`, met `legeAthleteState()` als fallback voor
+nieuwe gebruikers (elk veld start op LOW-confidence, "nog geen data").
+
+**`src/lib/specialists/rowing-impact-adapter.ts`** —
+`vertaalRowingSessieNaarImpact()`. Verhoudingen **exact overgenomen**
+uit het oorspronkelijke visie-voorbeeld (90 min roeien: Cardio+65/
+Core+80/Upper Body+75/Legs+45/Impact+5/Fatigue+60), niet zelf
+verzonnen. Duur-geschaald t.o.v. een 60-min-referentie, geklemd op
+maximaal 150% (voorkomt dat een extreem lange sessie de staat
+onrealistisch laat pieken). Confidence bewust op MEDIUM — eerlijk
+benoemd in commentaar als "geen gevalideerde sportwetenschappelijke
+formule".
+
+### Koppeling
+`concept2/sync/route.ts` — na elke nieuw geïmporteerde sessie wordt nu
+de Universal Athlete State bijgewerkt (Impact Engine + opslag). Bewust
+in een try/catch: een fout in deze nieuwe, experimentele laag mag de
+sync zelf (de kernfunctionaliteit — data importeren) nooit laten
+falen.
+
+**Gevalideerd — 4 scenario's:**
+- 90 minuten (het exacte visie-scenario): **alle** waarden matchen
+  precies de originele cijfers uit het visiedocument
+- 60 minuten (de referentiewaarde zelf): Cardio 43, correct
+- 180 minuten (plafond-check): identieke output aan 90 minuten,
+  bevestigt het 150%-plafond werkt
+- Volledige integratie: lege staat + 90-min-sessie → correcte
+  eindwaarden in het opslagformaat
+
+`npx next build` — compileert zonder fouten.
+
 ## v2.4.237 — Knowledge Platform: eerste onderdeel (Trainingszones)
 **Vervolg op de Universal Athlete Platform-bouwstappen. Anders dan de
 vorige twee leveringen: deze koppelt DIRECT aan een bestaande,
