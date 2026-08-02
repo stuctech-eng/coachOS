@@ -918,6 +918,15 @@ label. `api/athlete-platform/state` — dunne route, hergebruikt
 UI-laag verantwoordelijk is om dat veld nooit te tonen (niet de route
 zelf — bewuste scheiding van verantwoordelijkheid).
 
+**FIX — v2.4.240: terugknoppen gingen altijd naar Home i.p.v. één stap
+terug.** Gemeld: op zowel `/performance` als `/athlete-platform` was de
+terugknop hardcoded naar `/home` — vervelend als je er bijv. vanuit
+Rowing Coach naartoe navigeerde. Beide pagina's gebruiken nu
+`router.back()` (browser-navigatiehistorie) i.p.v. een vaste
+bestemming — gaat altijd één stap terug naar waar je vandaan kwam.
+Ongebruikte `Link`-import opgeschoond in `athlete-platform/page.tsx`
+(niet meer nodig na deze wijziging).
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/

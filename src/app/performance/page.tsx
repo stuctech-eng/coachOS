@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Menu, Calendar, Flame, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
@@ -160,6 +161,7 @@ function berekenTrend(data: HistoriePunt[]): { gemiddelde: number; trendPct: num
 }
 
 export default function PerformancePage() {
+  const router = useRouter()
   const [laden, setLaden] = useState(true)
   const [data, setData] = useState<DashboardData | null>(null)
   const [fout, setFout] = useState<string | null>(null)
@@ -183,9 +185,9 @@ export default function PerformancePage() {
       <div className="px-5 py-6 flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Link href="/home" className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+            <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
               <Menu size={18} className="text-slate-400" />
-            </Link>
+            </button>
             <div>
               <h1 className="text-lg font-bold text-white">Performance</h1>
               <p className="text-xs text-slate-500">Herstel &amp; belastbaarheid</p>

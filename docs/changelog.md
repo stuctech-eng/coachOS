@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.240 — FIX: terugknoppen gingen altijd naar Home
+**Gemeld: op zowel Performance als Athlete Platform ging de terugknop
+altijd naar Home, i.p.v. één stap terug naar waar je vandaan kwam.**
+
+### Root cause
+Beide pagina's hadden een hardcoded `<Link href="/home">` als
+terugknop — ongeacht vanaf welke pagina de gebruiker er kwam.
+
+### Fix
+- `src/app/performance/page.tsx` — Menu-knop gebruikt nu
+  `router.back()` i.p.v. `href="/home"`
+- `src/app/athlete-platform/page.tsx` — terugknop gebruikt nu
+  `router.back()`, ongebruikte `Link`-import opgeschoond
+
+Beide gaan nu altijd één stap terug in de browser-navigatiehistorie —
+bijv. vanuit Rowing Coach genavigeerd, dan terug naar Rowing Coach,
+niet naar Home.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** ga vanuit Rowing Coach naar "Herstel & Coach
+Score bekijken" of "Jouw digitale model", tik dan op de terugknop —
+zou nu terug moeten naar Rowing Coach, niet naar Home.
+
 ## v2.4.239 — Universal Athlete Platform: eerste UI-koppeling
 **Vervolg op v2.4.238's echte data-verwerking. Nu voor het eerst
 zichtbaar voor de gebruiker.**

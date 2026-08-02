@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 // ── Universal Athlete Platform — weergavepagina ──────────────────────────
 // Bron: overleg 2 augustus 2026, eerste UI-koppeling. Exact het format
@@ -74,6 +74,7 @@ function WaardeRij({ veld, waarde }: { veld: string; waarde: UniverseleWaarde })
 }
 
 export default function AthletePlatformPage() {
+  const router = useRouter()
   const [laden, setLaden] = useState(true)
   const [state, setState] = useState<AthleteState | null>(null)
   const [fout, setFout] = useState<string | null>(null)
@@ -90,9 +91,9 @@ export default function AthletePlatformPage() {
     <AppShell showNav={false}>
       <div className="px-5 py-6 flex flex-col gap-5">
         <div className="flex items-center gap-3">
-          <Link href="/home" className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center">
+          <button onClick={() => router.back()} className="w-10 h-10 rounded-xl bg-coach-card flex items-center justify-center">
             <ArrowLeft size={20} className="text-slate-400" />
-          </Link>
+          </button>
           <div>
             <h1 className="text-xl font-bold text-white">Jouw digitale model</h1>
             <p className="text-xs text-slate-500">Universal Athlete Platform — experimenteel</p>
