@@ -810,6 +810,31 @@ implementeert de minimum-datapunten-drempel (Running/Cycling/Rowing:
 getest inclusief het exacte grensgeval (19 vs. 20 trainingen) en een
 fallback-drempel voor toekomstige, nog onbekende sporten.
 
+**Tweede bouwstap afgerond — v2.4.235: Universal Impact Engine.**
+`src/core/athlete-platform/impact-engine.ts` — `pasImpactToe()`,
+combineert een Specialist Adapter's al-vertaalde impact-bijdragen
+(bijv. exact het visie-voorbeeld: Rowing 90 min → Cardio +65/Core
++80/Upper Body +75) met de bestaande Universal Athlete State. **Bewust
+GEEN sportlogica** — de Engine kent zelf geen FTP/SPM/pace, alleen
+generieke dot-pad-adressering ('cardiovasculair.aerobic_load').
+
+**Combinatiemodel, eerlijk benoemd als startpunt, geen wetenschappelijke
+claim:** exponentieel voortschrijdend gemiddelde (30% nieuwe sessie,
+70% bestaande staat) — voorkomt dat één sessie de hele staat omgooit.
+**Confidence daalt nooit kunstmatig** — de resulterende confidence is
+altijd de laagste van bestaande staat en nieuwe bijdrage, nooit
+hoger. Onbekende/foutieve paden worden overgeslagen met een
+console.error i.p.v. een crash — een adapter-bug mag nooit de hele
+state-update laten falen. Immutability gegarandeerd (zelfde patroon
+als de Workout Platform's Adaptation Engine).
+
+**Gevalideerd:** combinatiemodel getest (eerste-keer-situatie, exact
+het visie-voorbeeld met de juiste berekening, confidence-daalt-nooit-
+kunstmatig-garantie) + volledige integratietest op een echte
+`UniversalAthleteState` (alle 8 categorieën, inclusief een bewust
+onbekend pad dat netjes wordt overgeslagen, en de immutability-
+garantie bevestigd). `npx next build` — compileert zonder fouten.
+
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/
 `WorkoutTarget` en bijbehorende types. Puur datamodel, nog geen logica

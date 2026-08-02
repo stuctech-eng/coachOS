@@ -1,5 +1,44 @@
 # CoachOS — Changelog
 
+## v2.4.235 — Universal Athlete Platform: Universal Impact Engine
+**Vervolg op de typedefinities (v2.4.234). Vertaalt een voltooide
+sessie naar wijzigingen in het digitale model van de sporter.**
+
+### Nieuw
+`src/core/athlete-platform/impact-engine.ts`:
+- **`pasImpactToe()`** — combineert een lijst `ImpactBijdrage`s (al
+  vertaald door een Specialist Adapter, deze Engine kent zelf geen
+  FTP/SPM/pace) met de bestaande `UniversalAthleteState`, geeft een
+  nieuw object terug
+- **`combineerWaarde()`** — het kerncombinatiemodel: exponentieel
+  voortschrijdend gemiddelde (30% weegt de nieuwe sessie mee, 70% de
+  bestaande staat) — **eerlijk benoemd als een redelijk startpunt,
+  geen sportwetenschappelijk gevalideerde formule**
+- **Confidence daalt nooit kunstmatig** — resulterende confidence is
+  altijd de laagste van de twee brondelen, nooit hoger dan wat de
+  zwakste bijdrage rechtvaardigt
+
+### Robuustheid
+Onbekende/foutieve dot-paden worden overgeslagen met een
+`console.error`, geen crash — een bug in een toekomstige Specialist
+Adapter mag nooit de hele state-update voor alle andere dimensies
+laten falen. Immutability gegarandeerd (diepe kopie, zelfde patroon
+als de Workout Platform's Adaptation Engine).
+
+**Gevalideerd:**
+- Combinatiemodel: eerste-keer-situatie (geen bestaande staat), exact
+  het visie-voorbeeld (Rowing 90 min, Cardio 30→41 met de juiste
+  berekening), confidence-daalt-nooit-kunstmatig bevestigd
+- Volledige integratietest op een echte `UniversalAthleteState` (alle
+  8 categorieën) — inclusief een bewust onbekend pad dat netjes
+  wordt overgeslagen, en immutability bevestigd (origineel blijft
+  ongewijzigd)
+
+`npx next build` — compileert zonder fouten.
+
+**Volgende stap:** Learning Rules Engine (met de minimum-datapunten-
+drempel uit v2.4.234).
+
 ## v2.4.234 — Universal Athlete Platform: eerste bouwstap (typedefinities)
 **Eerste bouwstap van de nieuwe Universal Athlete Platform-laag
 (vastgelegd 2 augustus 2026). Puur datamodel, nog geen logica.**
