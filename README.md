@@ -859,6 +859,27 @@ instabiele RPE (regel vuurt terecht niet), en het exacte grensgeval
 (31 sessies, net boven de `>30`-conditie). `npx next build` —
 compileert zonder fouten.
 
+**Knowledge Platform, eerste onderdeel — v2.4.237: Trainingszones.**
+`src/core/knowledge-platform/trainingszones.ts` — het standaard
+5-zone-trainingsmodel (%HFmax-gebaseerd, RPE-equivalent, doel per
+zone), **direct gekoppeld aan een echte consument**: `workout-builder/
+builder.ts` haalt instructies nu op uit deze kennisbron i.p.v. ze
+hardcoded te herhalen — één bron van waarheid, met expliciete
+sportwetenschappelijke herkomst i.p.v. verzonnen tekst zonder
+onderbouwing. **Bewust NIET toegepast op warmup/cooldown** — die zijn
+conceptueel iets anders dan "zone volhouden" (opbouwend/afbouwend,
+geen sustained effort), ook al is het target-zonenummer hetzelfde.
+**Eerlijke beperking:** dit is het algemeen aanvaarde, generieke
+model — geen gepersonaliseerde zones (vergt een eigen FTP/HFmax-
+meting, bewust nog niet gebouwd).
+
+**Gevalideerd — regressietest:** alle 5 trainingType-scenario's
+(interval/herstel/tempo/endurance/sprint) geven **exact dezelfde
+instructietekst** als vóór de refactor — de centralisatie heeft geen
+enkele gedragswijziging veroorzaakt, alleen de bron is nu
+gecentraliseerd. `npx next build` — compileert zonder fouten.
+
+
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/
 `WorkoutTarget` en bijbehorende types. Puur datamodel, nog geen logica

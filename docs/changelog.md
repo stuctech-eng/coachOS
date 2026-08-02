@@ -1,5 +1,45 @@
 # CoachOS — Changelog
 
+## v2.4.237 — Knowledge Platform: eerste onderdeel (Trainingszones)
+**Vervolg op de Universal Athlete Platform-bouwstappen. Anders dan de
+vorige twee leveringen: deze koppelt DIRECT aan een bestaande,
+werkende consument (de Workout Builder), dus wél zichtbaar effect op
+de codebase (al is de output identiek — puur een refactor).**
+
+### Nieuw
+`src/core/knowledge-platform/trainingszones.ts` — het standaard
+5-zone-trainingsmodel: `TRAININGSZONES` (percentage HFmax, RPE-
+equivalent, doel, instructie per zone 1-5) + `haalTrainingszone()`.
+
+### Refactor — builder.ts gebruikt nu deze kennisbron
+`src/core/workout-builder/builder.ts` haalde instructieteksten
+voorheen uit hardcoded strings, verspreid over meerdere functies (met
+duplicatie — dezelfde tekst stond op 2 plekken). Nu: één bron van
+waarheid via `haalTrainingszone(n)?.instructie`, met expliciete
+sportwetenschappelijke herkomst (%HFmax/RPE) i.p.v. verzonnen zinnen
+zonder onderbouwing.
+
+**Bewust NIET toegepast op warmup/cooldown** — die zijn conceptueel
+iets anders dan "zone volhouden" (opbouwend/afbouwend, geen sustained
+effort), ook al is het target-zonenummer (1) hetzelfde. Die twee
+behouden hun eigen, specifieke tekst.
+
+### Eerlijke beperking
+Dit is het algemeen aanvaarde, generieke 5-zone-model — geen
+gepersonaliseerde zones (vergt een eigen FTP/HFmax-meting, bewust nog
+niet gebouwd, zie Rowing Profiel-instellingen).
+
+### Fout gevonden en gefixt tijdens het bouwen
+Een typfout in het eigen commentaarblok (`%` i.p.v. `//` aan het begin
+van een regel) — zou een TypeScript-syntaxfout hebben gegeven. Gevonden
+en gefixt vóór de build-validatie.
+
+**Gevalideerd — regressietest:** alle 5 trainingType-scenario's
+(interval/herstel/tempo/endurance/sprint) getest — geven **exact
+dezelfde instructietekst** als vóór de refactor. De centralisatie
+heeft dus geen enkele gedragswijziging veroorzaakt, puur de bron is
+nu gecentraliseerd. `npx next build` — compileert zonder fouten.
+
 ## v2.4.236 — Universal Athlete Platform: Learning Rules Engine
 **Vervolg op typedefinities (v2.4.234) en Universal Impact Engine
 (v2.4.235). Ontdekt persoonlijke patronen — bewust NIET "AI" genoemd.**

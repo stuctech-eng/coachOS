@@ -2,6 +2,7 @@ import type {
   UniversalWorkout, WorkoutBlock, WorkoutTrainingType, WorkoutMesocycle,
   WorkoutDifficulty, WorkoutExecutionType,
 } from './types'
+import { haalTrainingszone } from '@/core/knowledge-platform/trainingszones'
 
 // ── CoachOS Workout Platform — Workout Builder ───────────────────────────
 // Bron: Universal Workout Builder Master Architecture v1.0. Fase 1, stap 2:
@@ -46,6 +47,9 @@ function bepaalAantalIntervallen(mesocycle: WorkoutMesocycle, difficulty: Workou
 
 function bouwWarmup(totaleDuur: number): WorkoutBlock[] {
   const duur = klem(totaleDuur * 0.1, 300, 900) // 10%, tussen 5-15 min
+  // v2.4.237-note: bewust GEEN Knowledge Platform-lookup hier — warmup
+  // is conceptueel iets anders dan "zone 1 volhouden" (opbouwend,
+  // geen sustained effort), ook al is het target-niveau hetzelfde
   return [{
     id: nieuwBlokId(), type: 'warmup', duration_sec: Math.round(duur),
     targets: [{ type: 'zone', zone_nummer: 1 }],
@@ -62,18 +66,23 @@ function bouwCooldown(totaleDuur: number): WorkoutBlock[] {
   }]
 }
 
-/** Kernlogica: verdeelt de beschikbare hoofdblok-tijd, per trainingType. */
+/** Kernlogica: verdeelt de beschikbare hoofdblok-tijd, per trainingType.
+ * v2.4.237: instructies komen nu uit de Knowledge Platform
+ * (trainingszones.ts) i.p.v. hardcoded tekst — één bron van waarheid,
+ * met expliciete sportwetenschappelijke herkomst (%HFmax/RPE) i.p.v.
+ * verzonnen zinnen zonder onderbouwing. */
 function bouwHoofdblokken(trainingType: WorkoutTrainingType, hoofdblokDuur: number, mesocycle: WorkoutMesocycle, difficulty: WorkoutDifficulty): { blokken: WorkoutBlock[]; executionType: WorkoutExecutionType } {
   if (trainingType === 'interval' || trainingType === 'sprint') {
     const aantal = bepaalAantalIntervallen(mesocycle, difficulty)
     const rustPerHerhaling = trainingType === 'sprint' ? 120 : 90
+    const zoneNummer = trainingType === 'sprint' ? 5 : 4
     // Werktijd per herhaling = (totale tijd - alle rustpauzes) / aantal
     const werkPerHerhaling = Math.max(30, Math.round((hoofdblokDuur - rustPerHerhaling * (aantal - 1)) / aantal))
     const blok: WorkoutBlock = {
       id: nieuwBlokId(), type: 'interval', duration_sec: werkPerHerhaling,
       repeat: aantal, rust_na_repeat_sec: rustPerHerhaling,
-      targets: [{ type: 'zone', zone_nummer: trainingType === 'sprint' ? 5 : 4 }],
-      instruction: trainingType === 'sprint' ? 'Maximale inspanning per herhaling, volledig herstel tussendoor.' : 'Stevig tempo, gecontroleerd — niet forceren in de eerste herhalingen.',
+      targets: [{ type: 'zone', zone_nummer: zoneNummer }],
+      instruction: haalTrainingszone(zoneNummer)?.instructie || 'Stevig tempo, gecontroleerd.',
     }
     return { blokken: [blok], executionType: 'FixedTimeInterval' }
   }
@@ -83,7 +92,7 @@ function bouwHoofdblokken(trainingType: WorkoutTrainingType, hoofdblokDuur: numb
       blokken: [{
         id: nieuwBlokId(), type: 'hoofdblok', duration_sec: hoofdblokDuur,
         targets: [{ type: 'zone', zone_nummer: 1 }],
-        instruction: 'Zeer rustig, gesprekstempo — dit is actief herstel, geen training.',
+        instruction: haalTrainingszone(1)?.instructie || 'Zeer rustig, gesprekstempo.',
       }],
       executionType: 'FixedTime',
     }
@@ -94,7 +103,7 @@ function bouwHoofdblokken(trainingType: WorkoutTrainingType, hoofdblokDuur: numb
       blokken: [{
         id: nieuwBlokId(), type: 'hoofdblok', duration_sec: hoofdblokDuur,
         targets: [{ type: 'zone', zone_nummer: 3 }],
-        instruction: 'Comfortabel-oncomfortabel tempo, vol te houden voor de hele duur.',
+        instruction: haalTrainingszone(3)?.instructie || 'Comfortabel-oncomfortabel tempo.',
       }],
       executionType: 'FixedTime',
     }
@@ -105,7 +114,7 @@ function bouwHoofdblokken(trainingType: WorkoutTrainingType, hoofdblokDuur: numb
     blokken: [{
       id: nieuwBlokId(), type: 'hoofdblok', duration_sec: hoofdblokDuur,
       targets: [{ type: 'zone', zone_nummer: 2 }],
-      instruction: trainingType === 'techniek' ? 'Focus op techniek, niet op tempo.' : 'Gelijkmatig, aeroob tempo — rustig ademen tijdens het praten.',
+      instruction: trainingType === 'techniek' ? 'Focus op techniek, niet op tempo.' : (haalTrainingszone(2)?.instructie || 'Gelijkmatig, aeroob tempo.'),
     }],
     executionType: 'FixedTime',
   }
