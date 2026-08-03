@@ -80,6 +80,8 @@ export default function AthletePlatformPage() {
   const [fout, setFout] = useState<string | null>(null)
   const [terugvulBezig, setTerugvulBezig] = useState(false)
   const [terugvulMelding, setTerugvulMelding] = useState<string | null>(null)
+  // v2.4.253: Learning Rules Engine — geleerde patronen
+  const [geleerdePatronen, setGeleerdePatronen] = useState<{ id: string; sport: string; rule_naam: string; beschrijving: string; aanpassing_percentage: number; ontdekt_op: string }[]>([])
 
   function laadState() {
     setLaden(true)
@@ -88,6 +90,10 @@ export default function AthletePlatformPage() {
       .then(d => { if (d.error) setFout(d.error); else setState(d.state) })
       .catch(() => setFout('Kon niet laden'))
       .finally(() => setLaden(false))
+    fetch('/api/athlete-platform/learned-patterns')
+      .then(r => r.json())
+      .then(d => { if (!d.error) setGeleerdePatronen(d.patronen || []) })
+      .catch(() => {})
   }
 
   useEffect(() => { laadState() }, [])
@@ -138,6 +144,24 @@ export default function AthletePlatformPage() {
             {terugvulMelding && (
               <Card className={`p-3 text-sm ${terugvulMelding.startsWith('Mislukt') ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
                 {terugvulMelding}
+              </Card>
+            )}
+
+            {/* v2.4.253: Learning Rules Engine daadwerkelijk aangesloten
+                — toont wat er geleerd is, matcht de "eerst zichtbaar
+                maken"-aanpak die ook bij kruis-sport-aanpassingen werkte */}
+            {geleerdePatronen.length > 0 && (
+              <Card className="p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">🧠 Geleerde patronen</p>
+                <div className="flex flex-col gap-3">
+                  {geleerdePatronen.map(p => (
+                    <div key={p.id} className="border-l-2 border-green-500/50 pl-3">
+                      <p className="text-sm text-white font-medium">{p.rule_naam}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{p.beschrijving}</p>
+                      <p className="text-[10px] text-slate-600 mt-1">Ontdekt op {new Date(p.ontdekt_op).toLocaleDateString('nl-NL')}</p>
+                    </div>
+                  ))}
+                </div>
               </Card>
             )}
 

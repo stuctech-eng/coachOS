@@ -7,6 +7,7 @@ import { cookies } from 'next/headers'
 import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/storage'
 import { pasImpactToe, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platform/impact-engine'
 import { vertaalRowingSessieNaarImpact } from '@/lib/specialists/rowing-impact-adapter'
+import { evalueerEnBewaarLeerpatronenIndienNodig } from '@/lib/specialists/learning-rules-koppeling'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -231,6 +232,15 @@ export async function POST() {
       await supabase.from('activity_sessions').delete()
         .eq('user_id', user.id).eq('date', dagStr).eq('activity_id', userActivity?.id || null)
         .in('source', ['strava', 'garmin', 'apple_health', 'manual'])
+    }
+
+    // v2.4.253 (Learning Rules Engine — daadwerkelijke koppeling): één
+    // keer ná de hele sync-lus, niet per sessie (zou dezelfde context
+    // onnodig herhaald evalueren). Alleen als er daadwerkelijk iets
+    // nieuws is geïmporteerd — anders is er niets veranderd om opnieuw
+    // te evalueren.
+    if (geimporteerd > 0) {
+      await evalueerEnBewaarLeerpatronenIndienNodig(user.id, 'rowing')
     }
 
     return NextResponse.json({

@@ -13,7 +13,7 @@ alleen in een losse commentaarregel bij de code zelf.**
 
 | Wat | Status | Waar | Risico als het blijft liggen |
 |---|---|---|---|
-| **Learning Rules Engine** (`evalueerRegels()`) | Volledig gebouwd + getest (v2.4.236), **wordt door niets aangeroepen** | `core/athlete-platform/learning-rules-engine.ts` | Leert nooit iets over een sporter, ook niet na honderden sessies — stil, geen foutmelding |
+| **Learning Rules Engine** (`evalueerRegels()`) | ✅ **Aangesloten (v2.4.253)** — context-verzameling gebouwd (`learning-context.ts`, echte data uit `daily_status`/`training_results`), aangeroepen ná elke Concept2/Strava-sync, gevuurde regels opgeslagen + zichtbaar op `/athlete-platform`. **Bewust NOG NIET**: automatisch laten meewegen in toekomstige Impact Engine-berekeningen — apart, later stapje | `learning-context.ts` + `learning-rules-koppeling.ts` | — |
 | **Alternative Engine** (`bepaalAlternatieven()`) | Volledig gebouwd + getest (v2.4.228), **wordt door niets aangeroepen** | `core/workout-builder/alternative.ts` | Toont nooit een alternatief bij slecht weer/ontbrekend materiaal, ook al is de logica klaar |
 | **Rowing coach-conversatieroute** (automatische inzicht-generatie) | Coach Memory zelf werkt (v2.4.232), maar niets vult 'm automatisch — alleen handmatig testbaar via POST | `api/specialists/rowing/memory` | Rowing's Coach Memory blijft voor altijd leeg tenzij iemand handmatig POST't |
 | **Universal Athlete Platform — Omgeving-categorie** (hitte/koude/hoogte-adaptatie, hydratatie, energie) | Datamodel bestaat, **geen enkele adapter vult het** | `core/athlete-platform/types.ts` | Blijft voor altijd "Nog geen data" — bevestigd, geen bug, maar wel nog steeds leeg |
@@ -883,6 +883,50 @@ geëvalueerd, expliciet population_model), exact het visie-scenario
 instabiele RPE (regel vuurt terecht niet), en het exacte grensgeval
 (31 sessies, net boven de `>30`-conditie). `npx next build` —
 compileert zonder fouten.
+
+**Daadwerkelijk aangesloten — v2.4.253.** Gebouwd na "toch merk ik dat
+er veel foutjes gevonden worden, kunnen we alles nog eens checken" —
+de systematische sweep (v2.4.251) legde bloot dat deze Engine, ondanks
+volledig gebouwd en getest, door niets werd aangeroepen.
+
+**`src/lib/specialists/learning-context.ts`** — verzamelt de échte
+`LearningContext` uit al-bestaande tabellen, geen nieuwe databron:
+- `aantalSessies`: telling uit `activity_sessions`
+- `recoveryTrendVsBaseline`: vergelijkt `daily_status.recovery_score`
+  op de dag ná een sessie van deze sport, tegen het algehele
+  gemiddelde — eerlijk benoemd als een simpele, uitlegbare proxy, geen
+  gecontroleerde vergelijking
+- `rpeStabiel`: vergt minimaal 5 metingen (`training_results.
+  perceived_effort`) — Concept2-sessies hebben zelden een RPE (komen
+  automatisch binnen, niet via de "voltooi training"-flow), bij
+  onvoldoende data conservatief `false` (claimt geen stabiliteit
+  zonder bewijs)
+
+**`src/lib/specialists/learning-rules-koppeling.ts`** —
+`evalueerEnBewaarLeerpatronenIndienNodig()`, aangeroepen na elke
+Concept2-sync (Rowing, één keer ná de hele lus, niet per sessie) en
+Strava-import (Running/Cycling). Nieuwe SQL-tabel `learned_patterns`
+(uniek per gebruiker+sport+regel — een al-ontdekt patroon wordt niet
+telkens opnieuw als "nieuw" opgeslagen).
+
+**Zichtbaar gemaakt** — `/athlete-platform` toont nu een "🧠 Geleerde
+patronen"-kaart, matcht de "eerst zichtbaar maken"-aanpak die ook bij
+kruis-sport-aanpassingen werkte.
+
+**Scope, eerlijk begrensd:** deze levering evalueert en **toont**
+gevuurde regels. Wat 'ie NIET doet: het gevonden patroon automatisch
+laten meewegen in toekomstige Impact Engine-berekeningen (zou
+`combineerWaarde()` moeten uitbreiden) — een bewust aparte, latere
+stap, niet overhaast meegenomen.
+
+**Gevalideerd:** RPE-stabiliteit getest (te weinig data → conservatief
+`false`, stabiele reeks → `true`, instabiele reeks → `false`).
+Volledige keten getest met een realistische context (35 sessies,
+positieve trend, stabiele RPE) — regel vuurt correct met het juiste
+effect; onder de drempel (10 sessies) → terecht `population_model`,
+geen enkele regel geëvalueerd. `npx next build` — compileert zonder
+fouten (na het fixen van een verkeerd importpad, gevonden tijdens
+deze validatie).
 
 **Knowledge Platform, eerste onderdeel — v2.4.237: Trainingszones.**
 `src/core/knowledge-platform/trainingszones.ts` — het standaard

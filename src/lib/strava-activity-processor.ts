@@ -6,6 +6,13 @@ import { createAdminClient } from '@/lib/supabase'
 import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/storage'
 import { pasImpactToe, type ImpactBijdrage, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platform/impact-engine'
 import { vertaalRunningSessieNaarImpact } from './specialists/running-impact-adapter'
+import { evalueerEnBewaarLeerpatronenIndienNodig } from './specialists/learning-rules-koppeling'
+
+// v2.4.253: Nederlandse activiteitnaam -> Engelse sport-sleutel, voor de
+// Learning Rules-koppeling (die dezelfde sleutels gebruikt als de
+// Training Plan Engine/Universal Athlete Platform, i.p.v. de Nederlandse
+// weergavenamen die specifiek voor Strava-mapping gebruikt worden)
+const ACTIVITEIT_NAAR_SPORT_SLEUTEL: Record<string, string> = { Hardlopen: 'running', Fietsen: 'cycling' }
 import { vertaalCyclingSessieNaarImpact } from './specialists/cycling-impact-adapter'
 
 // v2.4.244: Cycling toegevoegd — derde sport in de dispatch-tabel,
@@ -176,6 +183,10 @@ export async function processStravaActivity(
       const bijdragen = impactAdapter(duurMinuten)
       const nieuweState = pasImpactToe(huidigeState, bijdragen)
       await slaAthleteStateOp(supabase, userId, nieuweState)
+
+      // v2.4.253 (Learning Rules Engine — daadwerkelijke koppeling)
+      const sportSleutel = ACTIVITEIT_NAAR_SPORT_SLEUTEL[activityName]
+      if (sportSleutel) await evalueerEnBewaarLeerpatronenIndienNodig(userId, sportSleutel)
     } catch (athleteStateErr) {
       console.error('[strava-activity-processor] Universal Athlete State bijwerken mislukt (import zelf blijft werken):', athleteStateErr)
     }

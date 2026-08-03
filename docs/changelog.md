@@ -1,5 +1,69 @@
 # CoachOS — Changelog
 
+## v2.4.253 — Learning Rules Engine daadwerkelijk aangesloten
+**Gebouwd na "toch merk ik dat er veel foutjes gevonden worden, kunnen
+we alles nog eens checken" — de systematische sweep (v2.4.251) legde
+bloot dat deze Engine (v2.4.236), ondanks volledig gebouwd en getest,
+door niets werd aangeroepen.**
+
+### SQL (uitvoeren vóór deze code)
+```sql
+create table if not exists learned_patterns (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  sport text not null,
+  rule_id text not null,
+  rule_naam text not null,
+  beschrijving text not null,
+  effect_pad text not null,
+  aanpassing_percentage numeric not null,
+  ontdekt_op timestamptz not null default now(),
+  unique(user_id, sport, rule_id)
+);
+alter table learned_patterns enable row level security;
+create policy "Gebruikers zien alleen hun eigen geleerde patronen"
+  on learned_patterns for all using (auth.uid() = user_id);
+```
+
+### Nieuw
+- **`src/lib/specialists/learning-context.ts`** — verzamelt de échte
+  `LearningContext` uit al-bestaande tabellen (`activity_sessions`,
+  `daily_status.recovery_score`, `training_results.perceived_effort`),
+  geen nieuwe databron. Eerlijke vereenvoudigingen expliciet benoemd
+  in commentaar (recovery-trend is een simpele proxy, RPE-stabiliteit
+  vergt minimaal 5 metingen, anders conservatief `false`)
+- **`src/lib/specialists/learning-rules-koppeling.ts`** —
+  `evalueerEnBewaarLeerpatronenIndienNodig()`, aangeroepen na elke
+  Concept2-sync (Rowing, één keer ná de lus) en Strava-import (Running/
+  Cycling)
+- **`api/athlete-platform/learned-patterns`** + UI-kaart op
+  `/athlete-platform` ("🧠 Geleerde patronen") — matcht de "eerst
+  zichtbaar maken"-aanpak
+
+### Scope, eerlijk begrensd
+Deze levering evalueert en **toont** gevuurde regels. Wat 'ie NIET
+doet: het gevonden patroon automatisch laten meewegen in toekomstige
+Impact Engine-berekeningen — een bewust aparte, latere stap.
+
+### Fout gevonden en gefixt tijdens de build-validatie
+Verkeerd importpad (`./learning-rules-engine` i.p.v. `@/core/
+athlete-platform/learning-rules-engine`) — gevonden en gefixt vóórdat
+dit geleverd werd.
+
+**Gevalideerd:**
+- RPE-stabiliteit: 3 scenario's (te weinig data → conservatief false,
+  stabiele reeks → true, instabiele reeks → false)
+- Volledige keten met realistische context (35 sessies, positieve
+  trend, stabiele RPE) — regel vuurt correct met het juiste effect
+- Onder de drempel (10 sessies) → terecht `population_model`, geen
+  enkele regel geëvalueerd
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** sync een nieuwe Concept2-sessie (of importeer via
+Strava) — als er genoeg sessies + data zijn, zou `/athlete-platform`
+een "🧠 Geleerde patronen"-kaart moeten tonen.
+
 ## v2.4.252 — Rowing Personal Baseline (2k-testtijd) + Performance-fix
 **Gebouwd na v2.4.251's systematische controle, die blootlegde dat
 Rowing volledig ontbrak in het Performance-scherm (CTL/ATL/TSB).**
