@@ -11,11 +11,17 @@ dat dan vergeten, want het stond alleen los in commentaar. Vaste regel
 vanaf nu: elk "gebouwd, nog niet aangesloten"-punt komt HIER, niet
 alleen in een losse commentaarregel bij de code zelf.**
 
+**Status (3 augustus 2026, avond): 5 van de 6 punten opgelost.** Het
+enige nog openstaande punt (Omgeving-categorie) is bewust zo gelaten —
+geen vergeten aansluiting, maar een eerlijk benoemde, grotere
+toekomstige uitbreiding (vergt weer-/voedingsdata die nog niet
+bestaat).
+
 | Wat | Status | Waar | Risico als het blijft liggen |
 |---|---|---|---|
 | **Learning Rules Engine** (`evalueerRegels()`) | ✅ **Aangesloten (v2.4.253)** — context-verzameling gebouwd (`learning-context.ts`, echte data uit `daily_status`/`training_results`), aangeroepen ná elke Concept2/Strava-sync, gevuurde regels opgeslagen + zichtbaar op `/athlete-platform`. **Bewust NOG NIET**: automatisch laten meewegen in toekomstige Impact Engine-berekeningen — apart, later stapje | `learning-context.ts` + `learning-rules-koppeling.ts` | — |
 | **Alternative Engine** (`bepaalAlternatieven()`) | ✅ **Aangesloten (v2.4.254)** — trigger: ontbrekend materiaal (geen Concept2 gekoppeld), alternatieven zijn ANDERE sporten waar de gebruiker al een actief plan voor heeft (geen niet-bestaande workout-catalogus), zichtbaar op Rowing's Trainingsplan-pagina met een link. Slecht-weer/blessure-triggers nog niet gebouwd (geen weer-/blessuredata gekoppeld) | `api/specialists/rowing/training-plan/workout/route.ts` | — |
-| **Rowing coach-conversatieroute** (automatische inzicht-generatie) | Coach Memory zelf werkt (v2.4.232), maar niets vult 'm automatisch — alleen handmatig testbaar via POST | `api/specialists/rowing/memory` | Rowing's Coach Memory blijft voor altijd leeg tenzij iemand handmatig POST't |
+| **Rowing coach-conversatieroute** (automatische inzicht-generatie) | ✅ **Gebouwd (v2.4.255)** — `rowing-analysis.ts` (bestond nog niet, eerst gebouwd) + `api/specialists/rowing/coach` (mirror van Running's route), inclusief automatische Coach Memory-vulling via dezelfde Learning Engine als Cycling/Running | `rowing-analysis.ts` + `api/specialists/rowing/coach/route.ts` | — |
 | **Universal Athlete Platform — Omgeving-categorie** (hitte/koude/hoogte-adaptatie, hydratatie, energie) | Datamodel bestaat, **geen enkele adapter vult het** | `core/athlete-platform/types.ts` | Blijft voor altijd "Nog geen data" — bevestigd, geen bug, maar wel nog steeds leeg |
 | **Rolling horizon-verlenging** | ✅ **Gefixt (v2.4.248), automatisch gemaakt (v2.4.249)** — was het voorbeeld dat tot deze lijst leidde. Eerste versie was per-sport handmatig (moest de juiste pagina bezoeken); nu automatisch voor alle actieve sporten bij elke Today Engine-aanroep | `today-engine.ts` + `training-plan-engine/core.ts` | — |
 | **Performance Platform CTL/ATL/TSB sluit Rowing volledig uit** | ✅ **Gefixt (v2.4.252)** — 2k-testtijd-baseline toegevoegd aan Rowing Profiel (Fase 2 uit het overleg: Population Model → Personal Baseline), `rowing-grafieken.ts` gebouwd (spiegelbeeld van running-grafieken.ts), `load-engine.ts` neemt Rowing nu volledig mee | `rowing-grafieken.ts` + `core/performance/engines/load-engine.ts` | — |

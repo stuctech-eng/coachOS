@@ -1,5 +1,44 @@
 # CoachOS — Changelog
 
+## v2.4.255 — Rowing Coach Layer (laatste openstaande sweep-punt)
+**Laatste van de 6 punten uit het "Openstaande Punten"-overzicht.
+Coach Memory zelf werkte al (v2.4.232), maar niets vulde 'm
+automatisch.**
+
+### Nieuw
+- **`src/lib/specialists/rowing-analysis.ts`** — bestond nog helemaal
+  niet, eerste stap van deze levering. Spiegelbeeld van
+  `running-analysis.ts`: trainingsfrequentie/snelheid/afstand/
+  trainingsbelasting, 100% deterministisch. Snelheid = afstand/duur
+  (m/min) — geen SPM als hoofdmetric, want die is niet betrouwbaar
+  aanwezig bij alle importbronnen (handmatig/Strava missen 'm vaak),
+  in tegenstelling tot afstand
+- **`api/specialists/rowing/coach`** — exact spiegelbeeld van
+  `running/coach/route.ts`. Bevestigt dezelfde "invuloefening"-belofte:
+  `genereerCoachPolicy()`, `verwerkKandidaatInzicht()`, `haalMemoryOp()`
+  rechtstreeks hergebruikt, geen wijziging nodig
+
+### Resultaat
+Elke keer dat dit endpoint een kandidaat-inzicht vindt in de AI-
+respons, gaat dat nu door dezelfde Learning Engine als Cycling/Running
+— Rowing's Coach Memory kan voor het eerst automatisch gevuld worden.
+
+**Gevalideerd:** kernberekeningen los getest — snelheidsberekening
+(afstand/duur) filtert correct activiteiten zonder afstandsdata,
+trainingsbelasting-score-grenzen (laag/gemiddeld/hoog) kloppen.
+`npx next build` — compileert zonder fouten, nieuwe route bevestigd
+in de build-output.
+
+### Daarmee: 5 van de 6 openstaande punten opgelost
+Het enige resterende punt (Universal Athlete Platform's Omgeving-
+categorie) is bewust zo gelaten — geen vergeten aansluiting, maar een
+eerlijk benoemde, grotere toekomstige uitbreiding.
+
+**Test-instructie:** roep `POST /api/specialists/rowing/coach` aan
+(of via de app, als daar een trigger voor bestaat) — zou een Rowing-
+specifiek AI-advies moeten genereren, en bij een herkend patroon een
+kandidaat-inzicht opslaan.
+
 ## v2.4.254 — Alternative Engine daadwerkelijk aangesloten
 **Gevonden in de systematische sweep (v2.4.251): volledig gebouwd
 (v2.4.228), door niets aangeroepen. Laatste van de twee openstaande
