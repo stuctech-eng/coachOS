@@ -9,6 +9,7 @@ import { pasWorkoutAan } from '@/core/workout-builder/adaptation'
 import { valideerWorkout } from '@/core/workout-builder/validation'
 import { genereerUitvoeringsHints } from '@/core/workout-builder/execution'
 import { bepaalMateriaal } from '@/core/workout-builder/equipment'
+import { bepaalAlternatieven, type AlternatiefOptie } from '@/core/workout-builder/alternative'
 import type { WorkoutTrainingType, WorkoutMesocycle } from '@/core/workout-builder/types'
 import { vertaalTarget, ROWING_EQUIPMENT_MAPPING } from '@/lib/specialists/rowing-workout-adapter'
 import { haalAthleteState } from '@/core/athlete-platform/storage'
@@ -111,13 +112,37 @@ export async function GET(req: NextRequest) {
     const beschikbaarMateriaal = profielRij?.concept2_available ? ['Concept2'] : []
     const materiaal = bepaalMateriaal(ROWING_EQUIPMENT_MAPPING, beschikbaarMateriaal)
 
+    // v2.4.254 (Alternative Engine — daadwerkelijke koppeling): gevonden
+    // in de systematische controle (v2.4.251), volledig gebouwd
+    // (v2.4.228) maar door niets aangeroepen. Eerste, concrete trigger:
+    // ontbrekend materiaal (geen Concept2 gekoppeld). Bewust GEEN
+    // hardcoded "workout-catalogus" (die bestaat niet) — de mogelijke
+    // alternatieven zijn hier de ANDERE sporten waar de gebruiker
+    // daadwerkelijk een actief trainingsplan voor heeft, geen gok naar
+    // sporten die niet relevant voor hem zijn.
+    let alternatieven: { reden: string; workout_id: string }[] = []
+    if (materiaal.ontbreekt.length > 0) {
+      try {
+        const { data: actieveAnderePlannen } = await supabase
+          .from('training_plans').select('sport').eq('athlete_id', user.id).eq('status', 'active').neq('sport', 'rowing')
+        const mogelijkeAlternatieven: AlternatiefOptie[] = (actieveAnderePlannen || []).map(p => ({
+          reden: 'materiaal_ontbreekt',
+          workout_id: p.sport, // pragmatisch: sport-sleutel i.p.v. een niet-bestaande workout-catalogus-id
+          omschrijving: `${p.sport === 'running' ? 'Hardlopen' : p.sport === 'cycling' ? 'Fietsen' : p.sport} — geen Concept2 nodig, je hebt hier al een actief plan voor`,
+        }))
+        alternatieven = bepaalAlternatieven(mogelijkeAlternatieven, { materiaalOntbreekt: true })
+      } catch (altErr) {
+        console.error('[rowing/training-plan/workout] Alternative Engine mislukt (workout blijft gewoon tonen):', altErr)
+      }
+    }
+
     // Targets vertalen naar SPM (Rowing Specialist Adapter)
     const vertaaldeBlokken = [...finaleWorkout.warmup, ...finaleWorkout.mainBlocks, ...finaleWorkout.cooldown].map(blok => ({
       ...blok,
       roeiVertaling: blok.targets.map(vertaalTarget),
     }))
 
-    return NextResponse.json({ workout: finaleWorkout, validatie, uitvoeringsHints, materiaal, vertaaldeBlokken })
+    return NextResponse.json({ workout: finaleWorkout, validatie, uitvoeringsHints, materiaal, vertaaldeBlokken, alternatieven })
   } catch (err) {
     console.error('[rowing/training-plan/workout]', err)
     return NextResponse.json({ error: 'Workout bouwen mislukt' }, { status: 500 })

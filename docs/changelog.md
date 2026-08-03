@@ -1,5 +1,49 @@
 # CoachOS — Changelog
 
+## v2.4.254 — Alternative Engine daadwerkelijk aangesloten
+**Gevonden in de systematische sweep (v2.4.251): volledig gebouwd
+(v2.4.228), door niets aangeroepen. Laatste van de twee openstaande
+Engine-punten (na Learning Rules Engine, v2.4.253).**
+
+### Nieuw
+`api/specialists/rowing/training-plan/workout/route.ts` — eerste,
+concrete trigger: ontbrekend materiaal (`materiaal.ontbreekt.length >
+0`, bijv. geen Concept2 gekoppeld).
+
+**Pragmatische keuze:** `workout_id` wijst niet naar een niet-
+bestaande "workout-catalogus" — die bestaat niet in CoachOS. In
+plaats daarvan: sport-sleutel. De mogelijke alternatieven zijn de
+ANDERE sporten waar de gebruiker daadwerkelijk een actief
+trainingsplan voor heeft (`training_plans` waar `status='active'`),
+geen gok naar irrelevante sporten.
+
+### UI
+`coach/rowing/trainingsplan/page.tsx` — als er alternatieven zijn,
+verschijnen ze onder de materiaal-waarschuwing, elk met een directe
+link naar de betreffende sport se trainingsplan.
+
+### Bewust nog niet gebouwd
+Slecht-weer/blessure-triggers (ook onderdeel van `AlternativeContext`)
+— geen weer-/blessuredata op dit moment aan deze route gekoppeld.
+
+**Gevalideerd:**
+- Realistisch scenario (Running+Cycling actief, geen Concept2) → beide
+  correct als alternatief
+- Geen probleem-context → terecht niets
+- Geen andere actieve plannen → lege lijst, geen crash
+
+`npx next build` — compileert zonder fouten.
+
+**Daarmee zijn nu alle 3 van de 3 openstaande "gebouwd maar niet
+aangesloten"-punten uit de sweep opgelost** (rolling horizon, Learning
+Rules Engine, Alternative Engine). Eén punt resteert in het overzicht:
+de Rowing coach-conversatieroute (automatische inzicht-generatie).
+
+**Test-instructie:** ontkoppel tijdelijk Concept2 (of test met een
+account zonder Concept2-koppeling maar met een actief Running/Cycling-
+plan) — Rowing's Trainingsplan-pagina zou nu alternatieve sporten
+moeten voorstellen.
+
 ## v2.4.253 — Learning Rules Engine daadwerkelijk aangesloten
 **Gebouwd na "toch merk ik dat er veel foutjes gevonden worden, kunnen
 we alles nog eens checken" — de systematische sweep (v2.4.251) legde

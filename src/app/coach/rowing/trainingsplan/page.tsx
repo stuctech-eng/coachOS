@@ -61,7 +61,7 @@ interface VertaaldBlok {
 
 function WorkoutDetail({ sessieId }: { sessieId: string }) {
   const [laden, setLaden] = useState(true)
-  const [data, setData] = useState<{ workout: { adaptations: string[]; kruisSportBron?: string }; vertaaldeBlokken: VertaaldBlok[]; uitvoeringsHints: string[]; materiaal: { benodigd: string[]; ontbreekt: string[] } } | null>(null)
+  const [data, setData] = useState<{ workout: { adaptations: string[]; kruisSportBron?: string }; vertaaldeBlokken: VertaaldBlok[]; uitvoeringsHints: string[]; materiaal: { benodigd: string[]; ontbreekt: string[] }; alternatieven?: { reden: string; workout_id: string }[] } | null>(null)
   const [fout, setFout] = useState<string | null>(null)
 
   useEffect(() => {
@@ -94,7 +94,21 @@ function WorkoutDetail({ sessieId }: { sessieId: string }) {
       )}
 
       {data.materiaal.ontbreekt.length > 0 && (
-        <p className="text-xs text-amber-400">⚠️ Ontbrekend materiaal: {data.materiaal.ontbreekt.join(', ')}</p>
+        <div>
+          <p className="text-xs text-amber-400">⚠️ Ontbrekend materiaal: {data.materiaal.ontbreekt.join(', ')}</p>
+          {/* v2.4.254 (Alternative Engine — daadwerkelijke koppeling) */}
+          {data.alternatieven && data.alternatieven.length > 0 && (
+            <div className="mt-2 flex flex-col gap-1.5">
+              {data.alternatieven.map((alt, i) => (
+                <Link key={i} href={`/coach/${alt.workout_id}/trainingsplan`}
+                  className="text-xs bg-slate-800 rounded-lg px-3 py-2 text-primary-400 flex items-center justify-between">
+                  <span>{SPORT_ICOON[alt.workout_id] || '💪'} {alt.reden}</span>
+                  <span>→</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       )}
       <div className="flex flex-col gap-2">
         {data.vertaaldeBlokken.map(blok => {
