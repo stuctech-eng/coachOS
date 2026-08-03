@@ -1,5 +1,52 @@
 # CoachOS — Changelog
 
+## v2.4.252 — Rowing Personal Baseline (2k-testtijd) + Performance-fix
+**Gebouwd na v2.4.251's systematische controle, die blootlegde dat
+Rowing volledig ontbrak in het Performance-scherm (CTL/ATL/TSB).**
+
+### Architectuurprincipe
+"Geen schijnprecisie. Geen verborgen aannames. Alles moet uitlegbaar
+zijn. Een persoonlijke baseline voordat je personaliseert." — exact
+hetzelfde principe dat al voor Running gold (VDOT uit een
+wedstrijdprestatie), nu ook voor Rowing (2.000m-testtijd). Drie fasen:
+Population Model → Personal Baseline → Continuous Learning.
+
+### Nieuw
+- **`/settings/rowing-profile`** — 2.000m-testtijd-invoerveld (min:sec),
+  optioneel, met uitleg over Population Model vs. Personal Baseline
+- **`api/specialists/rowing/profile`** — `laatste_2k_tijd_sec` toegevoegd
+  aan preferences
+- **`src/lib/specialists/rowing-grafieken.ts`** — `haalRowingCTLATLTSB()`,
+  spiegelbeeld van `running-grafieken.ts`: exact dezelfde EWMA-wiskunde
+  (CTL=42 dagen, ATL=7 dagen), exact dezelfde intensity-factor-in-het-
+  kwadraat-TSS-formule. 2k-tijd → drempelsnelheid (m/min) — geen extra
+  fysiologische correctiestap nodig (2k-tijd is in de roeiwereld zelf
+  al de gangbare referentie, in tegenstelling tot Running's VDOT dat
+  eerst naar %VO2max omgerekend moet worden)
+- **`load-engine.ts`** — Rowing volledig meegeteld in het
+  platformbrede CTL/ATL/TSB. `LoadSportDetail['sport']`-type
+  uitgebreid van `'cycling' | 'running'` naar inclusief `'rowing'`
+  (was een TYPE-niveau uitsluiting, niet alleen een ternary-bug)
+
+### Eerlijk, net als bij Running
+Geen 2k-tijd ingevuld = geen Rowing-bijdrage aan het platformtotaal —
+geen gegokte drempelsnelheid, liever eerlijk niets dan schijnprecisie.
+
+**Gevalideerd:**
+- Drempelsnelheid geverifieerd tegen de eigen definitie: 2k-tijd 7:30
+  → 266,7 m/min (2000m/7,5min) — exacte match
+- TSS-formule getest tegen het fundamentele controlepunt van de
+  metric zelf: exact 1 uur op drempelsnelheid = exact 100 TSS (per
+  definitie) — komt precies uit
+- Randgevallen (geen snelheid bekend, geen baseline) geven correct 0
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** vul een 2.000m-testtijd in bij Rowing Profiel,
+sla op, open dan Performance — CTL/ATL/TSB zouden nu ook je
+Concept2-sessies moeten meetellen (was voorheen altijd 0 bijdrage van
+Rowing).
+
 ## v2.4.251 — Systematische controle: "rowing vergeten"-patroon
 **Gevraagd na meermaals dezelfde soort bug: "toch merk ik dat er veel
 foutjes gevonden worden, kunnen we alles nog eens checken." Terecht —

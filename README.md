@@ -18,7 +18,7 @@ alleen in een losse commentaarregel bij de code zelf.**
 | **Rowing coach-conversatieroute** (automatische inzicht-generatie) | Coach Memory zelf werkt (v2.4.232), maar niets vult 'm automatisch — alleen handmatig testbaar via POST | `api/specialists/rowing/memory` | Rowing's Coach Memory blijft voor altijd leeg tenzij iemand handmatig POST't |
 | **Universal Athlete Platform — Omgeving-categorie** (hitte/koude/hoogte-adaptatie, hydratatie, energie) | Datamodel bestaat, **geen enkele adapter vult het** | `core/athlete-platform/types.ts` | Blijft voor altijd "Nog geen data" — bevestigd, geen bug, maar wel nog steeds leeg |
 | **Rolling horizon-verlenging** | ✅ **Gefixt (v2.4.248), automatisch gemaakt (v2.4.249)** — was het voorbeeld dat tot deze lijst leidde. Eerste versie was per-sport handmatig (moest de juiste pagina bezoeken); nu automatisch voor alle actieve sporten bij elke Today Engine-aanroep | `today-engine.ts` + `training-plan-engine/core.ts` | — |
-| **Performance Platform CTL/ATL/TSB sluit Rowing volledig uit** | 🔴 **Gevonden, NIET gefixt** — `berekenLoad()` is een wrapper rond alleen `haalCTLATLTSB` (Cycling) en `haalRunningCTLATLTSB` — geen Rowing-equivalent bestaat. Vergt een TSS-berekening voor Rowing, wat weer een intensiteits-baseline vergt (zelfde 2k-testtijd-gat als eerder genoemd bij Rowing Profiel) | `core/performance/engines/load-engine.ts` | Performance-scherm (CTL/ATL/TSB) is structureel te laag voor iedereen die roeit — grotere, aparte klus, niet in deze sweep opgelost |
+| **Performance Platform CTL/ATL/TSB sluit Rowing volledig uit** | ✅ **Gefixt (v2.4.252)** — 2k-testtijd-baseline toegevoegd aan Rowing Profiel (Fase 2 uit het overleg: Population Model → Personal Baseline), `rowing-grafieken.ts` gebouwd (spiegelbeeld van running-grafieken.ts), `load-engine.ts` neemt Rowing nu volledig mee | `rowing-grafieken.ts` + `core/performance/engines/load-engine.ts` | — |
 | **"Rowing vergeten"-patroon (systematisch gecheckt)** | ✅ **5 instanties gevonden en gefixt (v2.4.251)** — `api/action-plan/route.ts` (bronlabel-ternary), `api/specialists/[type]/data/route.ts` (generieke data-fetcher-tabel, laag risico want overruled door de specifieke Rowing-route), `app/goals/page.tsx` (Rowing stond nog op `beschikbaar:false`, stale sinds v2.4.216) | Meerdere bestanden | — |
 
 **Waarom dit soort dingen gebeuren, eerlijk benoemd:** bij het bouwen
@@ -1520,6 +1520,56 @@ Aangescherpt: migratie gebeurt uitsluitend na bewezen praktijkwaarde
 bij Rowing, per specialist apart beoordeeld — nooit automatisch.
 
 #### Rowing Platform — Master Vision, Fase 1 stap 1-3 afgerond (v2.4.216-223)
+
+**Personal Baseline (2k-testtijd) toegevoegd — v2.4.252.** Gebouwd na
+een systematische controle (v2.4.251) die blootlegde dat Rowing
+volledig ontbrak in het Performance-scherm (CTL/ATL/TSB). Bewust
+uitgesteld toen ("Fase 1, stap 3": trainingsdagen + beschikbare uren,
+géén 2k-testtijd — "hoort bij een latere, intensiteits-gerichte
+verfijning"), nu die latere stap.
+
+**Architectuurprincipe, letterlijk uit het overleg overgenomen:**
+"Geen schijnprecisie. Geen verborgen aannames. Alles moet uitlegbaar
+zijn. Een persoonlijke baseline voordat je personaliseert." Exact
+hetzelfde principe dat al voor Running gold (VDOT uit een
+wedstrijdprestatie) — nu ook voor Rowing (2.000m-testtijd).
+
+**Drie fasen, zoals voorgesteld:**
+1. **Population Model** — geen baseline, algemene trainingslogica,
+   geen individuele TSS-claim (was de situatie tot v2.4.252)
+2. **Personal Baseline** — 2k-testtijd ingevoerd, persoonlijke zones/
+   belasting berekenbaar (deze levering)
+3. **Continuous Learning** — later, zodra de Learning Rules Engine
+   (al gebouwd, v2.4.236, nog niet aangesloten — zie Openstaande
+   Punten) de 2k-baseline gaat verfijnen op basis van werkelijke
+   trainingen
+
+**Nieuw:**
+- **`/settings/rowing-profile`** — 2.000m-testtijd-invoerveld
+  (min:sec), optioneel, met uitleg dat zonder deze test alleen het
+  Population Model geldt
+- **`src/lib/specialists/rowing-grafieken.ts`** — `haalRowingCTLATLTSB()`,
+  spiegelbeeld van `running-grafieken.ts` (exact dezelfde EWMA-
+  wiskunde, exact dezelfde intensity-factor-in-het-kwadraat-TSS-
+  formule — geen nieuwe berekening verzonnen). 2k-tijd → drempel-
+  snelheid (m/min), zonder extra fysiologische correctiestap (in
+  tegenstelling tot Running's VDOT→%VO2max-omrekening) — 2k-tijd is in
+  de roeiwereld zelf al de gangbare, direct bruikbare referentie
+  (Concept2/British Rowing-conventie)
+- **`load-engine.ts`** — Rowing nu volledig meegeteld in het
+  platformbrede CTL/ATL/TSB, `LoadSportDetail['sport']`-type
+  uitgebreid van `'cycling' | 'running'` naar inclusief `'rowing'`
+
+**Eerlijk, net als bij Running:** geen 2k-tijd ingevuld = geen
+Rowing-bijdrage aan het platformtotaal — geen gegokte drempelsnelheid,
+liever eerlijk niets dan schijnprecisie.
+
+**Gevalideerd:** drempelsnelheid-berekening geverifieerd tegen de
+eigen definitie (2000m/7.5min = 266,7 m/min, exacte match). TSS-
+formule getest tegen het fundamentele controlepunt van de metric zelf
+(exact 1 uur op drempelsnelheid = exact 100 TSS, per definitie) — komt
+precies uit. Randgevallen (geen snelheid/geen baseline) geven correct
+0. `npx next build` — compileert zonder fouten.
 
 **Stap 3 (Training Plan Engine) afgerond — v2.4.223.** Grote,
 onverwachte versnelling: de bestaande Training Plan Engine bleek al

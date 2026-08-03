@@ -5,8 +5,10 @@ import { ArrowLeft } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 
-// ── Rowing Profile-instellingen — Fase 1, stap 3 ─────────────────────────
-// Bewust minimaal, zie toelichting in api/specialists/rowing/profile/route.ts
+// ── Rowing Profile-instellingen — Fase 1 + Fase 2 (2k-baseline) ─────────
+// v2.4.252: 2.000m-referentietest toegevoegd — exact hetzelfde principe
+// als Running's wedstrijdtijd (VDOT-baseline). Zie toelichting in
+// api/specialists/rowing/profile/route.ts.
 
 const DAGEN = ['maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag', 'zondag']
 const DAGEN_KORT: Record<string, string> = { maandag: 'Ma', dinsdag: 'Di', woensdag: 'Wo', donderdag: 'Do', vrijdag: 'Vr', zaterdag: 'Za', zondag: 'Zo' }
@@ -17,6 +19,8 @@ export default function RowingProfielPage() {
   const [message, setMessage] = useState('')
   const [trainingsdagen, setTrainingsdagen] = useState<string[]>([])
   const [beschikbareUren, setBeschikbareUren] = useState('3')
+  const [tweeKmMin, setTweeKmMin] = useState('')
+  const [tweeKmSec, setTweeKmSec] = useState('')
 
   useEffect(() => {
     fetch('/api/specialists/rowing/profile', { credentials: 'include' })
@@ -24,6 +28,10 @@ export default function RowingProfielPage() {
       .then(d => {
         if (d.preferences?.trainingsdagen) setTrainingsdagen(d.preferences.trainingsdagen)
         if (d.preferences?.beschikbare_uren_per_week) setBeschikbareUren(String(d.preferences.beschikbare_uren_per_week))
+        if (d.preferences?.laatste_2k_tijd_sec) {
+          setTweeKmMin(String(Math.floor(d.preferences.laatste_2k_tijd_sec / 60)))
+          setTweeKmSec(String(d.preferences.laatste_2k_tijd_sec % 60).padStart(2, '0'))
+        }
       })
       .finally(() => setLaden(false))
   }, [])
@@ -35,10 +43,11 @@ export default function RowingProfielPage() {
   async function opslaanKlik() {
     setOpslaan(true)
     try {
+      const laatste_2k_tijd_sec = tweeKmMin && tweeKmSec ? Number(tweeKmMin) * 60 + Number(tweeKmSec) : undefined
       const res = await fetch('/api/specialists/rowing/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trainingsdagen, beschikbare_uren_per_week: Number(beschikbareUren) }),
+        body: JSON.stringify({ trainingsdagen, beschikbare_uren_per_week: Number(beschikbareUren), laatste_2k_tijd_sec }),
       })
       if (res.ok) { setMessage('Opgeslagen'); setTimeout(() => setMessage(''), 2000) }
       else setMessage('Mislukt')
@@ -76,6 +85,21 @@ export default function RowingProfielPage() {
               <p className="text-sm font-medium text-white mb-2">Beschikbare uren per week</p>
               <input type="number" value={beschikbareUren} onChange={e => setBeschikbareUren(e.target.value)}
                 className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none" min="1" max="20" />
+            </div>
+
+            <div className="pt-2 border-t border-coach-border">
+              <p className="text-sm font-medium text-white mb-1">2.000m-testtijd (optioneel)</p>
+              <p className="text-xs text-slate-500 mb-3">
+                Je persoonlijke baseline — zonder deze test gebruikt CoachOS alleen algemene sportwetenschap (Population Model), geen individuele trainingsbelasting-cijfers.
+              </p>
+              <div className="flex items-center gap-2">
+                <input type="number" value={tweeKmMin} onChange={e => setTweeKmMin(e.target.value)} placeholder="min"
+                  className="w-20 bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none text-center" min="4" max="15" />
+                <span className="text-slate-500">:</span>
+                <input type="number" value={tweeKmSec} onChange={e => setTweeKmSec(e.target.value)} placeholder="sec"
+                  className="w-20 bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none text-center" min="0" max="59" />
+                <span className="text-xs text-slate-500 ml-1">min:sec voor 2.000m</span>
+              </div>
             </div>
 
             <Button onClick={opslaanKlik} disabled={opslaan || trainingsdagen.length === 0}>

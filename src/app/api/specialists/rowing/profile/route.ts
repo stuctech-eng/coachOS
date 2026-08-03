@@ -16,19 +16,20 @@ async function getUser() {
   return user
 }
 
-// ── Rowing Profile — Fase 1, stap 3 ──────────────────────────────────────
-// Bron: overleg 1 augustus 2026. Bewust MINIMAAL — alleen trainingsdagen
-// + beschikbare uren, exact wat de Training Plan Engine's
-// haalProfiel()-contract nodig heeft (zie rowing-adapter.ts). Een
-// 2k-testtijd-gebaseerd "FTP-equivalent voor roeien" (uit de Master
-// Vision) is bewust NIET meegebouwd — hoort bij een latere, intensiteits-
-// gerichte verfijning, niet bij de basis plan-generatie zelf. Slaat
-// GEEN nieuwe tabel op — hergebruikt specialist_profiles.preferences
-// (specialist_type='rowing'), exact hetzelfde patroon als Cycling/Running.
+// ── Rowing Profile — Fase 1, stap 3 + Fase 2-uitbreiding (2k-baseline) ──
+// Bron: overleg 1 + 3 augustus 2026. Was bewust minimaal (alleen
+// trainingsdagen + beschikbare uren) — nu uitgebreid met een 2.000m-
+// referentietest, exact hetzelfde principe als Running's
+// laatste_race_afstand_m/laatste_race_tijd_sec: "geen schijnprecisie,
+// een persoonlijke baseline vóórdat je personaliseert" (letterlijk
+// citaat uit het overleg). Voordat deze baseline bestaat: Population
+// Model (algemene sportwetenschap, geen individuele claim). Erna:
+// Personal Baseline — echte, uitlegbare TSS-berekening mogelijk.
 
 interface RowingPreferences {
   trainingsdagen?: string[]
   beschikbare_uren_per_week?: number
+  laatste_2k_tijd_sec?: number
 }
 
 export async function GET() {
@@ -59,7 +60,11 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from('specialist_profiles').upsert({
       user_id: user.id,
       specialist_type: 'rowing',
-      preferences: { trainingsdagen: body.trainingsdagen || [], beschikbare_uren_per_week: body.beschikbare_uren_per_week || 3 },
+      preferences: {
+        trainingsdagen: body.trainingsdagen || [],
+        beschikbare_uren_per_week: body.beschikbare_uren_per_week || 3,
+        laatste_2k_tijd_sec: body.laatste_2k_tijd_sec || undefined,
+      },
     }, { onConflict: 'user_id,specialist_type' })
 
     if (error) throw error
