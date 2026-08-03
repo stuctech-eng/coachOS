@@ -3,6 +3,29 @@
 > Data-first training engine met AI als uitvoerende coach laag.
 > De bibliotheek is altijd de bron van waarheid. AI assembleert alleen.
 
+## ⚠️ Openstaande Punten — Gebouwd maar NIET Aangesloten
+
+**Vastgelegd 3 augustus 2026, naar aanleiding van de rolling horizon-bug
+(v2.4.248): iets ontwerpen/bouwen zonder de aansluiting te maken, en
+dat dan vergeten, want het stond alleen los in commentaar. Vaste regel
+vanaf nu: elk "gebouwd, nog niet aangesloten"-punt komt HIER, niet
+alleen in een losse commentaarregel bij de code zelf.**
+
+| Wat | Status | Waar | Risico als het blijft liggen |
+|---|---|---|---|
+| **Learning Rules Engine** (`evalueerRegels()`) | Volledig gebouwd + getest (v2.4.236), **wordt door niets aangeroepen** | `core/athlete-platform/learning-rules-engine.ts` | Leert nooit iets over een sporter, ook niet na honderden sessies — stil, geen foutmelding |
+| **Alternative Engine** (`bepaalAlternatieven()`) | Volledig gebouwd + getest (v2.4.228), **wordt door niets aangeroepen** | `core/workout-builder/alternative.ts` | Toont nooit een alternatief bij slecht weer/ontbrekend materiaal, ook al is de logica klaar |
+| **Rowing coach-conversatieroute** (automatische inzicht-generatie) | Coach Memory zelf werkt (v2.4.232), maar niets vult 'm automatisch — alleen handmatig testbaar via POST | `api/specialists/rowing/memory` | Rowing's Coach Memory blijft voor altijd leeg tenzij iemand handmatig POST't |
+| **Universal Athlete Platform — Omgeving-categorie** (hitte/koude/hoogte-adaptatie, hydratatie, energie) | Datamodel bestaat, **geen enkele adapter vult het** | `core/athlete-platform/types.ts` | Blijft voor altijd "Nog geen data" — bevestigd, geen bug, maar wel nog steeds leeg |
+| **Rolling horizon-verlenging** | ✅ **Gefixt (v2.4.248)** — was het voorbeeld dat tot deze lijst leidde | `training-plan-engine/core.ts` | — |
+
+**Waarom dit soort dingen gebeuren, eerlijk benoemd:** bij het bouwen
+van een nieuwe engine (Learning Rules/Alternative/etc.) ligt de focus
+op "werkt de logica zelf correct" (en dat wordt ook grondig getest) —
+maar "wie roept dit ooit aan in de echte app" is een aparte vraag die
+soms niet gesteld wordt totdat iemand het gemis merkt. Vanaf nu:
+expliciet checken en hier vastleggen bij elke nieuwe engine.
+
 ## Core Architectuurregels
 
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
