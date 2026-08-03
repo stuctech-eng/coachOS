@@ -113,6 +113,11 @@ export interface UniversalWorkout {
    * transparantie ("waarom ziet mijn training er zo uit"), zelfde
    * principe als REASON_CODE_UITLEG in de Training Plan Engine */
   adaptations: string[]
+  /** v2.4.247: gestructureerde bron als de workout is aangepast door
+   * een ANDERE sport (Universal Athlete Platform-koppeling) — apart
+   * van de tekst-adaptations, zodat de UI een icoon kan tonen zonder
+   * tekst te hoeven parsen (bijv. "🚣 Beïnvloed door roeien"). */
+  kruisSportBron?: string
   /** Alternatieve workouts bij bijv. slecht weer of geen materiaal —
    * elk alternatief is zelf ook een (verwijzing naar een) UniversalWorkout */
   alternatives?: { reden: string; workout_id: string }[]

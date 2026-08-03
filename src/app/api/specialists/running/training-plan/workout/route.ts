@@ -94,6 +94,7 @@ export async function GET(req: NextRequest) {
       const kruisSportSignaal = bepaalKruisSportSignaal(athleteState)
       if (kruisSportSignaal) {
         workout = pasWorkoutAan(workout, { lichaamAlBelast: kruisSportSignaal })
+        workout.kruisSportBron = kruisSportSignaal.bronSport
       }
     } catch (kruisSportErr) {
       console.error('[running/training-plan/workout] Kruis-sport-check mislukt (workout blijft ongewijzigd):', kruisSportErr)

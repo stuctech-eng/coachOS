@@ -44,10 +44,22 @@ export function bepaalKruisSportSignaal(state: UniversalAthleteState): Adaptatio
   if (!cardioBelast && !coreVermoeid && !bovenlichaamVermoeid && !benenVermoeid) return null
 
   const redenen: string[] = []
-  if (cardioBelast) redenen.push('cardio al belast')
-  if (coreVermoeid) redenen.push('core vermoeid')
-  if (bovenlichaamVermoeid) redenen.push('bovenlichaam vermoeid')
-  if (benenVermoeid) redenen.push('benen vermoeid')
+  const bronSporten: string[] = []
+  if (cardioBelast) { redenen.push('cardio al belast'); if (state.cardiovasculair.aerobic_load.laatste_bron_sport) bronSporten.push(state.cardiovasculair.aerobic_load.laatste_bron_sport) }
+  if (coreVermoeid) { redenen.push('core vermoeid'); if (state.spieren.core_vermoeidheid.laatste_bron_sport) bronSporten.push(state.spieren.core_vermoeidheid.laatste_bron_sport) }
+  if (bovenlichaamVermoeid) { redenen.push('bovenlichaam vermoeid'); if (state.spieren.bovenlichaam_vermoeidheid.laatste_bron_sport) bronSporten.push(state.spieren.bovenlichaam_vermoeidheid.laatste_bron_sport) }
+  if (benenVermoeid) { redenen.push('benen vermoeid'); if (state.spieren.been_vermoeidheid.laatste_bron_sport) bronSporten.push(state.spieren.been_vermoeidheid.laatste_bron_sport) }
 
-  return { reden: `lichaam al belast — ${redenen.join(', ')}` }
+  // v2.4.247: bepaal de meest voorkomende bronsport onder de belaste
+  // dimensies (bijv. als cardio/core/bovenlichaam allemaal 'rowing'
+  // als bron hebben, is 'rowing' overduidelijk de oorzaak) — puur voor
+  // transparantie in de UI, geen invloed op de beslissing zelf
+  let bronSport: string | undefined
+  if (bronSporten.length > 0) {
+    const tellingen = new Map<string, number>()
+    for (const s of bronSporten) tellingen.set(s, (tellingen.get(s) ?? 0) + 1)
+    bronSport = [...tellingen.entries()].sort((a, b) => b[1] - a[1])[0][0]
+  }
+
+  return { reden: `lichaam al belast — ${redenen.join(', ')}`, bronSport }
 }

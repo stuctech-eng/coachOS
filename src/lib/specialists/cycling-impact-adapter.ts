@@ -30,12 +30,13 @@ export function vertaalCyclingSessieNaarImpact(duurMinuten: number): ImpactBijdr
     impactWaarde: Math.max(0, Math.min(100, Math.round(basisWaarde * schaal))),
     confidence: 'MEDIUM' as const,
     confidence_score: 55,
+    bronSport: 'cycling',
   }))
 
   bijdragen.push({
     pad: 'herstel.herstel_capaciteit',
     impactWaarde: Math.max(0, Math.min(100, Math.round(BASIS_VERMOEIDHEID * schaal))),
-    confidence: 'MEDIUM', confidence_score: 55,
+    confidence: 'MEDIUM', confidence_score: 55, bronSport: 'cycling',
   })
 
   return bijdragen

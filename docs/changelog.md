@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.247 — Kruis-sport-adaptaties zichtbaar gemaakt
+**Bewuste architectuurkeuze: eerst transparantie tonen ("dit werkt
+écht"), vóórdat de Coach het proactief gaat uitleggen (Intelligence
+Platform, latere stap).**
+
+> "Op dit moment doet jouw platform iets heel krachtigs, maar in
+> stilte. [...] Juist die transparantie maakt CoachOS geloofwaardig
+> en onderscheidend."
+
+### Nieuw: bronsport-tracking door de hele keten
+- **`ImpactBijdrage`** (impact-engine.ts) — nieuw verplicht
+  `bronSport`-veld, ingevuld door alle drie de impact-adapters
+  (rowing/running/cycling)
+- **`UniverseleWaarde`** (types.ts) — nieuw `laatste_bron_sport`-veld,
+  bijgehouden in `combineerWaarde()`
+- **`bepaalKruisSportSignaal()`** (cross-sport-bridge.ts) — bepaalt nu
+  de meest voorkomende bronsport onder de belaste dimensies
+  (meerderheids-telling over de elevated dimensies, geen gok)
+- **`UniversalWorkout`** (workout-builder/types.ts) — nieuw,
+  gestructureerd `kruisSportBron`-veld — de UI hoeft geen tekst te
+  parsen om het juiste sport-icoon te tonen
+
+### UI
+`/coach/rowing/trainingsplan` toont nu een "Workout aangepast"-kaart
+(🚣/🏃/🚴 + "beïnvloed door [sport]" + de concrete aanpassingen) zodra
+een workout door een andere sport is afgezwakt.
+
+### Consistentie-fix
+Rowing's eigen `training-plan/workout`-route kreeg de kruis-sport-
+check erbij — ontbrak eerder (alleen Running/Cycling hadden 'm),
+inconsistent nu de driehoek volledig wederzijds is.
+
+**Gevalideerd — volledige end-to-end-test:** 90 min roeien →
+`laatste_bron_sport: 'rowing'` op de belaste dimensies → kruis-sport-
+signaal met `bronSport: 'rowing'` → `workout.kruisSportBron: 'rowing'`
+op de uiteindelijke Running-workout. Elke schakel in de keten
+bevestigd te werken.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Rowing Coach → Trainingsplan → tik op een
+sessie. Als je recent zwaar hebt getraind in een andere sport, zou nu
+een "Workout aangepast"-kaart moeten verschijnen met het juiste
+sport-icoon.
+
 ## v2.4.246 — FIX: minimale-sessieduur-drempel tegen ruis
 **Gemeld met echte data: een sessie van 1 minuut in de Concept2-
 historie trok het gemiddelde onterecht mee.**

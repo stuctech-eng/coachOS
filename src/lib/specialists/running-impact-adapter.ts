@@ -36,12 +36,13 @@ export function vertaalRunningSessieNaarImpact(duurMinuten: number): ImpactBijdr
     impactWaarde: Math.max(0, Math.min(100, Math.round(basisWaarde * schaal))),
     confidence: 'MEDIUM' as const,
     confidence_score: 55, // iets lager dan Rowing's 60 — deze cijfers zijn een eigen inschatting, geen citaat uit een brondocument
+    bronSport: 'running',
   }))
 
   bijdragen.push({
     pad: 'herstel.herstel_capaciteit',
     impactWaarde: Math.max(0, Math.min(100, Math.round(BASIS_VERMOEIDHEID * schaal))),
-    confidence: 'MEDIUM', confidence_score: 55,
+    confidence: 'MEDIUM', confidence_score: 55, bronSport: 'running',
   })
 
   return bijdragen

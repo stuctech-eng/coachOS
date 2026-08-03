@@ -5,11 +5,14 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { bouwWorkout, type WorkoutBuilderInput } from '@/core/workout-builder/builder'
+import { pasWorkoutAan } from '@/core/workout-builder/adaptation'
 import { valideerWorkout } from '@/core/workout-builder/validation'
 import { genereerUitvoeringsHints } from '@/core/workout-builder/execution'
 import { bepaalMateriaal } from '@/core/workout-builder/equipment'
 import type { WorkoutTrainingType, WorkoutMesocycle } from '@/core/workout-builder/types'
 import { vertaalTarget, ROWING_EQUIPMENT_MAPPING } from '@/lib/specialists/rowing-workout-adapter'
+import { haalAthleteState } from '@/core/athlete-platform/storage'
+import { bepaalKruisSportSignaal } from '@/core/athlete-platform/cross-sport-bridge'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -80,8 +83,24 @@ export async function GET(req: NextRequest) {
     }
 
     const workout = bouwWorkout(input)
-    const validatie = valideerWorkout(workout)
-    const uitvoeringsHints = genereerUitvoeringsHints(workout)
+
+    // v2.4.247: kruis-sport-check ook hier toegevoegd (ontbrak eerder —
+    // Running/Cycling hadden 'm al) — voor consistentie nu ook Rowing
+    // zelf beïnvloedbaar door een zware Running/Cycling-sessie
+    let finaleWorkout = workout
+    try {
+      const athleteState = await haalAthleteState(supabase, user.id)
+      const kruisSportSignaal = bepaalKruisSportSignaal(athleteState)
+      if (kruisSportSignaal) {
+        finaleWorkout = pasWorkoutAan(workout, { lichaamAlBelast: kruisSportSignaal })
+        finaleWorkout.kruisSportBron = kruisSportSignaal.bronSport
+      }
+    } catch (kruisSportErr) {
+      console.error('[rowing/training-plan/workout] Kruis-sport-check mislukt (workout blijft ongewijzigd):', kruisSportErr)
+    }
+
+    const validatie = valideerWorkout(finaleWorkout)
+    const uitvoeringsHints = genereerUitvoeringsHints(finaleWorkout)
 
     // v2.4.230-FIX: gevonden ná het eerste schrijven — 'user_equipment'
     // bestaat niet, equipment staat als boolean-kolommen in 'profiles'
@@ -93,12 +112,12 @@ export async function GET(req: NextRequest) {
     const materiaal = bepaalMateriaal(ROWING_EQUIPMENT_MAPPING, beschikbaarMateriaal)
 
     // Targets vertalen naar SPM (Rowing Specialist Adapter)
-    const vertaaldeBlokken = [...workout.warmup, ...workout.mainBlocks, ...workout.cooldown].map(blok => ({
+    const vertaaldeBlokken = [...finaleWorkout.warmup, ...finaleWorkout.mainBlocks, ...finaleWorkout.cooldown].map(blok => ({
       ...blok,
       roeiVertaling: blok.targets.map(vertaalTarget),
     }))
 
-    return NextResponse.json({ workout, validatie, uitvoeringsHints, materiaal, vertaaldeBlokken })
+    return NextResponse.json({ workout: finaleWorkout, validatie, uitvoeringsHints, materiaal, vertaaldeBlokken })
   } catch (err) {
     console.error('[rowing/training-plan/workout]', err)
     return NextResponse.json({ error: 'Workout bouwen mislukt' }, { status: 500 })

@@ -39,6 +39,7 @@ export function vertaalRowingSessieNaarImpact(duurMinuten: number): ImpactBijdra
     impactWaarde: Math.max(0, Math.min(100, Math.round(basisWaarde * schaal))),
     confidence: 'MEDIUM' as const,
     confidence_score: 60,
+    bronSport: 'rowing',
   }))
 
   // "Fatigue +60" uit de visie vertaalt naar herstel_capaciteit — meer
@@ -47,7 +48,7 @@ export function vertaalRowingSessieNaarImpact(duurMinuten: number): ImpactBijdra
   bijdragen.push({
     pad: 'herstel.herstel_capaciteit',
     impactWaarde: Math.max(0, Math.min(100, Math.round(BASIS_VERMOEIDHEID * schaal))),
-    confidence: 'MEDIUM', confidence_score: 60,
+    confidence: 'MEDIUM', confidence_score: 60, bronSport: 'rowing',
   })
 
   return bijdragen

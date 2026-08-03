@@ -34,6 +34,10 @@ export interface UniverseleWaarde {
    * nooit boven het startpunt kon uitkomen, ook niet na tientallen
    * sessies. Zie impact-engine.ts's combineerWaarde(). */
   aantal_observaties?: number
+  /** v2.4.247: welke sport de meest recente bijdrage leverde (bijv.
+   * 'rowing') — puur metadata voor transparantie in de UI ("beïnvloed
+   * door roeien"), geen onderdeel van de kernwaarde zelf. */
+  laatste_bron_sport?: string
   /** Intern, voor engine-berekeningen — NOOIT rechtstreeks tonen aan de
    * gebruiker (zie Kernregel 2 hierboven) */
   ruweWaarde?: number

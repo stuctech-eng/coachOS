@@ -23,7 +23,7 @@ export interface AdaptationSignals {
    * lichaam al belast is — bijv. "gisteren 90 min geroeid" bij een
    * Running-workout van vandaag. Zelfde mechaniek als slechteSlaap
    * (korter/minder herhalingen/lager), andere, specifieke reden-tekst. */
-  lichaamAlBelast?: { reden: string }
+  lichaamAlBelast?: { reden: string; bronSport?: string }
   /** Positief = meer tijd dan oorspronkelijk gepland (seconden), negatief
    * = minder tijd. 0/undefined = geen aanpassing. */
   extraBeschikbareTijd_sec?: number

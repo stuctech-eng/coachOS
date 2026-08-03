@@ -1113,6 +1113,33 @@ grotendeels correct; deze fix verwijdert specifiek de échte ruis,
 niet een onderliggend probleem. `npx next build` — compileert zonder
 fouten.
 
+**Kruis-sport-adaptaties zichtbaar gemaakt — v2.4.247.** Bewuste
+architectuurkeuze uit het overleg: eerst transparantie tonen ("dit
+werkt écht"), vóórdat de Coach het proactief gaat uitleggen
+(Intelligence Platform, latere stap). Advies letterlijk overgenomen:
+"Bouw eerst route 1 [...] Dat levert direct veel meer vertrouwen op."
+
+**Nieuw: bronsport-tracking door de hele keten.** `ImpactBijdrage`
+kreeg een verplicht `bronSport`-veld (alle drie de impact-adapters
+bijgewerkt), `UniverseleWaarde` onthoudt nu `laatste_bron_sport`,
+`bepaalKruisSportSignaal()` bepaalt de meest voorkomende bronsport
+onder de belaste dimensies (meerderheids-telling, geen gok), en
+`UniversalWorkout` kreeg een nieuw, gestructureerd `kruisSportBron`-
+veld — de UI hoeft dus geen tekst te parsen om het juiste sport-
+icoon te tonen.
+
+**UI**: `/coach/rowing/trainingsplan` toont nu een "Workout aangepast"-
+kaart (🚣/🏃/🚴 + "beïnvloed door [sport]" + de concrete aanpassingen)
+zodra een workout door een andere sport is afgezwakt. Ook Rowing's
+eigen route kreeg de kruis-sport-check erbij (ontbrak eerder — alleen
+Running/Cycling hadden 'm) voor consistentie in de driehoek.
+
+**Gevalideerd:** volledige end-to-end-test — 90 min roeien →
+`laatste_bron_sport: 'rowing'` op de belaste dimensies → kruis-sport-
+signaal met `bronSport: 'rowing'` → `workout.kruisSportBron: 'rowing'`
+op de uiteindelijke Running-workout. Elke schakel in de keten
+bevestigd. `npx next build` — compileert zonder fouten.
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/

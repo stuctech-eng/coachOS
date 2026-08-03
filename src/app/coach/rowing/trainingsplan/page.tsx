@@ -42,6 +42,10 @@ function StatusIcoon({ status }: { status: Sessie['status'] }) {
 // v2.4.230 (Rowing Fase 2, UI): toont de concrete workout van de
 // nieuwe Workout Platform — eerste keer dat een gebruiker dit
 // daadwerkelijk te zien krijgt, niet alleen "Interval, 60 min".
+// v2.4.247: sport-icoon/-naam voor de kruis-sport-transparantie-kaart
+const SPORT_ICOON: Record<string, string> = { rowing: '🚣', running: '🏃', cycling: '🚴' }
+const SPORT_NAAM: Record<string, string> = { rowing: 'roeien', running: 'hardlopen', cycling: 'fietsen' }
+
 const BLOK_TYPE_LABEL: Record<string, string> = {
   warmup: 'Warming-up', hoofdblok: 'Hoofdblok', interval: 'Intervallen',
   herstel: 'Herstel', techniek: 'Techniek', cadans: 'Cadans',
@@ -57,7 +61,7 @@ interface VertaaldBlok {
 
 function WorkoutDetail({ sessieId }: { sessieId: string }) {
   const [laden, setLaden] = useState(true)
-  const [data, setData] = useState<{ vertaaldeBlokken: VertaaldBlok[]; uitvoeringsHints: string[]; materiaal: { benodigd: string[]; ontbreekt: string[] } } | null>(null)
+  const [data, setData] = useState<{ workout: { adaptations: string[]; kruisSportBron?: string }; vertaaldeBlokken: VertaaldBlok[]; uitvoeringsHints: string[]; materiaal: { benodigd: string[]; ontbreekt: string[] } } | null>(null)
   const [fout, setFout] = useState<string | null>(null)
 
   useEffect(() => {
@@ -74,6 +78,21 @@ function WorkoutDetail({ sessieId }: { sessieId: string }) {
 
   return (
     <Card className="p-4 mt-1 flex flex-col gap-3">
+      {/* v2.4.247 (Universal Athlete Platform — zichtbaar maken): toont
+          waarom een workout is aangepast, met de bronsport erbij, i.p.v.
+          dit stil in de achtergrond te laten gebeuren */}
+      {data.workout.adaptations.length > 0 && (
+        <Card className="p-3 bg-amber-500/10 border-amber-500/20">
+          <p className="text-sm font-semibold text-amber-400">
+            {SPORT_ICOON[data.workout.kruisSportBron || ''] || '⚡'} Workout aangepast
+            {data.workout.kruisSportBron && <span className="font-normal text-amber-400/80"> — beïnvloed door {SPORT_NAAM[data.workout.kruisSportBron] || data.workout.kruisSportBron}</span>}
+          </p>
+          <div className="mt-2 flex flex-col gap-1">
+            {data.workout.adaptations.map((a, i) => <p key={i} className="text-xs text-amber-200/80">• {a}</p>)}
+          </div>
+        </Card>
+      )}
+
       {data.materiaal.ontbreekt.length > 0 && (
         <p className="text-xs text-amber-400">⚠️ Ontbrekend materiaal: {data.materiaal.ontbreekt.join(', ')}</p>
       )}

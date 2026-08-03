@@ -41,6 +41,13 @@ export interface ImpactBijdrage {
   impactWaarde: number
   confidence: ConfidenceNiveau
   confidence_score: number
+  /** v2.4.247: welke sport deze bijdrage leverde (bijv. 'rowing') —
+   * nodig om straks in de UI concreet "🚣 beïnvloed door roeien" te
+   * kunnen tonen, i.p.v. alleen "lichaam belast" zonder bron. Het
+   * Universal Athlete State-model zelf blijft sport-onafhankelijk
+   * (geen sportvelden in de kernwaarden) — dit is puur metadata over
+   * de MEEST RECENTE bijdrage, voor transparantie richting de gebruiker. */
+  bronSport: string
 }
 
 const NIVEAU_GRENZEN: { grens: number; niveau: KwalitatiefNiveau }[] = [
@@ -97,6 +104,7 @@ export function combineerWaarde(bestaand: UniverseleWaarde | undefined, bijdrage
     confidence_score: nieuweConfidenceScore,
     aantal_observaties: aantalObservaties,
     ruweWaarde: nieuweRuweWaarde,
+    laatste_bron_sport: bijdrage.bronSport,
   }
 }
 
