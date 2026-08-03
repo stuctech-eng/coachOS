@@ -5,6 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { haalCyclingData } from '@/lib/specialists/cycling-data'
 import { haalRunningData } from '@/lib/specialists/running-data'
+import { haalRowingData } from '@/lib/specialists/rowing-data'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -26,6 +27,7 @@ async function getUser() {
 const DATA_FETCHERS: Record<string, (userId: string, periodDays: number) => Promise<unknown>> = {
   cycling: haalCyclingData,
   running: haalRunningData,
+  rowing: haalRowingData,
 }
 
 export async function GET(req: NextRequest, { params }: { params: { type: string } }) {

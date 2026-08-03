@@ -41,15 +41,17 @@ interface DoeltypeOptie {
   beschikbaar: boolean // false = specialist bestaat nog niet (status 'development')
 }
 
-// Bewust gesynchroniseerd met SPECIALIST_CONFIG in api/specialists/route.ts
-// — alleen 'cycling'/'running' zijn daar 'active', dus alleen die zijn
-// hier beschikbaar. Rowing/Strength staan zichtbaar maar uitgeschakeld,
-// geen overclaiming van functionaliteit die nog niet bestaat.
+// Bewust gesynchroniseerd met SPECIALIST_CONFIG in api/specialists/route.ts.
+// v2.4.251-FIX: deze lijst was stale — Rowing staat sinds v2.4.216 al
+// 'active' in SPECIALIST_CONFIG, maar hier nog hardcoded op
+// beschikbaar:false (systematische controle, gemeld door de gebruiker
+// na meermaals dezelfde soort "rowing vergeten"-bug). Strength staat
+// terecht nog op false — die is nog steeds 'development'.
 const DOELTYPES: DoeltypeOptie[] = [
   { key: 'global', label: 'Algemeen', icoon: '🌍', beschikbaar: true },
   { key: 'cycling', label: 'Wielrennen', icoon: '🚴', beschikbaar: true },
   { key: 'running', label: 'Hardlopen', icoon: '🏃', beschikbaar: true },
-  { key: 'rowing', label: 'Roeien', icoon: '🚣', beschikbaar: false },
+  { key: 'rowing', label: 'Roeien', icoon: '🚣', beschikbaar: true },
   { key: 'strength', label: 'Krachttraining', icoon: '🏋️', beschikbaar: false },
 ]
 

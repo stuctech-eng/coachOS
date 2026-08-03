@@ -1,5 +1,48 @@
 # CoachOS — Changelog
 
+## v2.4.251 — Systematische controle: "rowing vergeten"-patroon
+**Gevraagd na meermaals dezelfde soort bug: "toch merk ik dat er veel
+foutjes gevonden worden, kunnen we alles nog eens checken." Terecht —
+dit patroon is vandaag al minstens 5 keer apart gevonden.**
+
+### Methode
+De HELE codebase doorzocht op elke plek die `'cycling'` én
+`'running'` als quoted string bevat (15 bestanden gevonden), elk
+gecontroleerd op de aanwezigheid van `'rowing'`.
+
+### Gevonden en gefixt — 3 echte gaten
+1. **`api/action-plan/route.ts`** — exact dezelfde bronlabel-ternary-
+   bug als net gefixt in `coach/route.ts` (v2.4.250) — een Rowing-
+   sessie zou als "Rust" in de Trainer AI-prompt terechtkomen
+2. **`api/specialists/[type]/data/route.ts`** — generieke fallback-
+   route mist Rowing in `DATA_FETCHERS`. Laag praktisch risico (de
+   specifieke `rowing/data`-route heeft bij Next.js altijd voorrang),
+   maar voor consistentie gefixt
+3. **`app/goals/page.tsx`** — Rowing stond nog hardcoded op
+   `beschikbaar: false` in de doeltype-lijst — een aanname van vóór
+   Rowing's activatie (v2.4.216) die nooit werd bijgewerkt.
+   **Gebruikers konden dus geen Rowing-specifieke doelen instellen.**
+   Gefixt naar `true`
+
+### Gevonden, bewust NIET gefixt in deze sweep — te groot
+**`core/performance/engines/load-engine.ts`** — de CTL/ATL/TSB-
+berekening (het Performance-scherm) is een wrapper rond alleen
+Cycling+Running (`sport: 'cycling' | 'running'` — type-niveau
+uitsluiting, niet alleen een ternary). Rowing-training telt daar
+structureel niet mee. Vergt een eigen TSS-berekening voor Rowing, wat
+op zijn beurt een intensiteits-baseline vergt (hetzelfde 2k-testtijd-
+gat als eerder genoemd bij Rowing Profiel). **Toegevoegd aan het
+"Openstaande Punten"-overzicht** bovenaan README — een aparte,
+grotere klus, geen quick-fix.
+
+### Overige bestanden gecontroleerd, bevestigd in orde
+`smart-actions/route.ts`, `home/page.tsx`, `today-engine.ts`,
+`utils/equipment.ts`, `archief/page.tsx`, `training/page.tsx`,
+`training/session/[module]/page.tsx`, `progressie/page.tsx`,
+`types/training-engine.ts` — allemaal al correct.
+
+`npx next build` — compileert zonder fouten na alle fixes.
+
 ## v2.4.250 — Coach Intelligence: kruis-sport-aanpassingen proactief uitgelegd
 **Stap 2 van het zelf voorgestelde kruis-sport-plan: eerst zichtbaar
 maken in de trainingsplan-detail (v2.4.247, Stap 1), nu de Coach het

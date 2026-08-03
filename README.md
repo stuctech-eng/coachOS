@@ -18,6 +18,8 @@ alleen in een losse commentaarregel bij de code zelf.**
 | **Rowing coach-conversatieroute** (automatische inzicht-generatie) | Coach Memory zelf werkt (v2.4.232), maar niets vult 'm automatisch — alleen handmatig testbaar via POST | `api/specialists/rowing/memory` | Rowing's Coach Memory blijft voor altijd leeg tenzij iemand handmatig POST't |
 | **Universal Athlete Platform — Omgeving-categorie** (hitte/koude/hoogte-adaptatie, hydratatie, energie) | Datamodel bestaat, **geen enkele adapter vult het** | `core/athlete-platform/types.ts` | Blijft voor altijd "Nog geen data" — bevestigd, geen bug, maar wel nog steeds leeg |
 | **Rolling horizon-verlenging** | ✅ **Gefixt (v2.4.248), automatisch gemaakt (v2.4.249)** — was het voorbeeld dat tot deze lijst leidde. Eerste versie was per-sport handmatig (moest de juiste pagina bezoeken); nu automatisch voor alle actieve sporten bij elke Today Engine-aanroep | `today-engine.ts` + `training-plan-engine/core.ts` | — |
+| **Performance Platform CTL/ATL/TSB sluit Rowing volledig uit** | 🔴 **Gevonden, NIET gefixt** — `berekenLoad()` is een wrapper rond alleen `haalCTLATLTSB` (Cycling) en `haalRunningCTLATLTSB` — geen Rowing-equivalent bestaat. Vergt een TSS-berekening voor Rowing, wat weer een intensiteits-baseline vergt (zelfde 2k-testtijd-gat als eerder genoemd bij Rowing Profiel) | `core/performance/engines/load-engine.ts` | Performance-scherm (CTL/ATL/TSB) is structureel te laag voor iedereen die roeit — grotere, aparte klus, niet in deze sweep opgelost |
+| **"Rowing vergeten"-patroon (systematisch gecheckt)** | ✅ **5 instanties gevonden en gefixt (v2.4.251)** — `api/action-plan/route.ts` (bronlabel-ternary), `api/specialists/[type]/data/route.ts` (generieke data-fetcher-tabel, laag risico want overruled door de specifieke Rowing-route), `app/goals/page.tsx` (Rowing stond nog op `beschikbaar:false`, stale sinds v2.4.216) | Meerdere bestanden | — |
 
 **Waarom dit soort dingen gebeuren, eerlijk benoemd:** bij het bouwen
 van een nieuwe engine (Learning Rules/Alternative/etc.) ligt de focus
@@ -1249,6 +1251,34 @@ de concrete workout op en geeft die context aan de AI-prompt mee —
 expliciete instructie om dit proactief te noemen, met de daadwerkelijke
 aanpassingen erbij. Eigen try/catch, mag het advies zelf nooit
 blokkeren.
+
+**Systematische controle op het "rowing vergeten"-patroon — v2.4.251.**
+Gevraagd na meermaals dezelfde soort bug: de HELE codebase doorzocht
+op elke plek die `'cycling'` én `'running'` als quoted string bevat,
+gecontroleerd of `'rowing'` daar ook bij staat. 15 bestanden gevonden
+met beide, 3 daarvan bleken écht een gat te hebben:
+
+1. **`api/action-plan/route.ts`** — exact dezelfde bronlabel-ternary-
+   bug als net gefixt in `coach/route.ts` — een Rowing-sessie zou als
+   "Rust" in de Trainer AI-prompt terechtkomen. Gefixt
+2. **`api/specialists/[type]/data/route.ts`** — generieke fallback-
+   route mist Rowing in de fetcher-tabel. Laag risico in de praktijk
+   (mijn eigen specifieke `rowing/data`-route heeft altijd voorrang
+   bij Next.js-routing), maar voor consistentie toch gefixt
+3. **`app/goals/page.tsx`** — Rowing stond nog hardcoded op
+   `beschikbaar: false` in de doeltype-lijst, een aanname van vóór
+   Rowing's activatie (v2.4.216) die nooit is bijgewerkt. Gebruikers
+   konden dus geen Rowing-specifieke doelen instellen. Gefixt
+
+**Eén groter, apart gat gevonden en bewust NIET in deze sweep
+opgelost** (te groot voor een quick-fix, zie het "Openstaande
+Punten"-overzicht bovenaan dit document): `core/performance/engines/
+load-engine.ts`'s CTL/ATL/TSB-berekening (het Performance-scherm) is
+een wrapper rond alleen Cycling+Running — Rowing-training telt daar
+structureel niet mee. Vergt een TSS-berekening voor Rowing, wat op
+zijn beurt een intensiteits-baseline vergt.
+
+`npx next build` — compileert zonder fouten na alle fixes.
 
 
 
