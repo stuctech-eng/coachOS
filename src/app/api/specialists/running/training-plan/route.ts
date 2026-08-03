@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
-import { genereerTrainingsplanCore } from '@/lib/specialists/training-plan-engine/core'
+import { genereerTrainingsplanCore, verlengRollingHorizonIndienNodigCore } from '@/lib/specialists/training-plan-engine/core'
 import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
 import { runningAdapter } from '@/lib/specialists/training-plan-engine/running-adapter'
 
@@ -55,6 +55,17 @@ export async function GET() {
         .limit(1)
         .maybeSingle()
       return NextResponse.json({ plan: null, sessies: [], aanpassingen: [], heeftGepauzeerdPlan: !!gepauzeerdPlan })
+    }
+
+    // v2.4.248-FIX: rolling horizon-verlenging — vóór de Daily
+    // Adjustment Layer, zodat een net-verlengde sessie voor vandaag
+    // ook meteen door de adjustment-check kan lopen. Bewust in een
+    // try/catch — een fout hier mag het ophalen van het plan zelf
+    // nooit laten falen.
+    try {
+      await verlengRollingHorizonIndienNodigCore(user.id, plan.id, runningAdapter)
+    } catch (verlengErr) {
+      console.error('[training-plan GET] Rolling horizon-verlenging mislukt:', verlengErr)
     }
 
     let aanpassingen: Awaited<ReturnType<typeof voerDailyAdjustmentUitCore>> = []

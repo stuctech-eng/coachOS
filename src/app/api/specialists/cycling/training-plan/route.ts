@@ -6,6 +6,8 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { genereerTrainingsplan } from '@/lib/specialists/training-plan-generator'
 import { voerDailyAdjustmentUit } from '@/lib/specialists/training-plan-adjuster'
+import { verlengRollingHorizonIndienNodigCore } from '@/lib/specialists/training-plan-engine/core'
+import { cyclingAdapter } from '@/lib/specialists/training-plan-engine/cycling-adapter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -50,6 +52,13 @@ export async function GET() {
         .limit(1)
         .maybeSingle()
       return NextResponse.json({ plan: null, sessies: [], aanpassingen: [], heeftGepauzeerdPlan: !!gepauzeerdPlan })
+    }
+
+    // v2.4.248-FIX: rolling horizon-verlenging, zelfde patroon als Running/Rowing
+    try {
+      await verlengRollingHorizonIndienNodigCore(user.id, plan.id, cyclingAdapter)
+    } catch (verlengErr) {
+      console.error('[training-plan GET] Rolling horizon-verlenging mislukt:', verlengErr)
     }
 
     let aanpassingen: Awaited<ReturnType<typeof voerDailyAdjustmentUit>> = []

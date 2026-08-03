@@ -1,5 +1,58 @@
 # CoachOS — Changelog
 
+## v2.4.248 — KRITIEKE FIX: rolling horizon-verlenging bestond helemaal niet
+**Gemeld: "training schema" ontbrak weer bij Smart Actions/Home.**
+
+### Onderzoek (met echte SQL-queries, geen gok)
+- Drie actieve plannen bevestigd (Cycling/Running/Rowing)
+- Voor vandaag (3 augustus, maandag — wél een Running-trainingsdag):
+  **"no rows returned"** — genuinely geen sessie gepland
+- Trainingsdagen gecontroleerd: Running heeft wél maandag
+- Sessie-bereik per sport gecontroleerd: Running laatste sessie 1
+  augustus, Cycling laatste sessie 30 juli — **beide plannen liepen
+  leeg**, ondanks een `end_date` tot oktober
+
+### Root cause
+`training-plan-engine/core.ts` genereert bij het aanmaken van een plan
+bewust maar ~2 weken concrete sessies (`ROLLING_HORIZON_WEKEN = 2`),
+met de bedoeling dat dit venster later "doorschuift" naarmate de tijd
+verstrijkt. **Dat doorschuif-mechanisme bestond nergens in de code** —
+het woord "rolling" stond alleen in commentaar, nooit in werkende
+logica. Dit is een **structurele leemte die alle drie de sporten
+raakt** (Cycling/Running/Rowing), niet een regressie van vandaag.
+
+### Fix
+Nieuwe functie **`verlengRollingHorizonIndienNodigCore()`** in
+`core.ts`:
+- Reconstrueert dezelfde, deterministische mesocyclus-reeks uit de
+  al-opgeslagen `plan.start_date`/`end_date` — bewust NIET opnieuw uit
+  doelen afgeleid (een gewijzigd doel zou anders een andere reeks
+  kunnen geven dan oorspronkelijk gegenereerd)
+- Bepaalt het week-offset van de laatste bestaande sessie
+- Genereert het eerstvolgende blok (`ROLLING_HORIZON_WEKEN`) zodra er
+  nog maar 7 dagen aan sessies over zijn
+
+Aangeroepen in alle drie de trainingsplan-GET-routes (`cycling/
+training-plan/route.ts`, `running/training-plan/route.ts`, `rowing/
+training-plan/route.ts`), vóór de Daily Adjustment Layer, in een
+try/catch (een fout hier mag het ophalen van het plan zelf nooit laten
+falen).
+
+**Gevalideerd met de exacte, gerapporteerde data:**
+- weekTotaal correct gereconstrueerd (12 weken) uit `start_date`/
+  `end_date`
+- Week-offset van de laatste sessie (1 augustus) correct bepaald
+  (week 1)
+- De eerste nieuw te genereren maandag valt **exact op vandaag, 3
+  augustus** — precies de ontbrekende dag die gerapporteerd werd
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Running Trainingsplan (of Cycling) — zou nu
+automatisch nieuwe sessies moeten bijgenereren, inclusief vandaag.
+Ververs daarna Home — Smart Actions zou de trainingsactie weer moeten
+tonen.
+
 ## v2.4.247 — Kruis-sport-adaptaties zichtbaar gemaakt
 **Bewuste architectuurkeuze: eerst transparantie tonen ("dit werkt
 écht"), vóórdat de Coach het proactief gaat uitleggen (Intelligence

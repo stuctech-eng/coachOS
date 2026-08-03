@@ -184,3 +184,94 @@ export async function genereerTrainingsplanCore(userId: string, adapter: Trainin
     reden,
   }
 }
+
+// ── Rolling Horizon-verlenging ────────────────────────────────────────────
+// v2.4.248-FIX: gemeld — "training schema" ontbrak weer bij Smart
+// Actions. Root cause, bevestigd met echte data: ROLLING_HORIZON_WEKEN
+// (=2) genereert bij het aanmaken van een plan alleen de eerstkomende
+// ~2 weken aan concrete sessies — de rest van het (tot 12 weken lange)
+// plan bestaat alleen als mesocyclus-targets, GEEN dagplanning. Er was
+// echter NERGENS een mechanisme dat dit venster daadwerkelijk liet
+// "rollen" (doorschuiven) naarmate de tijd verstrijkt — het woord
+// "rolling" stond alleen in commentaar, niet in werkende code. Cycling/
+// Running liepen hierdoor letterlijk leeg (laatste sessie 30 juli/1
+// augustus, vandaag 3 augustus, niets ná die datums).
+//
+// Deze functie reconstrueert dezelfde, deterministische mesocyclus-
+// reeks uit de AL OPGESLAGEN plan-data (start_date/end_date — niet
+// opnieuw uit doelen afgeleid, dat zou bij een gewijzigd doel een
+// andere reeks kunnen geven dan oorspronkelijk gegenereerd) en
+// genereert het eerstvolgende blok sessies vanaf waar de vorige batch
+// stopte.
+const VERLENG_DREMPEL_DAGEN = 7 // verleng zodra er nog maar dit veel dagen aan sessies over zijn
+
+export async function verlengRollingHorizonIndienNodigCore(userId: string, planId: string, adapter: TrainingPlanSportAdapter): Promise<{ verlengd: boolean; aantalNieuweSessies: number }> {
+  const supabase = createAdminClient()
+
+  const { data: plan } = await supabase
+    .from('training_plans').select('id, start_date, end_date, status').eq('id', planId).maybeSingle()
+  if (!plan || plan.status !== 'active') return { verlengd: false, aantalNieuweSessies: 0 }
+
+  const { data: laatsteSessie } = await supabase
+    .from('training_plan_sessions').select('date')
+    .eq('plan_id', planId).order('date', { ascending: false }).limit(1).maybeSingle()
+
+  const vandaag = new Date()
+  const planEindDatum = new Date(plan.end_date)
+  if (planEindDatum <= vandaag) return { verlengd: false, aantalNieuweSessies: 0 } // plan is sowieso voorbij, niets te verlengen
+
+  const laatsteSessieDatum = laatsteSessie ? new Date(laatsteSessie.date) : new Date(plan.start_date)
+  const dagenOver = Math.ceil((laatsteSessieDatum.getTime() - vandaag.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (laatsteSessie && dagenOver > VERLENG_DREMPEL_DAGEN) {
+    return { verlengd: false, aantalNieuweSessies: 0 } // nog genoeg sessies over, niets te doen
+  }
+
+  const [profiel, policy] = await Promise.all([adapter.haalProfiel(userId), genereerCoachPolicy(userId)])
+  const trainingsdagen = profiel.trainingsdagen || []
+  if (trainingsdagen.length === 0) return { verlengd: false, aantalNieuweSessies: 0 }
+  const beschikbareUren = profiel.beschikbare_uren_per_week || 4
+
+  const planStartDate = new Date(plan.start_date)
+  const weekTotaal = Math.max(1, Math.ceil((planEindDatum.getTime() - planStartDate.getTime()) / (1000 * 60 * 60 * 24 * 7)))
+  const mesocycli = bepaalMesocycli(weekTotaal, beschikbareUren)
+
+  const weekOffsetLaatsteSessie = Math.floor((laatsteSessieDatum.getTime() - planStartDate.getTime()) / (1000 * 60 * 60 * 24 * 7))
+  const startWeekOffset = weekOffsetLaatsteSessie + 1
+  const eindWeekOffset = Math.min(startWeekOffset + ROLLING_HORIZON_WEKEN, mesocycli.length)
+
+  if (startWeekOffset >= mesocycli.length) return { verlengd: false, aantalNieuweSessies: 0 } // macrocyclus is al volledig gegenereerd
+
+  let aantalNieuweSessies = 0
+  for (let weekOffset = startWeekOffset; weekOffset < eindWeekOffset; weekOffset++) {
+    const mesocyclusWeek = mesocycli[weekOffset]
+    const sessieTypen = adapter.verdeelSessieTypen(trainingsdagen, mesocyclusWeek.type)
+
+    for (const { dag, type } of sessieTypen) {
+      const datum = volgendeDatumVoorDag(planStartDate, dag, weekOffset)
+      const duurMinuten = Math.round((mesocyclusWeek.week_load_uren * 60) / sessieTypen.length)
+
+      let finaalType = type
+      let finaleDuur = duurMinuten
+      if (type === adapter.hoogIntensiteitsType && policy.forbiddenTrainingTypes.includes('hoge_intensiteit')) {
+        finaalType = adapter.vervangingBijBeperking
+      }
+      if (policy.volumeAdjustmentPct < 0) {
+        finaleDuur = Math.round(duurMinuten * (1 + policy.volumeAdjustmentPct / 100))
+      }
+
+      const { error: sessieError } = await supabase
+        .from('training_plan_sessions')
+        .insert({
+          plan_id: plan.id, date: isoDatum(datum), sport: adapter.sport,
+          type: finaalType, duration: finaleDuur, intensity: null,
+          load_target: mesocyclusWeek.week_load_uren / sessieTypen.length,
+          status: 'planned', mesocycle_type: mesocyclusWeek.type,
+        })
+
+      if (!sessieError) aantalNieuweSessies++
+    }
+  }
+
+  return { verlengd: aantalNieuweSessies > 0, aantalNieuweSessies }
+}

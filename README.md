@@ -1140,6 +1140,37 @@ signaal met `bronSport: 'rowing'` → `workout.kruisSportBron: 'rowing'`
 op de uiteindelijke Running-workout. Elke schakel in de keten
 bevestigd. `npx next build` — compileert zonder fouten.
 
+**KRITIEKE FIX — v2.4.248: rolling horizon-verlenging bestond
+helemaal niet.** Gemeld: "training schema" ontbrak weer bij Smart
+Actions/Home. Grondig uitgezocht met echte SQL-queries (op eigen
+verzoek, geen live databasetoegang): drie actieve plannen (Cycling/
+Running/Rowing), maar **"no rows returned"** voor vandaag (3 augustus,
+maandag — wél een Running-trainingsdag). Root cause: `training-plan-
+engine/core.ts` genereert bij het aanmaken van een plan bewust maar
+~2 weken concrete sessies (`ROLLING_HORIZON_WEKEN`), met de bedoeling
+dat dit venster later "doorschuift". **Dat doorschuif-mechanisme
+bestond echter nergens in de code** — het woord "rolling" stond alleen
+in commentaar. Running's laatste sessie was 1 augustus, Cycling's 30
+juli — beide plannen liepen letterlijk leeg, ondanks een `end_date`
+tot oktober. Dit is een **structurele leemte die alle drie de sporten
+raakt**, niet iets van vandaag kapotgemaakt.
+
+**Fix:** nieuwe `verlengRollingHorizonIndienNodigCore()` in `core.ts`
+— reconstrueert dezelfde, deterministische mesocyclus-reeks uit de
+al-opgeslagen `plan.start_date`/`end_date` (bewust NIET opnieuw uit
+doelen afgeleid — dat zou bij een gewijzigd doel een andere reeks
+kunnen geven dan oorspronkelijk gegenereerd), bepaalt het week-offset
+van de laatste bestaande sessie, en genereert het eerstvolgende blok
+zodra er nog maar 7 dagen aan sessies over zijn. Aangeroepen in alle
+drie de trainingsplan-GET-routes (Cycling/Running/Rowing), vóór de
+Daily Adjustment Layer, in een try/catch (een fout hier mag het
+ophalen van het plan zelf nooit laten falen).
+
+**Gevalideerd met de exacte, gerapporteerde data:** weekTotaal
+correct gereconstrueerd (12 weken), week-offset van de laatste sessie
+correct bepaald (week 1), en de eerste nieuw te genereren maandag valt
+**exact op vandaag (3 augustus)** — precies de ontbrekende dag.
+
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
 `src/core/workout-builder/types.ts` — `UniversalWorkout`/`WorkoutBlock`/
