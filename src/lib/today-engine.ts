@@ -57,6 +57,11 @@ export interface TodayPlan {
   // overleg) — week-binnen-blok/dagen-tot-wedstrijd zijn hier bewust
   // NIET aan toegevoegd, die data bestaat nog nergens om op te baseren.
   trainingPhase: { mesocycleType: 'basis' | 'opbouw' | 'piek' | 'herstel' } | null
+  // v2.4.250: sessie-id van de onderliggende training_plan_sessions-rij
+  // — nodig om de Coach-route de concrete workout (met kruis-sport-
+  // aanpassingen) te laten ophalen. Alleen gevuld bij een specialist-
+  // sessie (source cycling/running/rowing), niet bij trainer/rust.
+  sessieId: string | null
 }
 
 interface TrainingPlanSessie {
@@ -135,6 +140,7 @@ function proposalNaarTodayPlan(proposal: SpecialistProposal): TodayPlan {
     actionHref: `/coach/${proposal.sport}/trainingsplan`,
     actionLabel: 'Open trainingsplan',
     trainingPhase: fase ? { mesocycleType: fase } : null,
+    sessieId: proposal.sessie.id,
   }
 }
 
@@ -194,7 +200,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
       reason: 'Coach adviseert vandaag volledige rust',
       coachMessage: 'Vandaag is herstel de training. Geen sportieve inspanning gepland.',
       actionHref: '/coach', actionLabel: 'Bekijk Coach-advies',
-      trainingPhase: null,
+      trainingPhase: null, sessieId: null,
     }
   }
 
@@ -269,7 +275,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
           reason: instr.reason || 'Trainer AI-sessie',
           coachMessage: instr.coach_message || 'Veel succes met je training!',
           actionHref: '/training', actionLabel: 'Start Training',
-          trainingPhase: null,
+          trainingPhase: null, sessieId: null,
         }
       } else {
         console.error('[today-engine] Trainer AI gaf geen bruikbare instructie terug:', JSON.stringify(data).slice(0, 300))
@@ -285,6 +291,6 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
     reason: 'Geen actief trainingsplan en Trainer AI kon geen sessie bepalen',
     coachMessage: 'Wil je toch trainen? Kies zelf een module in de bibliotheek.',
     actionHref: '/training', actionLabel: 'Bibliotheek openen',
-    trainingPhase: null,
+    trainingPhase: null, sessieId: null,
   }
 }

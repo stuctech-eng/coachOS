@@ -1224,6 +1224,32 @@ running → rowing), nooit willekeurig.
 
 `npx next build` — compileert zonder fouten.
 
+**Coach Intelligence — Stap 2 van het kruis-sport-plan — v2.4.250.**
+Volgens de zelf voorgestelde volgorde: eerst zichtbaar maken in de
+trainingsplan-detail (v2.4.247), nu de Coach het proactief laten
+uitleggen op Home, exact het voorbeeld uit het overleg zelf: "Je zware
+roeitraining van gisteren heeft veel belasting gegeven, daarom is de
+training vandaag iets lichter."
+
+**Bijvangst — nóg een instantie van hetzelfde, al meermaals gevonden
+bug-patroon:** `api/coach/route.ts`'s bronlabel-ternary miste
+`'rowing'` — een Rowing-sessie zou in de Coach-AI-prompt als **"Rust"**
+zijn aangemerkt (viel door alle voorwaarden heen naar de laatste
+else-tak). Gefixt, getest tegen alle vier de mogelijke bronnen.
+
+**`TodayPlan` kreeg een nieuw `sessieId`-veld** (today-engine.ts) —
+nodig om de Coach-route de concrete workout (met `kruisSportBron`) te
+kunnen laten ophalen. Alle vier de plekken die een `TodayPlan`
+samenstellen bijgewerkt (TypeScript zou een ontbrekend veld sowieso
+hebben geblokkeerd — bevestigd doordat de build zonder fouten
+compileerde).
+
+**`api/coach/route.ts`** haalt nu, als er een kruis-sport-aanpassing is,
+de concrete workout op en geeft die context aan de AI-prompt mee —
+expliciete instructie om dit proactief te noemen, met de daadwerkelijke
+aanpassingen erbij. Eigen try/catch, mag het advies zelf nooit
+blokkeren.
+
 
 
 

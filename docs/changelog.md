@@ -1,5 +1,40 @@
 # CoachOS — Changelog
 
+## v2.4.250 — Coach Intelligence: kruis-sport-aanpassingen proactief uitgelegd
+**Stap 2 van het zelf voorgestelde kruis-sport-plan: eerst zichtbaar
+maken in de trainingsplan-detail (v2.4.247, Stap 1), nu de Coach het
+proactief laten uitleggen op Home.**
+
+### Nieuw
+`api/coach/route.ts` — als de Today Engine een specialist-sessie
+teruggeeft die door een kruis-sport-signaal is aangepast, haalt de
+route nu de concrete workout op (`kruisSportBron`/`adaptations`) en
+geeft die als expliciete instructie mee aan de AI-prompt: proactief
+uitleggen, met de daadwerkelijke aanpassingen erbij. Matcht exact het
+overleg-voorbeeld: "Je zware roeitraining van gisteren heeft veel
+belasting gegeven, daarom is de training vandaag iets lichter."
+
+### Ondersteunend
+`today-engine.ts`'s `TodayPlan` kreeg een nieuw `sessieId`-veld —
+nodig om de Coach-route de juiste workout te laten opzoeken. Alle vier
+de plekken die een `TodayPlan` samenstellen bijgewerkt.
+
+### Bijvangst: nóg een instantie van hetzelfde bug-patroon
+`api/coach/route.ts`'s bronlabel-ternary (voor de AI-prompt-context)
+miste `'rowing'` — zou een Rowing-sessie als **"Rust"** in de AI-prompt
+hebben aangemerkt (viel door naar de laatste else-tak). Dit is de
+zoveelste instantie van exact hetzelfde patroon dat vandaag al
+meermaals gevonden is (Training Plan Engine, Smart Actions, Today
+Engine's reden-tekst). Gefixt, getest tegen alle vier de mogelijke
+bronnen (cycling/running/rowing/trainer).
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** zorg dat er een actieve kruis-sport-aanpassing is
+(bijv. na een zware Rowing-sessie, open Running's Today-advies) — de
+Coach-tekst op Home zou nu proactief de andere sport moeten noemen als
+reden voor de aanpassing.
+
 ## v2.4.249 — FIX: rolling horizon-verlenging nu écht automatisch
 **Gemeld: "de coach fix werkte niet". Uitgezocht met screenshots +
 directe vragen — v2.4.248 werkte wel, maar alleen per sport, en

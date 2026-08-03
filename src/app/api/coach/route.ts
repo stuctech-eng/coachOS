@@ -294,7 +294,35 @@ export async function POST(req: NextRequest) {
       const cookieHeader = req.headers.get('cookie') || ''
       const todayPlan = await bepaalTodayPlan(user.id, cookieHeader, req.nextUrl.origin)
       if (todayPlan.source !== 'rust' || todayPlan.title !== 'Geen training gepland') {
-        todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'}\n- Reden: ${todayPlan.reason}${todayPlan.trainingPhase ? `\n- Trainingsfase: ${todayPlan.trainingPhase.mesocycleType} — leg desgewenst uit waarom de belasting van vandaag past bij deze fase (bijv. "omdat je in een opbouwweek zit, hoort deze hogere belasting bij de opbouw" of "ondanks dat je je fit voelt, zit je in een herstelweek — daarom nu bewust rustiger")` : ''}\n`
+        // v2.4.250-FIX: 'rowing' ontbrak in deze bronlabel-ternary —
+        // zou eerder als "Rust" in de prompt terechtgekomen zijn,
+        // exact hetzelfde bug-patroon als eerder vandaag meermaals
+        // gevonden en gefixt (Training Plan Engine, Smart Actions, etc.)
+        const bronLabel = todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'rowing' ? 'Rowing Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'
+        todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${bronLabel}\n- Reden: ${todayPlan.reason}${todayPlan.trainingPhase ? `\n- Trainingsfase: ${todayPlan.trainingPhase.mesocycleType} — leg desgewenst uit waarom de belasting van vandaag past bij deze fase (bijv. "omdat je in een opbouwweek zit, hoort deze hogere belasting bij de opbouw" of "ondanks dat je je fit voelt, zit je in een herstelweek — daarom nu bewust rustiger")` : ''}\n`
+
+        // v2.4.250 (Universal Athlete Platform — Stap 2, Coach Intelligence):
+        // als de workout is aangepast door een ANDERE sport (kruis-sport-
+        // signaal), geeft dit de Coach de context om dat proactief uit te
+        // leggen — matcht exact het voorbeeld uit het overleg: "Je zware
+        // roeitraining van gisteren heeft veel belasting gegeven. Daarom
+        // heb ik de intensiteit vandaag iets verlaagd." Eigen try/catch —
+        // mag de rest van het advies nooit blokkeren.
+        if (todayPlan.sessieId && (todayPlan.source === 'cycling' || todayPlan.source === 'running' || todayPlan.source === 'rowing')) {
+          try {
+            const workoutRes = await fetch(`${req.nextUrl.origin}/api/specialists/${todayPlan.source}/training-plan/workout?sessieId=${todayPlan.sessieId}`, {
+              headers: { cookie: cookieHeader },
+            })
+            const workoutData = await workoutRes.json()
+            if (workoutData.workout?.kruisSportBron) {
+              const SPORT_NAAM: Record<string, string> = { rowing: 'roeien', running: 'hardlopen', cycling: 'fietsen' }
+              const bronSportNaam = SPORT_NAAM[workoutData.workout.kruisSportBron] || workoutData.workout.kruisSportBron
+              todayEngineContext += `\nBELANGRIJK — deze training is AANGEPAST vanwege recente belasting door een ANDERE sport (${bronSportNaam}). Leg dit proactief uit aan de sporter, bijvoorbeeld: "Je recente ${bronSportNaam}-sessie heeft veel belasting gegeven, daarom is de training vandaag iets lichter." Concrete aanpassingen: ${(workoutData.workout.adaptations || []).join(' ')}\n`
+            }
+          } catch (workoutErr) {
+            console.error('[coach] Kruis-sport-context ophalen mislukt, advies gaat door zonder dit blok:', workoutErr)
+          }
+        }
       }
     } catch (err) {
       console.error('[coach] Today Engine ophalen mislukt, advies gaat door zonder dit blok:', err)
