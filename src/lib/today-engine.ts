@@ -1,6 +1,10 @@
 import { createAdminClient } from '@/lib/supabase'
 import { haalGoalsMetProgress } from '@/lib/specialists/goal-engine'
 import { beslisTussenSpecialisten, type SpecialistSummaryVoorBeslissing } from '@/lib/specialists/decision-engine'
+import { verlengRollingHorizonIndienNodigCore } from '@/lib/specialists/training-plan-engine/core'
+import { cyclingAdapter } from '@/lib/specialists/training-plan-engine/cycling-adapter'
+import { runningAdapter } from '@/lib/specialists/training-plan-engine/running-adapter'
+import { rowingAdapter } from '@/lib/specialists/training-plan-engine/rowing-adapter'
 
 // ── Today Engine ──────────────────────────────────────────────────────
 // Bron: overleg 22 juli 2026, uitgebreid 22 juli 2026 (multi-sport-
@@ -193,6 +197,27 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
       trainingPhase: null,
     }
   }
+
+  // v2.4.249-FIX: gemeld — rolling horizon-verlenging (v2.4.248) werkte
+  // alleen als je toevallig de trainingsplan-pagina van DIE specifieke
+  // sport bezocht had. Bezocht je alleen Rowing, dan bleef Running/
+  // Cycling leeglopen (en andersom). Nu automatisch, voor alle drie
+  // tegelijk, bij elke Today Engine-aanroep (dus ook gewoon bij het
+  // openen van Home) — ongeacht welke specifieke pagina je bezoekt.
+  // In een try/catch per sport: één mislukte verlenging mag de andere
+  // twee, en vooral de rest van Today Engine, nooit blokkeren.
+  const actievePlannen = await supabase
+    .from('training_plans').select('id, sport').eq('athlete_id', userId).eq('status', 'active')
+  const adapterPerSport: Record<string, typeof cyclingAdapter> = { cycling: cyclingAdapter, running: runningAdapter, rowing: rowingAdapter }
+  await Promise.all((actievePlannen.data || []).map(async (plan) => {
+    const adapter = adapterPerSport[plan.sport]
+    if (!adapter) return
+    try {
+      await verlengRollingHorizonIndienNodigCore(userId, plan.id, adapter)
+    } catch (verlengErr) {
+      console.error(`[today-engine] Rolling horizon-verlenging mislukt voor ${plan.sport}:`, verlengErr)
+    }
+  }))
 
   // ── Laag 2: Specialist-trainingsplannen — proposals[] i.p.v. losse
   // if/else, klaar voor meer specialisten later ───────────────────────

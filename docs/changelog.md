@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.249 — FIX: rolling horizon-verlenging nu écht automatisch
+**Gemeld: "de coach fix werkte niet". Uitgezocht met screenshots +
+directe vragen — v2.4.248 werkte wel, maar alleen per sport, en
+alleen ná het bezoeken van DIE sport se eigen trainingsplan-pagina.**
+
+### Bevestigd scenario
+- Gebruiker bezocht Rowing's Trainingsplan-pagina → Rowing's venster
+  verlengd → Rowing kreeg terecht een sessie voor vandaag (maandag)
+- Running bleef leeg, ondanks dat maandag een geldige Running-
+  trainingsdag is — pas ná het expliciet openen van Running's eigen
+  pagina verscheen de sessie (bevestigd met screenshot: 🏃 Easy Run,
+  42 min, Running Coach, inclusief een kruis-sport-aanpassing naar
+  30 min)
+
+### Root cause
+`verlengRollingHorizonIndienNodigCore()` (v2.4.248) werd alleen
+aangeroepen vanuit elke sport se EIGEN `training-plan`-GET-route —
+geen enkele plek riep het voor ALLE sporten tegelijk aan.
+
+### Fix
+Verlengingsaanroep verplaatst naar `today-engine.ts`'s
+`bepaalTodayPlan()` — draait nu automatisch voor alle actieve plannen
+tegelijk (`training_plans` waar `status='active'`), bij elke Today
+Engine-aanroep — dus ook simpelweg bij het openen van Home. Geen
+specifieke pagina-bezoeken meer nodig. Per sport in een eigen
+try/catch. De losse aanroepen in de sport-specifieke routes (v2.4.248)
+blijven staan — idempotent, dubbel aanroepen is onschadelijk.
+
+### Bonus: tiebreak-vraag beantwoord
+Gebruiker vroeg: hoe zit het als Rowing én Cycling dezelfde dag een
+sessie hebben? Antwoord, bevestigd in de code: de al-bestaande
+Decision Engine kiest op basis van doel-importance → urgentie →
+naaste deadline. Zonder doeldata: vaste volgorde (cycling → running →
+rowing), nooit willekeurig.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open gewoon Home (geen specifieke trainingsplan-
+pagina nodig) — Smart Actions zou nu voor alle sporten met een
+geldige trainingsdag vandaag moeten kunnen tonen, ook zonder eerst
+die specifieke pagina bezocht te hebben.
+
 ## v2.4.248 — KRITIEKE FIX: rolling horizon-verlenging bestond helemaal niet
 **Gemeld: "training schema" ontbrak weer bij Smart Actions/Home.**
 

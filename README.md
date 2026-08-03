@@ -17,7 +17,7 @@ alleen in een losse commentaarregel bij de code zelf.**
 | **Alternative Engine** (`bepaalAlternatieven()`) | Volledig gebouwd + getest (v2.4.228), **wordt door niets aangeroepen** | `core/workout-builder/alternative.ts` | Toont nooit een alternatief bij slecht weer/ontbrekend materiaal, ook al is de logica klaar |
 | **Rowing coach-conversatieroute** (automatische inzicht-generatie) | Coach Memory zelf werkt (v2.4.232), maar niets vult 'm automatisch — alleen handmatig testbaar via POST | `api/specialists/rowing/memory` | Rowing's Coach Memory blijft voor altijd leeg tenzij iemand handmatig POST't |
 | **Universal Athlete Platform — Omgeving-categorie** (hitte/koude/hoogte-adaptatie, hydratatie, energie) | Datamodel bestaat, **geen enkele adapter vult het** | `core/athlete-platform/types.ts` | Blijft voor altijd "Nog geen data" — bevestigd, geen bug, maar wel nog steeds leeg |
-| **Rolling horizon-verlenging** | ✅ **Gefixt (v2.4.248)** — was het voorbeeld dat tot deze lijst leidde | `training-plan-engine/core.ts` | — |
+| **Rolling horizon-verlenging** | ✅ **Gefixt (v2.4.248), automatisch gemaakt (v2.4.249)** — was het voorbeeld dat tot deze lijst leidde. Eerste versie was per-sport handmatig (moest de juiste pagina bezoeken); nu automatisch voor alle actieve sporten bij elke Today Engine-aanroep | `today-engine.ts` + `training-plan-engine/core.ts` | — |
 
 **Waarom dit soort dingen gebeuren, eerlijk benoemd:** bij het bouwen
 van een nieuwe engine (Learning Rules/Alternative/etc.) ligt de focus
@@ -1193,6 +1193,38 @@ ophalen van het plan zelf nooit laten falen).
 correct gereconstrueerd (12 weken), week-offset van de laatste sessie
 correct bepaald (week 1), en de eerste nieuw te genereren maandag valt
 **exact op vandaag (3 augustus)** — precies de ontbrekende dag.
+
+**FIX — v2.4.249: verlenging was per-sport handmatig, nu automatisch
+voor alle drie tegelijk.** Na v2.4.248 bleek de fix in de praktijk
+onvolledig: `verlengRollingHorizonIndienNodigCore()` werd alleen
+aangeroepen vanuit elke sport se EIGEN trainingsplan-GET-route — je
+moest dus letterlijk de Running-pagina bezoeken om Running's venster
+te verlengen, de Cycling-pagina voor Cycling, etc. Bevestigd met een
+echt scenario: gebruiker bezocht alleen Rowing's pagina, waardoor
+Running leeg bleef ondanks dat maandag een geldige Running-
+trainingsdag is — pas na het expliciet openen van Running's pagina
+verscheen de sessie.
+
+**Fix:** de verlengingsaanroep is verplaatst naar `today-engine.ts`'s
+`bepaalTodayPlan()` zelf — draait nu automatisch voor **alle actieve
+plannen tegelijk** (query op `training_plans` waar `status='active'`),
+bij elke Today Engine-aanroep, dus ook simpelweg bij het openen van
+Home. Geen specifieke pagina-bezoeken meer nodig. Per sport in een
+eigen try/catch — één mislukte verlenging blokkeert nooit de andere
+twee, en nooit de rest van Today Engine. De losse aanroepen in de
+sport-specifieke routes (v2.4.248) blijven ook staan — de functie is
+idempotent (doet niets als er al genoeg sessies zijn), dus dubbel
+aanroepen is onschadelijk, eerder extra robuust.
+
+**Tiebreak bij meerdere sporten dezelfde dag** (bijv. Rowing én
+Cycling beide een sessie voor vandaag): de al-bestaande Decision
+Engine kiest op basis van doel-importance → urgentie → naaste
+deadline. Zonder doeldata: de eerste in een vaste volgorde (cycling →
+running → rowing), nooit willekeurig.
+
+`npx next build` — compileert zonder fouten.
+
+
 
 
 **Fase 1, stap 1 (fundamentele typedefinities) afgerond — v2.4.224.**
