@@ -58,7 +58,7 @@ const NIVEAU_GRENZEN: { grens: number; niveau: KwalitatiefNiveau }[] = [
   { grens: 101, niveau: 'zeer_hoog' },
 ]
 
-function waardeNaarNiveau(waarde: number): KwalitatiefNiveau {
+export function waardeNaarNiveau(waarde: number): KwalitatiefNiveau {
   const gevonden = NIVEAU_GRENZEN.find(g => waarde < g.grens)
   return gevonden ? gevonden.niveau : 'zeer_hoog'
 }

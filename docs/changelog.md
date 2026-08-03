@@ -1,5 +1,49 @@
 # CoachOS — Changelog
 
+## v2.4.256 — Geleerde patronen daadwerkelijk toegepast
+**Vervolg op v2.4.253 (evalueren + tonen). De bewust opengelaten stap
+nu afgemaakt: een geleerd patroon past ook echt de opgeslagen state
+aan, niet alleen zichtbaar op een kaartje.**
+
+### Nieuw
+**`src/core/athlete-platform/learned-adjustments.ts`** —
+`pasGeleerdeAanpassingenToe()`: past de ruwe waarde aan met het
+geleerde percentage (bijv. exact het visie-effect: +4% op
+`herstel_capaciteit`), herberekent het bijbehorende kwalitatieve
+niveau, geklemd tussen 0-100.
+
+### Bewuste ontwerpkeuze
+**Confidence blijft ongewijzigd door een geleerde aanpassing** — een
+geleerde correctie zegt iets over de VERWACHTE waarde, niet over
+hoeveel data er is. Die twee blijven losse berekeningen
+(`aantal_observaties` regelt confidence, zoals al in v2.4.245
+vastgelegd).
+
+### Koppeling
+Aangeroepen ná `pasImpactToe()`, vóór het opslaan — in beide
+sync-routes:
+- `api/specialists/rowing/concept2/sync/route.ts` — geleerde patronen
+  één keer per sync-batch opgehaald (niet per sessie — zou bij 56
+  sessies 56 onnodige identieke queries geven)
+- `src/lib/strava-activity-processor.ts` (Running/Cycling)
+
+`waardeNaarNiveau()` geëxporteerd uit `impact-engine.ts` voor
+hergebruik, geen dubbele niveau-berekeningslogica.
+
+**Gevalideerd — 5 scenario's:**
+- Exact het visie-effect (+4%) op een echte, door de Impact Engine
+  berekende waarde — komt precies uit
+- Confidence blijft aantoonbaar ongewijzigd
+- Immutability bevestigd (origineel blijft ongewijzigd)
+- Plafond-check: 98 + 20% zou 117,6 zijn, correct geklemd op 100
+- Onbekend pad: netjes overgeslagen, geen crash
+
+`npx next build` — compileert zonder fouten.
+
+**Daarmee is de Learning Rules Engine nu volledig end-to-end
+functioneel:** evalueren → opslaan → tonen → daadwerkelijk toepassen
+op toekomstige berekeningen.
+
 ## v2.4.255 — Rowing Coach Layer (laatste openstaande sweep-punt)
 **Laatste van de 6 punten uit het "Openstaande Punten"-overzicht.
 Coach Memory zelf werkte al (v2.4.232), maar niets vulde 'm

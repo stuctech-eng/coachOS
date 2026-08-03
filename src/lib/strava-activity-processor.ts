@@ -7,6 +7,7 @@ import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/sto
 import { pasImpactToe, type ImpactBijdrage, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platform/impact-engine'
 import { vertaalRunningSessieNaarImpact } from './specialists/running-impact-adapter'
 import { evalueerEnBewaarLeerpatronenIndienNodig } from './specialists/learning-rules-koppeling'
+import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
 
 // v2.4.253: Nederlandse activiteitnaam -> Engelse sport-sleutel, voor de
 // Learning Rules-koppeling (die dezelfde sleutels gebruikt als de
@@ -179,13 +180,22 @@ export async function processStravaActivity(
   // gemiddelde niet onterecht naar beneden trekken
   if (impactAdapter && duurMinuten >= MINIMUM_SESSIE_DUUR_MINUTEN) {
     try {
+      const sportSleutel = ACTIVITEIT_NAAR_SPORT_SLEUTEL[activityName]
       const huidigeState = await haalAthleteState(supabase, userId)
       const bijdragen = impactAdapter(duurMinuten)
       const nieuweState = pasImpactToe(huidigeState, bijdragen)
-      await slaAthleteStateOp(supabase, userId, nieuweState)
+
+      // v2.4.256 (Learning Rules Engine — daadwerkelijk toegepast)
+      let stateOmOpTeSlaan = nieuweState
+      if (sportSleutel) {
+        const { data: geleerdePatronenData } = await supabase
+          .from('learned_patterns').select('effect_pad, aanpassing_percentage').eq('user_id', userId).eq('sport', sportSleutel)
+        const geleerdePatronen: GeleerdPatroon[] = geleerdePatronenData || []
+        stateOmOpTeSlaan = pasGeleerdeAanpassingenToe(nieuweState, geleerdePatronen)
+      }
+      await slaAthleteStateOp(supabase, userId, stateOmOpTeSlaan)
 
       // v2.4.253 (Learning Rules Engine — daadwerkelijke koppeling)
-      const sportSleutel = ACTIVITEIT_NAAR_SPORT_SLEUTEL[activityName]
       if (sportSleutel) await evalueerEnBewaarLeerpatronenIndienNodig(userId, sportSleutel)
     } catch (athleteStateErr) {
       console.error('[strava-activity-processor] Universal Athlete State bijwerken mislukt (import zelf blijft werken):', athleteStateErr)

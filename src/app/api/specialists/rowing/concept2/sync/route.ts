@@ -8,6 +8,7 @@ import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/sto
 import { pasImpactToe, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platform/impact-engine'
 import { vertaalRowingSessieNaarImpact } from '@/lib/specialists/rowing-impact-adapter'
 import { evalueerEnBewaarLeerpatronenIndienNodig } from '@/lib/specialists/learning-rules-koppeling'
+import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -161,6 +162,13 @@ export async function POST() {
     let overgeslagen = 0
     let eersteInsertFout: string | null = null
 
+    // v2.4.256 (Learning Rules Engine — daadwerkelijk toegepast): één
+    // keer ophalen vóór de lus, niet per sessie opnieuw (56 sessies zou
+    // anders 56 onnodige queries geven voor exact dezelfde data).
+    const { data: geleerdePatronenData } = await supabase
+      .from('learned_patterns').select('effect_pad, aanpassing_percentage').eq('user_id', user.id).eq('sport', 'rowing')
+    const geleerdePatronen: GeleerdPatroon[] = geleerdePatronenData || []
+
     for (const resultaat of alleResultaten) {
       // Idempotency-check — zelfde patroon als Strava
       const { data: bestaat } = await supabase
@@ -216,7 +224,8 @@ export async function POST() {
           const huidigeState = await haalAthleteState(supabase, user.id)
           const bijdragen = vertaalRowingSessieNaarImpact(duurMinuten)
           const nieuweState = pasImpactToe(huidigeState, bijdragen)
-          await slaAthleteStateOp(supabase, user.id, nieuweState)
+          const stateNaGeleerdeAanpassingen = pasGeleerdeAanpassingenToe(nieuweState, geleerdePatronen)
+          await slaAthleteStateOp(supabase, user.id, stateNaGeleerdeAanpassingen)
         } catch (athleteStateErr) {
           console.error('[concept2/sync] Universal Athlete State bijwerken mislukt (sync zelf blijft werken):', athleteStateErr)
         }

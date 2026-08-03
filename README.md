@@ -19,7 +19,7 @@ bestaat).
 
 | Wat | Status | Waar | Risico als het blijft liggen |
 |---|---|---|---|
-| **Learning Rules Engine** (`evalueerRegels()`) | ✅ **Aangesloten (v2.4.253)** — context-verzameling gebouwd (`learning-context.ts`, echte data uit `daily_status`/`training_results`), aangeroepen ná elke Concept2/Strava-sync, gevuurde regels opgeslagen + zichtbaar op `/athlete-platform`. **Bewust NOG NIET**: automatisch laten meewegen in toekomstige Impact Engine-berekeningen — apart, later stapje | `learning-context.ts` + `learning-rules-koppeling.ts` | — |
+| **Learning Rules Engine** (`evalueerRegels()`) | ✅ **Volledig aangesloten (v2.4.253 + v2.4.256)** — context-verzameling, evalueren, zichtbaar maken (v2.4.253), én nu ook daadwerkelijk toegepast op toekomstige Impact Engine-berekeningen (v2.4.256, `learned-adjustments.ts`) | `learning-context.ts` + `learning-rules-koppeling.ts` + `learned-adjustments.ts` | — |
 | **Alternative Engine** (`bepaalAlternatieven()`) | ✅ **Aangesloten (v2.4.254)** — trigger: ontbrekend materiaal (geen Concept2 gekoppeld), alternatieven zijn ANDERE sporten waar de gebruiker al een actief plan voor heeft (geen niet-bestaande workout-catalogus), zichtbaar op Rowing's Trainingsplan-pagina met een link. Slecht-weer/blessure-triggers nog niet gebouwd (geen weer-/blessuredata gekoppeld) | `api/specialists/rowing/training-plan/workout/route.ts` | — |
 | **Rowing coach-conversatieroute** (automatische inzicht-generatie) | ✅ **Gebouwd (v2.4.255)** — `rowing-analysis.ts` (bestond nog niet, eerst gebouwd) + `api/specialists/rowing/coach` (mirror van Running's route), inclusief automatische Coach Memory-vulling via dezelfde Learning Engine als Cycling/Running | `rowing-analysis.ts` + `api/specialists/rowing/coach/route.ts` | — |
 | **Universal Athlete Platform — Omgeving-categorie** (hitte/koude/hoogte-adaptatie, hydratatie, energie) | Datamodel bestaat, **geen enkele adapter vult het** | `core/athlete-platform/types.ts` | Blijft voor altijd "Nog geen data" — bevestigd, geen bug, maar wel nog steeds leeg |
@@ -933,6 +933,33 @@ effect; onder de drempel (10 sessies) → terecht `population_model`,
 geen enkele regel geëvalueerd. `npx next build` — compileert zonder
 fouten (na het fixen van een verkeerd importpad, gevonden tijdens
 deze validatie).
+
+**Daadwerkelijk toegepast — v2.4.256.** De bewust opengelaten stap uit
+v2.4.253 nu afgemaakt: een geleerd patroon wordt niet meer alleen
+getoond, maar past ook echt de opgeslagen state aan.
+
+**`src/core/athlete-platform/learned-adjustments.ts`** —
+`pasGeleerdeAanpassingenToe()`: past de ruwe waarde aan met het
+geleerde percentage (bijv. het visie-effect zelf: +4% op
+`herstel_capaciteit`), herberekent het bijbehorende kwalitatieve
+niveau, geklemd tussen 0-100. **Confidence blijft bewust ongewijzigd**
+— een geleerde correctie zegt iets over de verwachte waarde, niet over
+hoeveel data er is; dat blijft een eigen, aparte berekening
+(`aantal_observaties`). Aangeroepen ná `pasImpactToe()`, vóór het
+opslaan — in beide sync-routes (Concept2 voor Rowing, Strava-processor
+voor Running/Cycling), met een prestatie-bewuste optimalisatie
+(geleerde patronen één keer per sync-batch opgehaald, niet per
+sessie).
+
+**Gevalideerd — 5 scenario's:**
+- Exact het visie-effect (+4%) op een echte, door de Impact Engine
+  berekende waarde — komt precies uit
+- Confidence blijft aantoonbaar ongewijzigd door de aanpassing
+- Immutability bevestigd (origineel blijft ongewijzigd)
+- Plafond-check: 98 + 20% zou 117,6 zijn, wordt correct geklemd op 100
+- Onbekend pad: netjes overgeslagen met een foutmelding, geen crash
+
+`npx next build` — compileert zonder fouten.
 
 **Knowledge Platform, eerste onderdeel — v2.4.237: Trainingszones.**
 `src/core/knowledge-platform/trainingszones.ts` — het standaard
