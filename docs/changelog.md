@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.266 — UI-gat gedicht: Cycling/Running kunnen nu ook geopend worden
+**Gemeld direct na het testen van ADR-007: "kan de trainingen zien.
+Alleen bij Rowing kan ik ze openen."**
+
+### Root cause
+De backend-koppeling voor Cycling/Running (`/training-plan/workout`-
+route, `bouwWorkout()`) werkte al — bevestigd via de ADR-007-test.
+Maar er was geen UI om een sessie open te tikken en de concrete
+workout te zien. Dat bestond alleen bij Rowing. Geen nieuwe bug — het
+eerder al gevonden, nog niet opgeloste gat.
+
+### Fix
+`WorkoutDetail`-component toegevoegd aan zowel `coach/cycling/
+trainingsplan/page.tsx` als `coach/running/trainingsplan/page.tsx` —
+mirror van Rowing's versie, aangepast per sport:
+- Cycling: `vermogen_watt` i.p.v. SPM
+- Running: `pace` i.p.v. SPM
+
+Zowel de "Vandaag"-kaart als elke "Komende trainingen"-kaart is nu
+klikbaar/uitklapbaar, exact zoals Rowing al werkte.
+
+### Kleine extra
+Als er nog geen FTP (Cycling) of recente wedstrijdprestatie (Running)
+is ingevuld, toont het scherm nu een duidelijke hint i.p.v.
+stilzwijgend geen pace/vermogen te tonen.
+
+`npx next build` — compileert zonder fouten, beide pagina's.
+
+**Daarmee gebruiken Rowing, Running en Cycling nu écht dezelfde weg —
+niet alleen op API-niveau (al sinds vandaag eerder bevestigd), maar
+ook zichtbaar en bruikbaar in de app zelf.**
+
+**Test-instructie:** open Cycling of Running → Trainingsplan → tik op
+"Vandaag" of een komende sessie — zou nu moeten uitklappen met
+concrete blokken en pace/vermogen-waarden, net als Rowing.
+
 ## v2.4.265 — ADR-007: Single Workout Mutation Principle
 **Gevraagd tijdens een architectuur-review: "Gebruikt elke specialist
 dezelfde weg?" Bij het uitzoeken kwam een reëel, ernstig risico naar

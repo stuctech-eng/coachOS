@@ -58,6 +58,104 @@ function StatusIcoon({ status }: { status: Sessie['status'] }) {
   return null
 }
 
+// v2.4.266 (Workout Platform-UI gelijkgetrokken met Rowing): toont de
+// concrete workout van de Workout Platform-koppeling (bestond al sinds
+// v2.4.242, maar had nooit een UI om 'm te bereiken — gemeld: "kan de
+// trainingen zien, alleen bij rowing kan ik ze openen"). Mirror van
+// rowing/trainingsplan/page.tsx's WorkoutDetail, aangepast voor
+// vermogen_watt i.p.v. SPM.
+const SPORT_ICOON: Record<string, string> = { rowing: '🚣', running: '🏃', cycling: '🚴' }
+const SPORT_NAAM: Record<string, string> = { rowing: 'roeien', running: 'hardlopen', cycling: 'fietsen' }
+const BLOK_TYPE_LABEL: Record<string, string> = {
+  warmup: 'Warming-up', hoofdblok: 'Hoofdblok', interval: 'Intervallen',
+  herstel: 'Herstel', techniek: 'Techniek', cadans: 'Cadans',
+  mobiliteit: 'Mobiliteit', cooldown: 'Cooling-down',
+}
+
+interface VertaaldBlok {
+  id: string; type: string; duration_sec: number
+  repeat?: number; rust_na_repeat_sec?: number
+  instruction: string
+  fietsVertaling: { vermogen_watt?: string }[]
+}
+
+function WorkoutDetail({ sessieId }: { sessieId: string }) {
+  const [laden, setLaden] = useState(true)
+  const [data, setData] = useState<{ workout: { adaptations: string[]; kruisSportBron?: string }; vertaaldeBlokken: VertaaldBlok[]; uitvoeringsHints: string[]; materiaal: { benodigd: string[]; ontbreekt: string[] }; alternatieven?: { reden: string; workout_id: string }[]; heeftFtp: boolean } | null>(null)
+  const [fout, setFout] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/specialists/cycling/training-plan/workout?sessieId=${sessieId}`)
+      .then(r => r.json())
+      .then(d => { if (d.error) setFout(d.error); else setData(d) })
+      .catch(() => setFout('Kon workout niet laden'))
+      .finally(() => setLaden(false))
+  }, [sessieId])
+
+  if (laden) return <div className="h-24 bg-slate-800/30 rounded-xl animate-pulse mt-1" />
+  if (fout) return <Card className="p-3 mt-1 bg-red-500/10 text-red-400 border-red-500/20 text-xs">{fout}</Card>
+  if (!data) return null
+
+  return (
+    <Card className="p-4 mt-1 flex flex-col gap-3">
+      {data.workout.adaptations.length > 0 && (
+        <Card className="p-3 bg-amber-500/10 border-amber-500/20">
+          <p className="text-sm font-semibold text-amber-400">
+            {SPORT_ICOON[data.workout.kruisSportBron || ''] || '⚡'} Workout aangepast
+            {data.workout.kruisSportBron && <span className="font-normal text-amber-400/80"> — beïnvloed door {SPORT_NAAM[data.workout.kruisSportBron] || data.workout.kruisSportBron}</span>}
+          </p>
+          <div className="mt-2 flex flex-col gap-1">
+            {data.workout.adaptations.map((a, i) => <p key={i} className="text-xs text-amber-200/80">• {a}</p>)}
+          </div>
+        </Card>
+      )}
+
+      {!data.heeftFtp && (
+        <p className="text-xs text-slate-500">💡 Vul je FTP in bij je profiel voor concrete vermogenswaarden per blok.</p>
+      )}
+
+      {data.materiaal.ontbreekt.length > 0 && (
+        <div>
+          <p className="text-xs text-amber-400">⚠️ Ontbrekend materiaal: {data.materiaal.ontbreekt.join(', ')}</p>
+          {data.alternatieven && data.alternatieven.length > 0 && (
+            <div className="mt-2 flex flex-col gap-1.5">
+              {data.alternatieven.map((alt, i) => (
+                <Link key={i} href={`/coach/${alt.workout_id}/trainingsplan`}
+                  className="text-xs bg-slate-800 rounded-lg px-3 py-2 text-primary-400 flex items-center justify-between">
+                  <span>{SPORT_ICOON[alt.workout_id] || '💪'} {alt.reden}</span>
+                  <span>→</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="flex flex-col gap-2">
+        {data.vertaaldeBlokken.map(blok => {
+          const vermogen = blok.fietsVertaling.find(v => v.vermogen_watt)?.vermogen_watt
+          return (
+            <div key={blok.id} className="border-l-2 border-primary-500/50 pl-3">
+              <p className="text-sm text-white font-medium">
+                {BLOK_TYPE_LABEL[blok.type] || blok.type}
+                {blok.repeat && blok.repeat > 1 ? ` · ${blok.repeat}× ${Math.round(blok.duration_sec / 60)} min` : ` · ${Math.round(blok.duration_sec / 60)} min`}
+                {blok.rust_na_repeat_sec ? ` (${Math.round(blok.rust_na_repeat_sec / 60)} min rust ertussen)` : ''}
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">{blok.instruction}</p>
+              {vermogen && <p className="text-xs text-primary-400 mt-0.5">{vermogen}</p>}
+            </div>
+          )
+        })}
+      </div>
+      {data.uitvoeringsHints.length > 0 && (
+        <div className="pt-2 border-t border-coach-border">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Uitvoering</p>
+          {data.uitvoeringsHints.map((hint, i) => <p key={i} className="text-xs text-slate-500">• {hint}</p>)}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function TrainingsplanPage() {
   const [laden, setLaden] = useState(true)
   const [genereren, setGenereren] = useState(false)
@@ -67,6 +165,8 @@ export default function TrainingsplanPage() {
   const [uitlegLaden, setUitlegLaden] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
   const [heeftGepauzeerdPlan, setHeeftGepauzeerdPlan] = useState(false)
+  // v2.4.266: welke sessie toont de concrete workout
+  const [uitgeklapteSessieId, setUitgeklapteSessieId] = useState<string | null>(null)
 
   useEffect(() => { laadPlan() }, [])
 
@@ -199,20 +299,24 @@ export default function TrainingsplanPage() {
           <>
             {/* Vandaag — prominent, met AI-uitleg */}
             {vandaagSessie ? (
-              <Card className="p-5 bg-primary-500/10 border-primary-500/20">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-primary-400 uppercase tracking-wider font-semibold">Vandaag</p>
-                  {vandaagSessie.adjustment_reason && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
-                      {REASON_LABEL[vandaagSessie.adjustment_reason] || 'Aangepast'}
-                    </span>
-                  )}
-                </div>
-                <p className="text-lg font-bold text-white mb-1">{TYPE_LABEL[vandaagSessie.type] || vandaagSessie.type}</p>
-                <p className="text-sm text-slate-400 mb-3">{vandaagSessie.duration} minuten</p>
-                {uitlegLaden && <p className="text-xs text-slate-500 italic">Coach schrijft uitleg...</p>}
-                {vandaagUitleg && <p className="text-sm text-slate-200 leading-relaxed">{vandaagUitleg}</p>}
-              </Card>
+              <div>
+                <Card className="p-5 bg-primary-500/10 border-primary-500/20 cursor-pointer"
+                  onClick={() => setUitgeklapteSessieId(uitgeklapteSessieId === vandaagSessie.id ? null : vandaagSessie.id)}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-primary-400 uppercase tracking-wider font-semibold">Vandaag</p>
+                    {vandaagSessie.adjustment_reason && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
+                        {REASON_LABEL[vandaagSessie.adjustment_reason] || 'Aangepast'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-lg font-bold text-white mb-1">{TYPE_LABEL[vandaagSessie.type] || vandaagSessie.type}</p>
+                  <p className="text-sm text-slate-400 mb-3">{vandaagSessie.duration} minuten · tik voor details</p>
+                  {uitlegLaden && <p className="text-xs text-slate-500 italic">Coach schrijft uitleg...</p>}
+                  {vandaagUitleg && <p className="text-sm text-slate-200 leading-relaxed">{vandaagUitleg}</p>}
+                </Card>
+                {uitgeklapteSessieId === vandaagSessie.id && <WorkoutDetail sessieId={vandaagSessie.id} />}
+              </div>
             ) : (
               <Card className="p-5">
                 <p className="text-sm text-slate-400">Geen training gepland voor vandaag — geniet van je rust.</p>
@@ -225,20 +329,24 @@ export default function TrainingsplanPage() {
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Komende trainingen</p>
                 <div className="flex flex-col gap-2">
                   {komendeSessies.map(s => (
-                    <Card key={s.id} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-white font-medium">{formatDatum(s.date)}</p>
-                          <p className="text-xs text-slate-400">{TYPE_LABEL[s.type] || s.type} · {s.duration} min</p>
+                    <div key={s.id}>
+                      <Card className="p-4 cursor-pointer" onClick={() => setUitgeklapteSessieId(uitgeklapteSessieId === s.id ? null : s.id)}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-white font-medium">{formatDatum(s.date)}</p>
+                            <p className="text-xs text-slate-400">{TYPE_LABEL[s.type] || s.type} · {s.duration} min</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {s.adjustment_reason && (
+                              <span className="text-[10px] text-amber-400">{REASON_LABEL[s.adjustment_reason]}</span>
+                            )}
+                            <StatusIcoon status={s.status} />
+                            <span className="text-slate-500 text-xs">{uitgeklapteSessieId === s.id ? '▲' : '▼'}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {s.adjustment_reason && (
-                            <span className="text-[10px] text-amber-400">{REASON_LABEL[s.adjustment_reason]}</span>
-                          )}
-                          <StatusIcoon status={s.status} />
-                        </div>
-                      </div>
-                    </Card>
+                      </Card>
+                      {uitgeklapteSessieId === s.id && <WorkoutDetail sessieId={s.id} />}
+                    </div>
                   ))}
                 </div>
               </div>

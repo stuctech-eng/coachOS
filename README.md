@@ -875,6 +875,31 @@ hun bestaande kennis, analyses en policies. De downscale-magnitude
 zelf is ongewijzigd — alleen de garantie dat 'ie hooguit één keer
 afgaat, is nieuw.
 
+### v2.4.266 — UI-gat gedicht: "kan de trainingen zien, alleen bij Rowing kan ik ze openen"
+Gemeld direct na het testen van ADR-007: de backend-koppeling voor
+Cycling/Running werkte al (bevestigd via de ADR-007-test), maar er
+was **geen UI** om een sessie open te tikken en de concrete workout te
+zien — dat bestond alleen bij Rowing. Geen nieuwe bug, het eerder al
+gevonden, nog niet opgeloste gat ("gebruikt Cycling/Running de
+`/workout`-route? Technisch ja, in de praktijk nooit aangeroepen").
+
+**Fix:** `WorkoutDetail`-component toegevoegd aan zowel
+`coach/cycling/trainingsplan/page.tsx` als `coach/running/
+trainingsplan/page.tsx` — mirror van Rowing's versie, aangepast per
+sport (vermogen_watt voor Cycling, pace voor Running i.p.v. SPM).
+Zowel de "Vandaag"-kaart als elke "Komende trainingen"-kaart is nu
+klikbaar/uitklapbaar, exact zoals Rowing al werkte.
+
+**Kleine extra, sport-specifiek:** als er nog geen FTP (Cycling) of
+recente wedstrijdprestatie (Running) is ingevuld, toont het scherm nu
+een duidelijke hint ("vul je FTP in voor concrete vermogenswaarden")
+in plaats van stilzwijgend geen pace/vermogen te tonen.
+
+`npx next build` — compileert zonder fouten, beide pagina's.
+
+**Daarmee gebruiken Rowing, Running en Cycling nu écht dezelfde weg —
+niet alleen op API-niveau, ook zichtbaar in de app.**
+
 | Systeem | Status |
 |---------|--------|
 | Optie C Filter Layer | ✅ |
