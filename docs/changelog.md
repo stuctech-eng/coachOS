@@ -1,5 +1,48 @@
 # CoachOS — Changelog
 
+## v2.4.268 — Workout Matching Debug: venster-fix + handmatige testtools
+**Twee losse meldingen tijdens het testen van de Fase 1-debugpagina
+(`/debug/workout-matching`, v2.4.267), in één keer gedocumenteerd.**
+
+### Fix 1 — activiteiten-blok bleef leeg
+Gemeld: 56 gesyncte Concept2-sessies aanwezig, maar het activiteiten-
+blok toonde niets. Root cause: het 21-dagen-venster (bedoeld voor
+PLAN-sessies, die altijd recent/toekomstig zijn) werd ook op de
+ACTIVITEITEN toegepast — de meest recente sessie van de gebruiker
+(30 juni) viel daarmee al buiten beeld vanaf 4 augustus. Losgekoppeld:
+activiteiten tonen nu de laatste 30, ongeacht datum.
+
+### Fix 2 — geen enkele match te produceren om te testen
+Na fix 1 bleek: alle historische activiteiten (2025) en alle
+koppelbare geplande sessies (`scheduled`/`planned`, nog in de
+toekomst) hadden nergens een overlappende datum — dus geen enkele
+automatische match mogelijk zonder te wachten tot begin augustus.
+
+Toegevoegd aan `/api/debug/workout-matching` (POST, nieuw `actie`-veld,
+`automatisch` blijft de originele echte flow):
+- **`handmatig-test`** — dry-run: kies zelf een activiteit + een sessie
+  (ongeacht datum), zie de confidence-berekening (`rowingMatcher.
+  berekenConfidence()` rechtstreeks aangeroepen) zonder database-
+  schrijving
+- **`handmatig-forceer`** — schrijft wél weg (`status: completed`,
+  `completed_activity_id`, confidence, reden), ongeacht drempel —
+  `match_reden` krijgt altijd een `[TEST]`-prefix, zodat dit nooit met
+  een echte automatische match te verwarren is
+- **`reset`** — zet een sessie terug naar `scheduled`. Weigert
+  expliciet (server-side, niet alleen in de UI) als `match_reden` niet
+  met `[TEST]` begint — een echte, automatisch tot stand gekomen
+  koppeling kan via dit scherm dus nooit per ongeluk ongedaan gemaakt
+  worden.
+
+UI: per activiteit een dropdown om een sessie te kiezen (los van de
+datum-gebaseerde knop die er al was), plus dry-run/forceer-knoppen.
+Sessies die via een test gekoppeld zijn krijgen een zichtbare
+"🔄 Ontkoppelen"-knop.
+
+**Nog steeds ongewijzigd:** de productieflow zelf (`concept2/sync` →
+`matchActiviteitAanPlan` → `rowingMatcher`) — deze levering raakt
+uitsluitend het debug-scherm.
+
 ## v2.4.267 — Workout Matching Service, Fase 1 (Rowing referentie-implementatie)
 **Platformontwerp, geen losse Rowing-fix. Bron: architectuurgesprek 4
 augustus 2026, vastgelegd in `docs/workout-completion-platform-adr-

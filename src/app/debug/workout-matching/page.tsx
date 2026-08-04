@@ -6,12 +6,17 @@ import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 
 // ── Workout Matching Debug Dashboard ─────────────────────────────────────
-// Bron: docs/workout-completion-platform-adr-v1.md, Fase 1. Toont
-// geplande Rowing-sessies en al-geïmporteerde Rowing-activiteiten naast
-// elkaar, met per activiteit een knop om de matcher handmatig (opnieuw)
-// te laten draaien — zodat dit in-app getest kan worden zonder een
-// nieuwe ErgData-sessie nodig te hebben. Puur diagnose-scherm, geen
-// eindgebruikersfunctie.
+// Bron: docs/workout-completion-platform-adr-v1.md, Fase 1.
+//
+// v2.4.269: naast de originele, datum-gebaseerde "Test matching"-knop
+// (echte flow, matchActiviteitAanPlan) nu ook een handmatige route: kies
+// zelf een activiteit + een sessie (ongeacht datum), zie de confidence-
+// berekening (dry-run) of forceer een testkoppeling. Reden: met alleen
+// historische data en toekomstige geplande sessies was er geen enkele
+// datum-match te produceren om de matcher live te zien werken.
+// Geforceerde testkoppelingen zijn altijd herkenbaar aan een
+// "[TEST]"-label in de reden, en alleen zulke sessies zijn terug te
+// zetten via de reset-knop.
 
 interface PlanSessie {
   id: string; date: string; type: string; duration: number; status: string
@@ -20,7 +25,7 @@ interface PlanSessie {
 interface Activiteit {
   id: string; date: string; duration: number; source: string; notes: string | null
 }
-interface TestResultaat { gematcht: boolean; planSessieId: string | null; confidence: number | null; reden: string }
+interface TestResultaat { gematcht: boolean; planSessieId: string | null; confidence: number | null; reden: string; dryRun?: boolean }
 
 const STATUS_KLEUR: Record<string, string> = {
   completed: 'text-green-400 bg-green-500/10 border-green-500/20',
@@ -36,8 +41,9 @@ export default function WorkoutMatchingDebugPage() {
   const [heeftActiefPlan, setHeeftActiefPlan] = useState(false)
   const [sessies, setSessies] = useState<PlanSessie[]>([])
   const [activiteiten, setActiviteiten] = useState<Activiteit[]>([])
-  const [testBezig, setTestBezig] = useState<string | null>(null)
+  const [bezig, setBezig] = useState<string | null>(null)
   const [testResultaten, setTestResultaten] = useState<Record<string, TestResultaat>>({})
+  const [gekozenSessie, setGekozenSessie] = useState<Record<string, string>>({})
 
   const laadData = useCallback(async () => {
     setLaden(true)
@@ -56,22 +62,23 @@ export default function WorkoutMatchingDebugPage() {
 
   useEffect(() => { laadData() }, [laadData])
 
-  async function testMatching(activiteitId: string) {
-    setTestBezig(activiteitId)
+  async function roepAan(actie: string, activiteitId: string | undefined, planSessieId: string | undefined, sleutel: string) {
+    setBezig(sleutel)
     try {
       const res = await fetch('/api/debug/workout-matching', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activiteitId }),
+        body: JSON.stringify({ actie, activiteitId, planSessieId }),
       })
       const data = await res.json()
-      if (data.resultaat) setTestResultaten(prev => ({ ...prev, [activiteitId]: data.resultaat }))
-      await laadData() // herlaadt zodat een geslaagde match direct zichtbaar wordt in de sessielijst hierboven
+      if (data.resultaat) setTestResultaten(prev => ({ ...prev, [sleutel]: data.resultaat }))
+      else if (data.error) setTestResultaten(prev => ({ ...prev, [sleutel]: { gematcht: false, planSessieId: null, confidence: null, reden: `Fout: ${data.error}` } }))
+      await laadData()
     } catch {
       // stil falen — dit is een debug-scherm
     } finally {
-      setTestBezig(null)
+      setBezig(null)
     }
   }
 
@@ -101,21 +108,33 @@ export default function WorkoutMatchingDebugPage() {
               <p className="text-sm text-slate-500">Geen sessies in dit venster.</p>
             ) : (
               <div className="flex flex-col gap-2">
-                {sessies.map(s => (
-                  <div key={s.id} className={`px-3 py-2.5 rounded-lg border text-sm ${STATUS_KLEUR[s.status] || 'text-slate-300 bg-white/5 border-coach-border'}`}>
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{s.date} · {s.type} · {s.duration} min</span>
-                      <span className="text-xs uppercase">{s.status}</span>
+                {sessies.map(s => {
+                  const isTestKoppeling = !!s.match_reden?.startsWith('[TEST]')
+                  return (
+                    <div key={s.id} className={`px-3 py-2.5 rounded-lg border text-sm ${STATUS_KLEUR[s.status] || 'text-slate-300 bg-white/5 border-coach-border'}`}>
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">{s.date} · {s.type} · {s.duration} min</span>
+                        <span className="text-xs uppercase">{s.status}</span>
+                      </div>
+                      {s.completed_activity_id && (
+                        <p className="text-[11px] opacity-80 mt-1">
+                          gekoppeld aan activiteit {s.completed_activity_id.slice(0, 8)}…
+                          {s.match_confidence != null && ` · confidence ${(s.match_confidence * 100).toFixed(0)}%`}
+                        </p>
+                      )}
+                      {s.match_reden && <p className="text-[11px] opacity-70 mt-0.5">{s.match_reden}</p>}
+                      {isTestKoppeling && (
+                        <button
+                          onClick={() => roepAan('reset', undefined, s.id, `reset-${s.id}`)}
+                          disabled={bezig === `reset-${s.id}`}
+                          className="mt-2 text-[11px] px-2.5 py-1 rounded-md bg-white/10 text-slate-300 active:bg-white/20 disabled:opacity-50"
+                        >
+                          {bezig === `reset-${s.id}` ? '⏳' : '🔄 Ontkoppelen (reset testkoppeling)'}
+                        </button>
+                      )}
                     </div>
-                    {s.completed_activity_id && (
-                      <p className="text-[11px] opacity-80 mt-1">
-                        gekoppeld aan activiteit {s.completed_activity_id.slice(0, 8)}…
-                        {s.match_confidence != null && ` · confidence ${(s.match_confidence * 100).toFixed(0)}%`}
-                      </p>
-                    )}
-                    {s.match_reden && <p className="text-[11px] opacity-70 mt-0.5">{s.match_reden}</p>}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </Card>
@@ -125,27 +144,71 @@ export default function WorkoutMatchingDebugPage() {
           <Card className="p-5">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Geïmporteerde activiteiten</p>
             {activiteiten.length === 0 ? (
-              <p className="text-sm text-slate-500">Geen Rowing-activiteiten in dit venster.</p>
+              <p className="text-sm text-slate-500">Geen Rowing-activiteiten gevonden.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {activiteiten.map(a => {
                   const testResultaat = testResultaten[a.id]
+                  const handmatigResultaat = testResultaten[`handmatig-${a.id}`]
                   return (
                     <div key={a.id} className="border-t border-coach-border pt-3 first:border-t-0 first:pt-0">
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-slate-200">{a.date} · {a.duration} min · {a.source}</span>
                         <button
-                          onClick={() => testMatching(a.id)}
-                          disabled={testBezig === a.id}
+                          onClick={() => roepAan('automatisch', a.id, undefined, a.id)}
+                          disabled={bezig === a.id}
                           className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white active:bg-primary-700 disabled:opacity-50"
                         >
-                          {testBezig === a.id ? '⏳' : '▶ Test matching'}
+                          {bezig === a.id ? '⏳' : '▶ Test matching (op datum)'}
                         </button>
                       </div>
                       {testResultaat && (
                         <div className={`mt-2 px-3 py-2 rounded-lg text-xs ${testResultaat.gematcht ? 'bg-green-500/10 text-green-400' : 'bg-amber-500/10 text-amber-400'}`}>
                           <p className="font-medium">{testResultaat.gematcht ? '✓ Gekoppeld' : '✗ Niet gekoppeld'}{testResultaat.confidence != null && ` — confidence ${(testResultaat.confidence * 100).toFixed(0)}%`}</p>
                           <p className="opacity-80 mt-0.5">{testResultaat.reden}</p>
+                        </div>
+                      )}
+
+                      {/* v2.4.269: handmatige test tegen een zelf-gekozen sessie, los van datum */}
+                      <div className="mt-2.5 flex flex-col gap-1.5">
+                        <select
+                          value={gekozenSessie[a.id] || ''}
+                          onChange={e => setGekozenSessie(prev => ({ ...prev, [a.id]: e.target.value }))}
+                          className="text-xs bg-slate-800 text-slate-300 rounded-md px-2 py-1.5 border border-coach-border"
+                        >
+                          <option value="">— kies een sessie om (ongeacht datum) tegen te testen —</option>
+                          {sessies.map(s => (
+                            <option key={s.id} value={s.id}>{s.date} · {s.type} · {s.duration} min · {s.status}</option>
+                          ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => roepAan('handmatig-test', a.id, gekozenSessie[a.id], `handmatig-${a.id}`)}
+                            disabled={!gekozenSessie[a.id] || bezig === `handmatig-${a.id}`}
+                            className="flex-1 text-[11px] px-2.5 py-1.5 rounded-md bg-white/10 text-slate-300 active:bg-white/20 disabled:opacity-40"
+                          >
+                            {bezig === `handmatig-${a.id}` ? '⏳' : '🔍 Dry-run (geen schrijving)'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Dit schrijft écht een testkoppeling weg in training_plan_sessions (duidelijk als [TEST] gelabeld, en terug te draaien via de reset-knop). Doorgaan?')) {
+                                roepAan('handmatig-forceer', a.id, gekozenSessie[a.id], `handmatig-${a.id}`)
+                              }
+                            }}
+                            disabled={!gekozenSessie[a.id] || bezig === `handmatig-${a.id}`}
+                            className="flex-1 text-[11px] px-2.5 py-1.5 rounded-md bg-amber-500/20 text-amber-400 active:bg-amber-500/30 disabled:opacity-40"
+                          >
+                            {bezig === `handmatig-${a.id}` ? '⏳' : '⚠ Forceer testkoppeling'}
+                          </button>
+                        </div>
+                      </div>
+                      {handmatigResultaat && (
+                        <div className={`mt-2 px-3 py-2 rounded-lg text-xs ${handmatigResultaat.dryRun ? 'bg-slate-700/50 text-slate-300' : handmatigResultaat.gematcht ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                          <p className="font-medium">
+                            {handmatigResultaat.dryRun ? '🔍 Dry-run resultaat' : handmatigResultaat.gematcht ? '✓ Testkoppeling weggeschreven' : '✗ Mislukt'}
+                            {handmatigResultaat.confidence != null && ` — confidence ${(handmatigResultaat.confidence * 100).toFixed(0)}%`}
+                          </p>
+                          <p className="opacity-80 mt-0.5">{handmatigResultaat.reden}</p>
                         </div>
                       )}
                     </div>
@@ -157,9 +220,11 @@ export default function WorkoutMatchingDebugPage() {
         )}
 
         <p className="text-[10px] text-slate-600">
-          &quot;Test matching&quot; roept exact dezelfde functie aan als de echte Concept2-sync
-          (matchActiviteitAanPlan) — geen aparte testlogica. Een geslaagde match hier is dus
-          gegarandeerd hetzelfde gedrag als in productie. Drempel: confidence ≥ 70%.
+          &quot;Test matching (op datum)&quot; roept exact dezelfde functie aan als de echte
+          Concept2-sync (matchActiviteitAanPlan) — geen aparte testlogica, drempel confidence ≥ 70%.
+          De handmatige sectie daaronder matcht bewust NIET op datum en is puur om de
+          confidence-berekening te kunnen zien zonder te wachten — geforceerde koppelingen
+          zijn altijd als [TEST] gelabeld en alleen zo weer terug te draaien.
         </p>
       </div>
     </AppShell>
