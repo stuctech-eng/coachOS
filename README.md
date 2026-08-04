@@ -27,7 +27,7 @@ energie) blijven terecht leeg — daar bestaat écht geen databron voor.
 | **Rolling horizon-verlenging** | ✅ **Gefixt (v2.4.248), automatisch gemaakt (v2.4.249)** — was het voorbeeld dat tot deze lijst leidde. Eerste versie was per-sport handmatig (moest de juiste pagina bezoeken); nu automatisch voor alle actieve sporten bij elke Today Engine-aanroep | `today-engine.ts` + `training-plan-engine/core.ts` | — |
 | **Performance Platform CTL/ATL/TSB sluit Rowing volledig uit** | ✅ **Gefixt (v2.4.252)** — 2k-testtijd-baseline toegevoegd aan Rowing Profiel (Fase 2 uit het overleg: Population Model → Personal Baseline), `rowing-grafieken.ts` gebouwd (spiegelbeeld van running-grafieken.ts), `load-engine.ts` neemt Rowing nu volledig mee | `rowing-grafieken.ts` + `core/performance/engines/load-engine.ts` | — |
 | **"Rowing vergeten"-patroon (systematisch gecheckt)** | ✅ **5 instanties gevonden en gefixt (v2.4.251)** — `api/action-plan/route.ts` (bronlabel-ternary), `api/specialists/[type]/data/route.ts` (generieke data-fetcher-tabel, laag risico want overruled door de specifieke Rowing-route), `app/goals/page.tsx` (Rowing stond nog op `beschikbaar:false`, stale sinds v2.4.216) | Meerdere bestanden | — |
-| **Workout Matching Service** (`completed_activity_id` werd sinds v2.4.96 nergens gevuld — elke sessie werd na de datum als `missed_session` behandeld, ook echt uitgevoerde trainingen) | 🟡 **Fase 1 afgerond (v2.4.267)** — generieke Core + Rowing Matcher (referentie-implementatie, alleen Concept2). Fase 2 (Running/Cycling/Strength Matchers), Fase 3 (Strava/Garmin/handmatig aansluiten), Fase 4 (confidence-UX) nog niet gebouwd — zie `docs/workout-completion-platform-adr-v1.md` | `training-plan-engine/workout-matcher.ts` + `training-plan-engine/matchers/rowing-matcher.ts` | Buiten Rowing/Concept2 blijft het oorspronkelijke gat bestaan tot Fase 2/3 |
+| **Workout Matching Service** (`completed_activity_id` werd sinds v2.4.96 nergens gevuld — elke sessie werd na de datum als `missed_session` behandeld, ook echt uitgevoerde trainingen) | 🟡 **Fase 1 afgerond (v2.4.267)** — generieke Core + Rowing Matcher (referentie-implementatie, alleen Concept2), in-app testbaar via `/debug/workout-matching`. Fase 2 (Running/Cycling/Strength Matchers), Fase 3 (Strava/Garmin/handmatig aansluiten), Fase 4 (confidence-UX) nog niet gebouwd — zie `docs/workout-completion-platform-adr-v1.md` | `training-plan-engine/workout-matcher.ts` + `training-plan-engine/matchers/rowing-matcher.ts` + `debug/workout-matching/` | Buiten Rowing/Concept2 blijft het oorspronkelijke gat bestaan tot Fase 2/3 |
 
 **Waarom dit soort dingen gebeuren, eerlijk benoemd:** bij het bouwen
 van een nieuwe engine (Learning Rules/Alternative/etc.) ligt de focus
@@ -2064,9 +2064,13 @@ aanroept — via een Rowing Matcher (`matchers/rowing-matcher.ts`,
 datum+duur, confidence-gebaseerd, drempel 0,7). Bij voldoende
 confidence: `training_plan_sessions.status → 'completed'`,
 `completed_activity_id` gevuld. Bewust in try/catch, zelfde discipline
-als de Universal Athlete State-koppeling. Running/Cycling/Strength-
-matchers en de overige ingest-routes (Strava/Garmin/handmatig) volgen
-in latere fases — zie Openstaande Punten bovenaan dit README.
+als de Universal Athlete State-koppeling. In-app testbaar zonder een
+nieuwe ErgData-sessie via `/debug/workout-matching` (gelinkt vanaf
+`/debug`) — draait dezelfde matchfunctie handmatig tegen een
+al-geïmporteerde activiteit, toont confidence/reden direct in de UI.
+Running/Cycling/Strength-matchers en de overige ingest-routes (Strava/
+Garmin/handmatig) volgen in latere fases — zie Openstaande Punten
+bovenaan dit README.
 
 **Bewust NOG NIET gebouwd** (volgende stappen): Training Plan Engine,
 Workout Builder, Analyse-engine, Coach Memory, Today Engine-integratie,

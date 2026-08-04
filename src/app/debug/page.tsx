@@ -625,6 +625,11 @@ export default function DebugPage() {
           🌍 Weer Debug (locatiebron)
         </a>
 
+        {/* v2.4.268: link naar Workout Matching Debug */}
+        <a href="/debug/workout-matching" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+          🔗 Workout Matching Debug (Rowing)
+        </a>
+
         <button
           onClick={runDiagnostiek}
           disabled={bezig}

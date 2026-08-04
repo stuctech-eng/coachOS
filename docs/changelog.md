@@ -64,6 +64,18 @@ exclusief bij de Adaptation Engine). Zelfde categorie als de
 al-bestaande, ongewijzigde `missed_session`/`injury_protection`/
 `goal_change`-triggers.
 
+### Test in-app — geen console/desktop nodig
+`/debug/workout-matching` (nieuw, gelinkt vanaf `/debug`) — zelfde
+opzet als `/debug/recovery`: puur uitlezen, plus een "Test matching"-
+knop per al-geïmporteerde Rowing-activiteit die **exact dezelfde**
+`matchActiviteitAanPlan()`-functie aanroept als de echte Concept2-sync.
+Toont confidence + reden direct in de UI. Hiermee is de service
+retroactief testbaar tegen al-bestaande activiteiten, zonder een
+nieuwe ErgData-sessie nodig te hebben. Volgt de iPhone-first
+debugstrategie (§15 MASTER SYSTEM): geen `console.log`-afhankelijkheid
+voor verificatie — de lage-confidence-log blijft als extra diagnose
+bestaan, maar is niet meer de enige manier om het resultaat te zien.
+
 ### Bewust nog niet gebouwd (zie README Openstaande Punten)
 - Fase 2: Running/Cycling/Strength Matchers
 - Fase 3: Strava/Garmin/handmatig aansluiten op de Matching Service
