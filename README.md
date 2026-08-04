@@ -693,6 +693,44 @@ screenshot heeft waarschijnlijk nog `recurrence_days: null` — open
 het, tik "Herhaling" opnieuw aan (of tik een dag aan in de selector),
 en sla op om het te repareren.
 
+### DERDE EN DEFINITIEVE FIX — v2.4.261: de échte, echte oorzaak
+Gemeld met TWEE screenshots (de Herhaling-selector zag er al goed uit
+— "Ma" stond al automatisch aangevinkt, dus v2.4.260 werkte) en het
+resultaat: "Slaat 1 week maandag op. Dan niets meer." Grondig
+uitgezocht met de tweede screenshot (het hoofdscherm van het event):
+**BEGINDATUM 17 aug 2026, EINDDATUM 21 aug 2026** — twee aparte
+datumvelden bovenaan het scherm, los van de Herhaling-instelling.
+
+**Root cause, eindelijk de juiste:** er bestaan TWEE aparte
+"einddatum"-concepten in het datamodel: het bovenste `end_date`-veld
+(bedoeld voor een eenmalig event van dag X t/m dag Y) en een tweede,
+eigen `recurrence_end_date`-veld ÍN het Herhaling-scherm (bedoeld om
+een herhalende reeks te laten stoppen). `isHerhalendActiefOpDag()`
+checkt BEIDE velden en stopt zodra ÉÉN van de twee overschreden wordt.
+Met Einddatum op 21 augustus (4 dagen na Begindatum) stopte de HELE
+"om de week"-reeks na de eerste maandag — ver vóór de volgende
+biweekly-maandag (31 augustus) ooit bereikt zou worden. Geen bug in de
+herhalingsberekening zelf, maar een verwarrend datamodel: twee
+overlappende velden die door elkaar liepen.
+
+**Fix, in beide schermen (aanmaken én bewerken):**
+- Het bovenste "Einddatum"-veld wordt nu verborgen/uitgeschakeld
+  zodra er een herhaling actief is, met een verwijzende tekst ("Zie
+  Herhaling →") en een toelichting eronder
+- Bij het opslaan wordt `end_date` altijd expliciet op `null` gezet
+  zodra er een herhaling actief is (`recurrence ? null : (endDate ||
+  null)`) — **ook als er nog een oude waarde in de formulier-state
+  hangt**. Dit repareert automatisch bestaande, kapotte items: gewoon
+  het item openen en op Opslaan tikken (zonder verder iets te
+  wijzigen) is genoeg, want de herhaling staat al ingesteld
+
+**Gevalideerd — volledige simulatie, exact het gerapporteerde
+scenario:** met de fix (`end_date: null`) loopt de reeks correct door:
+17 aug actief, 24 aug niet, 31 aug actief, 7 sep niet, 14 sep actief.
+Zonder de fix (de oude situatie, `end_date: '2026-08-21'`) stopt het
+na de eerste maandag, exact het gemelde gedrag. `npx next build` —
+compileert zonder fouten.
+
 | Systeem | Status |
 |---------|--------|
 | Optie C Filter Layer | ✅ |

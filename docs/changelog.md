@@ -1,5 +1,54 @@
 # CoachOS — Changelog
 
+## v2.4.261 — DERDE EN DEFINITIEVE FIX: "om de week" echte oorzaak
+**Gemeld met twee screenshots: v2.4.260 werkte (dag-selector toonde
+al "Ma" automatisch), maar het resultaat bleef fout: "Slaat 1 week
+maandag op. Dan niets meer."**
+
+### Root cause, eindelijk de juiste
+Tweede screenshot toonde het hoofdscherm: **BEGINDATUM 17 aug 2026,
+EINDDATUM 21 aug 2026** — een apart, bovenliggend datumveld, los van
+de Herhaling-instelling. Er bestaan TWEE aparte "einddatum"-concepten
+in het datamodel:
+- `end_date` (het bovenste veld) — bedoeld voor een eenmalig event
+  van dag X t/m dag Y
+- `recurrence_end_date` — een eigen veld ÍN het Herhaling-scherm,
+  bedoeld om een herhalende reeks te laten stoppen
+
+`isHerhalendActiefOpDag()` checkt BEIDE velden en stopt zodra één van
+de twee overschreden wordt. Met Einddatum op 21 augustus (4 dagen na
+Begindatum) stopte de HELE "om de week"-reeks na de eerste maandag —
+ver vóór de volgende biweekly-maandag (31 augustus) bereikt zou
+worden. Geen bug in de herhalingsberekening zelf, maar een verwarrend
+datamodel met twee overlappende velden.
+
+### Fix — in beide schermen (aanmaken én bewerken)
+- Het bovenste "Einddatum"-veld wordt nu verborgen/uitgeschakeld
+  zodra er een herhaling actief is ("Zie Herhaling →")
+- Bij opslaan: `end_date` wordt altijd expliciet `null` zodra er een
+  herhaling actief is — `recurrence ? null : (endDate || null)` —
+  ook als er nog een oude waarde in de state hangt
+
+### Repareert bestaande items automatisch
+Omdat de save-logica `end_date` nu altijd nult zodra recurrence actief
+is, is er geen aparte handmatige stap nodig — gewoon het bestaande
+"Vroege dienst"-item openen en op Opslaan tikken (zonder verder iets
+te wijzigen) repareert het, want de herhaling staat al ingesteld.
+
+**Gevalideerd — volledige simulatie, exact het gerapporteerde
+scenario:**
+- MET de fix (`end_date: null`): 17 aug actief, 24 aug niet, 31 aug
+  actief, 7 sep niet, 14 sep actief — correct doorlopend patroon
+- ZONDER de fix (oude situatie, `end_date: '2026-08-21'`): stopt na
+  de eerste maandag — exact het gemelde, kapotte gedrag bevestigd
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open de bestaande "Vroege dienst" opnieuw, tik
+direct op Opslaan (geen wijzigingen nodig) — de reeks zou nu door
+moeten lopen na 21 augustus. Check ook de agenda-weergave voor
+september om te bevestigen dat het patroon blijft doorgaan.
+
 ## v2.4.260 — VERVOLG-FIX: "om de week" — de échte oorzaak
 **Gemeld met een screenshot: v2.4.259's fix loste het niet volledig
 op. Grondiger uitgezocht, echte root cause gevonden.**

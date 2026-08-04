@@ -1012,7 +1012,11 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
         recurrence_end_date: recurrenceEndDate || null,
         // v2.4.186-FIX
         recurrence_exceptions: exceptions.length > 0 ? exceptions : null,
-        end_date: endDate || null,
+        // v2.4.261-FIX: end_date NOOIT meesturen als er een herhaling
+        // actief is, ook niet als er nog een oude waarde in de state
+        // hangt (bijv. van vóór het instellen van de herhaling) - dat was
+        // precies wat de reeks na 1 keer liet stoppen.
+        end_date: recurrence ? null : (endDate || null),
         notes: notes || null,
         // v2.4.185 (Coach Agenda Fase A)
         available_time_minutes: availableTimeMinutes === '' ? null : availableTimeMinutes,
@@ -1098,14 +1102,31 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
                   <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                     className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs text-slate-400 uppercase tracking-wider">Einddatum</label>
-                  <input type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)}
-                    placeholder="Zelfde dag"
-                    className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
-                </div>
+                {/* v2.4.261-FIX: gemeld - "om de week" sloeg maar 1x op,
+                    dan niets meer. Root cause: DIT Einddatum-veld
+                    (end_date) begrenst de HELE herhalende reeks, niet
+                    alleen de eerste keer - een per ongeluk kort ingevulde
+                    datum hier kapte de reeks meteen af, los van de
+                    Herhaling-instelling zelf. Nu: verborgen/uitgeschakeld
+                    zodra een herhaling actief is, met verwijzing naar de
+                    juiste plek (Herhaling-scherm heeft zijn EIGEN,
+                    aparte einddatum-veld: recurrence_end_date). */}
+                {!recurrence ? (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs text-slate-400 uppercase tracking-wider">Einddatum</label>
+                    <input type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)}
+                      placeholder="Zelfde dag"
+                      className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs text-slate-400 uppercase tracking-wider">Einddatum</label>
+                    <div className="w-full bg-slate-800/50 text-slate-500 rounded-xl px-3 py-3 text-sm">Zie Herhaling →</div>
+                  </div>
+                )}
               </div>
-              {!endDate && <p className="text-[10px] text-slate-600">Geen einddatum ingevuld — dit event geldt dan alleen op de begindatum.</p>}
+              {!recurrence && !endDate && <p className="text-[10px] text-slate-600">Geen einddatum ingevuld — dit event geldt dan alleen op de begindatum.</p>}
+              {recurrence && <p className="text-[10px] text-slate-600">Er is een herhaling actief — de einddatum van de hele reeks stel je in bij "Herhaling" hieronder, niet hier.</p>}
 
               {gekozenType.start_hour !== null && (
                 <div className="flex flex-col gap-2">
@@ -1301,7 +1322,11 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
         end_hour: heeftTijden ? endHour : event.end_hour,
         start_minute: heeftTijden ? startMinute : event.start_minute,
         end_minute: heeftTijden ? endMinute : event.end_minute,
-        end_date: endDate || null,
+        // v2.4.261-FIX: end_date NOOIT meesturen als er een herhaling
+        // actief is, ook niet als er nog een oude waarde in de state
+        // hangt (bijv. van vóór het instellen van de herhaling) - dat was
+        // precies wat de reeks na 1 keer liet stoppen.
+        end_date: recurrence ? null : (endDate || null),
         recurrence: recurrence || null,
         recurrence_days: recurrenceDays.length > 0 ? recurrenceDays : null,
         recurrence_end_date: recurrenceEndDate || null,
@@ -1472,12 +1497,21 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
             className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="text-xs text-slate-400 uppercase tracking-wider">Einddatum</label>
-          <input type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} placeholder="Zelfde dag"
-            className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
-        </div>
+        {/* v2.4.261-FIX: zelfde toelichting als in het aanmaak-formulier */}
+        {!recurrence ? (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-slate-400 uppercase tracking-wider">Einddatum</label>
+            <input type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} placeholder="Zelfde dag"
+              className="w-full bg-slate-800 text-white rounded-xl px-3 py-3 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-slate-400 uppercase tracking-wider">Einddatum</label>
+            <div className="w-full bg-slate-800/50 text-slate-500 rounded-xl px-3 py-3 text-sm">Zie Herhaling →</div>
+          </div>
+        )}
       </div>
+      {recurrence && <p className="text-[10px] text-slate-600">Er is een herhaling actief — de einddatum van de hele reeks stel je in bij "Herhaling" hieronder, niet hier.</p>}
 
       {heeftTijden && (
         <div className="grid grid-cols-2 gap-3">
