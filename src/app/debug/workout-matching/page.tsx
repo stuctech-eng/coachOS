@@ -84,7 +84,7 @@ export default function WorkoutMatchingDebugPage() {
           </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Workout Matching Debug</h1>
-            <p className="text-xs text-slate-500">Rowing — laatste 21 dagen + komende 7</p>
+            <p className="text-xs text-slate-500">Rowing — sessies: laatste 21 dagen + komende 7 · activiteiten: laatste 30</p>
           </div>
         </div>
 

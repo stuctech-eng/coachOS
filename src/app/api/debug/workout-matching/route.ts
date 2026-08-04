@@ -53,18 +53,28 @@ export async function GET() {
             .gte('date', vanaf).lte('date', tot)
             .order('date', { ascending: true })
         : Promise.resolve({ data: [] }),
+      // v2.4.268-FIX: gemeld — activiteiten-blok bleef leeg terwijl er
+      // wél 56 gesyncte Concept2-sessies bestonden. Root cause: het
+      // 21-dagen-venster (bedoeld voor de PLAN-sessies, die altijd
+      // recent/toekomstig zijn) werd ook op de ACTIVITEITEN toegepast —
+      // maar bestaande historie kan veel ouder zijn (hier: laatste
+      // sessie 30 juni, dus al buiten een 21-dagen-venster vanaf
+      // 4 augustus). Losgekoppeld: activiteiten tonen nu gewoon de
+      // laatste 30, ongeacht datum — dit is een debug-scherm, geen
+      // "huidige periode"-weergave, dus geen reden om oude data te
+      // verbergen.
       supabase.from('activity_sessions')
         .select('id, date, duration, source, notes, activities!inner(name)')
         .eq('user_id', user.id)
         .in('activities.name', ['Roeien'])
-        .gte('date', vanaf)
-        .order('date', { ascending: true }),
+        .order('date', { ascending: false })
+        .limit(30),
     ])
 
     return NextResponse.json({
       heeftActiefPlan: !!plan,
       geplandeSessies: sessiesRes.data || [],
-      activiteiten: activiteitenRes.data || [],
+      activiteiten: (activiteitenRes.data || []).slice().reverse(),
     })
   } catch (err) {
     console.error('[debug/workout-matching GET]', err)
