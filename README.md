@@ -616,6 +616,54 @@ architectuurstappen — niet als correcties op deze documentatie.**
 
 ## Huidige Status — Systemen
 
+### VIER-IN-ÉÉN FIX — v2.4.259 (4 augustus 2026)
+Vier gemelde problemen tegelijk uitgezocht en gefixt, elk met een
+eigen root cause:
+
+**1. Rowing-activatie deed niks.** `specialisten/page.tsx` — de
+"Beschikbaar"-kaart was een kale `<Link>` die rechtstreeks naar
+`/coach/rowing` navigeerde; de al-bestaande `activeer()`-functie (POST
+met `active:true`) werd hier nooit aangeroepen. Nu: eerst activeren
+(inclusief de navigatie, die zit al in `activeer()` zelf), dan pas
+verhuist de kaart naar "Actief" met het icoontje in kleur.
+
+**2. Geen Cycling-training in Smart Actions** (screenshot: Coach
+adviseerde fietsen, maar Snelle Acties toonde niks) — bleek hetzelfde
+root cause als punt 3: **twee identieke sessies voor dezelfde dag**,
+veroorzaakt door de rolling horizon-verlenging (v2.4.248/249) die
+vanuit meerdere plekken tegelijk kan draaien (rechtstreeks via de
+trainingsplan-pagina, én automatisch via Today Engine bij elke
+Home-load) — bij bijna-gelijktijdige aanroepen zag de tweede nog niet
+dat de eerste al iets had aangemaakt.
+
+**3. "Om de week" sloeg niet op.** Root cause, bevestigd door de
+POST- en PATCH-route van `life-events` naast elkaar te leggen: de
+PATCH-route (bewerken van een bestaand item) miste `start_time`
+volledig — en de "om de week"-berekening (`weekVerschil()`) leunt
+rechtstreeks op dat veld. Bij het bewerken van een bestaande dienst
+bleef het oorspronkelijke, mogelijk verouderde `start_time` staan.
+
+**4. Herstel/stress-impact bij avonddienst sloeg niet op.** Zelfde
+PATCH-route, zelfde soort gat: `recovery_impact`/`stress_load`/
+`sleep_disruption` ontbraken volledig — het formulier stuurde ze wél
+mee (bevestigd in `coach-planning/page.tsx`'s `opslaan()`-functie),
+maar de route negeerde ze stilzwijgend.
+
+**Fixes:**
+- `src/app/specialisten/page.tsx` — kaart roept nu `activeer()` aan
+- `src/lib/specialists/training-plan-engine/core.ts` — idempotency-
+  check vóór elke sessie-insert (checkt of er al een sessie voor die
+  exacte datum bestaat)
+- `supabase/fix_duplicate_sessions.sql` — **tweede beveiligingslaag**:
+  ruimt bestaande duplicaten op, voegt een `unique(plan_id, date)`-
+  constraint toe (de applicatie-check alleen is niet 100%
+  race-condition-vrij bij écht gelijktijdige aanroepen)
+- `src/app/api/life-events/route.ts` — 4 ontbrekende velden toegevoegd
+  aan de PATCH-route (`start_time`/`recovery_impact`/`stress_load`/
+  `sleep_disruption`)
+
+`npx next build` — compileert zonder fouten na alle vier de fixes.
+
 | Systeem | Status |
 |---------|--------|
 | Optie C Filter Layer | ✅ |

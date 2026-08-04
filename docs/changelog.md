@@ -1,5 +1,61 @@
 # CoachOS — Changelog
 
+## v2.4.259 — VIER-IN-ÉÉN FIX
+**Vier gemelde problemen tegelijk uitgezocht en gefixt.**
+
+### 1. Rowing-activatie deed niks
+**Root cause:** `specialisten/page.tsx`'s "Beschikbaar"-kaart was een
+kale `<Link>` die rechtstreeks navigeerde — de al-bestaande
+`activeer()`-functie (POST met `active:true`) werd nooit aangeroepen.
+**Fix:** kaart roept nu `activeer()` aan, die zelf ook al navigeert.
+
+### 2 + 3. Duplicaat trainingsplan-sessies (geen Cycling-actie op Home + "om de week")
+**Root cause:** de rolling horizon-verlenging (v2.4.248/249) kan
+vanuit meerdere plekken tegelijk draaien (trainingsplan-pagina + Today
+Engine bij elke Home-load) — bij bijna-gelijktijdige aanroepen zag de
+tweede nog niet dat de eerste al iets had aangemaakt, wat **twee
+identieke sessies voor dezelfde dag** opleverde. Bevestigd met een
+SQL-query: 2 rijen, zelfde sport, zelfde datum.
+
+**Fix — twee lagen:**
+- `training-plan-engine/core.ts` — idempotency-check vóór elke insert
+- `supabase/fix_duplicate_sessions.sql` — ruimt bestaande duplicaten
+  op + voegt een `unique(plan_id, date)`-constraint toe (database-
+  niveau-beveiliging, want de applicatie-check alleen is niet 100%
+  race-condition-vrij)
+
+```sql
+delete from training_plan_sessions a
+using training_plan_sessions b
+where a.plan_id = b.plan_id and a.date = b.date and a.id > b.id;
+
+alter table training_plan_sessions
+  add constraint training_plan_sessions_plan_date_uniek unique (plan_id, date);
+```
+
+### 4. Herstel/stress-impact bij bewerken sloeg niet op
+**Root cause:** de PATCH-route van `life-events` (bewerken van een
+bestaand item) miste 4 velden die de POST-route (nieuw aanmaken) wél
+altijd opsloeg: `start_time`, `recovery_impact`, `stress_load`,
+`sleep_disruption`. Het formulier stuurde ze wél mee, de route
+negeerde ze stilzwijgend. **Bonus:** `start_time` ontbreken verklaart
+ook punt 3 — de "om de week"-berekening (`weekVerschil()`) leunt
+rechtstreeks op dat veld, dus bij het bewerken van een bestaande
+dienst bleef het oorspronkelijke `start_time` staan.
+
+**Fix:** alle 4 velden toegevoegd aan `api/life-events/route.ts`'s
+PATCH-handler.
+
+`npx next build` — compileert zonder fouten na alle vier de fixes.
+
+**Test-instructie:**
+1. Voer eerst de SQL uit (ruimt duplicaten op + voorkomt nieuwe)
+2. Tik op de Rowing-kaart in Specialisten — zou nu naar "Actief" moeten
+   verhuizen met een blauw icoontje
+3. Bewerk een bestaande dienst (bijv. avonddienst), pas herstel/stress-
+   impact aan, sla op, open opnieuw — zou nu de nieuwe waarden moeten
+   tonen
+
 ## v2.4.258 — KRITIEKE FIX: weer werd toegepast op indoor-sessies
 **Gemeld: "dus indoor en buiten. Weet hij ook?" — antwoord op dat
 moment: nee. v2.4.257 paste weer-gebaseerde hitte/koude-adaptatie toe

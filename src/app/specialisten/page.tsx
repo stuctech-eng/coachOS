@@ -176,7 +176,16 @@ export default function SpecialistenPage() {
               {beschikbaarNietActief.map(s => {
                 const Icoon = SPECIALIST_ICOON[s.specialist_type] || Bike
                 return (
-                  <Link key={s.specialist_type} href={`/coach/${s.specialist_type}`} className="w-full text-left">
+                  // v2.4.259-FIX: gemeld — Rowing activeren werkte niet,
+                  // bleef altijd "Nog niet geactiveerd" tonen, ondanks
+                  // dat alles functioneel al werkte. Root cause: dit was
+                  // een kale <Link> die rechtstreeks naar /coach/rowing
+                  // navigeerde — de al-bestaande activeer()-functie
+                  // (hierboven, POST met active:true) werd hier nooit
+                  // aangeroepen. Nu: eerst activeren, dan navigeren
+                  // (activeer() doet zelf al de router.push).
+                  <button key={s.specialist_type} onClick={() => activeer(s.specialist_type)} disabled={activerenBezig}
+                    className="w-full text-left disabled:opacity-50">
                     <Card className="p-4 active:bg-slate-700 opacity-80">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
@@ -184,12 +193,12 @@ export default function SpecialistenPage() {
                         </div>
                         <div className="flex-1">
                           <p className="text-sm text-white font-medium">{s.label}</p>
-                          <p className="text-xs text-slate-500">Nog niet geactiveerd</p>
+                          <p className="text-xs text-slate-500">{activerenBezig ? 'Activeren...' : 'Tik om te activeren'}</p>
                         </div>
                         <ChevronRight size={16} className="text-slate-600" />
                       </div>
                     </Card>
-                  </Link>
+                  </button>
                 )
               })}
             </div>

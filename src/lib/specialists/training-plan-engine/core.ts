@@ -260,15 +260,35 @@ export async function verlengRollingHorizonIndienNodigCore(userId: string, planI
         finaleDuur = Math.round(duurMinuten * (1 + policy.volumeAdjustmentPct / 100))
       }
 
+      // v2.4.259-FIX: gemeld — twee identieke sessies voor dezelfde dag.
+      // Root cause: deze functie wordt vanuit meerdere plekken aangeroepen
+      // (rechtstreeks via de trainingsplan-route, én automatisch via
+      // Today Engine bij elke Home-load) — bij twee aanroepen kort na
+      // elkaar zag de tweede nog niet dat de eerste al iets had
+      // aangemaakt (race condition), en dupliceerde het hele blok.
+      // Idempotency-check: vóór het invoegen, checken of er al een
+      // sessie voor deze exacte datum bestaat binnen dit plan.
+      const datumStr = isoDatum(datum)
+      const { data: bestaandeSessie } = await supabase
+        .from('training_plan_sessions').select('id')
+        .eq('plan_id', plan.id).eq('date', datumStr).maybeSingle()
+
+      if (bestaandeSessie) continue // al aangemaakt door een eerdere/gelijktijdige aanroep, overslaan
+
       const { error: sessieError } = await supabase
         .from('training_plan_sessions')
         .insert({
-          plan_id: plan.id, date: isoDatum(datum), sport: adapter.sport,
+          plan_id: plan.id, date: datumStr, sport: adapter.sport,
           type: finaalType, duration: finaleDuur, intensity: null,
           load_target: mesocyclusWeek.week_load_uren / sessieTypen.length,
           status: 'planned', mesocycle_type: mesocyclusWeek.type,
         })
 
+      // v2.4.259: een fout hier kan ook legitiem een unique-constraint-
+      // conflict zijn (de database-niveau-beveiliging, zie
+      // fix_duplicate_sessions.sql) — bijv. bij een écht gelijktijdige
+      // aanroep die de check hierboven net vóór was. Dat is geen echte
+      // fout, gewoon niet geteld als "nieuw aangemaakt".
       if (!sessieError) aantalNieuweSessies++
     }
   }

@@ -105,6 +105,18 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json()
     const supabase = createAdminClient()
     const updates: Record<string, unknown> = {}
+    // v2.4.259-FIX: gemeld — "om de week" en herstel/stress-impact
+    // sloegen niet op bij het bewerken van een bestaand item. Root
+    // cause: deze PATCH-route miste 4 velden die de POST-route (nieuw
+    // aanmaken) wél altijd al opsloeg — start_time (waar de "om de
+    // week"-berekening, weekVerschil(), rechtstreeks op leunt),
+    // recovery_impact, stress_load, sleep_disruption. Bij het bewerken
+    // werden deze dus stil genegeerd, ook al stuurde het formulier ze
+    // wél mee (zie coach-planning/page.tsx's opslaan()-functie).
+    if (body.start_time !== undefined) updates.start_time = body.start_time
+    if (body.recovery_impact !== undefined) updates.recovery_impact = body.recovery_impact
+    if (body.stress_load !== undefined) updates.stress_load = body.stress_load
+    if (body.sleep_disruption !== undefined) updates.sleep_disruption = body.sleep_disruption
     if (body.notes !== undefined) updates.notes = body.notes
     if (body.start_hour !== undefined) updates.start_hour = body.start_hour
     if (body.end_hour !== undefined) updates.end_hour = body.end_hour
