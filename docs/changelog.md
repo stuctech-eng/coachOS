@@ -1,5 +1,40 @@
 # CoachOS — Changelog
 
+## v2.4.263 — FIX: "Trainingen komende week" negeerde vakantie
+**Gemeld tijdens het samen doorlopen van Coach Planning: Overzicht
+toonde "8", Week-weergave toonde 0 — gebruiker zat middenin een
+vakantieweek.**
+
+### Root cause 1
+`trainingenKomendeWeek` telde gewoon alle `training_plan_sessions`-
+rijen in de komende 7 dagen, zonder vakantie-check. De rijen bestaan
+nog (al gegenereerd door de rolling horizon), maar deze teller wist
+niet dat een deel van die dagen vakantie was.
+
+### Root cause 2 — gevonden tijdens het bouwen van de fix
+De query voor eenmalige life-events had nog een `gte('start_time',
+vandaag)`-filter — exact hetzelfde patroon dat al in v2.4.203 gefixt
+werd voor HERHALENDE events, maar hier nooit toegepast. Een vakantie
+die vóór vandaag begon maar nog doorloopt werd hierdoor structureel
+gemist — niet alleen in deze teller, ook bij `volgendeVakantie`.
+
+### Fix
+- `gte('start_time', vandaag)` verwijderd uit de eenmalige-events-
+  query
+- `trainingenKomendeWeek` sluit nu sessies uit op vakantiedagen
+  (hergebruikt `isEventActiefOpDag()`)
+
+**Gevalideerd — exact het gerapporteerde scenario:** vakantie 20 jul
+t/m 9 aug, vandaag 4 aug. Met de fix: 2 (alleen 10-11 aug vallen
+buiten vakantie). Zonder de fix: 8 — de exacte, misleidende waarde
+die gerapporteerd werd.
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Coach Planning → Overzicht tijdens een
+actieve vakantie — "Trainingen komende week" zou nu alleen dagen
+buiten de vakantie moeten meetellen.
+
 ## v2.4.262 — Meerdere dagen bij Wekelijks/Om de week
 **Gemeld: "Ik kan niet meerdere dagen selecteren."**
 

@@ -106,10 +106,15 @@ export async function haalOverzichtData(supabase: SupabaseClient, userId: string
     // Ook: gte('start_time', ...) verwijderd voor recurrente events (een
     // regel die vóór vandaag begon, maar nog steeds doorloopt, zou anders
     // gemist worden) — apart opgehaald zonder datumfilter op start_time.
+    // v2.4.263-FIX: gte('start_time', vandaag) verwijderd — zelfde
+    // reden als bij herhalende events (v2.4.203): een eenmalig event
+    // dat vóór vandaag begon maar nog doorloopt (bijv. een vakantie
+    // van 20 juli t/m 9 augustus, vandaag ergens middenin) werd anders
+    // gemist. Nu net als bij herhalende events: geen datumfilter op
+    // start_time, alleen de 90-dagen-bovengrens blijft staan.
     supabase.from('life_events').select('type, start_time, end_date, recurrence, recurrence_days, recurrence_end_date, recurrence_exceptions')
       .eq('user_id', userId)
       .is('recurrence', null)
-      .gte('start_time', new Date().toISOString())
       .lte('start_time', new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString())
       .order('start_time'),
     planIds.length > 0
@@ -166,7 +171,21 @@ export async function haalOverzichtData(supabase: SupabaseClient, userId: string
     if (match) { volgendeMedischeAfspraak = { datum: dagStr, type: match.type }; break }
   }
 
-  const trainingenKomendeWeek = sessies.filter(s => s.date <= over7Dagen).length
+  // v2.4.263-FIX: gemeld — "Trainingen komende week" telde gewoon alle
+  // training_plan_sessions-rijen, zonder rekening te houden met
+  // vakantie. De rijen zelf bestaan nog (al gegenereerd door de rolling
+  // horizon, los van vakantie), maar de rest van de app (Today Engine,
+  // Week-weergave) stuurt tijdens vakantie terecht om trainen heen —
+  // deze teller deed dat niet, wat een misleidend hoog getal gaf tijdens
+  // een vakantieweek. Nu: sessies op een dag waarop een actieve
+  // 'vakantie'-event geldt, tellen niet mee. Hergebruikt
+  // isEventActiefOpDag() — geen nieuwe logica verzonnen.
+  const alleEventsVoorVakantieCheck = [...eenmaligeEvents, ...alleHerhalendeEvents]
+  const trainingenKomendeWeek = sessies.filter(s => {
+    if (s.date > over7Dagen) return false
+    const opVakantie = alleEventsVoorVakantieCheck.some(e => e.type === 'vakantie' && isEventActiefOpDag(e, s.date))
+    return !opVakantie
+  }).length
 
   return {
     volgendeVakantie: volgendeVakantie ? { datum: lokaleDagStr(new Date(volgendeVakantie.start_time)), eindDatum: volgendeVakantie.end_date } : null,

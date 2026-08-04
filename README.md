@@ -751,6 +751,41 @@ toont nu alle geselecteerde dagen i.p.v. alleen de eerste.
 vangnet — een poging om de laatste dag te verwijderen wordt genegeerd,
 blijft op 1 dag staan. `npx next build` — compileert zonder fouten.
 
+### FIX — v2.4.263: "Trainingen komende week" negeerde vakantie
+Gemeld tijdens het samen doorlopen van Coach Planning: Overzicht toonde
+"8 trainingen komende week", terwijl de Week-weergave (die vakantie wél
+respecteert) 0 trainingsactiviteiten toonde voor diezelfde periode —
+gebruiker zat middenin een vakantieweek (20 juli t/m 9 augustus).
+
+**Root cause 1:** `trainingenKomendeWeek` in
+`coach-planning-overzicht.ts` telde gewoon alle `training_plan_sessions`-
+rijen in de komende 7 dagen, zonder enige vakantie-check. De rijen
+zelf bestaan nog (al gegenereerd door de rolling horizon, los van
+vakantie), maar niets in deze specifieke teller wist dat een deel van
+die dagen vakantie was.
+
+**Root cause 2, gevonden tijdens het bouwen van de fix:** de query
+voor eenmalige life-events (waar 'vakantie' onder valt) had nog een
+`gte('start_time', vandaag)`-filter — exact hetzelfde patroon dat al
+in v2.4.203 gefixt werd voor HERHALENDE events, maar hier nooit
+toegepast. Een vakantie die vóór vandaag begon maar nog doorloopt
+(20 juli → 9 augustus, vandaag er middenin) werd hierdoor structureel
+gemist — niet alleen in deze teller, maar overal waar `eenmaligeEvents`
+gebruikt wordt (ook `volgendeVakantie`).
+
+**Fix:**
+- `gte('start_time', vandaag)` verwijderd uit de eenmalige-events-
+  query — zelfde patroon als de herhalende-events-query al had
+- `trainingenKomendeWeek` sluit nu sessies uit die op een dag vallen
+  waarop een actieve 'vakantie'-event geldt (hergebruikt
+  `isEventActiefOpDag()`, geen nieuwe logica)
+
+**Gevalideerd — exact het gerapporteerde scenario:** vakantie 20 jul
+t/m 9 aug, vandaag 4 aug, sessies gepland 4 t/m 11 aug. Met de fix:
+2 (alleen 10 en 11 aug vallen buiten vakantie). Zonder de fix: 8 — de
+exacte, misleidende waarde die gerapporteerd werd. `npx next build` —
+compileert zonder fouten.
+
 | Systeem | Status |
 |---------|--------|
 | Optie C Filter Layer | ✅ |
