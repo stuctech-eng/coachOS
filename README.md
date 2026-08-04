@@ -664,6 +664,35 @@ maar de route negeerde ze stilzwijgend.
 
 `npx next build` — compileert zonder fouten na alle vier de fixes.
 
+### VERVOLG-FIX — v2.4.260: "om de week" nog steeds fout, echte oorzaak
+Gemeld met een screenshot: v2.4.259's fix (PATCH miste `start_time`)
+loste het probleem niet volledig op. Grondiger uitgezocht:
+`needsDay`/`needsDays` (metadata bij de herhaling-opties) bleken **dode
+metadata** — nergens daadwerkelijk gebruikt. De dag-selector zelf
+bestond wél al (in zowel het aanmaak- als bewerk-formulier, "Op welke
+dag?"), maar **`kiesHerhaling()` zette geen standaard-dag voor
+weekly/biweekly** — workdays/weekend kregen al een automatische
+standaard, "Om de week" niet. Wie meteen opsloeg zonder zelf een dag
+aan te tikken, kreeg dus `recurrence_days: null`, wat de
+berekeningslogica liet interpreteren als "elke dag" — precies het
+gemelde, kapotte gedrag.
+
+**Fix:** `kiesHerhaling()` (beide identieke instanties, aanmaken en
+bewerken) zet nu automatisch de dag van de huidige startdatum als
+standaard voor weekly/biweekly, zodat de dag-selector meteen een
+zinnige keuze toont.
+
+**Gevalideerd:** volledige simulatie over 4 weken met 17 augustus 2026
+(een maandag) als startdatum en `recurrence_days: [1]` — actief op 17
+aug, niet op 24 aug, weer actief op 31 aug. Exact het juiste "om de
+week"-patroon. `npx next build` — compileert zonder fouten.
+
+**Belangrijk voor bestaande items:** deze fix werkt alleen voor
+NIEUWE dag-keuzes vanaf nu. Het bestaande "Vroege dienst"-item uit de
+screenshot heeft waarschijnlijk nog `recurrence_days: null` — open
+het, tik "Herhaling" opnieuw aan (of tik een dag aan in de selector),
+en sla op om het te repareren.
+
 | Systeem | Status |
 |---------|--------|
 | Optie C Filter Layer | ✅ |

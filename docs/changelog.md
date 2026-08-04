@@ -1,5 +1,49 @@
 # CoachOS — Changelog
 
+## v2.4.260 — VERVOLG-FIX: "om de week" — de échte oorzaak
+**Gemeld met een screenshot: v2.4.259's fix loste het niet volledig
+op. Grondiger uitgezocht, echte root cause gevonden.**
+
+### Onderzoek
+Gebruiker vroeg terecht: "Moet de dagen toch niet invullen?" — de
+dag-selector ("Op welke dag?") bleek al te bestaan in zowel het
+aanmaak- als bewerk-formulier. Maar `needsDay`/`needsDays` (metadata
+bij de herhaling-opties, gedefinieerd bij elke recurrence-optie)
+bleken **dode metadata** — nergens in de code daadwerkelijk gebruikt
+of gecontroleerd.
+
+### Root cause
+`kiesHerhaling()` — de functie die draait zodra je een
+herhalingsoptie kiest — zette al een automatische standaard-dag voor
+"Werkdagen" (ma-vr) en "Weekend" (za-zo), maar **niet voor "Om de
+week"/"Wekelijks"**. Wie meteen opsloeg zonder zelf een dag aan te
+tikken in de sub-selector, kreeg `recurrence_days: null`. De
+berekeningslogica (`isHerhalendActiefOpDag()`) interpreteert een lege
+`recurrence_days` als "elke dag matcht" — dus voor de helft van de
+weken (om de week) leek de dienst op ELKE dag actief, niet op de
+gekozen dag.
+
+### Fix
+`kiesHerhaling()` (beide identieke instanties — aanmaken en bewerken)
+zet nu automatisch de dag van de huidige startdatum als standaard
+zodra "Wekelijks" of "Om de week" gekozen wordt.
+
+**Gevalideerd:** volledige simulatie over 4 weken, 17 augustus 2026
+(maandag) als startdatum, `recurrence_days: [1]` — actief 17 aug,
+niet 24 aug, weer actief 31 aug. Exact het juiste patroon.
+
+`npx next build` — compileert zonder fouten.
+
+### Belangrijk voor bestaande items
+Deze fix werkt alleen voor NIEUWE dag-keuzes vanaf nu. Bestaande
+items (zoals de "Vroege dienst" uit de melding) hebben mogelijk nog
+`recurrence_days: null` — open het item, tik de dag opnieuw aan, sla
+op.
+
+**Test-instructie:** open de bestaande "Vroege dienst", tik nogmaals
+op een dag (of heropen "Herhaling" → "Om de week"), sla op — daarna
+zou het patroon (om de week, specifieke dag) correct moeten werken.
+
 ## v2.4.259 — VIER-IN-ÉÉN FIX
 **Vier gemelde problemen tegelijk uitgezocht en gefixt.**
 

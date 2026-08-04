@@ -976,6 +976,12 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
     if (value === 'workdays') setRecurrenceDays([1,2,3,4,5])
     else if (value === 'weekend') setRecurrenceDays([6,0])
     else if (value === '' || value === 'daily') setRecurrenceDays([])
+    // v2.4.260-FIX: gemeld - "om de week" sloeg geen dag op als je
+    // meteen opsloeg zonder zelf een dag aan te tikken in de sub-
+    // selector. workdays/weekend kregen al een standaard, weekly/
+    // biweekly niet - nu wel: de dag van de huidige startdatum, zodat
+    // de dag-selector meteen een zinnige keuze toont i.p.v. leeg.
+    else if (value === 'weekly' || value === 'biweekly') setRecurrenceDays([new Date(startDate + 'T00:00:00').getDay()])
   }
   function onInvloedChange(veld: 'recovery_impact' | 'stress_load' | 'sleep_disruption', waarde: number) {
     if (veld === 'recovery_impact') setRecoveryImpact(waarde)
@@ -1271,6 +1277,12 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
     if (value === 'workdays') setRecurrenceDays([1,2,3,4,5])
     else if (value === 'weekend') setRecurrenceDays([6,0])
     else if (value === '' || value === 'daily') setRecurrenceDays([])
+    // v2.4.260-FIX: gemeld - "om de week" sloeg geen dag op als je
+    // meteen opsloeg zonder zelf een dag aan te tikken in de sub-
+    // selector. workdays/weekend kregen al een standaard, weekly/
+    // biweekly niet - nu wel: de dag van de huidige startdatum, zodat
+    // de dag-selector meteen een zinnige keuze toont i.p.v. leeg.
+    else if (value === 'weekly' || value === 'biweekly') setRecurrenceDays([new Date(startDate + 'T00:00:00').getDay()])
   }
   function onInvloedChange(veld: 'recovery_impact' | 'stress_load' | 'sleep_disruption', waarde: number) {
     if (veld === 'recovery_impact') setRecoveryImpact(waarde)
