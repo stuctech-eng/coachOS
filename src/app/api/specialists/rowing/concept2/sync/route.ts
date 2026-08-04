@@ -9,6 +9,8 @@ import { pasImpactToe, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platfo
 import { vertaalRowingSessieNaarImpact } from '@/lib/specialists/rowing-impact-adapter'
 import { evalueerEnBewaarLeerpatronenIndienNodig } from '@/lib/specialists/learning-rules-koppeling'
 import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
+import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/workout-matcher'
+import { rowingMatcher } from '@/lib/specialists/training-plan-engine/matchers/rowing-matcher'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -43,6 +45,14 @@ interface Concept2Result {
 // Belangrijk eenheidsverschil met Strava: Concept2's "time"-veld is
 // in TIENDEN VAN EEN SECONDE (600 = 1 minuut), niet seconden — vandaar
 // /600 i.p.v. Strava's /60 (die begint al in seconden).
+//
+// v2.4.267 (Workout Matching Service, Fase 1 — Rowing referentie-
+// implementatie, docs/workout-completion-platform-adr-v1.md): na een
+// succesvolle import wordt de nieuwe activiteit nu ook aangeboden aan
+// de Workout Matching Service, die bepaalt of hij bij een geplande
+// training_plan_session hoort. Zelfde try/catch-discipline als de
+// Universal Athlete State-koppeling hieronder — een fout hier mag de
+// sync zelf nooit laten falen.
 
 async function haalGeldigToken(userId: string): Promise<string | null> {
   const supabase = createAdminClient()
@@ -198,11 +208,15 @@ export async function POST() {
       // v2.4.238: duur naar een eigen variabele — nu ook hergebruikt
       // voor de Universal Athlete Platform-koppeling hieronder
       const duurMinuten = Math.round(resultaat.time / 600)
+      // v2.4.267: ook naar een eigen variabele — hergebruikt voor zowel
+      // de dedup-delete hieronder als de nieuwe matching-aanroep, i.p.v.
+      // 'm twee keer apart uit te rekenen
+      const dagStr = resultaat.date.split(' ')[0]
 
-      const { error } = await supabase.from('activity_sessions').insert({
+      const { data: nieuweRij, error } = await supabase.from('activity_sessions').insert({
         user_id: user.id,
         activity_id: userActivity?.id || null,
-        date: resultaat.date.split(' ')[0],
+        date: dagStr,
         // v2.4.219: Concept2's "time" is in tienden van een seconde,
         // NIET seconden (anders dan Strava's moving_time) — /600 geeft
         // direct minuten (/10 voor seconden, /60 voor minuten)
@@ -210,7 +224,7 @@ export async function POST() {
         metrics,
         source: 'concept2',
         notes: `concept2:${resultaat.id}`,
-      })
+      }).select('id').single()
 
       if (error) {
         console.error('[concept2/sync] Insert mislukt voor resultaat', resultaat.id, error)
@@ -240,13 +254,28 @@ export async function POST() {
         }
       }
 
+      // v2.4.267 (Workout Matching Service, Fase 1 — zie module-comment
+      // bovenaan dit bestand): koppelt deze net-geïmporteerde activiteit
+      // aan een geplande sessie, indien aanwezig en aannemelijk genoeg.
+      // Bewust in try/catch, zelfde reden als de Universal Athlete
+      // State-koppeling hierboven.
+      if (nieuweRij) {
+        try {
+          await matchActiviteitAanPlan(
+            { id: nieuweRij.id, userId: user.id, sport: 'rowing', date: dagStr, durationMinutes: duurMinuten, metrics },
+            rowingMatcher,
+          )
+        } catch (matchErr) {
+          console.error('[concept2/sync] Workout matching mislukt (sync zelf blijft werken):', matchErr)
+        }
+      }
+
       // v2.4.222 (structurele dedup-fix): Concept2 is de meest
       // betrouwbare bron voor roeien (het apparaat zelf). Als er voor
       // dezelfde dag al een lagere-prioriteit-record bestaat (Strava/
       // Garmin/handmatig — bijv. omdat die eerder is binnengekomen dan
       // deze Concept2-sync), wordt die nu verwijderd. Voorkomt dubbele
       // sessies structureel, niet alleen in de weergave.
-      const dagStr = resultaat.date.split(' ')[0]
       await supabase.from('activity_sessions').delete()
         .eq('user_id', user.id).eq('date', dagStr).eq('activity_id', userActivity?.id || null)
         .in('source', ['strava', 'garmin', 'apple_health', 'manual'])

@@ -1,5 +1,84 @@
 # CoachOS — Changelog
 
+## v2.4.267 — Workout Matching Service, Fase 1 (Rowing referentie-implementatie)
+**Platformontwerp, geen losse Rowing-fix. Bron: architectuurgesprek 4
+augustus 2026, vastgelegd in `docs/workout-completion-platform-adr-
+v1.md` (Status: Proposed → nu in uitvoering, Fase 1).**
+
+### Het gevonden gat, bevestigd in code vóór het bouwen
+`training_plan_sessions.completed_activity_id` bestaat sinds v2.4.96,
+maar werd door GEEN van de vier ingest-routes (Concept2-sync, Strava-
+processor, Garmin TCX/Vision, handmatig) ooit gevuld. Gevolg:
+`adjuster-core.ts`'s `missed_session`-trigger (filtert op
+`completed_activity_id IS NULL AND date < vandaag`) behandelde elke
+sessie na de datum als gemist — ook als de training daadwerkelijk was
+uitgevoerd. Geen bug in de trigger zelf (die query was al correct
+geschreven), maar een ontbrekende laag ervoor.
+
+### Ontwerp — Workout Completion Platform
+Volledige keten vastgelegd: Training Plan → Workout Platform → Workout
+uitgevoerd → Activity Import → **Workout Matching Service** → Workout
+Completion → Performance Platform → Universal Athlete Platform →
+Learning Rules → Coach Memory → Master Coach. Elke laag met precies
+één verantwoordelijkheid (Activity Import importeert/dedupliceert
+alleen, mag nooit een plan wijzigen; Workout Matching Service koppelt/
+bepaalt confidence, mag nooit prestaties analyseren — zie het ADR voor
+de volledige tabel).
+
+### Nieuw — generieke Core + eerste Sport Matcher
+- **`training-plan-engine/workout-matcher-types.ts`** — gedeeld
+  contract (`SportMatcher`), zelfde patroon als het bestaande
+  `TrainingPlanSportAdapter`
+- **`training-plan-engine/workout-matcher.ts`** — Core, sport-
+  agnostisch: zoekt het actieve plan + de geplande sessie op dezelfde
+  datum (uniek dankzij `unique(plan_id, date)`, v2.4.259 — geen
+  ambiguïteit tussen kandidaten nodig), roept de sport-matcher aan voor
+  een confidence-score, koppelt automatisch bij `confidence >=
+  AUTO_MATCH_DREMPEL` (0,7 — eerste schatting, losse constante)
+- **`training-plan-engine/matchers/rowing-matcher.ts`** — eerste
+  referentie-implementatie. Score op duur-afwijking (tolerantie 30%,
+  eerste schatting). **Eerlijke beperking, expliciet in code-comment:**
+  geen meters-vergelijking mogelijk — `training_plan_sessions` heeft
+  geen doel-afstand-veld, alleen duur/load_target. Bewust weggelaten
+  i.p.v. tegen een verzonnen aanname te toetsen.
+- **`api/specialists/rowing/concept2/sync/route.ts`** — roept na elke
+  succesvolle import de Matching Service aan, in try/catch (zelfde
+  discipline als de bestaande Universal Athlete State-koppeling — een
+  fout hier mag de sync zelf nooit laten falen)
+
+### Database
+`supabase/workout_matching_kolommen.sql`:
+```sql
+alter table training_plan_sessions
+  add column if not exists match_confidence numeric,
+  add column if not exists match_reden text;
+```
+Geen nieuwe tabel — `completed_activity_id` bestond al. Deze twee
+kolommen zijn puur voor uitlegbaarheid (geen schijnprecisie: altijd
+zichtbaar waarom iets automatisch gekoppeld is).
+
+### Verhouding tot ADR-007 (Single Workout Mutation Principle, v2.4.265)
+Geen overlap: dit is een PLANNING-mutatie (welke status heeft een
+sessie), geen workout-INHOUD-mutatie (duur/intensiteit/herhalingen,
+exclusief bij de Adaptation Engine). Zelfde categorie als de
+al-bestaande, ongewijzigde `missed_session`/`injury_protection`/
+`goal_change`-triggers.
+
+### Bewust nog niet gebouwd (zie README Openstaande Punten)
+- Fase 2: Running/Cycling/Strength Matchers
+- Fase 3: Strava/Garmin/handmatig aansluiten op de Matching Service
+- Fase 4: confidence-UX ("was dit je geplande training?" bij een lage
+  score), retrofit van de Cycling-ritanalyse naar de expliciete
+  koppeling i.p.v. datum-gok
+
+`npx next build` — nog te bevestigen na deploy.
+
+**Test-instructie:** sync een Concept2-sessie op een dag met een
+geplande Rowing-sessie binnen redelijke duur-marge (±30%) — de
+geplande sessie zou nu op `status: completed` moeten staan met
+`match_confidence`/`match_reden` gevuld, i.p.v. de volgende dag als
+`missed_session` te worden doorgeschoven.
+
 ## v2.4.266 — UI-gat gedicht: Cycling/Running kunnen nu ook geopend worden
 **Gemeld direct na het testen van ADR-007: "kan de trainingen zien.
 Alleen bij Rowing kan ik ze openen."**
