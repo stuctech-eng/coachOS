@@ -1,6 +1,6 @@
 {
   "name": "coach-os",
-  "version": "2.4.257",
+  "version": "2.4.258",
   "private": true,
   "scripts": {
     "dev": "next dev",

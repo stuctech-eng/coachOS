@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.258 — KRITIEKE FIX: weer werd toegepast op indoor-sessies
+**Gemeld: "dus indoor en buiten. Weet hij ook?" — antwoord op dat
+moment: nee. v2.4.257 paste weer-gebaseerde hitte/koude-adaptatie toe
+op ELKE sessie, zonder te checken of die wel buiten was.**
+
+### Root cause — het meest ernstige geval
+**Concept2 (Rowing) is per definitie een indoor roeimachine.** De
+vorige levering haalde bij elke Rowing-sync het actuele weer op en
+paste dat toe, alsof de gebruiker buiten had geroeid. Dat is
+structureel fout, niet incidenteel — élke Rowing-sessie kreeg een
+onterechte weer-impact.
+
+### Fix — Rowing/Concept2
+De weer-adapter-aanroep is **volledig verwijderd** uit `concept2/
+sync/route.ts` — niet voorwaardelijk gemaakt, maar weggehaald. Er is
+hier geen enkel scenario waarin dit relevant is.
+
+### Fix — Running/Cycling (Strava)
+Nieuw `trainer?: boolean`-veld toegevoegd aan de `StravaActivity`-
+interface (Strava's API geeft dit al mee, stond alleen nog niet
+getypeerd). Weer wordt nu alleen toegepast als:
+```
+isIndoor = activity.trainer === true || activity.sport_type === 'VirtualRide'
+```
+Bij twijfel (het `trainer`-veld ontbreekt): WEL toepassen — de
+meerderheid van Strava-activiteiten is buiten, dus dat is de veiligere
+default dan structureel niets doen.
+
+**Gevalideerd — 5 scenario's:**
+- Buiten fietsen (Ride, trainer=false) → weer geldt
+- Indoor trainer (Ride, trainer=true) → weer geldt niet, ondanks
+  sport_type "Ride"
+- Zwift (VirtualRide) → weer geldt niet, ongeacht het trainer-veld
+- Buiten hardlopen (Run, geen trainer-veld) → weer geldt (veilige
+  default bij onbekend)
+- Treadmill met trainer=true (Run) → weer geldt niet
+
+Bevestigd: nul weer-referenties meer in de Rowing/Concept2-route.
+`npx next build` — compileert zonder fouten. Ongebruikte `NextRequest`-
+import en functieparameter opgeschoond (niet meer nodig na het
+verwijderen van de weer-aanroep).
+
 ## v2.4.257 — Omgeving-categorie: hitte/koude-adaptatie gevuld
 **Gecorrigeerde aanname: eerder vandaag werd gezegd "geen weerdata
 beschikbaar" voor de Omgeving-categorie — dat klopte niet. Er bestond

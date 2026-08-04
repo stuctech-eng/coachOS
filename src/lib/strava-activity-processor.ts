@@ -56,6 +56,11 @@ export interface StravaActivity {
   average_watts?: number
   weighted_average_watts?: number
   average_cadence?: number
+  // v2.4.258-FIX: Strava's API geeft dit veld al mee, stond alleen nog
+  // niet getypeerd — nodig om indoor-sessies (trainer/Zwift) uit te
+  // sluiten van weer-gebaseerde impact (gemeld: "dus indoor en buiten,
+  // weet hij ook?" — antwoord was nee, nu wel).
+  trainer?: boolean
 }
 
 export interface ProcessResult {
@@ -184,9 +189,16 @@ export async function processStravaActivity(
       const sportSleutel = ACTIVITEIT_NAAR_SPORT_SLEUTEL[activityName]
       const huidigeState = await haalAthleteState(supabase, userId)
 
-      // v2.4.257 (Omgeving-categorie — eerste adapter)
+      // v2.4.258-FIX: gemeld — weer werd toegepast zonder te checken of
+      // de sessie wel BUITEN was. Nu: alleen bij bevestigd buiten
+      // (trainer !== true, en niet VirtualRide als extra zekerheid,
+      // want dat is per definitie indoor/Zwift, ongeacht wat 'trainer'
+      // zegt). Bij twijfel (trainer-veld ontbreekt/onbekend): WEL
+      // toepassen — de meerderheid van Strava-activiteiten is buiten,
+      // dus dat is de veiligere default dan structureel niets doen.
+      const isIndoor = activity.trainer === true || activity.sport_type === 'VirtualRide'
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
-      const huidigWeer = await haalHuidigWeer(appUrl)
+      const huidigWeer = isIndoor ? null : await haalHuidigWeer(appUrl)
       const weerBijdragen = huidigWeer && sportSleutel ? vertaalWeerNaarImpact(huidigWeer, sportSleutel) : []
 
       const bijdragen = [...impactAdapter(duurMinuten), ...weerBijdragen]

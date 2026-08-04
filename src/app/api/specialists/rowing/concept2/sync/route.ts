@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
@@ -9,7 +9,6 @@ import { pasImpactToe, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platfo
 import { vertaalRowingSessieNaarImpact } from '@/lib/specialists/rowing-impact-adapter'
 import { evalueerEnBewaarLeerpatronenIndienNodig } from '@/lib/specialists/learning-rules-koppeling'
 import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
-import { haalHuidigWeer, vertaalWeerNaarImpact } from '@/lib/specialists/weer-impact-adapter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -93,7 +92,7 @@ async function haalGeldigToken(userId: string): Promise<string | null> {
   return nieuweTokens.access_token
 }
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
@@ -170,12 +169,14 @@ export async function POST(req: NextRequest) {
       .from('learned_patterns').select('effect_pad, aanpassing_percentage').eq('user_id', user.id).eq('sport', 'rowing')
     const geleerdePatronen: GeleerdPatroon[] = geleerdePatronenData || []
 
-    // v2.4.257 (Omgeving-categorie — eerste adapter): weer één keer
-    // ophalen, niet per sessie. Zie weer-impact-adapter.ts voor de
-    // eerlijke beperking (weer-op-syncmoment als proxy, niet het
-    // historische weer tijdens de training zelf).
-    const huidigWeer = await haalHuidigWeer(req.nextUrl.origin)
-    const weerBijdragen = huidigWeer ? vertaalWeerNaarImpact(huidigWeer, 'rowing') : []
+    // v2.4.258-FIX: gemeld — "dus indoor en buiten, weet hij ook?".
+    // Antwoord was nee: v2.4.257 paste weer-gebaseerde hitte/koude-
+    // adaptatie toe op ELKE Rowing-sessie, zonder te checken of die wel
+    // buiten was. Concept2 is per definitie een indoor roeimachine —
+    // er is hier geen enkel scenario waarin het weer buiten relevant
+    // is. De weer-adapter-aanroep is daarom volledig verwijderd uit
+    // deze route, niet alleen voorwaardelijk gemaakt — Rowing via
+    // Concept2 hoort NOOIT weer-impact te krijgen.
 
     for (const resultaat of alleResultaten) {
       // Idempotency-check — zelfde patroon als Strava
@@ -230,7 +231,7 @@ export async function POST(req: NextRequest) {
       if (duurMinuten >= MINIMUM_SESSIE_DUUR_MINUTEN) {
         try {
           const huidigeState = await haalAthleteState(supabase, user.id)
-          const bijdragen = [...vertaalRowingSessieNaarImpact(duurMinuten), ...weerBijdragen]
+          const bijdragen = vertaalRowingSessieNaarImpact(duurMinuten)
           const nieuweState = pasImpactToe(huidigeState, bijdragen)
           const stateNaGeleerdeAanpassingen = pasGeleerdeAanpassingenToe(nieuweState, geleerdePatronen)
           await slaAthleteStateOp(supabase, user.id, stateNaGeleerdeAanpassingen)
