@@ -731,6 +731,26 @@ Zonder de fix (de oude situatie, `end_date: '2026-08-21'`) stopt het
 na de eerste maandag, exact het gemelde gedrag. `npx next build` —
 compileert zonder fouten.
 
+### UITBREIDING — v2.4.262: meerdere dagen bij Wekelijks/Om de week
+Gemeld: "Ik kan niet meerdere dagen selecteren." Bevestigd: bij
+"Aangepast" werkte multi-select al, bij "Wekelijks"/"Om de week"
+niet — daar verving elke tik de hele selectie (`setRecurrenceDays(
+[dag.nummer])`) i.p.v. toe te voegen. **Geen bug in de
+berekeningslogica** — `isHerhalendActiefOpDag()` ondersteunde
+`recurrence_days` als array voor weekly/biweekly al gewoon, alleen de
+knoppen zelf niet.
+
+**Fix:** dezelfde toggle-logica als "Aangepast" nu ook toegepast op
+Wekelijks/Om de week (in beide schermen), met een vangnet dat
+voorkomt dat de laatste overgebleven dag uitgezet kan worden (altijd
+minimaal 1 dag actief). Labels bijgewerkt ("Op welke dag?" →
+"Op welke dag(en)?"), en de samenvattingstekst (`formatHerhaling()`)
+toont nu alle geselecteerde dagen i.p.v. alleen de eerste.
+
+**Gevalideerd:** toevoegen/verwijderen van dagen getest, inclusief het
+vangnet — een poging om de laatste dag te verwijderen wordt genegeerd,
+blijft op 1 dag staan. `npx next build` — compileert zonder fouten.
+
 | Systeem | Status |
 |---------|--------|
 | Optie C Filter Layer | ✅ |

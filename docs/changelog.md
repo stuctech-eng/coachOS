@@ -1,5 +1,48 @@
 # CoachOS — Changelog
 
+## v2.4.262 — Meerdere dagen bij Wekelijks/Om de week
+**Gemeld: "Ik kan niet meerdere dagen selecteren."**
+
+### Bevestigd
+Bij "Aangepast" werkte multi-select al correct. Bij "Wekelijks"/"Om
+de week" verving elke tik de hele selectie (`setRecurrenceDays(
+[dag.nummer])`) in plaats van toe te voegen. **Geen bug in de
+berekeningslogica** — `isHerhalendActiefOpDag()` ondersteunde
+`recurrence_days` als array voor weekly/biweekly al gewoon (matcht op
+`.includes(dagNummer)`), alleen de knoppen zelf gebruikten nooit een
+toggle.
+
+### Fix
+Dezelfde toggle-logica als "Aangepast" nu ook toegepast op Wekelijks/
+Om de week — in beide schermen (aanmaken én bewerken):
+```js
+onClick={() => setRecurrenceDays(
+  recurrenceDays.includes(dag.nummer)
+    ? (recurrenceDays.length > 1 ? recurrenceDays.filter(d => d !== dag.nummer) : recurrenceDays)
+    : [...recurrenceDays, dag.nummer]
+)}
+```
+Vangnet ingebouwd: de laatste overgebleven dag kan niet uitgezet
+worden (altijd minimaal 1 dag actief, anders zou de hele reeks
+zomaar leeglopen).
+
+### Bijkomende fixes
+- Labels bijgewerkt: "Op welke dag?" → "Op welke dag(en)?"
+- `formatHerhaling()` (de samenvattingstekst) toonde voorheen altijd
+  maar 1 dag, ook als er meerdere geselecteerd waren — toont nu alle
+  geselecteerde dagen, comma-separated
+
+**Gevalideerd:**
+- Toevoegen van een tweede dag (maandag → maandag+woensdag) werkt
+- Verwijderen van een dag (terug naar alleen woensdag) werkt
+- Vangnet: poging om de laatste dag te verwijderen wordt genegeerd
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open een Wekelijks- of Om de week-item, tik
+meerdere dagen aan in de selector, sla op — de samenvatting zou nu
+alle gekozen dagen moeten tonen (bijv. "Om de week · Ma, Wo").
+
 ## v2.4.261 — DERDE EN DEFINITIEVE FIX: "om de week" echte oorzaak
 **Gemeld met twee screenshots: v2.4.260 werkte (dag-selector toonde
 al "Ma" automatisch), maar het resultaat bleef fout: "Slaat 1 week

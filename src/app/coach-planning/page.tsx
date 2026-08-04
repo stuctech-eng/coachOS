@@ -195,8 +195,11 @@ function formatHerhaling(event: LifeEvent): string {
   if (!event.recurrence) return ''
   const label = RECURRENCE_LABELS[event.recurrence] || event.recurrence
   if (event.recurrence === 'weekly' || event.recurrence === 'biweekly') {
-    const dag = DAGEN.find(d => event.recurrence_days?.includes(d.nummer))
-    return dag ? `${label} · ${dag.label}` : label
+    // v2.4.262: toont nu ALLE geselecteerde dagen, niet alleen de
+    // eerste — nodig sinds meerdere dagen bij Wekelijks/Om de week
+    // mogelijk zijn gemaakt (was voorheen altijd maar 1 dag)
+    const dagen = DAGEN.filter(d => event.recurrence_days?.includes(d.nummer))
+    return dagen.length > 0 ? `${label} · ${dagen.map(d => d.label).join(', ')}` : label
   }
   return label
 }
@@ -1170,10 +1173,10 @@ function NieuwEventSheet({ onClose, onSave, startType }: {
               ))}
               {(recurrence === 'weekly' || recurrence === 'biweekly') && (
                 <div className="mt-2">
-                  <p className="text-xs text-slate-400 mb-2">Op welke dag?</p>
+                  <p className="text-xs text-slate-400 mb-2">Op welke dag(en)?</p>
                   <div className="flex gap-2">
                     {DAGEN.map(dag => (
-                      <button key={dag.nummer} onClick={() => setRecurrenceDays([dag.nummer])}
+                      <button key={dag.nummer} onClick={() => setRecurrenceDays(recurrenceDays.includes(dag.nummer) ? (recurrenceDays.length > 1 ? recurrenceDays.filter(d => d !== dag.nummer) : recurrenceDays) : [...recurrenceDays, dag.nummer])}
                         className={cn('flex-1 py-2.5 rounded-xl text-xs font-medium', recurrenceDays.includes(dag.nummer) ? 'bg-primary-600 text-white' : 'bg-slate-800 text-slate-400')}>
                         {dag.label}
                       </button>
@@ -1375,10 +1378,10 @@ function EventDetail({ event, onClose, onVerwijder, onUpdate }: {
           ))}
           {(recurrence === 'weekly' || recurrence === 'biweekly') && (
             <div className="mt-2">
-              <p className="text-xs text-slate-400 mb-2">Op welke dag?</p>
+              <p className="text-xs text-slate-400 mb-2">Op welke dag(en)?</p>
               <div className="flex gap-2">
                 {DAGEN.map(dag => (
-                  <button key={dag.nummer} onClick={() => setRecurrenceDays([dag.nummer])}
+                  <button key={dag.nummer} onClick={() => setRecurrenceDays(recurrenceDays.includes(dag.nummer) ? (recurrenceDays.length > 1 ? recurrenceDays.filter(d => d !== dag.nummer) : recurrenceDays) : [...recurrenceDays, dag.nummer])}
                     className={cn('flex-1 py-2.5 rounded-xl text-xs font-medium', recurrenceDays.includes(dag.nummer) ? 'bg-primary-600 text-white' : 'bg-slate-800 text-slate-400')}>
                     {dag.label}
                   </button>
