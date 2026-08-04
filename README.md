@@ -47,6 +47,12 @@ expliciet checken en hier vastleggen bij elke nieuwe engine.
 8. **Trainer Rule** — AI mag UITSLUITEND kiezen uit oefeningen die in een CoachOS-bibliotheek bestaan
 
 📖 Volledige architectuurspec: [docs/architecture.md](docs/architecture.md)
+📐 **ADR-007 (v2.4.265): Single Workout Mutation Principle** —
+[docs/adr/ADR-007-single-workout-mutation-principle.md](docs/adr/ADR-007-single-workout-mutation-principle.md).
+Slechts één component mag een workout daadwerkelijk wijzigen (de
+Adaptation Engine) — alle andere componenten leveren uitsluitend
+signalen (`AdaptationSignal`). Voorkomt cumulatieve, niet-uitlegbare
+dubbele aanpassingen.
 🗺️ Roadmap: [docs/roadmap.md](docs/roadmap.md)
 📋 Changelog & beslissingen: [docs/changelog.md](docs/changelog.md)
 
@@ -804,6 +810,70 @@ wordend negatief getal).
 al-voorbije vakantie ("Voorbij"), toekomstige vakantie ("Over 5
 dagen", ongewijzigd gedrag), vakantie die vandaag begint ("Vandaag").
 `npx next build` — compileert zonder fouten.
+
+### ADR-007 — v2.4.265: "Gebruikt elke specialist dezelfde weg?"
+Gevraagd tijdens een architectuur-review: "Alles gebruikt nu de
+builder? Elke specialist gebruikt dezelfde weg?" Bij het uitzoeken
+kwam een reëel, ernstig risico naar boven, geen ja/nee-antwoord.
+
+**Het gevonden risico:** de Workout Platform's Adaptation Engine
+(nieuw) en de al-bestaande Daily Adjustment Layer (ouder, sinds
+v2.4.97) konden **onafhankelijk van elkaar** dezelfde workout
+verkleinen — de oude laag bij laag herstel (-40%, database-niveau),
+de nieuwe laag bij een kruis-sport-signaal (-30% warmup/-1 herhaling/
+-1 zone, in-memory). Bij een gebruiker met beide tegelijk werd
+dezelfde training **twee keer** verkleind, cumulatief en niet meer
+uitlegbaar — recht tegen CoachOS' kernprincipe van explainable AI in.
+
+**Doorgerekend en bevestigd** (zie transcript): een simulatie met een
+al-halveerde workout die daarna nogmaals door de kruis-sport-check
+ging, liet de warmup nog een keer krimpen (300→210 sec) bovenop de
+al-gehalveerde sessie.
+
+**Architectuurbeslissing — vastgelegd in [ADR-007](docs/adr/ADR-007-single-workout-mutation-principle.md):**
+slechts één component mag een workout daadwerkelijk wijzigen (de
+Adaptation Engine). Alle andere componenten leveren uitsluitend
+signalen, in een gedeeld contract:
+```typescript
+interface AdaptationSignal {
+  source: 'fatigue' | 'cross_sport' | 'sleep' | 'weather'
+  severity: 'low' | 'medium' | 'high'
+  confidence: number
+  reden: string
+  metadata?: Record<string, unknown>
+}
+```
+
+**Fase 1 (deze levering), bewust afgebakend:**
+- `adjuster-core.ts`'s `fatigue_detected`-trigger muteert de database
+  niet meer — levert een `AdaptationSignal` op
+- `cross-sport-bridge.ts`'s `bepaalKruisSportSignaal()` spreekt nu
+  hetzelfde contract (severity o.b.v. aantal belaste dimensies,
+  confidence o.b.v. de bijdragende UAP-velden)
+- `pasWorkoutAan()` herschreven — ontvangt een array van signalen,
+  past de downscale hooguit ÉÉN keer toe, combineert alle redenen in
+  één toelichting
+- Alle drie de Workout Builder-routes (Rowing/Running/Cycling)
+  bijgewerkt om beide signalen te verzamelen vóór één aanroep
+
+**Bewust NIET in deze fase:** `missed_session`/`injury_protection`/
+`goal_change` blijven database-mutaties (planning-beslissingen, geen
+intensiteit-downscale, overlapten niet met het risico). De volledige
+Intelligence Platform-combinatielaag (die ooit ALLE signaalbronnen
+zou moeten samenvoegen) — dit contract bereidt die stap voor, bouwt
+'m nog niet.
+
+**Gevalideerd — exact het gevonden risico:** fatigue-signaal +
+cross-sport-signaal tegelijk aangeboden geeft **exact dezelfde
+magnitude** als één signaal alleen (herhalingen 4→3, warmup
+onveranderd t.o.v. het enkele-signaal-scenario) — bevestigd met een
+directe vergelijking. Toelichting combineert beide redenen correct in
+één zin. `npx next build` — compileert zonder fouten.
+
+**Wat hierdoor niet verandert:** Rowing/Running/Cycling behouden al
+hun bestaande kennis, analyses en policies. De downscale-magnitude
+zelf is ongewijzigd — alleen de garantie dat 'ie hooguit één keer
+afgaat, is nieuw.
 
 | Systeem | Status |
 |---------|--------|

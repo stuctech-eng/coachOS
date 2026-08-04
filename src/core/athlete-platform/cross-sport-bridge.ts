@@ -1,5 +1,5 @@
 import type { UniversalAthleteState } from './types'
-import type { AdaptationSignals } from '@/core/workout-builder/adaptation'
+import type { AdaptationSignal } from '@/core/workout-builder/adaptation'
 
 // ── Universal Athlete Platform ↔ Workout Platform — Cross-Sport Bridge ──
 // Bron: overleg 2 augustus 2026, exact het centrale voorbeeld uit de
@@ -11,8 +11,15 @@ import type { AdaptationSignals } from '@/core/workout-builder/adaptation'
 //    maar omdat het lichaam al belast is."
 //
 // Deze module IS die vertaalstap. Hergebruikt bewust de al-bestaande,
-// getestte Adaptation Engine-mechaniek (pasDownscaleToe, via het
-// lichaamAlBelast-signaal) — geen nieuwe downscale-logica verzonnen.
+// getestte Adaptation Engine-mechaniek (pasDownscaleToe) — geen nieuwe
+// downscale-logica verzonnen.
+//
+// v2.4.265 (ADR-007 — Single Workout Mutation Principle, overleg 4
+// augustus 2026): retourneert nu het gedeelde AdaptationSignal-contract
+// (source: 'cross_sport') i.p.v. een eigen ad-hoc vorm — spreekt
+// hetzelfde protocol als elke andere signaalbron (fatigue/sleep/
+// weather). Deze functie MUTEERT NOG STEEDS NIETS — puur signaal-
+// aflevering, wat de aanroeper ermee doet blijft aan de aanroeper.
 //
 // KERNREGEL: puur signaal-aflevering, geen beslissing. Deze functie
 // bepaalt OF het lichaam al belast is (en waarom) — wat de aanroeper
@@ -35,7 +42,7 @@ const BELASTE_NIVEAUS = ['hoog', 'zeer_hoog']
  * hierboven het al noemde. Running's belasting zit primair in de benen
  * (zie running-impact-adapter.ts) — zonder deze check zou het signaal
  * voor Running-sessies zo goed als nooit afgaan. */
-export function bepaalKruisSportSignaal(state: UniversalAthleteState): AdaptationSignals['lichaamAlBelast'] | null {
+export function bepaalKruisSportSignaal(state: UniversalAthleteState): AdaptationSignal | null {
   const cardioBelast = BELASTE_NIVEAUS.includes(state.cardiovasculair.aerobic_load.niveau)
   const coreVermoeid = BELASTE_NIVEAUS.includes(state.spieren.core_vermoeidheid.niveau)
   const bovenlichaamVermoeid = BELASTE_NIVEAUS.includes(state.spieren.bovenlichaam_vermoeidheid.niveau)
@@ -45,10 +52,11 @@ export function bepaalKruisSportSignaal(state: UniversalAthleteState): Adaptatio
 
   const redenen: string[] = []
   const bronSporten: string[] = []
-  if (cardioBelast) { redenen.push('cardio al belast'); if (state.cardiovasculair.aerobic_load.laatste_bron_sport) bronSporten.push(state.cardiovasculair.aerobic_load.laatste_bron_sport) }
-  if (coreVermoeid) { redenen.push('core vermoeid'); if (state.spieren.core_vermoeidheid.laatste_bron_sport) bronSporten.push(state.spieren.core_vermoeidheid.laatste_bron_sport) }
-  if (bovenlichaamVermoeid) { redenen.push('bovenlichaam vermoeid'); if (state.spieren.bovenlichaam_vermoeidheid.laatste_bron_sport) bronSporten.push(state.spieren.bovenlichaam_vermoeidheid.laatste_bron_sport) }
-  if (benenVermoeid) { redenen.push('benen vermoeid'); if (state.spieren.been_vermoeidheid.laatste_bron_sport) bronSporten.push(state.spieren.been_vermoeidheid.laatste_bron_sport) }
+  const confidenceScores: number[] = []
+  if (cardioBelast) { redenen.push('cardio al belast'); confidenceScores.push(state.cardiovasculair.aerobic_load.confidence_score); if (state.cardiovasculair.aerobic_load.laatste_bron_sport) bronSporten.push(state.cardiovasculair.aerobic_load.laatste_bron_sport) }
+  if (coreVermoeid) { redenen.push('core vermoeid'); confidenceScores.push(state.spieren.core_vermoeidheid.confidence_score); if (state.spieren.core_vermoeidheid.laatste_bron_sport) bronSporten.push(state.spieren.core_vermoeidheid.laatste_bron_sport) }
+  if (bovenlichaamVermoeid) { redenen.push('bovenlichaam vermoeid'); confidenceScores.push(state.spieren.bovenlichaam_vermoeidheid.confidence_score); if (state.spieren.bovenlichaam_vermoeidheid.laatste_bron_sport) bronSporten.push(state.spieren.bovenlichaam_vermoeidheid.laatste_bron_sport) }
+  if (benenVermoeid) { redenen.push('benen vermoeid'); confidenceScores.push(state.spieren.been_vermoeidheid.confidence_score); if (state.spieren.been_vermoeidheid.laatste_bron_sport) bronSporten.push(state.spieren.been_vermoeidheid.laatste_bron_sport) }
 
   // v2.4.247: bepaal de meest voorkomende bronsport onder de belaste
   // dimensies (bijv. als cardio/core/bovenlichaam allemaal 'rowing'
@@ -61,5 +69,17 @@ export function bepaalKruisSportSignaal(state: UniversalAthleteState): Adaptatio
     bronSport = [...tellingen.entries()].sort((a, b) => b[1] - a[1])[0][0]
   }
 
-  return { reden: `lichaam al belast — ${redenen.join(', ')}`, bronSport }
+  // v2.4.265: severity op basis van AANTAL belaste dimensies — hoe meer
+  // dimensies tegelijk hoog staan, hoe zwaarder het signaal. Confidence
+  // = gemiddelde van de bijdragende UAP-velden se eigen confidence_score
+  // (eerlijk hergebruikt, geen nieuwe schatting verzonnen).
+  const aantalDimensies = redenen.length
+  const severity: AdaptationSignal['severity'] = aantalDimensies >= 3 ? 'high' : aantalDimensies === 2 ? 'medium' : 'low'
+  const confidence = Math.round(confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length)
+
+  return {
+    source: 'cross_sport', severity, confidence,
+    reden: `lichaam al belast — ${redenen.join(', ')}`,
+    metadata: bronSport ? { bronSport } : undefined,
+  }
 }

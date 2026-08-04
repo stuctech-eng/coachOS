@@ -1,33 +1,50 @@
 import type { UniversalWorkout, WorkoutBlock, WorkoutTarget } from './types'
 
 // ── CoachOS Workout Platform — Adaptation Engine ─────────────────────────
-// Bron: Universal Workout Builder Master Architecture v1.0. Fase 1, stap 4.
-// Past een AL GEBOUWDE workout automatisch aan — draait NA de Builder,
-// VÓÓR de Validation Engine (een aangepaste workout moet alsnog gevalideerd
-// worden, deze laag garandeert niet zelf de veiligheid).
+// Bron: Universal Workout Builder Master Architecture v1.0, Fase 1 stap 4
+// (v2.4.227), uitgebreid v2.4.241 (kruis-sport), en v2.4.265: ADR-007 —
+// "Single Workout Mutation Principle" (overleg 4 augustus 2026).
 //
-// Bewust EXACT de twee voorbeelden uit de Master Vision, niet meer:
-//   slechte slaap → kortere warming-up → minder intervallen → lagere intensiteit
-//   extra beschikbare tijd → extra duurblok → langere cooling-down → mobiliteit
-// Verdere triggers (blessure/weer/etc.) volgen als latere, losse stappen.
+// ADR-007: Binnen CoachOS mag slechts één component de uiteindelijke
+// workout wijzigen — deze Adaptation Engine. Alle overige componenten
+// (Daily Adjustment Layer, Universal Athlete Platform, toekomstige
+// weer-/slaap-/blessure-signalen) leveren UITSLUITEND signalen aan, in
+// het gedeelde AdaptationSignal-contract hieronder. Dit voorkomt het
+// gevonden risico: twee onafhankelijke lagen die elk zelfstandig de
+// workout verkleinden, met een cumulatief, niet meer uitlegbaar effect.
 //
 // 100% deterministisch — geen AI. Elke wijziging wordt vastgelegd in
-// workout.adaptations (transparantie — "waarom ziet mijn training er zo
-// uit", zelfde principe als REASON_CODE_UITLEG in de Training Plan Engine).
+// workout.adaptations (transparantie).
+
+/** Uniform contract — elke bron (fatigue/cross_sport/sleep/weather/...)
+ * levert exact dit object aan, nooit een eigen ad-hoc vorm. Nieuwe
+ * bronnen (Strength, Nutrition, Recovery) spreken hierdoor automatisch
+ * hetzelfde protocol, zonder de Adaptation Engine zelf aan te passen. */
+export interface AdaptationSignal {
+  source: 'fatigue' | 'cross_sport' | 'sleep' | 'weather'
+  severity: 'low' | 'medium' | 'high'
+  /** 0-100 — hoe zeker is de bron van dit signaal */
+  confidence: number
+  /** Mens-leesbare toelichting, voor de "waarom is mijn training zo"-transparantie */
+  reden: string
+  /** Bronspecifieke extra context (bijv. { bronSport: 'rowing' } bij cross_sport) — de Adaptation Engine leest dit zelf niet, puur voor UI-doeleinden */
+  metadata?: Record<string, unknown>
+}
 
 export interface AdaptationSignals {
-  /** Matcht exact het Master Vision-voorbeeld: slechte slaap → korter/lichter */
-  slechteSlaap?: boolean
-  /** v2.4.241 (Universal Athlete Platform-koppeling): generieke variant
-   * van dezelfde downscale-mechaniek, voor ELKE andere reden dat het
-   * lichaam al belast is — bijv. "gisteren 90 min geroeid" bij een
-   * Running-workout van vandaag. Zelfde mechaniek als slechteSlaap
-   * (korter/minder herhalingen/lager), andere, specifieke reden-tekst. */
-  lichaamAlBelast?: { reden: string; bronSport?: string }
+  /** v2.4.265: ÉÉN gecombineerde lijst i.p.v. losse booleans per bron —
+   * de Adaptation Engine bepaalt zelf het zwaarste signaal en past de
+   * downscale-mechaniek precies ÉÉN keer toe, ongeacht hoeveel bronnen
+   * tegelijk iets melden. Voorkomt dubbele/opeenstapelende aanpassingen. */
+  signalen?: AdaptationSignal[]
   /** Positief = meer tijd dan oorspronkelijk gepland (seconden), negatief
-   * = minder tijd. 0/undefined = geen aanpassing. */
+   * = minder tijd. 0/undefined = geen aanpassing. Blijft een apart
+   * mechanisme — dit is geen "belasting"-signaal maar een tijd-
+   * beschikbaarheid-wijziging, andersoortig dan de downscale hierboven. */
   extraBeschikbareTijd_sec?: number
 }
+
+const SEVERITY_RANG: Record<AdaptationSignal['severity'], number> = { low: 1, medium: 2, high: 3 }
 
 function kopieerWorkout(workout: UniversalWorkout): UniversalWorkout {
   // Diepe kopie — de Adaptation Engine mag het origineel nooit muteren,
@@ -41,19 +58,24 @@ function verlaagZoneTargets(targets: WorkoutTarget[]): WorkoutTarget[] {
     : t)
 }
 
-/** v2.4.241: was pasSlechteSlaapToe() — gegeneraliseerd met een
- * `redenLabel`-parameter, zodat dezelfde downscale-mechaniek voor
- * meerdere triggers (slechte slaap, lichaam al belast door een andere
- * sport) herbruikt kan worden, elk met een eigen, kloppende
- * toelichtingstekst i.p.v. altijd "slecht geslapen" te zeggen. */
-function pasDownscaleToe(workout: UniversalWorkout, redenLabel: string): string[] {
+/** v2.4.241: was pasSlechteSlaapToe(), v2.4.265: neemt nu een lijst van
+ * ALLE bijdragende signalen (voor een gecombineerde reden-tekst), maar
+ * past de downscale zelf maar ÉÉN keer toe — dat is de kern van
+ * ADR-007. De MAGNITUDE van de downscale blijft ongewijzigd t.o.v. de
+ * al-geteste versie (geen nieuwe wiskunde), alleen het AANTAL keer dat
+ * 'ie kan afgaan is nu gegarandeerd hooguit 1. */
+function pasDownscaleToe(workout: UniversalWorkout, signalen: AdaptationSignal[]): string[] {
   const toelichtingen: string[] = []
+  // v2.4.265: gesorteerd op severity (hoogste eerst) — de belangrijkste
+  // reden staat zo vooraan in de toelichting, gebruikt SEVERITY_RANG
+  const gesorteerdeSignalen = [...signalen].sort((a, b) => SEVERITY_RANG[b.severity] - SEVERITY_RANG[a.severity])
+  const redenTekst = gesorteerdeSignalen.map(s => s.reden).join('; ')
 
   // 1. Kortere warming-up (-30%, ondergrens 3 min)
   if (workout.warmup.length > 0) {
     const oud = workout.warmup[0].duration_sec
     workout.warmup[0].duration_sec = Math.max(180, Math.round(oud * 0.7))
-    if (workout.warmup[0].duration_sec !== oud) toelichtingen.push(`Kortere warming-up (${redenLabel} — lichaam heeft minder opbouwtijd nodig bij een lagere intensiteit).`)
+    if (workout.warmup[0].duration_sec !== oud) toelichtingen.push(`Kortere warming-up (${redenTekst} — lichaam heeft minder opbouwtijd nodig bij een lagere intensiteit).`)
   }
 
   // 2. Minder intervallen (repeat verminderen, ondergrens 2) + 3. lagere intensiteit
@@ -61,7 +83,7 @@ function pasDownscaleToe(workout: UniversalWorkout, redenLabel: string): string[
     if (blok.repeat && blok.repeat > 2) {
       const oudAantal = blok.repeat
       blok.repeat = Math.max(2, blok.repeat - 1)
-      if (blok.repeat !== oudAantal) toelichtingen.push(`Aantal herhalingen verlaagd van ${oudAantal} naar ${blok.repeat} — minder belasting (${redenLabel}).`)
+      if (blok.repeat !== oudAantal) toelichtingen.push(`Aantal herhalingen verlaagd van ${oudAantal} naar ${blok.repeat} — minder belasting (${redenTekst}).`)
     }
     const oudeTargets = JSON.stringify(blok.targets)
     blok.targets = verlaagZoneTargets(blok.targets)
@@ -117,11 +139,15 @@ export function pasWorkoutAan(origineel: UniversalWorkout, signalen: AdaptationS
   const workout = kopieerWorkout(origineel)
   const nieuweAanpassingen: string[] = []
 
-  if (signalen.slechteSlaap) {
-    nieuweAanpassingen.push(...pasDownscaleToe(workout, 'slecht geslapen'))
-  }
-  if (signalen.lichaamAlBelast) {
-    nieuweAanpassingen.push(...pasDownscaleToe(workout, signalen.lichaamAlBelast.reden))
+  // v2.4.265 (ADR-007 — Single Workout Mutation Principle): ongeacht
+  // hoeveel signalen er binnenkomen (fatigue + cross_sport + sleep +
+  // weather, allemaal tegelijk mogelijk), wordt de downscale-mechaniek
+  // hooguit ÉÉN keer aangeroepen. Dat is het hele punt van deze
+  // refactor — vóór v2.4.265 kon elk signaal onafhankelijk zijn eigen
+  // -30%/-1 herhaling/-1 zone toepassen, wat cumulatief kon opstapelen
+  // tot een niet meer uitlegbare, veel te lichte training.
+  if (signalen.signalen && signalen.signalen.length > 0) {
+    nieuweAanpassingen.push(...pasDownscaleToe(workout, signalen.signalen))
   }
   if (signalen.extraBeschikbareTijd_sec) {
     nieuweAanpassingen.push(...pasBeschikbareTijdToe(workout, signalen.extraBeschikbareTijd_sec))

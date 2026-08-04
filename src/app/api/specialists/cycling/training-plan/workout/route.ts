@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { bouwWorkout, type WorkoutBuilderInput } from '@/core/workout-builder/builder'
-import { pasWorkoutAan } from '@/core/workout-builder/adaptation'
+import { pasWorkoutAan, type AdaptationSignal } from '@/core/workout-builder/adaptation'
 import { valideerWorkout } from '@/core/workout-builder/validation'
 import { genereerUitvoeringsHints } from '@/core/workout-builder/execution'
 import { bepaalMateriaal } from '@/core/workout-builder/equipment'
@@ -13,6 +13,8 @@ import type { WorkoutTrainingType, WorkoutMesocycle } from '@/core/workout-build
 import { vertaalTarget, haalVermogensZonesVoorGebruiker, CYCLING_EQUIPMENT_MAPPING } from '@/lib/specialists/cycling-workout-adapter'
 import { haalAthleteState } from '@/core/athlete-platform/storage'
 import { bepaalKruisSportSignaal } from '@/core/athlete-platform/cross-sport-bridge'
+import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
+import { cyclingAdapter } from '@/lib/specialists/training-plan-engine/cycling-adapter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -71,15 +73,26 @@ export async function GET(req: NextRequest) {
 
     let workout = bouwWorkout(input)
 
+    // v2.4.265 (ADR-007 — Single Workout Mutation Principle): zelfde
+    // patroon als Rowing/Running — zie rowing/training-plan/workout/
+    // route.ts voor de volledige toelichting.
     try {
+      const alleSignalen: AdaptationSignal[] = []
+
       const athleteState = await haalAthleteState(supabase, user.id)
       const kruisSportSignaal = bepaalKruisSportSignaal(athleteState)
-      if (kruisSportSignaal) {
-        workout = pasWorkoutAan(workout, { lichaamAlBelast: kruisSportSignaal })
-        workout.kruisSportBron = kruisSportSignaal.bronSport
+      if (kruisSportSignaal) alleSignalen.push(kruisSportSignaal)
+
+      const dailyAdjustment = await voerDailyAdjustmentUitCore(user.id, sessie.plan_id, cyclingAdapter)
+      if (dailyAdjustment.fatigueSignaal) alleSignalen.push(dailyAdjustment.fatigueSignaal)
+
+      if (alleSignalen.length > 0) {
+        workout = pasWorkoutAan(workout, { signalen: alleSignalen })
+        const crossSportBron = alleSignalen.find(s => s.source === 'cross_sport')
+        if (crossSportBron?.metadata?.bronSport) workout.kruisSportBron = crossSportBron.metadata.bronSport as string
       }
-    } catch (kruisSportErr) {
-      console.error('[cycling/training-plan/workout] Kruis-sport-check mislukt (workout blijft ongewijzigd):', kruisSportErr)
+    } catch (signaalErr) {
+      console.error('[cycling/training-plan/workout] Signaal-verzameling mislukt (workout blijft ongewijzigd):', signaalErr)
     }
 
     const validatie = valideerWorkout(workout)

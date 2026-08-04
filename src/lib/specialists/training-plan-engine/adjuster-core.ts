@@ -3,6 +3,7 @@ import { isoDatum } from '@/utils'
 import { genereerCoachPolicy } from '../coach-policy'
 import { haalGoalsMetProgress } from '../goal-engine'
 import type { AanpassingResultaat, TrainingPlanSportAdapter } from './types'
+import type { AdaptationSignal } from '@/core/workout-builder/adaptation'
 
 // ── Daily Adjustment Layer Core — platformcomponent ─────────────────────
 // Bron: docs/adaptive-training-plan-decision-contract-v1.md, sectie 2-3
@@ -10,6 +11,19 @@ import type { AanpassingResultaat, TrainingPlanSportAdapter } from './types'
 // triggers zelf kennen geen sport-concept, alleen welk sessietype
 // "hoge intensiteit" is en waarmee het vervangen wordt, verschilt).
 // VOLLEDIG DETERMINISTISCH.
+//
+// v2.4.265 (ADR-007 — Single Workout Mutation Principle, overleg 4
+// augustus 2026): gevonden risico — deze laag paste de duur van een
+// sessie AL aan (fatigue_detected, -40%), en de nieuwe Workout Builder-
+// Adaptation Engine paste DAARNA nog eens aan (bijv. kruis-sport-
+// signaal), bovenop een al-verlaagde sessie. Cumulatief, niet meer
+// uitlegbaar. FIX: Trigger 3 (fatigue_detected) muteert de database
+// NIET MEER — retourneert voortaan een AdaptationSignal, dat de
+// aanroeper samen met andere signalen (bijv. cross_sport) in ÉÉN
+// aanroep van de Workout Builder's pasWorkoutAan() meegeeft. Triggers
+// 1/2/4 blijven ONGEWIJZIGD database-mutaties — dat zijn planning-
+// beslissingen (welke sessie staat er/welk type), geen intensiteit-
+// downscale, en overlappen niet met het gevonden risico.
 //
 // EERLIJKE DEKKING — zelfde beperkingen als de oorspronkelijke Cycling-
 // versie, ongewijzigd overgenomen:
@@ -20,9 +34,18 @@ import type { AanpassingResultaat, TrainingPlanSportAdapter } from './types'
 //   "meerdere dagen op rij" (vergt historische CoachPolicy-snapshots)
 // - vacation_mode:          ❌ NOG NIET — vergt eerst een UI
 
-export async function voerDailyAdjustmentUitCore(userId: string, planId: string, adapter: TrainingPlanSportAdapter): Promise<AanpassingResultaat[]> {
+export interface DailyAdjustmentResultaat {
+  aanpassingen: AanpassingResultaat[]
+  /** v2.4.265: fatigue_detected levert nu een signaal i.p.v. een
+   * database-mutatie — de aanroeper combineert dit zelf met andere
+   * signalen vóór het bouwen van de concrete workout. */
+  fatigueSignaal: AdaptationSignal | null
+}
+
+export async function voerDailyAdjustmentUitCore(userId: string, planId: string, adapter: TrainingPlanSportAdapter): Promise<DailyAdjustmentResultaat> {
   const supabase = createAdminClient()
   const aanpassingen: AanpassingResultaat[] = []
+  let fatigueSignaal: AdaptationSignal | null = null
   const vandaag = isoDatum(new Date())
 
   // ── Trigger 1: missed_session ────────────────────────────────────────
@@ -95,6 +118,11 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
   }
 
   // ── Trigger 3: fatigue_detected — GEDEELTELIJK, alleen vandaag ───────
+  // v2.4.265 (ADR-007): muteert de database NIET meer. Bepaalt alleen
+  // OF er een hoge-intensiteits-sessie vandaag gepland staat bij laag
+  // herstel, en levert dat als signaal — de daadwerkelijke aanpassing
+  // (inclusief eventuele combinatie met andere signalen) gebeurt nu
+  // uitsluitend in de Workout Builder's Adaptation Engine.
   const policy = await genereerCoachPolicy(userId)
   if (policy.recoveryState === 'low') {
     const { data: vandaagSessie } = await supabase
@@ -106,18 +134,14 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
       .maybeSingle()
 
     if (vandaagSessie && vandaagSessie.type === adapter.hoogIntensiteitsType) {
-      const { data: nieuweSessie } = await supabase
-        .from('training_plan_sessions')
-        .insert({
-          plan_id: planId, date: vandaag, sport: adapter.sport, type: adapter.vervangingBijVermoeidheid,
-          duration: Math.round(vandaagSessie.duration * 0.6), load_target: vandaagSessie.load_target,
-          status: 'adjusted', original_session_id: vandaagSessie.id, adjustment_reason: 'fatigue_detected',
-          mesocycle_type: vandaagSessie.mesocycle_type,
-        })
-        .select()
-        .single()
-      await supabase.from('training_plan_sessions').update({ status: 'cancelled' }).eq('id', vandaagSessie.id)
-      if (nieuweSessie) aanpassingen.push({ sessie_id: vandaagSessie.id, oude_type: adapter.hoogIntensiteitsType, nieuwe_type: adapter.vervangingBijVermoeidheid, reason: 'fatigue_detected' })
+      // Confidence: CoachPolicy heeft geen eigen expliciet confidence-
+      // getal — 65 is een redelijk, MEDIUM-achtig startpunt (zelfde
+      // orde van grootte als de Universal Athlete Platform-adapters),
+      // geen verzonnen precisie.
+      fatigueSignaal = {
+        source: 'fatigue', severity: 'high', confidence: 65,
+        reden: 'laag herstel vandaag',
+      }
     }
   }
 
@@ -134,5 +158,5 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
     aanpassingen.push({ sessie_id: plan.goal_id || 'onbekend', oude_type: 'macrocyclus', nieuwe_type: null, reason: 'goal_change' })
   }
 
-  return aanpassingen
+  return { aanpassingen, fatigueSignaal }
 }

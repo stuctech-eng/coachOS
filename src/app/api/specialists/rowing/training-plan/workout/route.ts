@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { bouwWorkout, type WorkoutBuilderInput } from '@/core/workout-builder/builder'
-import { pasWorkoutAan } from '@/core/workout-builder/adaptation'
+import { pasWorkoutAan, type AdaptationSignal } from '@/core/workout-builder/adaptation'
 import { valideerWorkout } from '@/core/workout-builder/validation'
 import { genereerUitvoeringsHints } from '@/core/workout-builder/execution'
 import { bepaalMateriaal } from '@/core/workout-builder/equipment'
@@ -14,6 +14,8 @@ import type { WorkoutTrainingType, WorkoutMesocycle } from '@/core/workout-build
 import { vertaalTarget, ROWING_EQUIPMENT_MAPPING } from '@/lib/specialists/rowing-workout-adapter'
 import { haalAthleteState } from '@/core/athlete-platform/storage'
 import { bepaalKruisSportSignaal } from '@/core/athlete-platform/cross-sport-bridge'
+import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
+import { rowingAdapter } from '@/lib/specialists/training-plan-engine/rowing-adapter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -85,19 +87,31 @@ export async function GET(req: NextRequest) {
 
     const workout = bouwWorkout(input)
 
-    // v2.4.247: kruis-sport-check ook hier toegevoegd (ontbrak eerder —
-    // Running/Cycling hadden 'm al) — voor consistentie nu ook Rowing
-    // zelf beïnvloedbaar door een zware Running/Cycling-sessie
+    // v2.4.265 (ADR-007 — Single Workout Mutation Principle, overleg 4
+    // augustus 2026): gevonden risico — de oude Daily Adjustment Layer
+    // (fatigue_detected) en deze kruis-sport-check konden ONAFHANKELIJK
+    // van elkaar allebei de workout verkleinen, cumulatief. Nu: beide
+    // bronnen leveren uitsluitend een AdaptationSignal, verzameld in
+    // ÉÉN array, ÉÉN aanroep van pasWorkoutAan() — nooit meer dan één
+    // downscale, ongeacht hoeveel bronnen tegelijk iets melden.
     let finaleWorkout = workout
     try {
+      const alleSignalen: AdaptationSignal[] = []
+
       const athleteState = await haalAthleteState(supabase, user.id)
       const kruisSportSignaal = bepaalKruisSportSignaal(athleteState)
-      if (kruisSportSignaal) {
-        finaleWorkout = pasWorkoutAan(workout, { lichaamAlBelast: kruisSportSignaal })
-        finaleWorkout.kruisSportBron = kruisSportSignaal.bronSport
+      if (kruisSportSignaal) alleSignalen.push(kruisSportSignaal)
+
+      const dailyAdjustment = await voerDailyAdjustmentUitCore(user.id, sessie.plan_id, rowingAdapter)
+      if (dailyAdjustment.fatigueSignaal) alleSignalen.push(dailyAdjustment.fatigueSignaal)
+
+      if (alleSignalen.length > 0) {
+        finaleWorkout = pasWorkoutAan(workout, { signalen: alleSignalen })
+        const crossSportBron = alleSignalen.find(s => s.source === 'cross_sport')
+        if (crossSportBron?.metadata?.bronSport) finaleWorkout.kruisSportBron = crossSportBron.metadata.bronSport as string
       }
-    } catch (kruisSportErr) {
-      console.error('[rowing/training-plan/workout] Kruis-sport-check mislukt (workout blijft ongewijzigd):', kruisSportErr)
+    } catch (signaalErr) {
+      console.error('[rowing/training-plan/workout] Signaal-verzameling mislukt (workout blijft ongewijzigd):', signaalErr)
     }
 
     const validatie = valideerWorkout(finaleWorkout)

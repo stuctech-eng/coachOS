@@ -1,5 +1,81 @@
 # CoachOS — Changelog
 
+## v2.4.265 — ADR-007: Single Workout Mutation Principle
+**Gevraagd tijdens een architectuur-review: "Gebruikt elke specialist
+dezelfde weg?" Bij het uitzoeken kwam een reëel, ernstig risico naar
+boven: twee onafhankelijke lagen konden dezelfde workout cumulatief,
+niet-uitlegbaar verkleinen.**
+
+### Het gevonden risico
+- **Daily Adjustment Layer** (ouder, sinds v2.4.97), trigger
+  `fatigue_detected`: bij laag herstel werd een sessie op
+  databaseniveau vervangen door een lichtere variant, duur `× 0.6`
+- **Adaptation Engine** (nieuwer, v2.4.227+), kruis-sport-signaal:
+  verkleinde de (mogelijk al verkleinde) workout ALSNOG — kortere
+  warming-up, minder herhalingen, lagere intensiteit
+
+Bij een gebruiker met beide tegelijk: dubbele verkleining, cumulatief,
+niet meer herleidbaar tot een enkele reden. Doorgerekend en bevestigd
+met een simulatie: warmup kromp nogmaals (300→210 sec) bovenop een
+al-gehalveerde sessie.
+
+### Architectuurbeslissing — ADR-007
+Vastgelegd in `docs/adr/ADR-007-single-workout-mutation-principle.md`:
+**slechts één component mag een workout daadwerkelijk wijzigen — de
+Adaptation Engine.** Alle andere componenten leveren uitsluitend
+signalen, in een gedeeld contract:
+
+```typescript
+interface AdaptationSignal {
+  source: 'fatigue' | 'cross_sport' | 'sleep' | 'weather'
+  severity: 'low' | 'medium' | 'high'
+  confidence: number
+  reden: string
+  metadata?: Record<string, unknown>
+}
+```
+
+### Fase 1 (deze levering) — bewust afgebakend
+- **`adjuster-core.ts`** — `fatigue_detected`-trigger muteert de
+  database niet meer, levert een `AdaptationSignal` op via het nieuwe
+  `DailyAdjustmentResultaat`-return-type (`{ aanpassingen,
+  fatigueSignaal }`)
+- **`cross-sport-bridge.ts`** — `bepaalKruisSportSignaal()` spreekt nu
+  hetzelfde contract (severity o.b.v. aantal belaste dimensies 1=low/
+  2=medium/3+=high, confidence o.b.v. het gemiddelde van de
+  bijdragende Universal Athlete State-velden)
+- **`adaptation.ts`** — `pasWorkoutAan()` herschreven, ontvangt een
+  array van signalen, past de downscale hooguit ÉÉN keer toe
+  (gesorteerd op severity), combineert alle redenen in één toelichting
+- **Alle 3 Workout Builder-routes** (Rowing/Running/Cycling) bijgewerkt
+  om beide signalen te verzamelen vóór één gecombineerde aanroep
+- **3 aanroepende routes + 1 wrapper** (`training-plan-adjuster.ts`,
+  Cycling/Running/Rowing's `/training-plan`-routes) bijgewerkt naar
+  het nieuwe return-type, `AanpassingResultaat[]`-gedrag ongewijzigd
+
+### Bewust NIET in deze fase
+- `missed_session`/`injury_protection`/`goal_change` blijven
+  database-mutaties — planning-beslissingen, geen intensiteit-
+  downscale, overlapten niet met het gevonden risico
+- Intelligence Platform (volledige signaal-combinatielaag) — dit
+  contract bereidt die stap voor, bouwt 'm nog niet
+- Learning Rules Engine als eigen signaalbron — nog niet aangesloten
+
+### Gevalideerd — exact het gevonden risico
+Fatigue-signaal + cross-sport-signaal tegelijk aangeboden geeft
+**exact dezelfde magnitude** als één signaal alleen (herhalingen 4→3,
+identiek aan het enkele-signaal-scenario) — bevestigd met een directe
+vergelijking. Toelichting combineert beide redenen correct in één
+zin: "Kortere warming-up (laag herstel vandaag; lichaam al belast —
+cardio al belast, core vermoeid — ...)."
+
+`npx next build` — compileert zonder fouten.
+
+**Wat hierdoor niet verandert:** Rowing/Running/Cycling behouden al
+hun bestaande kennis, analyses en policies. De downscale-magnitude
+zelf is ongewijzigd — alleen de garantie dat 'ie hooguit één keer
+afgaat, is nieuw.
+
 ## v2.4.264 — BIJVANGST-FIX: "Over -15 dagen"
 **Direct gevonden bij het testen van v2.4.263 — bevestigd dat die fix
 werkte (2 i.p.v. 8), maar meteen ook een nieuw, eigen bijverschijnsel.**

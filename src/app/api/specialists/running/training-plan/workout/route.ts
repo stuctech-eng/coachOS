@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { bouwWorkout, type WorkoutBuilderInput } from '@/core/workout-builder/builder'
-import { pasWorkoutAan } from '@/core/workout-builder/adaptation'
+import { pasWorkoutAan, type AdaptationSignal } from '@/core/workout-builder/adaptation'
 import { valideerWorkout } from '@/core/workout-builder/validation'
 import { genereerUitvoeringsHints } from '@/core/workout-builder/execution'
 import { bepaalMateriaal } from '@/core/workout-builder/equipment'
@@ -14,6 +14,8 @@ import { vertaalTarget, haalPaceZonesVoorGebruiker, RUNNING_EQUIPMENT_MAPPING } 
 import { berekenVDOT } from '@/lib/specialists/running-zones'
 import { haalAthleteState } from '@/core/athlete-platform/storage'
 import { bepaalKruisSportSignaal } from '@/core/athlete-platform/cross-sport-bridge'
+import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
+import { runningAdapter } from '@/lib/specialists/training-plan-engine/running-adapter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -41,7 +43,9 @@ async function getUser() {
 // 2. Na het bouwen wordt de Universal Athlete State gecheckt
 //    (bepaalKruisSportSignaal) — als een andere sport (bijv. Rowing)
 //    het lichaam al zwaar belast heeft, wordt de workout automatisch
-//    afgezwakt via de Adaptation Engine (lichaamAlBelast-signaal)
+//    afgezwakt via de Adaptation Engine. v2.4.265: gecombineerd met
+//    het fatigue-signaal (Daily Adjustment Layer) in ÉÉN aanroep
+//    (ADR-007 — Single Workout Mutation Principle)
 
 const TRAININGTYPE_MAP: Record<string, WorkoutTrainingType> = {
   easy_run: 'endurance', interval: 'interval', herstel: 'herstel',
@@ -84,20 +88,27 @@ export async function GET(req: NextRequest) {
 
     let workout = bouwWorkout(input)
 
-    // Kruis-sport-signaal — leest de Universal Athlete State, past de
-    // workout aan als een ANDERE sport het lichaam al belast heeft.
-    // In een try/catch: een fout hier mag het bouwen van de workout
-    // zelf nooit laten falen, zelfde voorzichtigheidsprincipe als bij
-    // de Concept2-sync-koppeling.
+    // v2.4.265 (ADR-007 — Single Workout Mutation Principle): beide
+    // signaalbronnen (kruis-sport + fatigue) verzameld in ÉÉN array,
+    // ÉÉN aanroep van pasWorkoutAan() — zie rowing/training-plan/
+    // workout/route.ts voor de volledige toelichting.
     try {
+      const alleSignalen: AdaptationSignal[] = []
+
       const athleteState = await haalAthleteState(supabase, user.id)
       const kruisSportSignaal = bepaalKruisSportSignaal(athleteState)
-      if (kruisSportSignaal) {
-        workout = pasWorkoutAan(workout, { lichaamAlBelast: kruisSportSignaal })
-        workout.kruisSportBron = kruisSportSignaal.bronSport
+      if (kruisSportSignaal) alleSignalen.push(kruisSportSignaal)
+
+      const dailyAdjustment = await voerDailyAdjustmentUitCore(user.id, sessie.plan_id, runningAdapter)
+      if (dailyAdjustment.fatigueSignaal) alleSignalen.push(dailyAdjustment.fatigueSignaal)
+
+      if (alleSignalen.length > 0) {
+        workout = pasWorkoutAan(workout, { signalen: alleSignalen })
+        const crossSportBron = alleSignalen.find(s => s.source === 'cross_sport')
+        if (crossSportBron?.metadata?.bronSport) workout.kruisSportBron = crossSportBron.metadata.bronSport as string
       }
-    } catch (kruisSportErr) {
-      console.error('[running/training-plan/workout] Kruis-sport-check mislukt (workout blijft ongewijzigd):', kruisSportErr)
+    } catch (signaalErr) {
+      console.error('[running/training-plan/workout] Signaal-verzameling mislukt (workout blijft ongewijzigd):', signaalErr)
     }
 
     const validatie = valideerWorkout(workout)

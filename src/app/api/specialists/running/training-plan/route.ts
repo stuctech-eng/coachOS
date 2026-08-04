@@ -68,9 +68,12 @@ export async function GET() {
       console.error('[training-plan GET] Rolling horizon-verlenging mislukt:', verlengErr)
     }
 
-    let aanpassingen: Awaited<ReturnType<typeof voerDailyAdjustmentUitCore>> = []
+    let aanpassingen: import('@/lib/specialists/training-plan-engine/types').AanpassingResultaat[] = []
     try {
-      aanpassingen = await voerDailyAdjustmentUitCore(user.id, plan.id, runningAdapter)
+      // v2.4.265 (ADR-007): fatigueSignaal wordt hier bewust genegeerd —
+      // zelfde reden als bij Rowing's route
+      const resultaat = await voerDailyAdjustmentUitCore(user.id, plan.id, runningAdapter)
+      aanpassingen = resultaat.aanpassingen
     } catch (adjustErr) {
       console.error('[training-plan GET] Daily Adjustment Layer mislukt:', adjustErr)
     }
