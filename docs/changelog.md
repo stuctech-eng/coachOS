@@ -1,5 +1,33 @@
 # CoachOS — Changelog
 
+## v2.4.264 — BIJVANGST-FIX: "Over -15 dagen"
+**Direct gevonden bij het testen van v2.4.263 — bevestigd dat die fix
+werkte (2 i.p.v. 8), maar meteen ook een nieuw, eigen bijverschijnsel.**
+
+### Root cause
+Door v2.4.263's query-fix (gte-filter verwijderd) vond
+`volgendeVakantie` voor het eerst correct een AL-LOPENDE vakantie —
+maar de weergave-berekening (`dagenTot()`) berekent dagen tot de
+STARTDATUM, zonder rekening te houden met een vakantie die al
+begonnen is. Resultaat: "Over -15 dagen".
+
+### Fix
+`coach-planning/page.tsx` — als de startdatum al voorbij is maar de
+einddatum nog niet: "Nu bezig". Is de hele vakantie al voorbij: 
+"Voorbij" (i.p.v. een steeds groter wordend negatief getal).
+
+**Gevalideerd — 4 scenario's:**
+- Al-lopende vakantie → "Nu bezig"
+- Al-voorbije vakantie → "Voorbij"
+- Toekomstige vakantie → "Over 5 dagen" (ongewijzigd gedrag)
+- Vakantie die vandaag begint → "Vandaag"
+
+`npx next build` — compileert zonder fouten.
+
+**Test-instructie:** open Coach Planning → Overzicht tijdens een
+actieve vakantie — "Volgende vakantie" zou nu "Nu bezig" moeten tonen
+i.p.v. een negatief getal.
+
 ## v2.4.263 — FIX: "Trainingen komende week" negeerde vakantie
 **Gemeld tijdens het samen doorlopen van Coach Planning: Overzicht
 toonde "8", Week-weergave toonde 0 — gebruiker zat middenin een

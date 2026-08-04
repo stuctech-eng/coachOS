@@ -784,7 +784,17 @@ function OverzichtView() {
 
   if (data.volgendeVakantie) {
     const dagen = dagenTot(data.volgendeVakantie.datum)
-    items.push({ icon: '🏖️', label: 'Volgende vakantie', waarde: dagen === 0 ? 'Vandaag' : dagen === 1 ? 'Morgen' : `Over ${dagen} dagen` })
+    // v2.4.264-FIX: gemeld — "Over -15 dagen" bij een AL-LOPENDE
+    // vakantie. Root cause: dagenTot() berekent dagen tot de
+    // STARTDATUM, maar hield geen rekening met een vakantie die al
+    // begonnen is (dagen wordt dan negatief). Nu: als de startdatum al
+    // voorbij is maar de einddatum nog niet, toon "Nu bezig" i.p.v.
+    // het rekenkundig correcte maar onbruikbare negatieve getal.
+    const vakantieBezig = dagen < 0 && data.volgendeVakantie.eindDatum && data.volgendeVakantie.eindDatum >= vandaagStr()
+    items.push({
+      icon: '🏖️', label: 'Volgende vakantie',
+      waarde: vakantieBezig ? 'Nu bezig' : dagen === 0 ? 'Vandaag' : dagen === 1 ? 'Morgen' : dagen < 0 ? 'Voorbij' : `Over ${dagen} dagen`,
+    })
   }
   if (data.volgendEvenement) {
     const dagen = dagenTot(data.volgendEvenement.datum)

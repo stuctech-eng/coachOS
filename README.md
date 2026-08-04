@@ -784,7 +784,26 @@ gebruikt wordt (ook `volgendeVakantie`).
 t/m 9 aug, vandaag 4 aug, sessies gepland 4 t/m 11 aug. Met de fix:
 2 (alleen 10 en 11 aug vallen buiten vakantie). Zonder de fix: 8 — de
 exacte, misleidende waarde die gerapporteerd werd. `npx next build` —
-compileert zonder fouten.
+compileert zonder fouten. **Bevestigd werkend na deployment** —
+screenshot toonde 2 i.p.v. 8, exact zoals berekend.
+
+### BIJVANGST-FIX — v2.4.264: "Over -15 dagen"
+Direct gevonden bij het testen van v2.4.263: door de query-fix
+(gte-filter verwijderd) vond `volgendeVakantie` nu voor het eerst
+correct een AL-LOPENDE vakantie — maar de weergave-berekening
+(`dagenTot()`, in `coach-planning/page.tsx`) berekent dagen tot de
+STARTDATUM, en hield geen rekening met een vakantie die al begonnen
+is. Resultaat: "Over -15 dagen" — rekenkundig correct, maar onbruikbaar.
+
+**Fix:** als de startdatum al voorbij is maar de einddatum nog niet,
+toont het scherm nu "Nu bezig" i.p.v. het negatieve getal. Is de hele
+vakantie al voorbij, dan "Voorbij" (in plaats van een steeds groter
+wordend negatief getal).
+
+**Gevalideerd — 4 scenario's:** al-lopende vakantie ("Nu bezig"),
+al-voorbije vakantie ("Voorbij"), toekomstige vakantie ("Over 5
+dagen", ongewijzigd gedrag), vakantie die vandaag begint ("Vandaag").
+`npx next build` — compileert zonder fouten.
 
 | Systeem | Status |
 |---------|--------|
