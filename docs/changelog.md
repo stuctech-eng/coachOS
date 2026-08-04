@@ -1,5 +1,53 @@
 # CoachOS — Changelog
 
+## v2.4.257 — Omgeving-categorie: hitte/koude-adaptatie gevuld
+**Gecorrigeerde aanname: eerder vandaag werd gezegd "geen weerdata
+beschikbaar" voor de Omgeving-categorie — dat klopte niet. Er bestond
+al een uitgebreide weer-API (`api/weather`, gevoelstemperatuur,
+luchtvochtigheid, UV-index).**
+
+### Nieuw
+**`src/lib/specialists/weer-impact-adapter.ts`**:
+- `vertaalWeerNaarImpact()` — vertaalt gevoelstemperatuur naar
+  hitte_adaptatie (≥20°C) of koude_adaptatie (≤8°C) impact-bijdragen,
+  geen bijdrage bij neutrale temperaturen
+- `haalHuidigWeer()` — server-side fetch naar de al-bestaande interne
+  weather-route, geen lat/lon nodig (die route valt zelf terug op
+  Vercel-edge-locatie/IP/Amsterdam)
+
+### Eerlijk, welke velden WEL en NIET gevuld worden
+- ✅ hitte_adaptatie, koude_adaptatie — directe, bruikbare proxy
+- ❌ hoogte_adaptatie — geen hoogtedata beschikbaar
+- ❌ hydratatie_status — luchtvochtigheid ≠ hydratatie, te zwakke gok
+- ❌ energie_beschikbaarheid — geen voedingsdata beschikbaar
+
+### Belangrijke, expliciet benoemde beperking
+Gebruikt het weer OP HET MOMENT VAN SYNCEN als proxy voor "de
+omstandigheden tijdens de sessie" — niet het historische weer op het
+exacte trainingsmoment. Bewust NIET toegepast bij de terugvul-functie
+(backfill van oude sessies) — daar zou dit niet accuraat zijn, alleen
+bij live syncs.
+
+### Koppeling
+- `api/specialists/rowing/concept2/sync/route.ts` — weer één keer per
+  sync-batch opgehaald (`req.nextUrl.origin`)
+- `src/lib/strava-activity-processor.ts` (Running/Cycling) —
+  `process.env.NEXT_PUBLIC_APP_URL`, hetzelfde patroon dat al overal
+  in de codebase gebruikt wordt
+
+**Gevalideerd:**
+- 5 scenario's: warme dag, koude dag, neutraal weer (terecht geen
+  bijdrage), extreme hitte (plafond op 100), precies op de drempel
+- Volledige keten getest: rowing-bijdragen + weer-bijdragen samen door
+  de Impact Engine — hitte_adaptatie correct gevuld, de 3 overige
+  Omgeving-velden blijven terecht op LOW/0%
+
+`npx next build` — compileert zonder fouten.
+
+**Daarmee: 5,5 van de 6 punten uit het overzicht opgelost.** De
+resterende 3 Omgeving-velden zijn geen vergeten aansluiting, maar een
+eerlijk benoemd gebrek aan databron.
+
 ## v2.4.256 — Geleerde patronen daadwerkelijk toegepast
 **Vervolg op v2.4.253 (evalueren + tonen). De bewust opengelaten stap
 nu afgemaakt: een geleerd patroon past ook echt de opgeslagen state

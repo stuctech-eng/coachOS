@@ -8,6 +8,7 @@ import { pasImpactToe, type ImpactBijdrage, MINIMUM_SESSIE_DUUR_MINUTEN } from '
 import { vertaalRunningSessieNaarImpact } from './specialists/running-impact-adapter'
 import { evalueerEnBewaarLeerpatronenIndienNodig } from './specialists/learning-rules-koppeling'
 import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
+import { haalHuidigWeer, vertaalWeerNaarImpact } from './specialists/weer-impact-adapter'
 
 // v2.4.253: Nederlandse activiteitnaam -> Engelse sport-sleutel, voor de
 // Learning Rules-koppeling (die dezelfde sleutels gebruikt als de
@@ -182,7 +183,13 @@ export async function processStravaActivity(
     try {
       const sportSleutel = ACTIVITEIT_NAAR_SPORT_SLEUTEL[activityName]
       const huidigeState = await haalAthleteState(supabase, userId)
-      const bijdragen = impactAdapter(duurMinuten)
+
+      // v2.4.257 (Omgeving-categorie — eerste adapter)
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://coach-os-tau.vercel.app'
+      const huidigWeer = await haalHuidigWeer(appUrl)
+      const weerBijdragen = huidigWeer && sportSleutel ? vertaalWeerNaarImpact(huidigWeer, sportSleutel) : []
+
+      const bijdragen = [...impactAdapter(duurMinuten), ...weerBijdragen]
       const nieuweState = pasImpactToe(huidigeState, bijdragen)
 
       // v2.4.256 (Learning Rules Engine — daadwerkelijk toegepast)

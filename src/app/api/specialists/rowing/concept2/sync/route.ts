@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
@@ -9,6 +9,7 @@ import { pasImpactToe, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platfo
 import { vertaalRowingSessieNaarImpact } from '@/lib/specialists/rowing-impact-adapter'
 import { evalueerEnBewaarLeerpatronenIndienNodig } from '@/lib/specialists/learning-rules-koppeling'
 import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
+import { haalHuidigWeer, vertaalWeerNaarImpact } from '@/lib/specialists/weer-impact-adapter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -92,7 +93,7 @@ async function haalGeldigToken(userId: string): Promise<string | null> {
   return nieuweTokens.access_token
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
@@ -169,6 +170,13 @@ export async function POST() {
       .from('learned_patterns').select('effect_pad, aanpassing_percentage').eq('user_id', user.id).eq('sport', 'rowing')
     const geleerdePatronen: GeleerdPatroon[] = geleerdePatronenData || []
 
+    // v2.4.257 (Omgeving-categorie — eerste adapter): weer één keer
+    // ophalen, niet per sessie. Zie weer-impact-adapter.ts voor de
+    // eerlijke beperking (weer-op-syncmoment als proxy, niet het
+    // historische weer tijdens de training zelf).
+    const huidigWeer = await haalHuidigWeer(req.nextUrl.origin)
+    const weerBijdragen = huidigWeer ? vertaalWeerNaarImpact(huidigWeer, 'rowing') : []
+
     for (const resultaat of alleResultaten) {
       // Idempotency-check — zelfde patroon als Strava
       const { data: bestaat } = await supabase
@@ -222,7 +230,7 @@ export async function POST() {
       if (duurMinuten >= MINIMUM_SESSIE_DUUR_MINUTEN) {
         try {
           const huidigeState = await haalAthleteState(supabase, user.id)
-          const bijdragen = vertaalRowingSessieNaarImpact(duurMinuten)
+          const bijdragen = [...vertaalRowingSessieNaarImpact(duurMinuten), ...weerBijdragen]
           const nieuweState = pasImpactToe(huidigeState, bijdragen)
           const stateNaGeleerdeAanpassingen = pasGeleerdeAanpassingenToe(nieuweState, geleerdePatronen)
           await slaAthleteStateOp(supabase, user.id, stateNaGeleerdeAanpassingen)

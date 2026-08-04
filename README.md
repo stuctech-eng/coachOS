@@ -11,18 +11,19 @@ dat dan vergeten, want het stond alleen los in commentaar. Vaste regel
 vanaf nu: elk "gebouwd, nog niet aangesloten"-punt komt HIER, niet
 alleen in een losse commentaarregel bij de code zelf.**
 
-**Status (3 augustus 2026, avond): 5 van de 6 punten opgelost.** Het
-enige nog openstaande punt (Omgeving-categorie) is bewust zo gelaten —
-geen vergeten aansluiting, maar een eerlijk benoemde, grotere
-toekomstige uitbreiding (vergt weer-/voedingsdata die nog niet
-bestaat).
+**Status (3 augustus 2026, avond): 5,5 van de 6 punten opgelost.** Het
+laatste punt (Omgeving-categorie) bleek deels te snel afgeschreven —
+een gecontroleerde aanname ("geen weerdata beschikbaar") klopte niet;
+er bestond al een uitgebreide weer-API. 2 van de 5 velden (hitte/
+koude-adaptatie) zijn alsnog gevuld. De overige 3 (hoogte/hydratatie/
+energie) blijven terecht leeg — daar bestaat écht geen databron voor.
 
 | Wat | Status | Waar | Risico als het blijft liggen |
 |---|---|---|---|
 | **Learning Rules Engine** (`evalueerRegels()`) | ✅ **Volledig aangesloten (v2.4.253 + v2.4.256)** — context-verzameling, evalueren, zichtbaar maken (v2.4.253), én nu ook daadwerkelijk toegepast op toekomstige Impact Engine-berekeningen (v2.4.256, `learned-adjustments.ts`) | `learning-context.ts` + `learning-rules-koppeling.ts` + `learned-adjustments.ts` | — |
 | **Alternative Engine** (`bepaalAlternatieven()`) | ✅ **Aangesloten (v2.4.254)** — trigger: ontbrekend materiaal (geen Concept2 gekoppeld), alternatieven zijn ANDERE sporten waar de gebruiker al een actief plan voor heeft (geen niet-bestaande workout-catalogus), zichtbaar op Rowing's Trainingsplan-pagina met een link. Slecht-weer/blessure-triggers nog niet gebouwd (geen weer-/blessuredata gekoppeld) | `api/specialists/rowing/training-plan/workout/route.ts` | — |
 | **Rowing coach-conversatieroute** (automatische inzicht-generatie) | ✅ **Gebouwd (v2.4.255)** — `rowing-analysis.ts` (bestond nog niet, eerst gebouwd) + `api/specialists/rowing/coach` (mirror van Running's route), inclusief automatische Coach Memory-vulling via dezelfde Learning Engine als Cycling/Running | `rowing-analysis.ts` + `api/specialists/rowing/coach/route.ts` | — |
-| **Universal Athlete Platform — Omgeving-categorie** (hitte/koude/hoogte-adaptatie, hydratatie, energie) | Datamodel bestaat, **geen enkele adapter vult het** | `core/athlete-platform/types.ts` | Blijft voor altijd "Nog geen data" — bevestigd, geen bug, maar wel nog steeds leeg |
+| **Universal Athlete Platform — Omgeving-categorie** (hitte/koude/hoogte-adaptatie, hydratatie, energie) | ⚠️ **Gedeeltelijk opgelost (v2.4.257)** — hitte_adaptatie + koude_adaptatie gevuld via de al-bestaande weer-API (api/weather, was ten onrechte aangenomen niet te bestaan). hoogte_adaptatie/hydratatie_status/energie_beschikbaarheid blijven eerlijk leeg — daar bestaat echt geen databron voor | `weer-impact-adapter.ts` | 3 van de 5 velden blijven "Nog geen data" — geen bug, geen bron |
 | **Rolling horizon-verlenging** | ✅ **Gefixt (v2.4.248), automatisch gemaakt (v2.4.249)** — was het voorbeeld dat tot deze lijst leidde. Eerste versie was per-sport handmatig (moest de juiste pagina bezoeken); nu automatisch voor alle actieve sporten bij elke Today Engine-aanroep | `today-engine.ts` + `training-plan-engine/core.ts` | — |
 | **Performance Platform CTL/ATL/TSB sluit Rowing volledig uit** | ✅ **Gefixt (v2.4.252)** — 2k-testtijd-baseline toegevoegd aan Rowing Profiel (Fase 2 uit het overleg: Population Model → Personal Baseline), `rowing-grafieken.ts` gebouwd (spiegelbeeld van running-grafieken.ts), `load-engine.ts` neemt Rowing nu volledig mee | `rowing-grafieken.ts` + `core/performance/engines/load-engine.ts` | — |
 | **"Rowing vergeten"-patroon (systematisch gecheckt)** | ✅ **5 instanties gevonden en gefixt (v2.4.251)** — `api/action-plan/route.ts` (bronlabel-ternary), `api/specialists/[type]/data/route.ts` (generieke data-fetcher-tabel, laag risico want overruled door de specifieke Rowing-route), `app/goals/page.tsx` (Rowing stond nog op `beschikbaar:false`, stale sinds v2.4.216) | Meerdere bestanden | — |
