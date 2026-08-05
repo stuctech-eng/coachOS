@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.294 — Intelligence/Knowledge Platform-verkenning afgerond
+**Geen code. Stap 2 van "het platform af" — precies zoals
+Architectuurregel #0 voorschrijft: eerst vaststellen of het al bestaat,
+vóór er iets gebouwd wordt.**
+
+### Intelligence Platform — bestaat al
+`beslisTussenSpecialisten()` (`lib/specialists/decision-engine.ts`),
+samen met `genereerCoachPolicy()` en `api/coach/route.ts`, doet al
+precies wat het oorspronkelijke Intelligence Platform-ontwerp
+beschreef: volledig deterministisch (expliciet zo gedocumenteerd —
+"geen AI"), combineert meerdere specialist-samenvattingen tot één
+besluit via vaste regels (blessures/verhoogd risico > periodisering,
+herstel > gecombineerde belasting, doelbelangrijkheid, berekende
+urgentie als tiebreaker), met reasoning erbij voor uitlegbaarheid.
+
+### Knowledge Platform — bestaat al
+Zes oefeningenbibliotheken (`kettlebell/bodyweight/strength/mobility/
+recovery/running-drills-exercises.ts`) — al ontdubbeld sinds v2.4.7,
+Core Architectuurregel #1 ("Libraries are the source of truth") is
+hier al jaren van toepassing. Plus master-spec-documenten (bijv.
+`docs/running-specialist-master-spec.md`, expliciet "goedgekeurde
+master-spec voor een compleet analyseplatform") en de bestaande Sport
+Adapters.
+
+### Conclusie
+Geen aparte "Platform"-laag bouwen — dat zou precies de dubbele logica
+creëren die Architectuurregel #0 wil voorkomen. Deze verkenning is
+zelf het antwoord: consolidatie bevestigd, geen bouwopdracht volgt.
+
+### Status: alle drie de openstaande architectuur-vraagstukken van
+vandaag afgerond (dedup-consolidatie, Coach Decision Engine
+Fase 1-3, Intelligence/Knowledge Platform-verkenning). Resteert alleen
+nog Strength als specialist — bewust apart gehouden, geen platformwerk.
+
 ## v2.4.293 — Coach Decision Engine, Fase 3 (cumulatieve belasting)
 **Opdracht: "Stap 1. Geen losse eindjes. Afmaken" — het bewust
 opengehouden gat uit Fase 2 (v2.4.292) alsnog gedicht, op verzoek van

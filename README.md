@@ -143,9 +143,26 @@ verdwaalt.
   — apart traject, bewust losgehouden van het platform zelf (opdracht
   gebruiker, 5 augustus 2026 avond: "Strength kan altijd later, ik wil
   het platform af")
-- **Intelligence Platform / Knowledge Platform** — bewust niet
-  opgepakt, vermoeden (Platform Audit) dat het grotendeels
-  consolidatie is, nooit bevestigd
+
+**Intelligence Platform / Knowledge Platform — verkenning afgerond
+(5 augustus 2026, avond): bestaan al, alleen niet zo genoemd. Geen
+code gewijzigd, puur bevestiging.**
+- **Intelligence Platform** = `beslisTussenSpecialisten()`
+  (`lib/specialists/decision-engine.ts`) + `genereerCoachPolicy()` +
+  `api/coach/route.ts` samen. Volledig deterministisch (expliciet zo
+  gedocumenteerd, "geen AI"), combineert meerdere specialist-
+  samenvattingen (belasting/risico/doelbelangrijkheid/urgentie) tot
+  één besluit, met reasoning erbij (uitlegbaarheid) — exact wat het
+  oorspronkelijke Intelligence Platform-ontwerp beschreef
+- **Knowledge Platform** = de zes bestaande oefeningenbibliotheken
+  (`kettlebell/bodyweight/strength/mobility/recovery/running-drills-
+  exercises.ts`, al ontdubbeld sinds v2.4.7, Core Architectuurregel #1
+  "Libraries are the source of truth") + de master-spec-documenten
+  (bijv. `docs/running-specialist-master-spec.md`) + de bestaande
+  Sport Adapters
+- **Geen aparte "Platform"-laag nodig** — dat zou precies de dubbele
+  logica creëren die Core Architectuurregel #0 wil voorkomen. Deze
+  verkenning is daarmee zelf het antwoord, geen bouwopdracht.
 
 ### Architectuurprincipe — Source Isolation
 **Vastgelegd 5 augustus 2026, volledig uitgewerkt in
