@@ -5,10 +5,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/workout-matcher'
-import type { SportMatcher } from '@/lib/specialists/training-plan-engine/workout-matcher-types'
-import { rowingMatcher } from '@/lib/specialists/training-plan-engine/matchers/rowing-matcher'
-import { runningMatcher } from '@/lib/specialists/training-plan-engine/matchers/running-matcher'
-import { cyclingMatcher } from '@/lib/specialists/training-plan-engine/matchers/cycling-matcher'
+import { SPORT_MATCHERS } from '@/lib/specialists/training-plan-engine/matcher-registry'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -33,22 +30,12 @@ async function getUser() {
 // Nieuwe matchers (Cycling/Strength, Fase 2 vervolg) hoeven straks
 // alleen deze twee objecten uit te breiden, niets anders in dit bestand.
 
-// v2.4.271 (Fase 2 — Cycling Matcher): registry uitgebreid met
-// 'cycling'. Enige bijzonderheid t.o.v. Rowing/Running: Cycling heeft
-// 3 activiteit-namen i.p.v. 1 (indoor/buiten-varianten,
-// cycling-data.ts) — vandaar dat ACTIVITEIT_NAMEN_PER_SPORT een array
-// per sport is, niet een losse string. Geen andere wijziging nodig.
-
-const SPORT_MATCHERS: Record<string, SportMatcher> = {
-  rowing: rowingMatcher,
-  running: runningMatcher,
-  cycling: cyclingMatcher,
-}
-
-// Bron voor de activiteit-namen: rowing-data.ts (['Roeien']),
-// running-data.ts (['Hardlopen']) en cycling-data.ts
-// (CYCLING_ACTIVITEIT_NAMEN — 3 varianten, i.t.t. Rowing/Running die er
-// maar 1 hebben — hier bewust hergebruikt/gespiegeld, niet verzonnen).
+// v2.4.273 (Fase 3): SPORT_MATCHERS verhuisd naar
+// training-plan-engine/matcher-registry.ts — nu ook nodig in
+// productie-ingest-routes (Strava), dus niet langer lokaal hier
+// gedefinieerd. ACTIVITEIT_NAMEN_PER_SPORT blijft wel hier: puur
+// debug-scherm-specifiek (welke activiteiten tonen we in de UI),
+// productie-routes hebben dit niet nodig.
 const ACTIVITEIT_NAMEN_PER_SPORT: Record<string, string[]> = {
   rowing: ['Roeien'],
   running: ['Hardlopen'],

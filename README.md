@@ -80,7 +80,15 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
       verderop in dit README). Fase 2 is voor nu inhoudelijk klaar met
       de drie sporten die wél een Training Plan Engine hebben
       (Rowing/Running/Cycling).
-- [ ] Fase 3 — Strava aansluiten op de Matching Service
+- [x] Fase 3 — Strava aansluiten op de Matching Service — v2.4.273.
+      `ACTIVITEIT_NAAR_SPORT_SLEUTEL` (bestond al, voor Learning Rules)
+      hergebruikt om per activiteit de juiste matcher te vinden —
+      Roeien toegevoegd aan die mapping (ontbrak, want geen
+      impact-adapter voor Rowing-via-Strava). Matcher-registry
+      geëxtraheerd naar een gedeeld bestand
+      (`training-plan-engine/matcher-registry.ts`) zodat het
+      debug-scherm en productie-routes dezelfde bron gebruiken, geen
+      twee kopieën
 - [ ] Fase 3 — Garmin (TCX + Vision) aansluiten op de Matching Service
 - [ ] Fase 3 — handmatige/bibliotheek-import aansluiten op de Matching
       Service
@@ -103,14 +111,13 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
 
 ### Volgende stap
 Verificatie Fase 1 in productie kan pas ná 7/9 augustus — niet te
-versnellen. Tot die tijd: **Fase 3, Strava aansluiten op de Matching
-Service** (Running + Cycling komen allebei via Strava binnen — eerste
-kans om de matchers ook daadwerkelijk in een echte ingest-route te
-laten draaien, niet alleen via het debug-scherm). Vóór bouwen eerst
-checken: hoe herkent `strava-activity-processor.ts` per activiteit
-welke sport het is (SPORT_TYPE_MAP), en hoe wordt dat vertaald naar
-de juiste matcher uit de registry — dat mapping-stuk bestaat nu alleen
-in het debug-scherm, niet in een productie-ingest-route.
+versnellen. Tot die tijd: **Fase 3, Garmin (TCX + Vision) aansluiten**.
+Vóór bouwen eerst checken: `garmin-activity-tcx/route.ts` en
+`garmin-activity-vision/route.ts` zijn twee aparte bestanden (i.t.t.
+Strava's ene gedeelde processor) — mogelijk twee keer dezelfde
+matching-aanroep nodig, of eerst checken of er al een gedeelde
+insert-functie is die beide routes aanroepen. Hergebruik
+`matcher-registry.ts`, bouw geen tweede registry.
 
 ## Core Architectuurregels
 

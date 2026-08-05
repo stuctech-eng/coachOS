@@ -1,5 +1,44 @@
 # CoachOS — Changelog
 
+## v2.4.273 — Workout Matching Service, Fase 2 afgesloten + Fase 3 (Strava)
+**Twee dingen in één levering: de Fase 2-afsluiting (Strength
+geblokkeerd, vorige keer per ongeluk niet gepusht — bij het self-checken
+ontdekt) en de eerste Fase 3-stap.**
+
+### Fase 2 — afgesloten (zie vorige sessie, nu pas gepusht)
+Strength Matcher bewust geblokkeerd — geen Training Plan Engine, dus
+geen `training_plan_sessions` om tegen te matchen. Rowing/Running/
+Cycling zijn de drie sporten die Fase 2 dekt.
+
+### Fase 3 — Strava aangesloten op de Matching Service
+Eerste keer dat de Matching Service in een ECHTE productie-ingest-route
+draait (tot nu toe alleen via `/debug/workout-matching` of Concept2's
+eigen route). `strava-activity-processor.ts`:
+
+- Hergebruikt de al-bestaande `ACTIVITEIT_NAAR_SPORT_SLEUTEL`-mapping
+  (bestond al voor de Learning Rules-koppeling) om per binnenkomende
+  activiteit de juiste matcher te vinden — geen tweede mapping
+  verzonnen
+- `'Roeien'` toegevoegd aan die mapping (ontbrak: Rowing-via-Strava
+  heeft geen impact-adapter, dus was nooit nodig geweest vóór dit)
+- Matching-aanroep bewust in een EIGEN try/catch, los van de bestaande
+  Universal Athlete State-koppeling — mag niet meeliften op
+  `MINIMUM_SESSIE_DUUR_MINUTEN` (die drempel beschermt het
+  athlete-state-gemiddelde, is geen reden om matching over te slaan;
+  een te korte activiteit faalt de duur-tolerantie in de matcher toch
+  vanzelf al)
+
+### Nieuw — gedeelde matcher-registry
+`training-plan-engine/matcher-registry.ts` — `SPORT_MATCHERS` was tot
+nu toe lokaal gedefinieerd in het debug-scherm. Met een tweede plek die
+het nodig heeft (Strava) zou dat twee kopieën betekenen die uit elkaar
+kunnen groeien (tegen "dubbele utilities vermijden"). Debug-scherm
+aangepast om nu ook uit deze registry te importeren, geen eigen kopie
+meer.
+
+**Nog NIET aangesloten:** Garmin (TCX + Vision, twee aparte routes),
+handmatige/bibliotheek-import — dat is de rest van Fase 3.
+
 ## v2.4.272 — Fase 2 afgesloten: Strength Matcher bewust geblokkeerd
 **Geen code deze keer — een bevinding, vóór het bouwen vastgesteld,
 precies om te voorkomen dat er een los eindje ontstaat.**

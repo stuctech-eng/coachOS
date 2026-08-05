@@ -14,8 +14,17 @@ import { haalHuidigWeer, vertaalWeerNaarImpact } from './specialists/weer-impact
 // Learning Rules-koppeling (die dezelfde sleutels gebruikt als de
 // Training Plan Engine/Universal Athlete Platform, i.p.v. de Nederlandse
 // weergavenamen die specifiek voor Strava-mapping gebruikt worden)
-const ACTIVITEIT_NAAR_SPORT_SLEUTEL: Record<string, string> = { Hardlopen: 'running', Fietsen: 'cycling' }
+//
+// v2.4.273 (Workout Matching Service, Fase 3): 'Roeien' toegevoegd.
+// Stond er niet in, want Rowing-via-Strava heeft geen impact-adapter
+// (dat gaat via Concept2, met de rijkere data — stroke rate/drag
+// factor). Voor de Matching Service maakt dat niet uit: ook een
+// Rowing-sessie die via Strava binnenkomt (bijv. Concept2 niet
+// gesynct, of een andere GPS-watch) moet gematcht kunnen worden.
+const ACTIVITEIT_NAAR_SPORT_SLEUTEL: Record<string, string> = { Hardlopen: 'running', Fietsen: 'cycling', Roeien: 'rowing' }
 import { vertaalCyclingSessieNaarImpact } from './specialists/cycling-impact-adapter'
+import { matchActiviteitAanPlan } from './specialists/training-plan-engine/workout-matcher'
+import { SPORT_MATCHERS } from './specialists/training-plan-engine/matcher-registry'
 
 // v2.4.244: Cycling toegevoegd — derde sport in de dispatch-tabel,
 // zelfde generieke patroon, geen wijziging aan de processor zelf nodig
@@ -164,6 +173,34 @@ export async function processStravaActivity(
 
   if (error) throw error
 
+  const duurMinuten = Math.round(activity.moving_time / 60)
+  const sportSleutel = ACTIVITEIT_NAAR_SPORT_SLEUTEL[activityName]
+
+  // v2.4.273 (Workout Matching Service, Fase 3 — zie
+  // docs/workout-completion-platform-adr-v1.md): eerste ingest-route
+  // die daadwerkelijk aangesloten is op de Matching Service (Fase 1/2
+  // waren tot nu toe alleen bereikbaar via het debug-scherm of
+  // Concept2). Alleen voor sporten met een matcher in de registry
+  // (Rowing/Running/Cycling — Strength bewust geblokkeerd, zie
+  // README). Bewust in een eigen try/catch, los van de Universal
+  // Athlete State-koppeling hieronder: matching mag nooit de import
+  // zelf laten falen, en mag ook niet meeliften op de
+  // MINIMUM_SESSIE_DUUR_MINUTEN-drempel hieronder — die drempel is
+  // specifiek bedoeld om het athlete-state-gemiddelde te beschermen
+  // tegen te korte sessies, geen reden om matching over te slaan (een
+  // te korte activiteit faalt de duur-tolerantie in de matcher toch
+  // vanzelf al).
+  if (session?.id && sportSleutel && SPORT_MATCHERS[sportSleutel]) {
+    try {
+      await matchActiviteitAanPlan(
+        { id: session.id, userId, sport: sportSleutel, date, durationMinutes: duurMinuten, metrics },
+        SPORT_MATCHERS[sportSleutel],
+      )
+    } catch (matchErr) {
+      console.error('[strava-activity-processor] Workout matching mislukt (import zelf blijft werken):', matchErr)
+    }
+  }
+
   // Hartslag opslaan in health_metrics indien beschikbaar
   if (activity.average_heartrate) {
     await supabase.from('health_metrics').upsert({
@@ -180,13 +217,14 @@ export async function processStravaActivity(
   // kernfunctionaliteit) nooit laten falen, zelfde voorzichtigheids-
   // principe als bij de Concept2-sync-koppeling.
   const impactAdapter = IMPACT_ADAPTERS[activityName]
-  const duurMinuten = Math.round(activity.moving_time / 60)
+  // v2.4.273: duurMinuten/sportSleutel niet meer hier gedeclareerd —
+  // staan nu hoger in de functie (nodig voor de matching-aanroep die
+  // vóór dit blok gebeurt), hier alleen hergebruikt.
   // v2.4.246-FIX: zelfde drempel als Concept2/terugvullen — een zeer
   // korte sessie (bijv. per ongeluk gestarte tracking) mag het
   // gemiddelde niet onterecht naar beneden trekken
   if (impactAdapter && duurMinuten >= MINIMUM_SESSIE_DUUR_MINUTEN) {
     try {
-      const sportSleutel = ACTIVITEIT_NAAR_SPORT_SLEUTEL[activityName]
       const huidigeState = await haalAthleteState(supabase, userId)
 
       // v2.4.258-FIX: gemeld — weer werd toegepast zonder te checken of
