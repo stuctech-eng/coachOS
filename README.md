@@ -368,7 +368,28 @@ oppakken, geen tussentijdse keuze meer nodig.**
       dezelfde opruim-logica. Zonder deze fix konden een Trainer AI-rij
       en een latere Strava/Garmin-rij voor dezelfde dag naast elkaar
       blijven bestaan.
-- [ ] 3. Concept2-webhook — nog te ontwerpen (verificatie, user-id-koppeling)
+- [x] **3. Concept2-webhook** — v2.4.286. Onderzoek eerst: officiële
+      docs (log.concept2.com/developers/documentation/, Webhook-sectie)
+      volledig doorgelezen — **geen signature-verificatie beschikbaar**
+      bij Concept2 (bevestigd, geen aanname), dus twee eigen
+      beveiligingslagen toegevoegd: geheim pad-segment
+      (`CONCEPT2_WEBHOOK_SECRET`, 404 bij mismatch — niet 401/403, om
+      het pad niet te verklappen) + validatie tegen bekende
+      `concept2_tokens.concept2_user_id` (nieuw veld). Callback-route
+      uitgebreid met een `GET /api/users/me`-aanroep om dat veld te
+      vullen (ontbrak volledig, geverifieerd). Per-resultaat-
+      verwerkingslogica geëxtraheerd naar
+      `specialists/concept2-result-processor.ts` — gedeeld door zowel
+      de bestaande "Sync nu"-route als de nieuwe webhook, geen
+      dubbele insert-logica. **Eerlijke, niet-oplosbare beperking:**
+      Concept2's `result-deleted`-payload bevat geen user_id (alleen
+      `result_id`, bevestigd in de docs) — voor deletes wordt daarom
+      via de bestaande `activity_sessions`-rij zelf de eigenaar
+      bepaald, niet vooraf tegen `concept2_tokens` gevalideerd. Grens
+      van Concept2's eigen API-ontwerp, geen CoachOS-keuze.
+      **Handmatige stap voor de gebruiker, niet te automatiseren:** de
+      webhook-URL zelf registreren in Concept2's developer-portal.
+      **Nog niet getest** — vergt een echte Concept2-registratie.
 - [ ] 4. Strength als volwaardige specialist — groot, apart traject (NIET in de "1 t/m 3"-opdracht, blijft los)
 - [ ] **5. Coach Decision Engine** (nieuw, 5 augustus 2026) — analyse
       compleet (`docs/guardian-mode-coach-call-trigger-v1.md`, v1.2),

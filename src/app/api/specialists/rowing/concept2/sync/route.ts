@@ -4,14 +4,13 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
-import { haalAthleteState, slaAthleteStateOp } from '@/core/athlete-platform/storage'
-import { pasImpactToe, MINIMUM_SESSIE_DUUR_MINUTEN } from '@/core/athlete-platform/impact-engine'
-import { vertaalRowingSessieNaarImpact } from '@/lib/specialists/rowing-impact-adapter'
 import { evalueerEnBewaarLeerpatronenIndienNodig } from '@/lib/specialists/learning-rules-koppeling'
-import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
-import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/workout-matcher'
-import { rowingMatcher } from '@/lib/specialists/training-plan-engine/matchers/rowing-matcher'
-import { nieuweBronWint } from '@/lib/activity-import/source-priority-policy'
+import type { GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
+import {
+  type Concept2Result,
+  haalOfMaakRoeiActiviteit,
+  verwerkConcept2Resultaat,
+} from '@/lib/specialists/concept2-result-processor'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -24,36 +23,16 @@ async function getUser() {
   return user
 }
 
-interface Concept2Result {
-  id: number
-  date: string // "2013-06-21 00:00:00"
-  distance: number // meters
-  type: string // 'rower' | 'skierg' | 'bike' | ...
-  time: number // TIENDEN VAN EEN SECONDE — 600 = 1 minuut
-  workout_type: string
-  stroke_rate?: number
-  heart_rate?: { average?: number; min?: number; max?: number; ending?: number; recovery?: number }
-  calories_total?: number
-  drag_factor?: number
-}
-
 // v2.4.219 (Rowing Platform Fase 1, stap 2 — data-sync): haalt
 // resultaten op bij Concept2 (GET /api/users/me/results?type=rower) en
-// slaat ze op in activity_sessions — exact hetzelfde patroon als
-// strava-activity-processor.ts (idempotency via notes, activities-
-// koppeling, metrics als JSON), geen nieuwe insert-logica verzonnen.
+// slaat ze op in activity_sessions.
 //
-// Belangrijk eenheidsverschil met Strava: Concept2's "time"-veld is
-// in TIENDEN VAN EEN SECONDE (600 = 1 minuut), niet seconden — vandaar
-// /600 i.p.v. Strava's /60 (die begint al in seconden).
-//
-// v2.4.267 (Workout Matching Service, Fase 1 — Rowing referentie-
-// implementatie, docs/workout-completion-platform-adr-v1.md): na een
-// succesvolle import wordt de nieuwe activiteit nu ook aangeboden aan
-// de Workout Matching Service, die bepaalt of hij bij een geplande
-// training_plan_session hoort. Zelfde try/catch-discipline als de
-// Universal Athlete State-koppeling hieronder — een fout hier mag de
-// sync zelf nooit laten falen.
+// v2.4.286 (Concept2-webhook): de per-resultaat-verwerking (idempotency/
+// metrics/matching/dedup) is verhuisd naar
+// specialists/concept2-result-processor.ts — deze route roept die functie
+// nu aan i.p.v. de logica zelf te bevatten. Gedrag ongewijzigd (pure
+// extractie), nodig omdat de nieuwe webhook-route exact dezelfde stappen
+// nodig heeft voor telkens één resultaat i.p.v. een hele lijst.
 
 async function haalGeldigToken(userId: string): Promise<string | null> {
   const supabase = createAdminClient()
@@ -65,12 +44,10 @@ async function haalGeldigToken(userId: string): Promise<string | null> {
 
   if (!tokenRij) return null
 
-  // Nog geldig? (met 5 min marge)
   if (new Date(tokenRij.expires_at).getTime() > Date.now() + 5 * 60 * 1000) {
     return tokenRij.access_token
   }
 
-  // Verlopen — vernieuwen via refresh_token grant
   const clientId = process.env.CONCEPT2_CLIENT_ID
   const clientSecret = process.env.CONCEPT2_CLIENT_SECRET
   if (!clientId || !clientSecret) return null
@@ -115,22 +92,12 @@ export async function POST() {
 
     const supabase = createAdminClient()
 
-    // Laatste 2 jaar ophalen — ruim genoeg voor een eerste sync,
-    // voorkomt onnodig grote responses bij lange logbook-historie
     const van = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
     let alleResultaten: Concept2Result[] = []
     let volgendeUrl: string | null =
       `https://log.concept2.com/api/users/me/results?type=rower&from=${van}&number=100`
 
-    // v2.4.220-FIX: gemeld — sync gaf "0 nieuwe, 0 al bekend" terug
-    // terwijl er wél degelijk 9+ sessies in het Concept2 Logbook
-    // stonden (bevestigd met screenshot). De vorige versie verborg de
-    // precieze oorzaak: als totaalGevonden al 0 was (API gaf niets
-    // terug), zag dat er in de UI hetzelfde uit als "alles al bekend".
-    // Nu: de ruwe API-respons van de EERSTE pagina wordt gelogd zodra
-    // er 0 resultaten binnenkomen, en totaalGevonden gaat mee in de
-    // respons naar de UI.
     let ruweEersteRespons: unknown = null
     let paginas = 0
     while (volgendeUrl && paginas < 20) {
@@ -156,154 +123,29 @@ export async function POST() {
       console.error('[concept2/sync] 0 resultaten van Concept2 — ruwe respons:', JSON.stringify(ruweEersteRespons).slice(0, 1000))
     }
 
-    // Zoek of maak de "Roeien"-activiteit voor deze gebruiker aan
-    let { data: userActivity } = await supabase
-      .from('activities').select('id').eq('user_id', user.id).eq('name', 'Roeien').maybeSingle()
-
-    if (!userActivity) {
-      const { data: template } = await supabase
-        .from('activity_templates').select('id').eq('name', 'Roeien').maybeSingle()
-      const { data: newActivity } = await supabase
-        .from('activities').insert({ user_id: user.id, template_id: template?.id || null, name: 'Roeien' })
-        .select().single()
-      userActivity = newActivity
-    }
+    const activiteitId = await haalOfMaakRoeiActiviteit(supabase, user.id)
 
     let geimporteerd = 0
     let overgeslagen = 0
     let eersteInsertFout: string | null = null
 
-    // v2.4.256 (Learning Rules Engine — daadwerkelijk toegepast): één
-    // keer ophalen vóór de lus, niet per sessie opnieuw (56 sessies zou
-    // anders 56 onnodige queries geven voor exact dezelfde data).
     const { data: geleerdePatronenData } = await supabase
       .from('learned_patterns').select('effect_pad, aanpassing_percentage').eq('user_id', user.id).eq('sport', 'rowing')
     const geleerdePatronen: GeleerdPatroon[] = geleerdePatronenData || []
 
-    // v2.4.258-FIX: gemeld — "dus indoor en buiten, weet hij ook?".
-    // Antwoord was nee: v2.4.257 paste weer-gebaseerde hitte/koude-
-    // adaptatie toe op ELKE Rowing-sessie, zonder te checken of die wel
-    // buiten was. Concept2 is per definitie een indoor roeimachine —
-    // er is hier geen enkel scenario waarin het weer buiten relevant
-    // is. De weer-adapter-aanroep is daarom volledig verwijderd uit
-    // deze route, niet alleen voorwaardelijk gemaakt — Rowing via
-    // Concept2 hoort NOOIT weer-impact te krijgen.
-
     for (const resultaat of alleResultaten) {
-      // Idempotency-check — zelfde patroon als Strava
-      const { data: bestaat } = await supabase
-        .from('activity_sessions').select('id')
-        .eq('user_id', user.id).eq('source', 'concept2')
-        .ilike('notes', `%concept2:${resultaat.id}%`)
-        .maybeSingle()
-
-      if (bestaat) { overgeslagen++; continue }
-
-      const metrics: Record<string, unknown> = { distance: resultaat.distance }
-      if (resultaat.stroke_rate) metrics.avg_stroke_rate = resultaat.stroke_rate
-      if (resultaat.heart_rate?.average) metrics.avg_hr = resultaat.heart_rate.average
-      if (resultaat.heart_rate?.max) metrics.max_hr = resultaat.heart_rate.max
-      if (resultaat.calories_total) metrics.calories = resultaat.calories_total
-      if (resultaat.drag_factor) metrics.drag_factor = resultaat.drag_factor
-
-      // v2.4.238: duur naar een eigen variabele — nu ook hergebruikt
-      // voor de Universal Athlete Platform-koppeling hieronder
-      const duurMinuten = Math.round(resultaat.time / 600)
-      // v2.4.267: ook naar een eigen variabele — hergebruikt voor zowel
-      // de dedup-delete hieronder als de nieuwe matching-aanroep, i.p.v.
-      // 'm twee keer apart uit te rekenen
-      const dagStr = resultaat.date.split(' ')[0]
-
-      const { data: nieuweRij, error } = await supabase.from('activity_sessions').insert({
-        user_id: user.id,
-        activity_id: userActivity?.id || null,
-        date: dagStr,
-        // v2.4.219: Concept2's "time" is in tienden van een seconde,
-        // NIET seconden (anders dan Strava's moving_time) — /600 geeft
-        // direct minuten (/10 voor seconden, /60 voor minuten)
-        duration: duurMinuten,
-        metrics,
-        source: 'concept2',
-        notes: `concept2:${resultaat.id}`,
-      }).select('id').single()
-
-      if (error) {
-        console.error('[concept2/sync] Insert mislukt voor resultaat', resultaat.id, error)
-        if (!eersteInsertFout) eersteInsertFout = error.message
-        continue
-      }
-      geimporteerd++
-
-      // v2.4.238 (Universal Athlete Platform, eerste echte koppeling):
-      // vertaalt deze sessie naar universele impact-bijdragen en werkt
-      // de opgeslagen Universal Athlete State bij. Bewust in een
-      // try/catch — een fout hier mag de sync zelf nooit laten falen,
-      // de kernfunctionaliteit (data importeren) blijft altijd werken
-      // ook als deze nieuwe, experimentele laag een probleem heeft.
-      // v2.4.246-FIX: sessies onder MINIMUM_SESSIE_DUUR_MINUTEN
-      // (vermoedelijk test/kalibratie, geen echte training) worden
-      // overgeslagen — trokken eerder het gemiddelde onterecht omlaag.
-      if (duurMinuten >= MINIMUM_SESSIE_DUUR_MINUTEN) {
-        try {
-          const huidigeState = await haalAthleteState(supabase, user.id)
-          const bijdragen = vertaalRowingSessieNaarImpact(duurMinuten)
-          const nieuweState = pasImpactToe(huidigeState, bijdragen)
-          const stateNaGeleerdeAanpassingen = pasGeleerdeAanpassingenToe(nieuweState, geleerdePatronen)
-          await slaAthleteStateOp(supabase, user.id, stateNaGeleerdeAanpassingen)
-        } catch (athleteStateErr) {
-          console.error('[concept2/sync] Universal Athlete State bijwerken mislukt (sync zelf blijft werken):', athleteStateErr)
-        }
-      }
-
-      // v2.4.267 (Workout Matching Service, Fase 1 — zie module-comment
-      // bovenaan dit bestand): koppelt deze net-geïmporteerde activiteit
-      // aan een geplande sessie, indien aanwezig en aannemelijk genoeg.
-      // Bewust in try/catch, zelfde reden als de Universal Athlete
-      // State-koppeling hierboven.
-      if (nieuweRij) {
-        try {
-          await matchActiviteitAanPlan(
-            { id: nieuweRij.id, userId: user.id, sport: 'rowing', date: dagStr, durationMinutes: duurMinuten, metrics },
-            rowingMatcher,
-          )
-        } catch (matchErr) {
-          console.error('[concept2/sync] Workout matching mislukt (sync zelf blijft werken):', matchErr)
-        }
-      }
-
-      // v2.4.283 (dedup-consolidatie): gemigreerd naar de generieke
-      // Source Priority Policy (v2.4.278) i.p.v. een hardcoded lijst.
-      // Was: .in('source', ['strava','garmin','apple_health','manual'])
-      // — miste 'trainer_ai' (bestond nog niet toen dit geschreven
-      // werd, v2.4.222). Nu: elke bestaande rij die dag waar Concept2
-      // overheen wint (alle bekende bronnen — Concept2 heeft de
-      // hoogste prioriteit) wordt verwijderd, automatisch inclusief
-      // toekomstige nieuwe, lagere-prioriteit-bronnen zonder deze
-      // route ooit weer te hoeven aanpassen.
-      const { data: bestaandeDieDag } = await supabase
-        .from('activity_sessions')
-        .select('id, source')
-        .eq('user_id', user.id).eq('date', dagStr).eq('activity_id', userActivity?.id || null)
-      const teVerwijderen = (bestaandeDieDag || [])
-        .filter(rij => nieuweBronWint('concept2', rij.source))
-        .map(rij => rij.id)
-      if (teVerwijderen.length > 0) {
-        await supabase.from('activity_sessions').delete().in('id', teVerwijderen)
-      }
+      const uitkomst = await verwerkConcept2Resultaat(supabase, user.id, activiteitId, resultaat, geleerdePatronen)
+      if (uitkomst.status === 'geimporteerd') geimporteerd++
+      else if (uitkomst.status === 'overgeslagen') overgeslagen++
+      else if (!eersteInsertFout) eersteInsertFout = uitkomst.foutmelding
     }
 
-    // v2.4.253 (Learning Rules Engine — daadwerkelijke koppeling): één
-    // keer ná de hele sync-lus, niet per sessie (zou dezelfde context
-    // onnodig herhaald evalueren). Alleen als er daadwerkelijk iets
-    // nieuws is geïmporteerd — anders is er niets veranderd om opnieuw
-    // te evalueren.
     if (geimporteerd > 0) {
       await evalueerEnBewaarLeerpatronenIndienNodig(user.id, 'rowing')
     }
 
     return NextResponse.json({
       geimporteerd, overgeslagen, totaalGevonden: alleResultaten.length,
-      // v2.4.220: diagnostiek, zodat "0/0" niet langer ambigu is
       eersteInsertFout,
     })
   } catch (err) {

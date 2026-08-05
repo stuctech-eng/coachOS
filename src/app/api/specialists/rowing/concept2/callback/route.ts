@@ -75,6 +75,33 @@ export async function GET(req: NextRequest) {
 
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
 
+    // v2.4.286 (Concept2-webhook): Concept2's EIGEN user-id ophalen en
+    // bewaren — nodig om een binnenkomende webhook-payload (die
+    // Concept2's numerieke user_id bevat, geen CoachOS-koppeling) terug
+    // te kunnen vertalen naar de juiste CoachOS-gebruiker. Ontbrak tot
+    // nu toe volledig (geverifieerd, niet aangenomen: deze route deed
+    // nooit een GET /api/users/me-aanroep). Eigen try/catch — mag de
+    // OAuth-koppeling zelf nooit laten mislukken; zonder dit werkt de
+    // bestaande "Sync nu"-knop gewoon door, alleen de webhook zou dan
+    // niet werken voor deze gebruiker.
+    let concept2UserId: number | null = null
+    try {
+      const meRes = await fetch('https://log.concept2.com/api/users/me', {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          Accept: 'application/vnd.c2logbook.v1+json',
+        },
+      })
+      if (meRes.ok) {
+        const meJson = await meRes.json() as { data: { id: number } }
+        concept2UserId = meJson.data?.id ?? null
+      } else {
+        console.error('[concept2/callback] GET /api/users/me mislukt:', meRes.status, await meRes.text())
+      }
+    } catch (meErr) {
+      console.error('[concept2/callback] Concept2 user-id ophalen mislukt (koppeling zelf gaat door):', meErr)
+    }
+
     const supabase = createAdminClient()
     const { error: dbError } = await supabase.from('concept2_tokens').upsert({
       user_id: user.id,
@@ -82,6 +109,7 @@ export async function GET(req: NextRequest) {
       refresh_token: tokenData.refresh_token,
       expires_at: expiresAt,
       scope: 'results:read',
+      concept2_user_id: concept2UserId,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
 

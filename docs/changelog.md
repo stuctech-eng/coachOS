@@ -1,5 +1,63 @@
 # CoachOS — Changelog
 
+## v2.4.286 — Concept2-webhook gebouwd
+**Bron: docs/workout-completion-platform-adr-v1.md, Addendum (4
+augustus 2026) + roadmap-punt 1 (5 augustus 2026).**
+
+### Onderzoek vóór het bouwen
+Concept2's officiële API-documentatie (log.concept2.com/developers/
+documentation/, Webhook-sectie) volledig doorgelezen. Bevestigd, niet
+aangenomen:
+- **Geen signature/HMAC-verificatie beschikbaar** — Concept2 biedt dit
+  simpelweg niet (in tegenstelling tot bijv. Schlage/FreshBooks)
+- Webhook-payload bij `result-added`/`result-updated` bevat wél
+  Concept2's eigen `user_id`
+- Webhook-payload bij `result-deleted` bevat **geen** `user_id`, alleen
+  `result_id` — een grens van Concept2's eigen ontwerp
+- `concept2_tokens` sloeg Concept2's eigen user-id nooit op
+  (geverifieerd in `concept2/callback/route.ts` — geen
+  `GET /api/users/me`-aanroep aanwezig)
+
+### Nieuw
+- **`concept2_tokens.concept2_user_id`** (SQL, zie hieronder)
+- **`concept2/callback/route.ts`** uitgebreid: na de token-uitwisseling
+  een `GET /api/users/me`-aanroep, resultaat opgeslagen. Eigen
+  try/catch — een fout hier mag de OAuth-koppeling zelf niet laten
+  mislukken (de bestaande "Sync nu"-knop blijft werken, alleen de
+  webhook zou dan niet werken voor die gebruiker)
+- **`specialists/concept2-result-processor.ts`** — de per-resultaat-
+  verwerking (idempotency/metrics/Universal Athlete State/matching/
+  dedup) geëxtraheerd uit `concept2/sync/route.ts`'s for-lus. Gedrag
+  1-op-1 ongewijzigd (pure extractie) — nodig omdat de webhook exact
+  dezelfde stappen nodig heeft voor één resultaat i.p.v. een lijst.
+  `concept2/sync/route.ts` zelf aangepast om deze gedeelde functie aan
+  te roepen, geen dubbele logica meer tussen de twee routes.
+- **`api/webhooks/concept2/[secret]/route.ts`** — de webhook zelf.
+  Beveiliging: geheim pad-segment (404 bij mismatch, niet 401/403) +
+  validatie tegen `concept2_user_id`. Bij `result-deleted`: eigenaar
+  bepaald via de bestaande `activity_sessions`-rij (geen vooraf-
+  validatie mogelijk, zie boven). Retourneert bewust altijd HTTP 200,
+  ook bij een interne fout — een 500 zou Concept2 laten retryen, wat
+  bij een eigen bug geen zin heeft.
+
+### SQL
+```sql
+alter table concept2_tokens add column if not exists concept2_user_id bigint;
+create index if not exists idx_concept2_tokens_concept2_user_id on concept2_tokens(concept2_user_id);
+```
+
+### Handmatige stap, niet te automatiseren
+De webhook-URL zelf registreren in Concept2's developer-portal
+(`log.concept2.com/developers`) — vergt de `CONCEPT2_WEBHOOK_SECRET`-
+omgevingsvariabele (zelf te kiezen, willekeurige lange string) in de
+uiteindelijke URL.
+
+### Nog niet getest
+Vergt een echte Concept2-webhook-registratie — geen debug-tool voor
+gebouwd (in tegenstelling tot Workout Matching/Activity Bridge), omdat
+dit een extern systeem is dat CoachOS aanroept, niet andersom — lastig
+zinvol te simuleren zonder de registratie zelf.
+
 ## v2.4.285 — Documentatie-inhaalslag: alle analysedocumenten van 5 augustus naar de repo
 **Geen code. Sluit de architectuurronde van vandaag formeel af — alle
 tussentijds gedeelde analyses staan nu in `docs/`, niet langer alleen
