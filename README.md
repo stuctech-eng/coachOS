@@ -125,6 +125,32 @@ nieuwe sessie over CoachOS: lees dit blok, ga verder bij "Volgende
 stap" hieronder, vraag niet opnieuw om richting — die staat hier al
 vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
 
+### ✅❌ Openstaand, samengevat (bijgewerkt 5 augustus 2026, avond)
+De losse checklist-items verderop in dit document zijn de volledige,
+gedetailleerde geschiedenis — dit blok is de betrouwbare, actuele
+samenvatting, hier bovenaan zodat 'ie niet tussen oudere regels
+verdwaalt.
+
+**Genuanceerd — wacht op een externe gebeurtenis, geen actie nodig:**
+- Verificatie Fase 1 (Rowing/Concept2) in productie — wacht op 7/9
+  augustus, een echte training
+- Concept2-webhook — gebouwd (v2.4.286), nooit getest — wacht op
+  Concept2's eigen site (502 Bad Gateway, 5 augustus, storing bij
+  Concept2 zelf) + handmatige registratie door de gebruiker
+
+**Nog niet gebouwd, geen externe blokkade:**
+- **Strength als volwaardige specialist** (eigen Training Plan Engine)
+  — groot, apart traject
+- **Coach Decision Engine, Fase 2** — cross-sport-afwijking (andere
+  sport dan gepland), Recovery/HRV, blessureprotocol-naleving,
+  cumulatieve belasting. Fase 1 (alleen "was er een geplande sessie
+  voor deze sport/datum") is klaar en aangesloten op alle vier
+  bronnen — Fase 2 vergt eerst onderzoek naar waar Recovery/HRV/
+  blessuredata al vandaan komt, nog niet gedaan
+- **Intelligence Platform / Knowledge Platform** — bewust niet
+  opgepakt, vermoeden (Platform Audit) dat het grotendeels
+  consolidatie is, nooit bevestigd
+
 ### Architectuurprincipe — Source Isolation
 **Vastgelegd 5 augustus 2026, volledig uitgewerkt in
 `docs/workout-completion-platform-adr-v1.md` §2b.**
@@ -236,13 +262,15 @@ Health Connect).
       er geen actief gebruik van is. Als dat ooit verandert: alsnog
       oppakken, zelfde patroon als TCX (hergebruik
       `matcher-registry.ts` + `activiteit-sport-mapping.ts`).
-- [ ] ~~Fase 3 — handmatige/bibliotheek-import aansluiten op de
+- [x] ~~Fase 3 — handmatige/bibliotheek-import aansluiten op de
       Matching Service~~ — **HERZIEN 5 augustus 2026, na Datamodel- en
       Platform-analyse.** Bleek geen kwestie van "nog een ingest-route
       aansluiten" (zoals Strava/Garmin TCX) — `api/training/complete/
       route.ts` schrijft naar `training_results`, een andere tabel dan
       `activity_sessions`. Vervangen door het punt hieronder, dat het
-      eigenlijke werk preciezer beschrijft.
+      eigenlijke werk preciezer beschrijft. (Checkbox stond hier al
+      lang ten onrechte nog op `[ ]` — puur markdown-opschoning, geen
+      echt openstaand werk.)
 - [x] **`training_results` → `activity_sessions`-brug** — v2.4.278.
       **Scope gecorrigeerd t.o.v. eerdere versie van dit punt** (stond
       hier omgekeerd): geldt voor **activiteitssporten zonder externe

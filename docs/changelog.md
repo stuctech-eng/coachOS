@@ -1,5 +1,25 @@
 # CoachOS — Changelog
 
+## v2.4.291 — Roadmap opgeruimd: stale checkbox + samenvattend overzicht
+**Geen code. Gevonden op verzoek van de gebruiker ("buiten de laatste
+specialist is alles gedaan?") — één stale checkbox rechtgezet, en een
+betrouwbaar samenvattend blok toegevoegd zodat de status niet meer
+tussen oudere, gedetailleerde regels verdwaalt.**
+
+### Wat er fout stond
+Een `[ ]` bij het Fase 3/Bibliotheek-punt stond al sinds de eerdere
+herziening (5 augustus, na de Datamodel-analyse) ten onrechte nog op
+"open" — het was toen al inhoudelijk vervangen door de Activity Bridge.
+Puur een markdown-checkbox die nooit werd omgezet, geen echt
+openstaand werk.
+
+### Nieuw — samenvattend openstaand-blok, bovenaan de roadmap-sectie
+Twee categorieën, eerlijk onderscheiden:
+- **Wacht op een externe gebeurtenis** (Fase 1-verificatie: 7/9
+  augustus; Concept2-webhook-test: wacht op Concept2's site)
+- **Nog niet gebouwd, geen externe blokkade** (Strength-specialist,
+  Coach Decision Engine Fase 2, Intelligence/Knowledge Platform)
+
 ## v2.4.290 — Coach Decision Engine: kritieke fix + Fase 3 (Bibliotheek)
 **Twee dingen: een fix die vóór schade ontdekt is, en de laatste van
 de vier ingest-routes gemigreerd.**
