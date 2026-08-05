@@ -135,9 +135,16 @@ Health Connect).
       "Operationele context" hierboven: Strava-koppeling is tijdelijk
       buiten gebruik (betaald abonnement vereist, gebruiker doet dit nu
       niet)
-- [ ] Fase 3 — Garmin (TCX + Vision) aansluiten op de Matching Service
-      — **dit is het testbare pad**, niet Strava (zie Operationele
-      context: Garmin loopt nu via handmatige TCX-upload, niet de API)
+- [x] Fase 3 — Garmin (TCX + Vision) aansluiten op de Matching Service
+      — **gedeeltelijk: TCX gedaan (v2.4.276), Vision nog niet.** TCX
+      heeft twee insert-punten (nieuwe activiteit + overschrijving van
+      een bestaande upload) — allebei aangesloten via een lokale
+      `probeerMatching()`-helper, niet dubbel uitgeschreven. Sport-
+      mapping geëxtraheerd naar `activiteit-sport-mapping.ts` (was
+      lokaal in `strava-activity-processor.ts`, nu gedeeld — Strava
+      hergebruikt 'm nu ook). **Dit is het daadwerkelijk testbare pad**
+      (zie Operationele context: TCX-upload is de huidige, actieve
+      Garmin-import).
 - [ ] Fase 3 — handmatige/bibliotheek-import aansluiten op de Matching
       Service
 - [ ] Fase 4 — confidence-UX (lage score → vraag aan gebruiker i.p.v.
@@ -159,15 +166,12 @@ Health Connect).
 
 ### Volgende stap
 Verificatie Fase 1 in productie kan pas ná 7/9 augustus — niet te
-versnellen. Tot die tijd: **Fase 3, Garmin (TCX + Vision) aansluiten**
-— zie Operationele context hierboven: dit is nu het enige daadwerkelijk
-testbare Fase 3-pad (Strava ligt stil, Garmin API bestaat nog niet).
-Vóór bouwen eerst checken: `garmin-activity-tcx/route.ts` en
-`garmin-activity-vision/route.ts` zijn twee aparte bestanden (i.t.t.
-Strava's ene gedeelde processor) — mogelijk twee keer dezelfde
-matching-aanroep nodig, of eerst checken of er al een gedeelde
-insert-functie is die beide routes aanroepen. Hergebruik
-`matcher-registry.ts`, bouw geen tweede registry.
+versnellen. Tot die tijd: **Fase 3, `garmin-activity-vision/route.ts`
+aansluiten** (foto-import — eerst checken of dit daadwerkelijk actief
+gebruikt wordt door de gebruiker, anders heeft aansluiten geen
+prioriteit boven de handmatige/bibliotheek-import die daarna nog
+open staat). Hergebruik `matcher-registry.ts` +
+`activiteit-sport-mapping.ts`, bouw geen derde kopie van beide.
 
 ## Core Architectuurregels
 

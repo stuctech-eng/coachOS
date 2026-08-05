@@ -5,6 +5,9 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { bepaalKeuzeNodig, suggereerType, ACTIVITEIT_OPTIES, type TcxParsed } from '@/lib/tcx-parser'
+import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/workout-matcher'
+import { SPORT_MATCHERS } from '@/lib/specialists/training-plan-engine/matcher-registry'
+import { ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL } from '@/lib/specialists/training-plan-engine/activiteit-sport-mapping'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -15,6 +18,27 @@ async function getUser() {
   )
   const { data: { user } } = await supabase.auth.getUser()
   return user
+}
+
+// v2.4.276 (Workout Matching Service, Fase 3 — zie
+// docs/workout-completion-platform-adr-v1.md §2b, Source Isolation):
+// gedeelde helper voor deze route, want er zijn hier TWEE insert-
+// punten (nieuwe activiteit + overschrijving van een bestaande) die
+// allebei matching moeten proberen — dubbele code vermijden binnen
+// hetzelfde bestand. Bewust altijd try/catch: matching mag deze route
+// nooit laten falen, de activiteit is op het moment van aanroepen al
+// succesvol opgeslagen.
+async function probeerMatching(activiteitId: string, userId: string, activityLabel: string, datum: string, duurMinuten: number, metrics: Record<string, unknown>) {
+  const sportSleutel = ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL[activityLabel]
+  if (!sportSleutel || !SPORT_MATCHERS[sportSleutel]) return
+  try {
+    await matchActiviteitAanPlan(
+      { id: activiteitId, userId, sport: sportSleutel, date: datum, durationMinutes: duurMinuten, metrics },
+      SPORT_MATCHERS[sportSleutel],
+    )
+  } catch (matchErr) {
+    console.error('[garmin-activity-tcx] Workout matching mislukt (import zelf blijft werken):', matchErr)
+  }
 }
 
 // v2.4.35 FIX: het volledige TCX-bestand werd voorheen naar deze route
@@ -164,6 +188,15 @@ export async function POST(req: NextRequest) {
             .update({ status: 'confirmed', activity_session_id: bestaandeSessie.id })
             .eq('id', confirmId)
 
+          // v2.4.276: matching proberen ook bij een overschrijving — als
+          // de duur is veranderd (bijv. door een verbeterde parser) kan
+          // een eerder niet-matchende activiteit nu wél binnen tolerantie
+          // vallen. Als de sessie al gekoppeld was, vindt de Core geen
+          // openstaande kandidaat meer (completed_activity_id al gevuld)
+          // en gebeurt er simpelweg niets — geen risico op een dubbele
+          // of foute koppeling.
+          await probeerMatching(bestaandeSessie.id, user.id, activityLabel, activiteitDatum, durationMin, metrics)
+
           return NextResponse.json({
             success: true, confirmed: true, overwritten: true,
             activity_session_id: bestaandeSessie.id,
@@ -210,6 +243,10 @@ export async function POST(req: NextRequest) {
         .select('id').single()
 
       if (sessionError) throw sessionError
+
+      // v2.4.276 (Workout Matching Service, Fase 3): zie module-comment
+      // bij probeerMatching() hierboven.
+      await probeerMatching(session.id, user.id, activityLabel, activiteitDatum, durationMin, metrics)
 
       // v2.4.110: vermogenscurve opslaan, indien berekend. Eigen
       // try/catch — een probleem hier mag de import nooit laten falen,

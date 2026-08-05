@@ -10,18 +10,12 @@ import { evalueerEnBewaarLeerpatronenIndienNodig } from './specialists/learning-
 import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
 import { haalHuidigWeer, vertaalWeerNaarImpact } from './specialists/weer-impact-adapter'
 
-// v2.4.253: Nederlandse activiteitnaam -> Engelse sport-sleutel, voor de
-// Learning Rules-koppeling (die dezelfde sleutels gebruikt als de
-// Training Plan Engine/Universal Athlete Platform, i.p.v. de Nederlandse
-// weergavenamen die specifiek voor Strava-mapping gebruikt worden)
-//
-// v2.4.273 (Workout Matching Service, Fase 3): 'Roeien' toegevoegd.
-// Stond er niet in, want Rowing-via-Strava heeft geen impact-adapter
-// (dat gaat via Concept2, met de rijkere data — stroke rate/drag
-// factor). Voor de Matching Service maakt dat niet uit: ook een
-// Rowing-sessie die via Strava binnenkomt (bijv. Concept2 niet
-// gesynct, of een andere GPS-watch) moet gematcht kunnen worden.
-const ACTIVITEIT_NAAR_SPORT_SLEUTEL: Record<string, string> = { Hardlopen: 'running', Fietsen: 'cycling', Roeien: 'rowing' }
+// v2.4.276: ACTIVITEIT_NAAR_SPORT_SLEUTEL verhuisd naar een gedeeld
+// bestand (activiteit-sport-mapping.ts) — Garmin TCX heeft dezelfde
+// mapping nu ook nodig, en een tweede lokale kopie zou uit elkaar
+// kunnen groeien (Source Isolation-principe, ADR §2b: één vertaling,
+// niet per importroute opnieuw verzonnen).
+import { ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL as ACTIVITEIT_NAAR_SPORT_SLEUTEL } from './specialists/training-plan-engine/activiteit-sport-mapping'
 import { vertaalCyclingSessieNaarImpact } from './specialists/cycling-impact-adapter'
 import { matchActiviteitAanPlan } from './specialists/training-plan-engine/workout-matcher'
 import { SPORT_MATCHERS } from './specialists/training-plan-engine/matcher-registry'

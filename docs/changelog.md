@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.276 — Workout Matching Service, Fase 3 (Garmin TCX)
+**Bron: `docs/workout-completion-platform-adr-v1.md`, Fase 3 — het
+daadwerkelijk testbare pad (zie Operationele context: Strava ligt
+stil, TCX is de actieve Garmin-import).**
+
+### Garmin TCX aangesloten op de Matching Service
+`garmin-activity-tcx/route.ts` heeft TWEE plekken waar een activiteit
+in `activity_sessions` terechtkomt — een nieuwe insert, én een
+overschrijving (opnieuw uploaden van hetzelfde bestand, bijv. na een
+parserverbetering). Beide nu aangesloten via een lokale
+`probeerMatching()`-helper (voorkomt dat de matching-aanroep twee keer
+apart wordt uitgeschreven binnen hetzelfde bestand):
+
+- **Nieuwe insert:** matching direct na de succesvolle insert
+- **Overschrijving:** matching opnieuw geprobeerd — als de duur is
+  veranderd (bijv. door een verbeterde parser) kan een eerder
+  niet-matchende activiteit nu wél binnen tolerantie vallen. Geen
+  risico op een dubbele/foute koppeling: als de sessie al gekoppeld
+  was, vindt de Core geen openstaande kandidaat meer
+  (`completed_activity_id` al gevuld) en gebeurt er niets.
+
+### Nieuw — gedeelde sport-mapping
+`training-plan-engine/activiteit-sport-mapping.ts` —
+`ACTIVITEIT_NAAR_SPORT_SLEUTEL` stond lokaal in
+`strava-activity-processor.ts`; met Garmin TCX als tweede plek die dit
+nodig heeft, nu gecentraliseerd. Bewuste unie van beide
+bron-vocabulaires: Strava's generieke `'Fietsen'` én TCX's
+`'Fietsen (buiten)'`/`'Indoor Fietsen'` wijzen nu allebei naar dezelfde
+`'cycling'`-sleutel. `strava-activity-processor.ts` aangepast om
+dezelfde bron te gebruiken (refactor, geen gedragswijziging).
+
+Precies het Source Isolation-principe uit v2.4.275 in de praktijk: de
+mapping zit bewust nog IN de importlaag (elke route kent zijn eigen
+weergavenaam), maar levert een brononafhankelijke sleutel op zodra die
+de Matching Service ingaat.
+
+### README — roadmap-checklist bijgewerkt
+Garmin TCX afgevinkt (Vision nog niet). Volgende stap:
+`garmin-activity-vision/route.ts` — met de aantekening om eerst te
+checken of foto-import daadwerkelijk actief gebruikt wordt vóór het
+prioriteit krijgt boven de handmatige/bibliotheek-import.
+
+**Nog steeds ongewijzigd:** Concept2-sync-route, Rowing/Running/
+Cycling-matchers zelf.
+
 ## v2.4.275 — Architectuurprincipe vastgelegd: Source Isolation
 **Geen code — een precisering van de architectuur, geformuleerd samen
 met de gebruiker naar aanleiding van de Strava/Garmin-operationele
