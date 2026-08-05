@@ -36,6 +36,86 @@ maar "wie roept dit ooit aan in de echte app" is een aparte vraag die
 soms niet gesteld wordt totdat iemand het gemis merkt. Vanaf nu:
 expliciet checken en hier vastleggen bij elke nieuwe engine.
 
+## 🏛️ CoachOS Platform Final Architecture — bevroren referentie
+**Vastgelegd 5 augustus 2026. Status: analysefase afgesloten,
+implementatiefase gestart.**
+
+Na de Workout Completion Platform (ADR, hierboven) volgde een bredere
+architectuurronde: **Platform Audit** (classificatie van elke
+platformlaag tegen de bestaande code) en een **Dataflow Audit**
+(Running end-to-end gevolgd, schrijf/lees/data per stap). Beide
+documenten (`docs/platform-audit-fase0-v1.md`,
+`docs/dataflow-audit-running-v1.md`) zijn de bron van waarheid voor
+onderstaande conclusies — niet aannames, per stap in code geverifieerd.
+
+**Kernresultaat:** de grote architectuurvragen zijn beantwoord, met
+bewijs, niet met een aanname:
+- ✅ Eén Master Coach (`api/coach/route.ts`)
+- ✅ Specialisten bepalen de inhoud (Training Plan Platform, A)
+- ✅ **Trainer AI = Universal Training Engine** — geen twee systemen,
+  één systeem. Generieke uitvoerder (Workout Player) voor sporten
+  ZONDER eigen Training Plan Engine (Strength/Kettlebell/Bodyweight).
+  Wordt NOOIT gebruikt zodra een specialist-trainingsplan bestaat
+  (Today Engine, vaste prioriteitsvolgorde, bevestigd in code)
+- ✅ Cardio (Running/Cycling/Rowing) heeft GEEN in-app Workout Player
+  nodig — uitvoering gebeurt op extern apparaat (Garmin/Concept2),
+  CoachOS is de coach, niet de trainingscomputer
+- ✅ `activity_sessions` is de centrale waarheid voor extern
+  geïmporteerde activiteiten (Source Isolation-principe, zie ADR §2b)
+- ✅ Workout Matching is sport-onafhankelijk (generieke Core + Sport
+  Adapters)
+- ✅ Universal Athlete Platform observeert or/analyseert, beslist niet
+- ✅ Learning Rules Engine is reproduceerbaar (IF-THEN, geen black box)
+- ✅ Geen dubbele mutaties (ADR-007, Single Workout Mutation Principle)
+
+**Wat dit architectonisch betekent — twee takken, niet één keten:**
+```
+                    Master Coach
+                          │
+          ┌───────────────┴───────────────┐
+          │                               │
+          ▼                               ▼
+Cardio Specialisten              Gym Specialisten
+(Running/Cycling/Rowing)      (Strength/Kettlebell/Bodyweight)
+          │                               │
+          ▼                               ▼
+ Extern apparaat                Trainer AI / Universal
+ (Garmin/Concept2)               Training Engine (Workout Player)
+          │                               │
+          ▼                               ▼
+      activity_sessions          training_results
+                │                      │
+                └──────────────┬───────┘
+                               ▼
+                 (brug: nog te bouwen, zie roadmap)
+                               ▼
+                     activity_sessions (uniform)
+                               ▼
+                    Workout Matching Service
+                               ▼
+                     Performance Platform
+                               ▼
+                  Universal Athlete Platform
+                               ▼
+                     Learning Rules Engine
+                               ▼
+                        Master Coach
+```
+
+**Ontwikkelregels vanaf nu (bevroren, niet steeds heropenen):**
+- Geen nieuwe parallelle systemen
+- Geen dubbele businesslogica
+- Geen sport-specifieke implementatie waar een platformoplossing
+  al bestaat
+- Elke laag: exact één verantwoordelijkheid
+- Bronlogica stopt bij Activity Import — `activity_sessions` is en
+  blijft de canonical activity
+- Alleen nog nieuwe platformlagen introduceren bij een **aantoonbaar**
+  probleem tijdens implementatie, niet speculatief vooruitbouwen
+  (Intelligence Platform/Knowledge Platform: pas onderzoeken/bouwen
+  zodra er een concrete aanleiding is, zelfde principe als waarom
+  Rowing pas een specialist werd toen daar een reden voor was)
+
 ## 🎯 Actieve Roadmap — Workout Completion Platform
 
 **Vastgelegd 4 augustus 2026, na expliciet akkoord van de gebruiker:
@@ -135,18 +215,47 @@ Health Connect).
       "Operationele context" hierboven: Strava-koppeling is tijdelijk
       buiten gebruik (betaald abonnement vereist, gebruiker doet dit nu
       niet)
-- [x] Fase 3 — Garmin (TCX + Vision) aansluiten op de Matching Service
-      — **gedeeltelijk: TCX gedaan (v2.4.276), Vision nog niet.** TCX
-      heeft twee insert-punten (nieuwe activiteit + overschrijving van
-      een bestaande upload) — allebei aangesloten via een lokale
+- [x] Fase 3 — Garmin TCX aansluiten op de Matching Service —
+      v2.4.276. Twee insert-punten (nieuwe activiteit + overschrijving
+      van een bestaande upload) — allebei aangesloten via een lokale
       `probeerMatching()`-helper, niet dubbel uitgeschreven. Sport-
       mapping geëxtraheerd naar `activiteit-sport-mapping.ts` (was
       lokaal in `strava-activity-processor.ts`, nu gedeeld — Strava
-      hergebruikt 'm nu ook). **Dit is het daadwerkelijk testbare pad**
-      (zie Operationele context: TCX-upload is de huidige, actieve
-      Garmin-import).
-- [ ] Fase 3 — handmatige/bibliotheek-import aansluiten op de Matching
-      Service
+      hergebruikt 'm nu ook). Handmatig doorgetest via her-upload van
+      een oude activiteit — geen crash, correcte "geen match"-
+      beslissing bij een groot duurverschil (Δ55%, confidence 38%).
+      **Dit is het daadwerkelijk actief gebruikte pad** (zie
+      Operationele context).
+- [x] ~~Fase 3 — Garmin Vision aansluiten op de Matching Service~~ —
+      **bewust overgeslagen (niet geblokkeerd, andere reden dan
+      Strength/Strava): gebruiker gebruikt uitsluitend TCX-upload, nooit
+      de screenshot-import.** Vision blijft als werkende feature bestaan
+      (ongewijzigd, niet verwijderd — `garmin_activity_imports` wordt
+      ook door de TCX-flow gebruikt, dus sowieso niet iets om aan te
+      raken), maar wordt niet aangesloten op de Matching Service zolang
+      er geen actief gebruik van is. Als dat ooit verandert: alsnog
+      oppakken, zelfde patroon als TCX (hergebruik
+      `matcher-registry.ts` + `activiteit-sport-mapping.ts`).
+- [ ] ~~Fase 3 — handmatige/bibliotheek-import aansluiten op de
+      Matching Service~~ — **HERZIEN 5 augustus 2026, na Datamodel- en
+      Platform-analyse.** Bleek geen kwestie van "nog een ingest-route
+      aansluiten" (zoals Strava/Garmin TCX) — `api/training/complete/
+      route.ts` schrijft naar `training_results`, een andere tabel dan
+      `activity_sessions`. Vervangen door het punt hieronder, dat het
+      eigenlijke werk preciezer beschrijft.
+- [ ] **`training_results` → `activity_sessions`-brug** (Final
+      Architecture-besluit, gebruiker 5 augustus 2026): na het afronden
+      van een Strength/Kettlebell/Bodyweight-training (via Trainer AI/
+      Universal Training Engine) automatisch ook een `activity_sessions`-
+      rij aanmaken, met de juiste metadata. **Scope-grens, expliciet
+      vastgelegd:** dit ontsluit GEEN Workout Matching voor deze
+      sporten — die blijven geblokkeerd tot ze een eigen Training Plan
+      Engine hebben (`training_plan_sessions` bestaat niet voor
+      Strength). De brug lost alleen de zichtbaarheid/consistentie op,
+      niet de matching-blokkade. Geverifieerd, geen risico voor
+      Performance Platform: `load-engine.ts` leest alleen cycling/
+      running/rowing-grafieken, een Strength-`activity_session` zou
+      daar simpelweg genegeerd worden.
 - [ ] Fase 4 — confidence-UX (lage score → vraag aan gebruiker i.p.v.
       stilzwijgend niets doen)
 - [ ] Fase 4 — retrofit Cycling-ritanalyse naar de expliciete
@@ -163,15 +272,24 @@ Health Connect).
       gebruiker te koppelen. De uiteindelijke registratie van de
       webhook-URL in Concept2's portal is een handmatige stap voor de
       gebruiker, niet iets wat via code te doen is.
+- [ ] **Strength als volwaardige specialist** (eigen Training Plan
+      Engine) — pas dan wordt de Strength Matcher (eerder geblokkeerd)
+      en Workout Matching voor Strength mogelijk. Groot, apart traject
+      — zie bestaande sectie "Rowing/Strength/Kettlebell als
+      volwaardige specialisten" verderop in dit README.
+- [ ] Intelligence Platform / Knowledge Platform — bewust NIET nu
+      oppakken. Vermoeden (Platform Audit): grotendeels consolidatie
+      van bestaand werk (`api/coach/route.ts`, `genereerCoachPolicy()`,
+      exercise-libraries, sport-adapters), niet bevestigd. Pas
+      onderzoeken bij een concrete aanleiding, geen speculatieve bouw.
 
 ### Volgende stap
-Verificatie Fase 1 in productie kan pas ná 7/9 augustus — niet te
-versnellen. Tot die tijd: **Fase 3, `garmin-activity-vision/route.ts`
-aansluiten** (foto-import — eerst checken of dit daadwerkelijk actief
-gebruikt wordt door de gebruiker, anders heeft aansluiten geen
-prioriteit boven de handmatige/bibliotheek-import die daarna nog
-open staat). Hergebruik `matcher-registry.ts` +
-`activiteit-sport-mapping.ts`, bouw geen derde kopie van beide.
+**Analysefase afgesloten (5 augustus 2026) — vanaf nu implementatie,
+volgens de bevroren architectuur hierboven.** Verificatie Fase 1 in
+productie kan nog steeds pas ná 7/9 augustus — niet te versnellen, geen
+actie voor nodig. Eerstvolgende bouwstap: **de `training_results` →
+`activity_sessions`-brug** (zie hierboven) — kleinste, meest concrete
+openstaande implementatiepunt, met een al vastgelegde scope-grens.
 
 ## Core Architectuurregels
 

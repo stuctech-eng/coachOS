@@ -1,5 +1,64 @@
 # CoachOS — Changelog
 
+## v2.4.277 — Analysefase afgesloten: Platform Audit, Dataflow Audit, architectuur bevroren
+**Grote documentatie-consolidatie, geen code. Sluit de architectuurronde
+af die begon met de Workout Completion Platform-ADR (4 augustus) en
+via Source Isolation, Platform Audit en Dataflow Audit uitkwam op een
+"CoachOS Platform Final Architecture v1.0" (gebruiker, 5 augustus).**
+
+### Nieuw — twee auditdocumenten
+- `docs/platform-audit-fase0-v1.md` — classificatie van alle 14
+  platformlagen (A: bestaat correct / B: bestaat, andere naam of
+  verspreid / C: gedeeltelijk / D: bestaat niet / E: legacy) tegen de
+  Final Architecture. **Belangrijkste correctie t.o.v. de eerste versie:**
+  Workout Player ging van "onbekend/hoog risico" naar **Categorie B,
+  bevestigd** — zie hieronder.
+- `docs/dataflow-audit-running-v1.md` — Running end-to-end gevolgd
+  (schrijft/leest/data per stap, geen code gewijzigd). Bevestigde dat
+  de keten zich splitst: cardio-sporten met een Training Plan Engine
+  gebruiken nooit Trainer AI, uitvoering gebeurt extern.
+
+### De kernvondst: Trainer AI = Universal Training Engine
+Niet twee systemen — één. README bevestigt dit al letterlijk (elders,
+langer bestaand): *"Trainer AI (de Universal Training Engine) blijft
+voorlopig de generieke uitvoerder voor deze disciplines"*. Rol:
+generieke Workout Player voor sporten ZONDER eigen Training Plan Engine
+(Strength/Kettlebell/Bodyweight). Wordt nooit gebruikt zodra een
+specialist-trainingsplan bestaat (Today Engine, vaste
+prioriteitsvolgorde, bevestigd in `today-engine.ts`). Dit verlaagt het
+risico van dit onderdeel drastisch: geen dubbel systeem dat voorzichtig
+ontward moet worden, gewoon één al-bestaand, begrepen systeem.
+
+### Nieuw in README — Final Architecture als bevroren referentie
+Sectie "🏛️ CoachOS Platform Final Architecture — bevroren referentie":
+de twee-takken-architectuur (Cardio → extern apparaat →
+`activity_sessions`, Gym → Trainer AI/Universal Training Engine →
+`training_results`), plus de negen bevestigde architectuurprincipes,
+plus vaste ontwikkelregels (geen nieuwe parallelle systemen, geen
+speculatieve platformlagen).
+
+### Roadmap herzien
+- **Vision-checklist-item alsnog gecorrigeerd** — was eerder al
+  besproken/toegezegd (5 augustus, "Ja. Goed plan") maar per ongeluk
+  nooit daadwerkelijk gepusht; nu wél: bewust overgeslagen (niet
+  geblokkeerd), Vision blijft ongewijzigd bestaan als feature
+- **"Handmatige/bibliotheek-import aansluiten" vervangen** door een
+  preciezer punt: **`training_results` → `activity_sessions`-brug**
+  (Final Architecture-besluit). Expliciete scope-grens vastgelegd: dit
+  ontsluit GEEN Workout Matching voor Strength — die blijft
+  geblokkeerd tot er een eigen Training Plan Engine is. Geverifieerd
+  veilig voor Performance Platform: `load-engine.ts` leest alleen
+  cycling/running/rowing-grafieken, negeert een Strength-
+  `activity_session` simpelweg.
+- Intelligence Platform/Knowledge Platform expliciet als "niet nu
+  oppakken, wel vermoeden gedocumenteerd" toegevoegd aan de checklist
+
+### Volgende stap
+Analysefase officieel afgesloten. Eerstvolgende bouwstap: de
+`training_results` → `activity_sessions`-brug — kleinste, meest
+concrete openstaande implementatiepunt, met een al vastgelegde
+scope-grens.
+
 ## v2.4.276 — Workout Matching Service, Fase 3 (Garmin TCX)
 **Bron: `docs/workout-completion-platform-adr-v1.md`, Fase 3 — het
 daadwerkelijk testbare pad (zie Operationele context: Strava ligt
