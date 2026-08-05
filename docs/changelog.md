@@ -1,5 +1,43 @@
 # CoachOS — Changelog
 
+## v2.4.281 — FIX: Source Priority Policy blokkeerde gelijke prioriteit niet
+**Gemeld via /debug/activity-bridge: dezelfde test twee keer achter
+elkaar (Running, 45 min, vandaag) gaf BEIDE keren "✓ aangemaakt" —
+twee identieke activity_sessions-rijen i.p.v. de verwachte blokkade
+bij de tweede poging.**
+
+### Root cause
+`nieuweBronWint()` gebruikte `prioriteit(nieuw) >= prioriteit(bestaand)`.
+Bij een gelijke bron tegen zichzelf (`trainer_ai` tegen `trainer_ai`,
+10 tegen 10) gaf dat `true` ("nieuwe bron wint") — de blokkade in
+`activity-bridge.ts` (`!nieuweBronWint(...)`) werd daardoor nooit
+gevonden bij gelijke prioriteit, alleen bij een STRIKT lagere. De
+functie was bedoeld voor "hogere prioriteit mag overschrijven", maar
+gaf dat ten onrechte ook terug bij een gelijke bron — precies het
+scenario waarin de Activity Bridge zichzelf zou kunnen dupliceren bij
+een herhaalde aanroep.
+
+### Fix
+`src/lib/activity-import/source-priority-policy.ts` —
+`prioriteit(nieuw) >= prioriteit(bestaand)` → `prioriteit(nieuw) >
+prioriteit(bestaand)` (strikt groter). Nu: gelijke of lagere
+prioriteit blokkeert altijd, alleen een STRIKT hogere prioriteit mag
+een bestaande activiteit overschrijven/naast leggen.
+
+**Geen andere aanroepers geraakt** — `nieuweBronWint()` wordt op dit
+moment alleen door `activity-bridge.ts` gebruikt.
+
+### Bekende, nog niet opgeruimde data
+De twee dubbele testrijen uit de bug-melding (2026-08-05, beide 45 min,
+beide `trainer_ai`, beide `[debug-testrij]`-gelabeld) staan nog in de
+database — via `/debug/activity-bridge`'s reset-knop op te ruimen
+(veilig, beide zijn debug-testrijen).
+
+**Test-instructie:** ruim de dubbele testrijen op, herhaal de
+dedup-test (zelfde sport/duur/datum twee keer achter elkaar) — de
+tweede poging zou nu `✗ Niet aangemaakt` moeten geven, met een reden
+die de bestaande `trainer_ai`-rij noemt.
+
 ## v2.4.280 — SQL-fix: activity_sessions_source_check miste 'trainer_ai'
 **Gemeld via `/debug/activity-bridge`: eerste test gaf direct
 "insert mislukt: violates check constraint activity_sessions_source_

@@ -46,10 +46,15 @@ export function prioriteitVoorBron(source: string): number {
 }
 
 /** True als `nieuweBron` een bestaande activiteit met `bestaandeBron`
- * MAG vervangen/overslaan-voorkomen — d.w.z. nieuweBron heeft een
- * gelijke of hogere prioriteit. Bij een STRIKT lagere prioriteit wint
- * de bestaande bron altijd (device wint van in-app, in-app wint nooit
- * van device). */
+ * MAG vervangen — d.w.z. nieuweBron heeft een STRIKT hogere prioriteit.
+ * Bij een GELIJKE of lagere prioriteit wint de bestaande bron altijd —
+ * dit dekt zowel "device wint van in-app" als "dezelfde bron mag
+ * zichzelf niet dupliceren" (bijv. Trainer AI tegen Trainer AI, gelijke
+ * prioriteit, moet blokkeren, niet doorlaten). BUG gevonden via
+ * /debug/activity-bridge (v2.4.281): met `>=` i.p.v. `>` gaf een
+ * gelijke prioriteit ten onrechte "nieuwe bron wint" terug, waardoor
+ * de Activity Bridge zichzelf kon dupliceren bij een herhaalde
+ * aanroep. */
 export function nieuweBronWint(nieuweBron: string, bestaandeBron: string): boolean {
-  return prioriteitVoorBron(nieuweBron) >= prioriteitVoorBron(bestaandeBron)
+  return prioriteitVoorBron(nieuweBron) > prioriteitVoorBron(bestaandeBron)
 }
