@@ -1,5 +1,31 @@
 # CoachOS — Changelog
 
+## v2.4.295 — Eindopschoning: platform-status definitief bijgewerkt
+**Geen code. Twee verouderde, tegenstrijdige regels rechtgezet die nog
+"niet bevestigd"/"nog niets gebouwd" zeiden over dingen die inmiddels
+wél afgerond waren — gevonden bij een laatste doorloop op verzoek van
+de gebruiker ("systeem is eindelijk gebouwd?").**
+
+### Wat er nog verouderd stond
+- Detail-checklist (regel ~326): Intelligence/Knowledge Platform stond
+  nog op "bewust NIET nu oppakken... niet bevestigd" — de verkenning
+  (v2.4.294) had dit al beantwoord, alleen de samenvatting bovenaan was
+  bijgewerkt, deze regel verderop niet
+- Eind-statusalinea: zei nog "Coach Decision Engine (analyse compleet,
+  nog niets gebouwd)" — Fase 1/2/3 waren toen al lang gebouwd
+  (v2.4.288-293)
+
+### Definitieve eindstatus
+Het platform (Workout Completion Platform, Activity Bridge, Source
+Priority Policy, Coach Decision Engine, Intelligence/Knowledge
+Platform) is afgerond. Wat resteert is geen bouwwerk meer:
+- Fase 1-verificatie in productie — wacht op 7/9 augustus
+- Concept2-webhook-test — wacht op Concept2's eigen site
+- Coach Decision Engine's signalen — nog nooit organisch gezien
+
+Strength als volwaardige specialist blijft bewust buiten scope, op
+uitdrukkelijk verzoek van de gebruiker ("kan altijd later").
+
 ## v2.4.294 — Intelligence/Knowledge Platform-verkenning afgerond
 **Geen code. Stap 2 van "het platform af" — precies zoals
 Architectuurregel #0 voorschrijft: eerst vaststellen of het al bestaat,

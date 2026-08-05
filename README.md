@@ -323,11 +323,16 @@ Health Connect).
       en Workout Matching voor Strength mogelijk. Groot, apart traject
       — zie bestaande sectie "Rowing/Strength/Kettlebell als
       volwaardige specialisten" verderop in dit README.
-- [ ] Intelligence Platform / Knowledge Platform — bewust NIET nu
-      oppakken. Vermoeden (Platform Audit): grotendeels consolidatie
-      van bestaand werk (`api/coach/route.ts`, `genereerCoachPolicy()`,
-      exercise-libraries, sport-adapters), niet bevestigd. Pas
-      onderzoeken bij een concrete aanleiding, geen speculatieve bouw.
+- [x] ~~Intelligence Platform / Knowledge Platform~~ — **verkenning
+      afgerond v2.4.294, bevestigd bestaand.** Zie de volledige
+      uitwerking bovenaan dit README (sectie "✅❌ Openstaand,
+      samengevoegd"). Geen nieuwe code — Intelligence Platform =
+      `beslisTussenSpecialisten()` + `genereerCoachPolicy()` +
+      `api/coach/route.ts`, Knowledge Platform = de zes bestaande
+      oefeningenbibliotheken + master-spec-documenten. (Deze regel
+      stond hier nog verouderd op "niet bevestigd" — bij het doornemen
+      van de roadmap gevonden en rechtgezet, zelfde soort opschoning
+      als eerder bij v2.4.291.)
 
 ### Volgende stap
 **Analysefase afgesloten (5 augustus 2026) — implementatiefase,
@@ -567,14 +572,22 @@ kunnen meten — maar nooit voor interne systeemlogica zoals Workout
 Matching-confidence, dat blijft een puur technisch proces zonder
 gebruikersvraag.
 
-**Status na "1 t/m 3. Go", bijgewerkt 5 augustus 2026 (avond):** alle
-drie afgerond (dedup-migratie, Fase 4 herdefinieerd, Concept2-webhook
-gebouwd). Concept2-webhook wacht op een werkende Concept2-productiesite
-(gaf een 502 Bad Gateway bij registratiepoging — storing bij Concept2
-zelf) + handmatige registratie door de gebruiker, geen blokkade voor
-verder werk. **Twee substantiële punten resteren, geen vaste
-volgorde:** Strength als volwaardige specialist (groot, apart traject)
-en de Coach Decision Engine (analyse compleet, nog niets gebouwd).
+**EINDSTATUS, bijgewerkt 5 augustus 2026 (avond) — het platform is af.**
+Workout Completion Platform (Fase 1-4), Activity Bridge, Source
+Priority Policy, Coach Decision Engine (Fase 1-3), Intelligence/
+Knowledge Platform-verkenning: allemaal afgerond. **Wat resteert is
+geen bouwwerk meer, maar wachten op iets extern:**
+- Fase 1-verificatie in productie — wacht op 7/9 augustus (een echte
+  Rowing-training)
+- Concept2-webhook-test — wacht op Concept2's eigen site (502 Bad
+  Gateway bij registratiepoging, 5 augustus) + handmatige registratie
+- Coach Decision Engine's nieuwere signalen (blessure/herstel/
+  cumulatieve belasting) — nog nooit organisch gezien, wacht op een
+  natuurlijk scenario of een bewuste test
+
+**Bewust buiten scope, op eigen verzoek:** Strength als volwaardige
+specialist (een aparte specialist, geen platformwerk — "kan altijd
+later").
 
 ## Core Architectuurregels
 
