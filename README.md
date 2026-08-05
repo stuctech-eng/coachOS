@@ -140,13 +140,12 @@ verdwaalt.
 
 **Nog niet gebouwd, geen externe blokkade:**
 - **Strength als volwaardige specialist** (eigen Training Plan Engine)
-  — groot, apart traject
+  — apart traject, bewust losgehouden van het platform zelf (opdracht
+  gebruiker, 5 augustus 2026 avond: "Strength kan altijd later, ik wil
+  het platform af")
 - **Intelligence Platform / Knowledge Platform** — bewust niet
   opgepakt, vermoeden (Platform Audit) dat het grotendeels
   consolidatie is, nooit bevestigd
-- **Cumulatieve belasting (meerdere zware trainingen/herhaald
-  overslaan)** — bewust nog NIET in Fase 2 meegenomen, zie de
-  Coach Decision Engine-sectie verderop voor de reden
 
 ### Architectuurprincipe — Source Isolation
 **Vastgelegd 5 augustus 2026, volledig uitgewerkt in
@@ -507,11 +506,25 @@ oppakken, geen tussentijdse keuze meer nodig.**
         overeen met planning" — een sessie kan matchen met het plan én
         alsnog coachwaardig zijn (bijv. wél volgens schema getraind,
         ondanks een blessure)
-      - **Bewust NIET meegenomen: cumulatieve belasting** (meerdere
-        zware trainingen/herhaald overslaan) — dat vergt een periode-
-        analyse (meerdere dagen tegelijk bekijken), een ander soort
-        vraag dan de per-activiteit-signalen hierboven. Apart traject,
-        niet stilzwijgend overgeslagen.
+      - **Fase 3 — v2.4.293: cumulatieve belasting alsnog toegevoegd**
+        (was bewust opengehouden bij Fase 2, nu afgemaakt op verzoek
+        van de gebruiker — "ik wil het platform af, geen losse
+        eindjes"). Twee nieuwe signalen, allebei bestaande tabellen,
+        geen nieuwe databron: **meerdere sessies dezelfde dag**
+        (`activity_sessions`, simpele telling, drempel 2) en
+        **herhaald overslaan** (`training_plan_sessions`,
+        `status='skipped'` — exacte waarde geverifieerd in
+        `adjuster-core.ts`'s `missed_session`-trigger, niet aangenomen
+        — laatste 14 dagen, drempel 3×, zelfde voorbeeldgetal als de
+        architectuuropdracht zelf gaf). Bij het samenvoegen ontdekt en
+        rechtgezet: de eigen-sport-plan-lookup werd twee keer apart
+        opgehaald (Signaal 4 en Signaal 5) — samengevoegd tot één query.
+        **Fout gevonden en gefixt vóór levering, niet erna:** bij het
+        herschikken van de signalen raakte de
+        `export interface CoachCallBehoefte {`-declaratie zelf per
+        ongeluk kwijt (een module-comment overschreef de regel in
+        plaats van ervoor te komen) — bij de verplichte eindcontrole
+        opgemerkt vóór dit werd geleverd.
       - **Naamgeving bewust NIET gewijzigd** (bestandsnaam blijft
         `coach-decision-engine.ts`) ondanks het voorstel voor "Decision
         Service/Layer" — een rename zou de drie al-gekoppelde

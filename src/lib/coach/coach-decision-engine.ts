@@ -33,6 +33,18 @@ import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 //   en-klaar boolean-veld teruggeeft (alleen verwerkt in `reasons`/
 //   `maxIntensity`), niet omdat het een nieuwe databron is
 
+// v2.4.293 (Fase 3): cumulatieve belasting toegevoegd — het bewust
+// opengelaten gat uit Fase 2. Twee signalen, allebei uit bestaande
+// tabellen (activity_sessions/training_plan_sessions), geen nieuwe
+// databron:
+// - Meerdere sessies dezelfde dag → activity_sessions, simpele
+//   datum-telling
+// - Herhaald overslaan (laatste 14 dagen, drempel 3× — zelfde
+//   voorbeeldgetal als in de architectuuropdracht: "je hebt drie
+//   trainingen overgeslagen") → training_plan_sessions, status='skipped'
+//   (exacte waarde bevestigd in adjuster-core.ts's missed_session-
+//   trigger, niet aangenomen)
+
 export interface CoachCallBehoefte {
   nodig: boolean
   reden: string
@@ -44,9 +56,14 @@ export interface CoachCallBehoefte {
     | 'andere_sport_dan_gepland'
     | 'ondanks_actieve_blessure'
     | 'ondanks_laag_herstel'
+    | 'meerdere_sessies_dezelfde_dag'
+    | 'herhaald_overgeslagen'
 }
 
 const INTENSIEVE_SESSIE_MIN_DUUR = 20 // minuten — zelfde ordegrootte als MINIMUM_SESSIE_DUUR_MINUTEN elders, hier lokaal gehouden om geen cross-module afhankelijkheid toe te voegen voor één constante
+const MEERDERE_SESSIES_DREMPEL = 2 // aantal activiteiten dezelfde dag (inclusief de huidige) vanaf waar dit coachwaardig is
+const HERHAALD_OVERSLAAN_VENSTER_DAGEN = 14
+const HERHAALD_OVERSLAAN_DREMPEL = 3 // zelfde voorbeeldgetal als in de architectuuropdracht ("je hebt drie trainingen overgeslagen")
 
 export async function evalueerCoachCallBehoefte(
   supabase: SupabaseClient,
@@ -86,18 +103,51 @@ export async function evalueerCoachCallBehoefte(
     }
   }
 
-  // ── Signaal 3: eigen-sport-planning (Fase 1, ongewijzigd) ────────────
-  const { data: plan } = await supabase
+  // ── Signaal 3: meerdere sessies dezelfde dag (nieuwe telling,
+  //    bestaande tabel) ──────────────────────────────────────────────
+  const { count: sessiesVandaag } = await supabase
+    .from('activity_sessions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId).eq('date', datum)
+  if ((sessiesVandaag ?? 0) >= MEERDERE_SESSIES_DREMPEL) {
+    return {
+      nodig: true,
+      reden: `${sessiesVandaag} activiteiten op dezelfde dag geregistreerd`,
+      type: 'meerdere_sessies_dezelfde_dag',
+    }
+  }
+
+  // ── Signaal 4: herhaald overslaan (nieuwe telling, bestaande tabel —
+  //    status='skipped' bevestigd in adjuster-core.ts's missed_session-
+  //    trigger) ──────────────────────────────────────────────────────
+  const { data: eigenPlan } = await supabase
     .from('training_plans')
     .select('id')
     .eq('athlete_id', userId).eq('sport', sport).eq('status', 'active')
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
+  if (eigenPlan) {
+    const vanaf = new Date(Date.now() - HERHAALD_OVERSLAAN_VENSTER_DAGEN * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const { count: overgeslagenAantal } = await supabase
+      .from('training_plan_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('plan_id', eigenPlan.id).eq('status', 'skipped').gte('date', vanaf)
+    if ((overgeslagenAantal ?? 0) >= HERHAALD_OVERSLAAN_DREMPEL) {
+      return {
+        nodig: true,
+        reden: `${overgeslagenAantal} sessies overgeslagen in de laatste ${HERHAALD_OVERSLAAN_VENSTER_DAGEN} dagen`,
+        type: 'herhaald_overgeslagen',
+      }
+    }
+  }
 
-  if (plan) {
+  // ── Signaal 5: eigen-sport-planning (Fase 1, ongewijzigd) ────────────
+  // Hergebruikt `eigenPlan` uit Signaal 4 — zelfde query, niet opnieuw
+  // opvragen.
+  if (eigenPlan) {
     const { data: planSessie } = await supabase
       .from('training_plan_sessions')
       .select('id, status')
-      .eq('plan_id', plan.id).eq('date', datum)
+      .eq('plan_id', eigenPlan.id).eq('date', datum)
       .maybeSingle()
 
     if (planSessie && planSessie.status !== 'cancelled') {
@@ -107,10 +157,10 @@ export async function evalueerCoachCallBehoefte(
       return { nodig: true, reden: 'geplande sessie was geannuleerd, toch uitgevoerd', type: 'ondanks_annulering' }
     }
     // Geen sessie deze datum voor DEZE sport, maar er is wel een plan —
-    // val door naar Signaal 4 (misschien een andere sport ingehaald).
+    // val door naar Signaal 6 (misschien een andere sport ingehaald).
   }
 
-  // ── Signaal 4: cross-sport — stond er een ANDERE sport gepland
+  // ── Signaal 6: cross-sport — stond er een ANDERE sport gepland
   //    dezelfde dag? (nieuwe QUERY, bestaande tabel/logica) ────────────
   const { data: anderePlannen } = await supabase
     .from('training_plans').select('id, sport')
@@ -135,7 +185,7 @@ export async function evalueerCoachCallBehoefte(
     }
   }
 
-  if (!plan) {
+  if (!eigenPlan) {
     // v2.4.290-FIX (ongewijzigd behouden): geen plan is zelf onzekerheid
     // — voorzichtigheidshalve wél vragen, behoudt het oude "altijd
     // vragen"-gedrag voor sporten zonder Training Plan Engine

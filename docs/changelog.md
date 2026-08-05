@@ -1,5 +1,51 @@
 # CoachOS — Changelog
 
+## v2.4.293 — Coach Decision Engine, Fase 3 (cumulatieve belasting)
+**Opdracht: "Stap 1. Geen losse eindjes. Afmaken" — het bewust
+opengehouden gat uit Fase 2 (v2.4.292) alsnog gedicht, op verzoek van
+de gebruiker die het platform (los van Strength) volledig af wil
+hebben.**
+
+### Twee nieuwe signalen, beide consolidatie
+- **Meerdere sessies dezelfde dag** — `activity_sessions`, telling
+  per datum, drempel 2
+- **Herhaald overslaan** — `training_plan_sessions`,
+  `status='skipped'` (exacte waarde geverifieerd in
+  `adjuster-core.ts`'s `missed_session`-trigger, niet aangenomen),
+  laatste 14 dagen, drempel 3× (zelfde voorbeeldgetal als de
+  architectuuropdracht zelf: "je hebt drie trainingen overgeslagen")
+
+Beide gecontroleerd vóór de Fase 1-planningscheck, zelfde reden als de
+Fase 2-signalen: een sessie kan matchen met het plan én alsnog
+coachwaardig zijn.
+
+### Opschoning tijdens het samenvoegen
+De eigen-sport-plan-lookup (`training_plans` waar `sport`+`active`)
+werd twee keer apart uitgevoerd — één keer voor het herhaald-overslaan-
+signaal, één keer voor de bestaande Fase 1-planningscheck. Samengevoegd
+tot één query (`eigenPlan`), niet dubbel bevraagd.
+
+### Fout gevonden en gefixt vóór levering, niet erna
+Bij het herschikken van de signalen (comment-block voor Fase 3 ervoor
+geplaatst) raakte de `export interface CoachCallBehoefte {`-declaratie
+zelf per ongeluk kwijt — de comment overschreef de regel in plaats van
+ervoor te komen, wat een compile-fout zou hebben gegeven. Opgemerkt bij
+de verplichte volledige-bestand-doorlezing vóór levering (niet via een
+latere test of bugmelding).
+
+### Status: Coach Decision Engine compleet voor de huidige scope
+Alle signalen uit de architectuuropdracht zijn nu gedekt: planning-
+vergelijking, cross-sport, blessure, herstel, cumulatieve belasting.
+Alle drie ingest-routes (Concept2/Garmin TCX/Bibliotheek) geven de
+sessieduur al mee sinds Fase 2, geen wijziging nodig aan de
+aanroeppunten voor deze Fase 3-toevoeging.
+
+**Nog niet getest** — vergt scenario's met meerdere sessies/dag of een
+herhaald-overslaan-patroon, geen debug-tool gebouwd deze keer.
+
+**Nog steeds ongewijzigd:** Fase 1/2-logica verder, Workout Matching
+Service, Activity Bridge, Source Priority Policy.
+
 ## v2.4.292 — Coach Decision Engine, Fase 2 + nieuwe architectuurregel
 **Verkenning bevestigde opnieuw het patroon dat deze hele week
 terugkwam: alles bleek al te bestaan. Bron: gebruiker, 5 augustus
