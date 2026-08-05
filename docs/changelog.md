@@ -1,5 +1,54 @@
 # CoachOS — Changelog
 
+## v2.4.290 — Coach Decision Engine: kritieke fix + Fase 3 (Bibliotheek)
+**Twee dingen: een fix die vóór schade ontdekt is, en de laatste van
+de vier ingest-routes gemigreerd.**
+
+### Kritieke fix — geen_actief_plan gaf ten onrechte nodig:false
+Gevonden vóór het bouwen van Fase 3, niet via een bugmelding.
+`evalueerCoachCallBehoefte()` gaf bij "geen actief trainingsplan"
+`nodig: false` terug — leek veilig voor Concept2/Garmin TCX (meestal
+wél een plan), maar was al een stille regressie: de oude logica in
+alle vier bronnen maakte ALTIJD een Coach Call, ongeacht plan. Iemand
+zonder actief plan kreeg dus na de eerdere migraties opeens geen
+evaluatie meer.
+
+**Zou Fase 3 hard gebroken hebben:** Strength/Kettlebell/Bodyweight
+hebben per ontwerp NOOIT een Training Plan Engine (Final Architecture,
+expliciete regel) — "geen plan" zou daar dus altijd gelden, en Coach
+Call zou voor die sporten nooit meer afgaan. Gecorrigeerd:
+`geen_actief_plan` → `nodig: true`. Geen plan is zelf onzekerheid,
+dus voorzichtigheidshalve wél vragen — behoudt het oude, veilige
+gedrag. Werkt automatisch door in Concept2 en Garmin TCX, geen aparte
+fix per bestand nodig.
+
+### Fase 3 — Bibliotheek gemigreerd
+`training/complete/route.ts`'s oude, onvoorwaardelijke Coach Call-
+aanmaak vervangen door de Decision Engine.
+
+**`coach-call-writer.ts` uitgebreid** met `trainingResultId` als
+alternatief voor `activiteitId` — `coach_call_items` bediende al twee
+brontypes via twee wederzijds-nullable kolommen (zie README-sectie
+"Coach Call Systeem"); deze functie ondersteunt nu beide, met
+applicatie-validatie dat precies één van de twee gevuld is (zelfde
+waarschuwing die het README zelf al gaf bij de vorige nieuwe bron).
+
+**Opschoning, niet alleen migratie:**
+- Oude, handmatige "bestaat de call al, is dit item al toegevoegd"-
+  check verwijderd — `schrijfCoachCallItem()` doet die idempotency-
+  check nu zelf al intern
+- `withRetry()` (v2.4.9, retry-wrapper specifiek voor de oude
+  coach_call-aanmaak) — enige gebruik zat in de nu-vervangen logica,
+  dus verwijderd i.p.v. dode code te laten staan
+
+### Status: alle vier bronnen gemigreerd
+Concept2 (v2.4.288) → Garmin TCX (v2.4.289) → Bibliotheek (v2.4.290).
+**Strava bewust overgeslagen** — ligt stil (Operationele context, 5
+augustus), geen prioriteit zolang er geen nieuwe data binnenkomt.
+
+**Nog steeds ongewijzigd:** Workout Matching Service, Activity Bridge,
+Source Priority Policy.
+
 ## v2.4.289 — Coach Decision Engine, Fase 2 (Garmin TCX)
 **Vervolg op v2.4.288 — zelfde incrementele opbouw als Workout
 Matching (Rowing eerst bewijzen, dan uitbreiden).**

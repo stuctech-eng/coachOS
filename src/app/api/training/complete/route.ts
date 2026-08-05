@@ -5,6 +5,8 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { overwegActiviteitUitTrainingResultaat } from '@/lib/activity-import/activity-bridge'
+import { evalueerCoachCallBehoefte } from '@/lib/coach/coach-decision-engine'
+import { schrijfCoachCallItem } from '@/lib/coach/coach-call-writer'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -22,29 +24,10 @@ async function getUser() {
   return user
 }
 
-async function withRetry<F extends () => PromiseLike<{ data: unknown; error: unknown }>>(
-  fn: F,
-  label: string
-): Promise<Awaited<ReturnType<F>>> {
-  const attempt = async () => {
-    const result = await fn() as Awaited<ReturnType<F>>
-    if (result.error) {
-      const e = result.error as { code?: string; message?: string; details?: string; hint?: string }
-      throw new Error(
-        `${label} FOUT — code: ${e.code || '?'}, message: ${e.message || '?'}, details: ${e.details || '?'}, hint: ${e.hint || '?'}`
-      )
-    }
-    return result
-  }
-
-  try {
-    return await attempt()
-  } catch (err) {
-    console.error(`[training/complete] ${label} eerste poging mislukt, retry over 400ms:`, err)
-    await new Promise(resolve => setTimeout(resolve, 400))
-    return await attempt()
-  }
-}
+// v2.4.290: withRetry() (v2.4.9, retry-wrapper specifiek voor de oude
+// coach_call-aanmaak) verwijderd — enige gebruik zat in de Stap 3-logica
+// die nu vervangen is door schrijfCoachCallItem() (coach-call-writer.ts),
+// geen dode code laten staan (architectuurregel).
 
 // POST — sla evaluatie van een Universal Training Engine sessie op
 // Body komt van session/[module]/page.tsx: { module, training_type, ...SessionResult }
@@ -237,67 +220,41 @@ export async function POST(req: NextRequest) {
     // ── Stap 3: Coach Call aanmaken bij elke bibliotheek-training ───────────
     if (training_source === 'library' && result?.id) {
       try {
-        const existingResult = await withRetry(
-          () => supabase
-            .from('coach_calls')
-            .select('id, status, coach_call_items(training_result_id)')
-            .eq('user_id', user.id)
-            .eq('date', today)
-            .single(),
-          'coach_calls select'
-        )
-        const existing = existingResult.data as { id: string; status: string; coach_call_items: { training_result_id: string }[] } | null
+        // v2.4.290 (Coach Decision Engine, Fase 3 — Bibliotheek):
+        // vervangt de oude, onvoorwaardelijke aanmaak + de handmatige
+        // "bestaat de call al, is dit item al toegevoegd"-check —
+        // schrijfCoachCallItem() doet die idempotency-check nu zelf al
+        // (zelfde patroon als Concept2/Garmin TCX). Sport-sleutel
+        // (training_type || module) matcht al de sleutels die
+        // training_plans.sport gebruikt voor Rowing/Running/Cycling —
+        // geen aparte mapping nodig. Voor Strength/Kettlebell/
+        // Bodyweight bestaat per ontwerp geen Training Plan Engine, dus
+        // evalueerCoachCallBehoefte geeft daar altijd geen_actief_plan/
+        // nodig:true terug (v2.4.290-FIX) — behoudt exact het oude
+        // "altijd vragen"-gedrag voor die sporten, geen regressie.
+        const sportSleutel = training_type || module || ''
+        const behoefte = await evalueerCoachCallBehoefte(supabase, user.id, sportSleutel, today)
 
-        const alreadyAdded = (existing?.coach_call_items || [])
-          .some(i => i.training_result_id === result.id)
-
-        if (!alreadyAdded) {
-          let callId = existing?.id
-
-          if (!callId) {
-            const newCallResult = await withRetry(
-              () => supabase
-                .from('coach_calls')
-                .insert({ user_id: user.id, date: today, status: 'pending' })
-                .select('id')
-                .single(),
-              'coach_calls insert'
-            )
-            callId = (newCallResult.data as { id: string } | null)?.id
+        if (behoefte.nodig) {
+          const sportLabel: Record<string, string> = {
+            kettlebell: 'Kettlebell',
+            rowing: 'Roeien',
+            running: 'Hardlopen',
+            cycling: 'Fietsen',
+            strength: 'Kracht',
+            bodyweight: 'Bodyweight',
           }
-
-          if (callId) {
-            const sportLabel: Record<string, string> = {
-              kettlebell: 'Kettlebell',
-              rowing: 'Roeien',
-              running: 'Hardlopen',
-              cycling: 'Fietsen',
-              strength: 'Kracht',
-              bodyweight: 'Bodyweight',
-            }
-            await withRetry(
-              () => supabase.from('coach_call_items').insert({
-                coach_call_id: callId,
-                training_result_id: result.id,
-                sport_type: sportLabel[training_type || module] || training_type || module || 'Training',
-                duration_min: actual_duration ?? null,
-                status: 'pending',
-              }),
-              'coach_call_items insert'
-            )
-
-            if (existing && (existing.status === 'completed' || existing.status === 'expired')) {
-              await withRetry(
-                () => supabase.from('coach_calls')
-                  .update({ status: 'pending', completed_at: null })
-                  .eq('id', callId),
-                'coach_calls heropenen'
-              )
-            }
-          }
+          await schrijfCoachCallItem(supabase, user.id, today, {
+            trainingResultId: result.id,
+            sportNaam: sportLabel[sportSleutel] || sportSleutel || 'Training',
+            afstandM: null,
+            duurMin: actual_duration ?? null,
+            redenType: behoefte.type,
+            reden: behoefte.reden,
+          })
         }
       } catch (coachCallErr) {
-        console.error('[training/complete] coach_call aanmaken mislukt (na retry):', coachCallErr)
+        console.error('[training/complete] Coach Decision Engine mislukt:', coachCallErr)
       }
     }
 

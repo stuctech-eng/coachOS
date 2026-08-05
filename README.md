@@ -432,8 +432,37 @@ oppakken, geen tussentijdse keuze meer nodig.**
       `sportSleutel`-variabele uit de matching-aanroep hoger in het
       bestand hergebruikt kon worden — bleek lokaal gescoped binnen een
       andere functie, niet beschikbaar op de nieuwe plek. Rechtgezet
-      vóór levering, niet via een latere bugfix. Strava en Bibliotheek
-      volgen later, één voor één.
+      vóór levering, niet via een latere bugfix.
+
+      **Kritieke fix, vóór Fase 3 ontdekt — v2.4.290:**
+      `evalueerCoachCallBehoefte()` gaf bij "geen actief trainingsplan"
+      ten onrechte `nodig: false` terug. Dat was al een stille
+      regressie voor Concept2/Garmin TCX (de oude logica maakte altijd
+      een call, ongeacht plan — iemand zonder actief plan kreeg nu
+      opeens niets meer), en zou Fase 3 hard gebroken hebben:
+      Strength/Kettlebell/Bodyweight hebben per ontwerp NOOIT een
+      Training Plan Engine, dus "geen plan" zou daar altijd gelden en
+      Coach Call zou voor die sporten nooit meer afgaan. Gecorrigeerd
+      naar `nodig: true` — geen plan is zelf onzekerheid, dus
+      voorzichtigheidshalve wél vragen (oude, veilige gedrag behouden).
+      Gevonden en gefixt vóórdat Fase 3 gebouwd werd, niet erna.
+
+      **Fase 3 — v2.4.290: Bibliotheek (`training/complete/route.ts`)
+      gemigreerd.** `coach-call-writer.ts` uitgebreid met
+      `trainingResultId` als alternatief voor `activiteitId` (het
+      bestaande, wederzijds-nullable twee-kolommenschema uit de
+      Coach Call Systeem-sectie hieronder, nu voor het eerst door de
+      Decision Engine zelf gebruikt). Oude, handmatige "bestaat de call
+      al, is dit item al toegevoegd"-check verwijderd —
+      `schrijfCoachCallItem()` doet die idempotency-check nu zelf al.
+      **Bijkomende opschoning:** de v2.4.9 `withRetry()`-wrapper (enige
+      doel was retry rond de oude coach_call-aanmaak) is nu dode code
+      en verwijderd, geen dode code laten staan.
+
+      **Alle vier bronnen gemigreerd.** Concept2 (v2.4.288) → Garmin
+      TCX (v2.4.289) → Bibliotheek (v2.4.290). Strava is bewust
+      overgeslagen — ligt stil (zie Operationele context), geen
+      prioriteit zolang er geen nieuwe Strava-data binnenkomt.
 
 **Referentiedocument:** de "Final Architecture Update — v2.4.284"
 (gebruiker, 5 augustus 2026, met nuancering diezelfde dag) is de

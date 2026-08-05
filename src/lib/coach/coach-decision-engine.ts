@@ -53,12 +53,20 @@ export async function evalueerCoachCallBehoefte(
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
 
   if (!plan) {
-    // Geen actief plan voor deze sport — geen basis om "afwijking" tegen
-    // te toetsen. Bewust GEEN Coach Call: dit zou voor iedere sport
-    // zonder Training Plan Engine (Strength/Kettlebell/etc., of Rowing/
-    // Running/Cycling zonder actief plan) altijd "extra training"
-    // betekenen, wat de bedoeling niet is.
-    return { nodig: false, reden: 'geen actief trainingsplan voor deze sport — geen afwijking te bepalen', type: 'geen_actief_plan' }
+    // v2.4.290-FIX: was nodig:false — gevonden vóór de Bibliotheek-
+    // migratie, niet via een bugmelding. "Geen actief plan" gaf eerst
+    // ten onrechte GEEN Coach Call terug, terwijl de oude, vervangen
+    // logica in alle vier bronnen ALTIJD een call maakte, ongeacht plan.
+    // Dat was al een stille regressie voor Concept2/Garmin TCX (iemand
+    // zonder actief plan kreeg opeens geen evaluatie meer), en zou de
+    // Bibliotheek-migratie hard breken: Strength/Kettlebell/Bodyweight
+    // hebben per ontwerp NOOIT een Training Plan Engine (Final
+    // Architecture, expliciete regel) — "geen plan" zou daar dus altijd
+    // gelden, en Coach Call zou voor die sporten nooit meer afgaan.
+    // Correcte gedrag: geen plan is zelf al een vorm van onzekerheid —
+    // behoud het oude, veilige "gewoon vragen"-gedrag. Pas bij een
+    // BESTAAND, MATCHEND plan wordt het terecht nodig:false.
+    return { nodig: true, reden: 'geen actief trainingsplan voor deze sport — geen vergelijking mogelijk, dus voorzichtigheidshalve wél vragen', type: 'geen_actief_plan' }
   }
 
   const { data: planSessie } = await supabase
