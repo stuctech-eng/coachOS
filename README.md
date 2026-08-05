@@ -45,6 +45,31 @@ nieuwe sessie over CoachOS: lees dit blok, ga verder bij "Volgende
 stap" hieronder, vraag niet opnieuw om richting — die staat hier al
 vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
 
+### Operationele context (vastgelegd 5 augustus 2026)
+**Belangrijk voor hoe Fase 3 verder gebouwd én getest wordt:**
+
+- **Strava-koppeling is tijdelijk buiten gebruik.** Gestart toen
+  Strava's API nog gratis toegankelijk was; inmiddels vereist Strava
+  een betaald developer-abonnement. De gebruiker gebruikt dit voorlopig
+  niet meer. **Gevolg:** de Strava-matching uit v2.4.273 is gebouwd en
+  klopt qua code, maar is momenteel NIET te testen in productie — er
+  komt simpelweg geen nieuwe Strava-data meer binnen. Blijft staan
+  (voor de toekomst, mocht Strava weer in gebruik komen), maar reken
+  er niet op als testpad.
+- **Garmin loopt nu via handmatige TCX-bestand-upload**
+  (`api/health/garmin-activity-tcx/route.ts`), NIET via de Garmin
+  Connect API. De gebruiker wacht op Garmin API-toegang — kan nog even
+  duren, geen bekende datum. **Gevolg:** wanneer Fase 3 het Garmin-punt
+  bereikt, is de TCX-upload-route het punt om op aan te sluiten (dat is
+  wat daadwerkelijk gebruikt en dus testbaar is), niet een
+  toekomstige/hypothetische Garmin-API-route. Er is ook een
+  Vision-route (`garmin-activity-vision/route.ts`, foto-import) — apart
+  te checken of die ook actief gebruikt wordt.
+- Bouwen mag gewoon doorgaan ook als iets (nog) niet te testen is — de
+  gebruiker wil geen losse eindjes, dus liever nu bouwen en later
+  bevestigen dan wachten. Bij elke stap die niet te testen is: dat
+  expliciet benoemen (niet doen alsof het getest is).
+
 ### Voortgang
 - [x] Fase 1 — generieke Core + Rowing Matcher (Concept2) — v2.4.267
 - [x] Fase 1 — in-app debug-dashboard + handmatige testtools
@@ -88,8 +113,13 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
       geëxtraheerd naar een gedeeld bestand
       (`training-plan-engine/matcher-registry.ts`) zodat het
       debug-scherm en productie-routes dezelfde bron gebruiken, geen
-      twee kopieën
+      twee kopieën. **⚠️ Niet testbaar in productie** — zie
+      "Operationele context" hierboven: Strava-koppeling is tijdelijk
+      buiten gebruik (betaald abonnement vereist, gebruiker doet dit nu
+      niet)
 - [ ] Fase 3 — Garmin (TCX + Vision) aansluiten op de Matching Service
+      — **dit is het testbare pad**, niet Strava (zie Operationele
+      context: Garmin loopt nu via handmatige TCX-upload, niet de API)
 - [ ] Fase 3 — handmatige/bibliotheek-import aansluiten op de Matching
       Service
 - [ ] Fase 4 — confidence-UX (lage score → vraag aan gebruiker i.p.v.
@@ -111,7 +141,9 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
 
 ### Volgende stap
 Verificatie Fase 1 in productie kan pas ná 7/9 augustus — niet te
-versnellen. Tot die tijd: **Fase 3, Garmin (TCX + Vision) aansluiten**.
+versnellen. Tot die tijd: **Fase 3, Garmin (TCX + Vision) aansluiten**
+— zie Operationele context hierboven: dit is nu het enige daadwerkelijk
+testbare Fase 3-pad (Strava ligt stil, Garmin API bestaat nog niet).
 Vóór bouwen eerst checken: `garmin-activity-tcx/route.ts` en
 `garmin-activity-vision/route.ts` zijn twee aparte bestanden (i.t.t.
 Strava's ene gedeelde processor) — mogelijk twee keer dezelfde

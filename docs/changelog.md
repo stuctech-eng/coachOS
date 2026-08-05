@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.274 — Operationele context vastgelegd: Strava gepauzeerd, Garmin via TCX
+**Geen code — een correctie op aannames, vastgelegd vóór er verder
+gebouwd wordt op Fase 3.**
+
+### Gemeld door de gebruiker
+- **Strava:** gestart toen de API nog gratis was, inmiddels is een
+  betaald developer-abonnement vereist. Wordt voorlopig niet gebruikt.
+  Gevolg: de Strava-matching uit v2.4.273 is gebouwd en klopt qua code,
+  maar is nu NIET te testen — er komt geen nieuwe Strava-data meer
+  binnen. Blijft staan voor de toekomst.
+- **Garmin:** activiteiten worden nu geïmporteerd via handmatige
+  TCX-bestand-upload (`api/health/garmin-activity-tcx/route.ts`), NIET
+  via de Garmin Connect API. Garmin API-toegang staat uit, onbekend
+  hoe lang dat duurt.
+
+### Consequentie voor de roadmap
+Bewust vastgelegd in het README (sectie "Operationele context") zodat
+dit niet vergeten wordt bij een volgende sessie: wanneer Fase 3 het
+Garmin-punt bereikt, is de TCX-upload-route (en mogelijk de
+Vision-route, `garmin-activity-vision/route.ts`) het punt om op aan te
+sluiten — dat is wat daadwerkelijk gebruikt en dus testbaar is. Niet
+wachten op of bouwen tegen een hypothetische toekomstige Garmin-API.
+
+**Uitgangspunt, herbevestigd:** bouwen gaat door ook als iets (nog)
+niet te testen is (Strava) — geen losse eindjes betekent niet
+"wachten tot alles testbaar is", het betekent "niets stilzwijgend
+overslaan of ten onrechte als getest beschouwen." Bij elke stap die
+niet te testen is: dat expliciet benoemen.
+
 ## v2.4.273 — Workout Matching Service, Fase 2 afgesloten + Fase 3 (Strava)
 **Twee dingen in één levering: de Fase 2-afsluiting (Strength
 geblokkeerd, vorige keer per ongeluk niet gepusht — bij het self-checken
