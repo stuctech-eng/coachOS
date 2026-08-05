@@ -5,6 +5,7 @@ import sharp from 'sharp'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
+import { nieuweBronWint } from '@/lib/activity-import/source-priority-policy'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -180,17 +181,22 @@ export async function POST(req: NextRequest) {
         .eq('name', activityLabel)
         .single()
 
-      // v2.4.222 (structurele dedup-fix): zelfde bescherming als bij
-      // Strava/Garmin TCX — Concept2 is de meest betrouwbare bron voor
-      // roeien. Bewust ALLEEN voor 'Roeien', geen invloed op andere sporten.
-      if (activityLabel === 'Roeien') {
-        const { data: concept2Bestaat } = await adminSupabase
-          .from('activity_sessions').select('id')
-          .eq('user_id', user.id).eq('date', today).eq('source', 'concept2')
-          .maybeSingle()
-        if (concept2Bestaat) {
-          return NextResponse.json({ imported: false, skipped: true, reason: 'concept2_heeft_voorrang' })
-        }
+      // v2.4.283 (dedup-consolidatie): gemigreerd naar de generieke
+      // Source Priority Policy (v2.4.278) i.p.v. een hardcoded "check
+      // alleen Concept2, alleen voor Roeien"-regel (v2.4.222). Nu: elke
+      // bestaande activiteit VAN DEZELFDE SPORT die dag (`activity_id`)
+      // met een gelijke-of-hogere source-prioriteit dan 'garmin' (90)
+      // blokkeert de import. Bewust uitgebreid naar ALLE sporten — de
+      // policy is sport-agnostisch. Concept2 (100) blijft hoger dan
+      // Garmin, dus dit gedraagt zich voor Roeien identiek aan de oude,
+      // specifieke check.
+      const { data: bestaandeMetVoorrang } = await adminSupabase
+        .from('activity_sessions').select('id, source')
+        .eq('user_id', user.id).eq('date', today).eq('activity_id', userActivity?.id || null)
+        .neq('source', 'garmin')
+      const geblokkeerdDoor = (bestaandeMetVoorrang || []).find(rij => !nieuweBronWint('garmin', rij.source))
+      if (geblokkeerdDoor) {
+        return NextResponse.json({ imported: false, skipped: true, reason: `${geblokkeerdDoor.source}_heeft_voorrang` })
       }
 
       if (!userActivity) {

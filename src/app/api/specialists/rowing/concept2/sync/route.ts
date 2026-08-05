@@ -11,6 +11,7 @@ import { evalueerEnBewaarLeerpatronenIndienNodig } from '@/lib/specialists/learn
 import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-platform/learned-adjustments'
 import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/workout-matcher'
 import { rowingMatcher } from '@/lib/specialists/training-plan-engine/matchers/rowing-matcher'
+import { nieuweBronWint } from '@/lib/activity-import/source-priority-policy'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -270,15 +271,25 @@ export async function POST() {
         }
       }
 
-      // v2.4.222 (structurele dedup-fix): Concept2 is de meest
-      // betrouwbare bron voor roeien (het apparaat zelf). Als er voor
-      // dezelfde dag al een lagere-prioriteit-record bestaat (Strava/
-      // Garmin/handmatig — bijv. omdat die eerder is binnengekomen dan
-      // deze Concept2-sync), wordt die nu verwijderd. Voorkomt dubbele
-      // sessies structureel, niet alleen in de weergave.
-      await supabase.from('activity_sessions').delete()
+      // v2.4.283 (dedup-consolidatie): gemigreerd naar de generieke
+      // Source Priority Policy (v2.4.278) i.p.v. een hardcoded lijst.
+      // Was: .in('source', ['strava','garmin','apple_health','manual'])
+      // — miste 'trainer_ai' (bestond nog niet toen dit geschreven
+      // werd, v2.4.222). Nu: elke bestaande rij die dag waar Concept2
+      // overheen wint (alle bekende bronnen — Concept2 heeft de
+      // hoogste prioriteit) wordt verwijderd, automatisch inclusief
+      // toekomstige nieuwe, lagere-prioriteit-bronnen zonder deze
+      // route ooit weer te hoeven aanpassen.
+      const { data: bestaandeDieDag } = await supabase
+        .from('activity_sessions')
+        .select('id, source')
         .eq('user_id', user.id).eq('date', dagStr).eq('activity_id', userActivity?.id || null)
-        .in('source', ['strava', 'garmin', 'apple_health', 'manual'])
+      const teVerwijderen = (bestaandeDieDag || [])
+        .filter(rij => nieuweBronWint('concept2', rij.source))
+        .map(rij => rij.id)
+      if (teVerwijderen.length > 0) {
+        await supabase.from('activity_sessions').delete().in('id', teVerwijderen)
+      }
     }
 
     // v2.4.253 (Learning Rules Engine — daadwerkelijke koppeling): één

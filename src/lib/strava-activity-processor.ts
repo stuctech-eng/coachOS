@@ -19,6 +19,7 @@ import { ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL as ACTIVITEIT_NAAR_SPORT_SLEUTEL } f
 import { vertaalCyclingSessieNaarImpact } from './specialists/cycling-impact-adapter'
 import { matchActiviteitAanPlan } from './specialists/training-plan-engine/workout-matcher'
 import { SPORT_MATCHERS } from './specialists/training-plan-engine/matcher-registry'
+import { nieuweBronWint } from './activity-import/source-priority-policy'
 
 // v2.4.244: Cycling toegevoegd — derde sport in de dispatch-tabel,
 // zelfde generieke patroon, geen wijziging aan de processor zelf nodig
@@ -99,24 +100,9 @@ export async function processStravaActivity(
     return { imported: false, skipped: true, reason: 'already_exists' }
   }
 
-  // v2.4.222 (structurele dedup-fix): Concept2 is de meest betrouwbare
-  // bron voor roeien (het apparaat zelf, met stroke rate/drag factor).
-  // Als er voor dezelfde dag al een Concept2-sessie bestaat, slaat
-  // Strava's import over — voorkomt de dubbele "9 juni: strava 25 min
-  // + concept2 25 min"-situatie structureel, i.p.v. achteraf op te
-  // ruimen. Bewust ALLEEN voor 'Roeien' — geen enkele invloed op de
-  // import van andere sporten (Cycling/Running/etc.).
-  if (activityName === 'Roeien') {
-    const { data: concept2Bestaat } = await supabase
-      .from('activity_sessions').select('id')
-      .eq('user_id', userId).eq('date', date).eq('source', 'concept2')
-      .maybeSingle()
-    if (concept2Bestaat) {
-      return { imported: false, skipped: true, reason: 'concept2_heeft_voorrang' }
-    }
-  }
-
-  // Zoek of gebruiker deze activiteitssoort al heeft
+  // Zoek of gebruiker deze activiteitssoort al heeft — vóór de dedup-
+  // check verplaatst (v2.4.283), want die moet nu per SPORT filteren,
+  // niet per dag over alle sporten heen (zie module-comment hieronder).
   let { data: userActivity } = await supabase
     .from('activities')
     .select('id')
@@ -137,6 +123,27 @@ export async function processStravaActivity(
       .select()
       .single()
     userActivity = newActivity
+  }
+
+  // v2.4.283 (dedup-consolidatie): gemigreerd naar de generieke Source
+  // Priority Policy (v2.4.278) i.p.v. een hardcoded "check alleen
+  // Concept2, alleen voor Roeien"-regel (v2.4.222). Nu: elke bestaande
+  // activiteit VAN DEZELFDE SPORT die dag (`activity_id`, niet zomaar
+  // elke activiteit die dag — anders zou bijv. een Concept2-Rowing-
+  // sessie ten onrechte een Strava-Cycling-import kunnen blokkeren) met
+  // een gelijke-of-hogere source-prioriteit dan 'strava' (80) blokkeert
+  // de import. Bewust uitgebreid naar ALLE sporten (niet meer alleen
+  // Roeien): de policy is sport-agnostisch, en met Trainer AI (10,
+  // sinds v2.4.278) als mogelijke bestaande bron voor Running/Cycling/
+  // Rowing geldt "device wint van in-app" nu voor alle drie, niet
+  // alleen voor Roeien-tegen-Concept2.
+  const { data: bestaandeMetVoorrang } = await supabase
+    .from('activity_sessions').select('id, source')
+    .eq('user_id', userId).eq('date', date).eq('activity_id', userActivity?.id || null)
+    .neq('source', 'strava') // eigen, andere Strava-imports die dag zijn geen dedup-vraagstuk hier
+  const geblokkeerdDoor = (bestaandeMetVoorrang || []).find(rij => !nieuweBronWint('strava', rij.source))
+  if (geblokkeerdDoor) {
+    return { imported: false, skipped: true, reason: `${geblokkeerdDoor.source}_heeft_voorrang` }
   }
 
   // Metrics opbouwen

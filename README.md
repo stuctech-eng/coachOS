@@ -309,12 +309,23 @@ het testen zelf, precies waarvoor de debugpagina bedoeld was:
 
 Beide bevestigd gefixt (basistest + dedup-herhaaltest, beide correct).
 
-**Resterende punten, ter keuze:**
-1. Bestaande dedup-checks (Concept2/Garmin/Strava) migreren naar de
-   Source Priority Policy — kleine, veilige consolidatie
-2. Fase 4 — confidence-UX (lage score → vraag aan gebruiker)
-3. Concept2-webhook — nog te ontwerpen (verificatie, user-id-koppeling)
-4. Strength als volwaardige specialist — groot, apart traject
+**Opdracht 5 augustus 2026: "1 t/m 3. Go" — alle drie na elkaar
+oppakken, geen tussentijdse keuze meer nodig.**
+
+- [x] **1. Dedup-checks migreren naar de Source Priority Policy** —
+      v2.4.283. Alle vier ingest-routes (Concept2/Strava/Garmin TCX/
+      Garmin Vision) gemigreerd van hardcoded "check specifiek op
+      Concept2, bewust alleen voor Roeien" naar de generieke policy.
+      Scope bewust uitgebreid naar alle activiteitssporten (Trainer AI
+      als lage-prioriteit-bron geldt nu overal, niet alleen bij
+      Roeien-vs-Concept2). Eén bug gevonden en gefixt tijdens het
+      bouwen zelf (Strava-check filterde eerst niet op sport) — voor
+      Rowing/Concept2 blijft het gedrag identiek aan daarvoor, dat deel
+      is dus al impliciet bevestigd via alle eerdere Rowing-tests deze
+      week.
+- [ ] 2. Fase 4 — confidence-UX (lage score → vraag aan gebruiker)
+- [ ] 3. Concept2-webhook — nog te ontwerpen (verificatie, user-id-koppeling)
+- [ ] 4. Strength als volwaardige specialist — groot, apart traject (NIET in de "1 t/m 3"-opdracht, blijft los)
 
 ## Core Architectuurregels
 

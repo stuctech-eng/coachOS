@@ -8,6 +8,7 @@ import { bepaalKeuzeNodig, suggereerType, ACTIVITEIT_OPTIES, type TcxParsed } fr
 import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/workout-matcher'
 import { SPORT_MATCHERS } from '@/lib/specialists/training-plan-engine/matcher-registry'
 import { ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL } from '@/lib/specialists/training-plan-engine/activiteit-sport-mapping'
+import { nieuweBronWint } from '@/lib/activity-import/source-priority-policy'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -207,16 +208,23 @@ export async function POST(req: NextRequest) {
       let { data: userActivity } = await adminSupabase
         .from('activities').select('id').eq('user_id', user.id).eq('name', activityLabel).single()
 
-      // v2.4.222 (structurele dedup-fix): zelfde bescherming als bij
-      // Strava — Concept2 is de meest betrouwbare bron voor roeien.
-      // Bewust ALLEEN voor 'Roeien', geen invloed op andere sporten.
-      if (activityLabel === 'Roeien' && activiteitDatum) {
-        const { data: concept2Bestaat } = await adminSupabase
-          .from('activity_sessions').select('id')
-          .eq('user_id', user.id).eq('date', activiteitDatum).eq('source', 'concept2')
-          .maybeSingle()
-        if (concept2Bestaat) {
-          return NextResponse.json({ imported: false, skipped: true, reason: 'concept2_heeft_voorrang' })
+      // v2.4.283 (dedup-consolidatie): gemigreerd naar de generieke
+      // Source Priority Policy (v2.4.278) i.p.v. een hardcoded "check
+      // alleen Concept2, alleen voor Roeien"-regel (v2.4.222). Nu: elke
+      // bestaande activiteit VAN DEZELFDE SPORT die dag
+      // (`activity_id`) met een gelijke-of-hogere source-prioriteit dan
+      // 'garmin' (90) blokkeert de import. Bewust uitgebreid naar ALLE
+      // sporten — de policy is sport-agnostisch. Concept2 (100) blijft
+      // hoger dan Garmin, dus dit gedraagt zich voor Roeien identiek
+      // aan de oude, specifieke check.
+      if (activiteitDatum) {
+        const { data: bestaandeMetVoorrang } = await adminSupabase
+          .from('activity_sessions').select('id, source')
+          .eq('user_id', user.id).eq('date', activiteitDatum).eq('activity_id', userActivity?.id || null)
+          .neq('source', 'garmin')
+        const geblokkeerdDoor = (bestaandeMetVoorrang || []).find(rij => !nieuweBronWint('garmin', rij.source))
+        if (geblokkeerdDoor) {
+          return NextResponse.json({ imported: false, skipped: true, reason: `${geblokkeerdDoor.source}_heeft_voorrang` })
         }
       }
 

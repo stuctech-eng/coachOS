@@ -1,5 +1,53 @@
 # CoachOS — Changelog
 
+## v2.4.283 — Dedup-consolidatie: alle vier ingest-routes naar de Source Priority Policy
+**Roadmap-punt 1 van "1 t/m 3. Go" — kleinste, veiligste van de drie
+resterende taken.**
+
+### Wat er gemigreerd is
+Vier bestanden, allemaal van een hardcoded "check specifiek op
+Concept2, bewust alleen voor Roeien"-regel (v2.4.222) naar de
+generieke Source Priority Policy (v2.4.278):
+
+- **`concept2/sync/route.ts`** — de opruim-kant: verwijderde eerst een
+  hardcoded lijst (`strava`/`garmin`/`apple_health`/`manual`), nu elke
+  bestaande rij die dag waar Concept2 overheen wint (via
+  `nieuweBronWint()`) — inclusief `trainer_ai`, dat in de oude lijst
+  ontbrak omdat het nog niet bestond toen die geschreven werd
+- **`strava-activity-processor.ts`**, **`garmin-activity-tcx/route.ts`**,
+  **`garmin-activity-vision/route.ts`** — de blokkeer-kant: checkten
+  eerst alleen "bestaat er een Concept2-rij", nu "bestaat er een rij
+  met gelijke-of-hogere prioriteit dan mijzelf"
+
+### Bewuste scope-uitbreiding, niet alleen refactor
+Alle drie de blokkeer-checks waren **bewust alleen voor 'Roeien'**
+(letterlijke code-comment, v2.4.222) — er was toen nog geen andere
+sport met een hogere-prioriteit-bron om tegen te beschermen. Met
+Trainer AI (v2.4.278) als lage-prioriteit-bron voor óók Running/
+Cycling/Rowing, geldt "device wint van in-app" nu voor alle drie, niet
+meer alleen voor Roeien-tegen-Concept2. Deze migratie breidt de
+bescherming daarom bewust uit naar alle activiteitssporten.
+
+### Bug gevonden en gefixt TIJDENS het migreren, niet erna
+De eerste versie van de Strava-wijziging filterde de dedup-check
+alleen op datum+gebruiker, niet op sport (`activity_id`) — zou een
+Concept2-Rowing-sessie ten onrechte een Strava-Cycling-import diezelfde
+dag hebben kunnen blokkeren. Gevonden vóór levering (code-review op
+mezelf, geen test nodig om dit te zien), rechtgezet door de
+`userActivity`-lookup vóór de dedup-check te verplaatsen — alle drie
+de blokkeer-checks filteren nu correct op `activity_id`.
+
+### Gedragsbevestiging
+Voor Rowing/Concept2-vs-Strava/Garmin blijft het gedrag **identiek**
+aan vóór deze migratie (Concept2 blijft prioriteit 100, hoogste) — dit
+is voor het bestaande, al-geverifieerde pad een pure refactor. De
+uitbreiding naar andere sporten en naar Trainer AI-bescherming is
+nieuw, nog niet organisch getest (net als de rest van de Activity
+Bridge-keten — vergt een natuurlijk moment of een debug-aanpassing).
+
+**Nog steeds ongewijzigd:** de insert-logica zelf in alle vier routes,
+Workout Matching, Universal Athlete State-koppeling.
+
 ## v2.4.282 — Roadmap bijgewerkt: Activity Bridge volledig doorgetest
 **Geen code — documentatie-update na afronding van het testen.**
 
