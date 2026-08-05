@@ -1,5 +1,61 @@
 # CoachOS — Changelog
 
+## v2.4.284 — Final Architecture Update: Coach Call NIET voor matching + Source Priority Policy-gat gedicht
+**Definitief architectuurbesluit van de gebruiker, sluit de Fase 4-
+discussie af en verifieert punt 17 uit datzelfde document.**
+
+### Fase 4 herdefinieerd — geen UI gebouwd, bewust
+Twee ontwerprondes doorlopen deze dag (Coach Card-component →
+hergebruik Coach Call). Beide **definitief ingehaald**: Coach Call
+mag nooit voor workout matching gebruikt worden, op geen enkel
+confidence-niveau. Coach Call blijft exclusief voor onverwachte/
+ongeplande trainingen — een fundamenteel ander gesprek ("waarom deed
+je dit") dan een matching-bevestiging. Confidence blijft volledig
+intern: bij <70% simpelweg niet koppelen, alleen loggen (bestaat al
+sinds v2.4.267), geen gebruikersvraag, geen nieuwe UI, geen nieuwe
+Coach Call-brontype. **Dit sluit het punt af — er is niets meer te
+bouwen voor Fase 4.**
+
+### Punt 17 geverifieerd — echt gat gevonden, niet alleen bevestigd
+De opdracht vroeg om te controleren of de Source Priority Policy de
+Activity Bridge altijd correct overschrijft zodra een device-import
+beschikbaar komt. Bij verificatie (niet aangenomen dat v2.4.283 dit al
+dekte): **Strava en Garmin TCX blokkeerden zichzelf al correct** bij
+een bestaande hogere/gelijke prioriteit, maar **ruimden een bestaande
+lagere-prioriteit-rij nooit op** na hun eigen succesvolle import —
+alleen Concept2 deed dat (sinds v2.4.222).
+
+**Fix:** beide routes (`strava-activity-processor.ts`,
+`garmin-activity-tcx/route.ts`) uitgebreid met dezelfde opruim-logica
+als Concept2 al had — na een succesvolle insert wordt elke bestaande
+rij die dag/sport waar de nieuwe bron overheen wint (via
+`nieuweBronWint()`) verwijderd. Zonder deze fix konden een Trainer
+AI-rij (Activity Bridge) en een latere Strava/Garmin-rij voor dezelfde
+dag naast elkaar blijven bestaan — precies het scenario dat punt 17
+wilde uitsluiten.
+
+### Nieuwe referentie
+De volledige "Final Architecture Update — v2.4.284" is vanaf nu de
+definitieve architectuurreferentie in het README, vervangt eerdere
+aannames over Workout Player/Match Review/Coach Call.
+
+**Nog steeds ongewijzigd:** Workout Matching Service zelf, Performance
+Platform, Activity Bridge-kernlogica.
+
+### Nuancering, dezelfde dag
+Eerste versie van dit punt formuleerde Coach Call te absoluut als
+"uitsluitend voor onverwachte/ongeplande trainingen." Gecorrigeerd:
+Coach Call is **bron-onafhankelijk** (Garmin/Concept2/TCX/Trainer AI
+triggeren 'm allemaal al, bevestigd tegen het bestaande README —
+Garmin-imports triggerden altijd al Coach Call, niet pas bij een
+afwijking) en is architectonisch **de evaluatielaag van de Master
+Coach zelf** (niet van Trainer, niet van een Specialist) — voedt Coach
+Memory/Learning Rules met subjectieve context die apparaten nooit
+kunnen meten. De kernregel die overeind blijft: Workout Matching-
+confidence is een puur technisch systeemproces, geen coachgesprek —
+dát onderscheid, niet "wel/niet in-app", bepaalt of iets via Coach
+Call loopt.
+
 ## v2.4.283 — Dedup-consolidatie: alle vier ingest-routes naar de Source Priority Policy
 **Roadmap-punt 1 van "1 t/m 3. Go" — kleinste, veiligste van de drie
 resterende taken.**

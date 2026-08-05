@@ -323,9 +323,69 @@ oppakken, geen tussentijdse keuze meer nodig.**
       Rowing/Concept2 blijft het gedrag identiek aan daarvoor, dat deel
       is dus al impliciet bevestigd via alle eerdere Rowing-tests deze
       week.
-- [ ] 2. Fase 4 — confidence-UX (lage score → vraag aan gebruiker)
+- [x] **2. Fase 4 — confidence-UX: HERDEFINIEERD, niet gebouwd zoals
+      oorspronkelijk bedoeld.** Twee ontwerprondes doorlopen
+      (`docs/confidence-ux-fase4-design-v1.md` → generiek Coach Card-
+      component, `v2.md` → hergebruik bestaand Coach Call-systeem) —
+      **beide definitief ingehaald door de Final Architecture Update
+      (gebruiker, 5 augustus 2026, met een nuancering achteraf).**
+
+      **De kernregel, precies:** niet "Coach Call is alleen voor
+      onverwachte/in-app trainingen" (dat was een te absolute eerdere
+      formulering) — Coach Call is **bron-onafhankelijk** en ontstaat
+      wanneer de Coach iets wil bespreken naar aanleiding van een
+      uitgevoerde activiteit, ongeacht of die van Garmin/Concept2/TCX
+      of Trainer AI komt. Bevestigd tegen het al-bestaande gedrag
+      (README, sectie "Coach Call Systeem"): Garmin- en Strava-
+      activiteiten triggerden altijd al Coach Call, niet pas bij een
+      afwijking van het plan.
+
+      **Wat wél scherp blijft, en waarom Fase 4 alsnog is afgesloten:**
+      Workout Matching ("was dit de geplande training?") is een puur
+      technisch systeemproces — geen coachgesprek. Coach Call is de
+      evaluatielaag van de **Master Coach** (niet van Trainer, niet van
+      een Specialist): RPE, gevoel, energie, afwijkingen, stress/slaap,
+      blessureklachten — subjectieve context die Garmin/Concept2 nooit
+      kan meten, en die via Coach Memory/Learning Rules toekomstige
+      beslissingen voedt. Matching-confidence hoort daar niet tussen:
+      een technische onzekerheidsscore is geen onderwerp voor een
+      coachgesprek. Confidence blijft dus volledig intern: bij <70%
+      simpelweg niet koppelen, alleen loggen (bestaat al:
+      `match_confidence`/`match_reden`, v2.4.267), geen enkele
+      gebruikersvraag via Coach Call of elders. **Er is voor dit punt
+      niets meer te bouwen** — de drie logging-events uit de eerdere
+      ontwerprondes (`matched_user_confirmed`/`matched_user_rejected`)
+      vervallen, want zonder gebruikersinteractie via Coach Call zijn
+      die niet meer van toepassing — alleen `matched_auto` (≥70%) en
+      `niet_gematcht` (<70%, stil) blijven relevant.
+- [x] **Punt 17 uit de Final Architecture Update — Source Priority
+      Policy-verificatie** — v2.4.284. Expliciet gecontroleerd, niet
+      aangenomen: Strava en Garmin TCX blokkeerden zichzelf al correct
+      bij een bestaande hogere/gelijke prioriteit (v2.4.283), maar
+      ruimden een bestaande LAGERE-prioriteit-rij (bijv. een Trainer AI
+      Activity Bridge-rij) nooit op na hun eigen succesvolle import —
+      alleen Concept2 deed dat al. Beide routes nu uitgebreid met
+      dezelfde opruim-logica. Zonder deze fix konden een Trainer AI-rij
+      en een latere Strava/Garmin-rij voor dezelfde dag naast elkaar
+      blijven bestaan.
 - [ ] 3. Concept2-webhook — nog te ontwerpen (verificatie, user-id-koppeling)
 - [ ] 4. Strength als volwaardige specialist — groot, apart traject (NIET in de "1 t/m 3"-opdracht, blijft los)
+
+**Referentiedocument:** de "Final Architecture Update — v2.4.284"
+(gebruiker, 5 augustus 2026, met nuancering diezelfde dag) is de
+nieuwe, definitieve architectuurreferentie — vervangt eerdere aannames
+over Workout Player, Match Review en Coach Call. Kernregels: Master
+Coach beslist strategie, Specialisten bepalen sportinhoud, Trainer
+voert alleen uit, `activity_sessions` is de enige waarheid voor
+Performance, `training_results` blijft de waarheid voor gym-sporten.
+**Coach Call is de evaluatielaag van de Master Coach zelf** (niet van
+Trainer, niet van een Specialist) — bron-onafhankelijk (Garmin/
+Concept2/TCX/Trainer AI triggeren 'm allemaal al, bevestigd tegen
+bestaand gedrag), voedt Coach Memory/Learning Rules met subjectieve
+context (RPE/gevoel/afwijkingen/stress/blessures) die apparaten nooit
+kunnen meten — maar nooit voor interne systeemlogica zoals Workout
+Matching-confidence, dat blijft een puur technisch proces zonder
+gebruikersvraag.
 
 ## Core Architectuurregels
 

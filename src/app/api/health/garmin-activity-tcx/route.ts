@@ -252,6 +252,25 @@ export async function POST(req: NextRequest) {
 
       if (sessionError) throw sessionError
 
+      // v2.4.284 (Source Priority Policy, punt 17 uit de Final
+      // Architecture Update): zelfde opruiming als nu ook bij Strava
+      // (v2.4.284) — een bestaande, LAGERE-prioriteit-rij (bijv.
+      // Trainer AI Activity Bridge) voor dezelfde dag/sport wordt
+      // verwijderd na een succesvolle Garmin-import. Ontbrak eerder,
+      // gevonden bij expliciete verificatie.
+      if (userActivity?.id) {
+        const { data: teVerwijderen } = await adminSupabase
+          .from('activity_sessions').select('id, source')
+          .eq('user_id', user.id).eq('date', activiteitDatum).eq('activity_id', userActivity.id)
+          .neq('source', 'garmin')
+        const idsOmTeVerwijderen = (teVerwijderen || [])
+          .filter(rij => nieuweBronWint('garmin', rij.source))
+          .map(rij => rij.id)
+        if (idsOmTeVerwijderen.length > 0) {
+          await adminSupabase.from('activity_sessions').delete().in('id', idsOmTeVerwijderen)
+        }
+      }
+
       // v2.4.276 (Workout Matching Service, Fase 3): zie module-comment
       // bij probeerMatching() hierboven.
       await probeerMatching(session.id, user.id, activityLabel, activiteitDatum, durationMin, metrics)

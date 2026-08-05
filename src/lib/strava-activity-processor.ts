@@ -174,6 +174,29 @@ export async function processStravaActivity(
 
   if (error) throw error
 
+  // v2.4.284 (Source Priority Policy, punt 17 uit de Final
+  // Architecture Update): de blokkeer-check hierboven voorkomt dat
+  // Strava zichzelf importeert als er al een hogere/gelijke prioriteit
+  // bestaat — maar ruimde tot nu toe nooit een bestaande, LAGERE
+  // prioriteit op (bijv. een Trainer AI Activity Bridge-rij) na een
+  // succesvolle Strava-import. Concept2 deed dit al wel (v2.4.222/283)
+  // — hier ontbrak het, gevonden bij expliciete verificatie, niet
+  // aangenomen dat het al klopte. Zonder deze opruiming zouden een
+  // Trainer AI-rij én een latere Strava-rij voor dezelfde dag naast
+  // elkaar blijven bestaan.
+  if (userActivity?.id) {
+    const { data: teVerwijderen } = await supabase
+      .from('activity_sessions').select('id, source')
+      .eq('user_id', userId).eq('date', date).eq('activity_id', userActivity.id)
+      .neq('source', 'strava')
+    const idsOmTeVerwijderen = (teVerwijderen || [])
+      .filter(rij => nieuweBronWint('strava', rij.source))
+      .map(rij => rij.id)
+    if (idsOmTeVerwijderen.length > 0) {
+      await supabase.from('activity_sessions').delete().in('id', idsOmTeVerwijderen)
+    }
+  }
+
   const duurMinuten = Math.round(activity.moving_time / 60)
   const sportSleutel = ACTIVITEIT_NAAR_SPORT_SLEUTEL[activityName]
 
