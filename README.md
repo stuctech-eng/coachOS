@@ -36,6 +36,53 @@ maar "wie roept dit ooit aan in de echte app" is een aparte vraag die
 soms niet gesteld wordt totdat iemand het gemis merkt. Vanaf nu:
 expliciet checken en hier vastleggen bij elke nieuwe engine.
 
+## 🎯 Actieve Roadmap — Workout Completion Platform
+
+**Vastgelegd 4 augustus 2026, na expliciet akkoord van de gebruiker:
+dit wordt stap voor stap afgemaakt, sessie na sessie, tot alles gedaan
+is — "geen losse eindjes, alles moet werken zoals het hoort." Bij elke
+nieuwe sessie over CoachOS: lees dit blok, ga verder bij "Volgende
+stap" hieronder, vraag niet opnieuw om richting — die staat hier al
+vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
+
+### Voortgang
+- [x] Fase 1 — generieke Core + Rowing Matcher (Concept2) — v2.4.267
+- [x] Fase 1 — in-app debug-dashboard + handmatige testtools
+      (dry-run/forceer/reset) — v2.4.268, volledig doorgetest door de
+      gebruiker, alles gedroeg zich zoals ontworpen
+- [ ] **Verificatie Fase 1 in productie** — wacht op een échte
+      ErgData-training + sync op 7 of 9 augustus 2026 (eerstvolgende
+      geplande Rowing-sessies). Check: wordt de sessie automatisch
+      `completed`, ZONDER `[TEST]`-label?
+- [ ] Fase 2 — Running Matcher
+- [ ] Fase 2 — Cycling Matcher
+- [ ] Fase 2 — Strength Matcher
+- [ ] Fase 3 — Strava aansluiten op de Matching Service
+- [ ] Fase 3 — Garmin (TCX + Vision) aansluiten op de Matching Service
+- [ ] Fase 3 — handmatige/bibliotheek-import aansluiten op de Matching
+      Service
+- [ ] Fase 4 — confidence-UX (lage score → vraag aan gebruiker i.p.v.
+      stilzwijgend niets doen)
+- [ ] Fase 4 — retrofit Cycling-ritanalyse naar de expliciete
+      koppeling i.p.v. datum-gok
+- [ ] **Concept2-webhook** (Activity Import-laag, los van de Matching
+      Service zelf — automatische push i.p.v. handmatige "Sync nu").
+      Besproken 4 augustus 2026, nog niet ontworpen. Concept2's API
+      ondersteunt dit (zelf-registreren via hun developer-portal,
+      POST bij `result-added`/`result-updated`/`result-deleted`).
+      Nog uit te zoeken vóór bouwen: (1) hoe Concept2 de webhook-call
+      signeert/verifieert — zonder verificatie kan iedereen die de
+      URL raadt nepdata posten, (2) of `concept2_tokens` het Concept2
+      user-id al bewaart om de inkomende payload aan een CoachOS-
+      gebruiker te koppelen. De uiteindelijke registratie van de
+      webhook-URL in Concept2's portal is een handmatige stap voor de
+      gebruiker, niet iets wat via code te doen is.
+
+### Volgende stap
+Verificatie Fase 1 in productie (zie hierboven) kan pas ná 7/9
+augustus. Tot die tijd: begin bij **Fase 2, Running Matcher** — die
+hoeft nergens op te wachten.
+
 ## Core Architectuurregels
 
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek

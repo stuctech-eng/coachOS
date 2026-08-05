@@ -275,6 +275,31 @@ is. Eerst de keten sluiten, dan verder verdiepen.
 
 ---
 
+## Addendum (4 augustus 2026) — Concept2-webhook, Activity Import-laag
+
+Los onderwerp van de Matching Service zelf, maar wel binnen dezelfde
+keten (zie diagram §1): momenteel is Activity Import voor Rowing
+volledig **pull-based** — de gebruiker moet zelf op "Sync nu" tikken.
+Concept2's API ondersteunt een **push-based** alternatief: een
+zelf-geregistreerde webhook die bij elke `result-added`/`-updated`/
+`-deleted` een POST doet naar een door ons opgegeven endpoint.
+
+Dit verandert niets aan sectie 2 (verantwoordelijkheden) — een webhook
+is nog steeds Activity Import, mag nog steeds nooit een trainingsplan
+wijzigen, en roept na een succesvolle insert dezelfde Workout Matching
+Service aan als `concept2/sync/route.ts` nu al doet. Puur een tweede
+*trigger* voor dezelfde Activity Import-verantwoordelijkheid, geen
+nieuwe laag.
+
+**Nog niet ontworpen, bewust:** verificatie/signing van de inkomende
+webhook-call (zonder dat kan iedereen die de URL raadt nepdata
+insturen) en of `concept2_tokens` het Concept2 user-id al bewaart om
+de payload aan de juiste CoachOS-gebruiker te koppelen. Zie README,
+sectie "Actieve Roadmap — Workout Completion Platform" voor de
+actuele status.
+
+---
+
 ## Volgende stap na goedkeuring
 
 Dit document eerst toetsen (klopt de laagverdeling, klopt de
