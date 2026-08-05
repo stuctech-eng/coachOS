@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.280 — SQL-fix: activity_sessions_source_check miste 'trainer_ai'
+**Gemeld via `/debug/activity-bridge`: eerste test gaf direct
+"insert mislukt: violates check constraint activity_sessions_source_
+check". Zelfde foutpatroon als v2.4.221 en v2.4.24, nu opnieuw
+gemaakt — bij het bouwen van de Activity Bridge (v2.4.278) is
+`source: 'trainer_ai'` gebruikt zonder de bestaande constraint te
+verifiëren. Eigen fout, geen testfout.**
+
+### Root cause
+`activity_sessions_source_check` stond (sinds v2.4.221) alleen
+`manual`/`garmin`/`apple_health`/`strava`/`concept2` toe. `'trainer_ai'`
+(nieuw voor de Activity Bridge) ontbrak.
+
+### Fix — SQL only, geen codewijziging
+`activity-bridge.ts`/`debug/activity-bridge`-route gebruikten al
+correct `'trainer_ai'` — alleen de database moest bijgewerkt worden:
+```sql
+alter table activity_sessions drop constraint activity_sessions_source_check;
+alter table activity_sessions add constraint activity_sessions_source_check
+  check (source = ANY (ARRAY['manual'::text, 'garmin'::text, 'apple_health'::text, 'strava'::text, 'concept2'::text, 'trainer_ai'::text]));
+```
+
+**Les, herhaald vastgelegd (stond al bij v2.4.24, blijkbaar niet
+genoeg):** bij een nieuwe `source`-waarde voor `activity_sessions`
+altijd eerst de bestaande constraint verifiëren
+(`pg_get_constraintdef`), nooit aannemen welke waarden al toegestaan
+zijn — vooral bij de Source Priority Policy (v2.4.278), die juist
+bedoeld is om nieuwe bronnen makkelijk toe te voegen. Het gemak van
+"voeg een regel toe aan de policy" dekt niet automatisch de
+database-constraint — die twee moeten met opzet samen bijgewerkt
+worden, dat is nu expliciet benoemd zodat een toekomstige nieuwe bron
+(Polar/COROS/Zwift) niet in dezelfde valkuil loopt.
+
+**Test-instructie:** na het uitvoeren van de SQL, `/debug/activity-bridge`
+opnieuw proberen — zou nu `✓ aangemaakt` moeten geven.
+
 ## v2.4.279 — Activity Bridge Debug Dashboard
 **Bron: vervolg op v2.4.278 (Activity Bridge + Source Priority
 Policy). Zelfde reden als destijds bij Rowing: eerst in-app kunnen

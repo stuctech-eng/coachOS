@@ -17,6 +17,18 @@
 // Waarom dit uitbreidbaar is zonder herontwerp: een toekomstige bron
 // (Polar/COROS/Zwift/Wahoo/etc.) voegt alleen een regel toe aan deze
 // tabel — geen enkele aanroeper hoeft te wijzigen.
+//
+// ⚠️ LET OP, geleerd via v2.4.280 (activity_sessions_source_check gaf
+// een insert-fout bij 'trainer_ai', pas ontdekt via het debug-scherm):
+// een regel HIER toevoegen is NIET voldoende om een nieuwe bron
+// daadwerkelijk te kunnen opslaan. `activity_sessions.source` heeft
+// een aparte database check-constraint (`activity_sessions_source_check`)
+// die los bijgewerkt moet worden — deze policy en die constraint zijn
+// twee verschillende plekken die met opzet SAMEN bijgewerkt moeten
+// worden. Vóór het toevoegen van een nieuwe bron: eerst
+// `select pg_get_constraintdef(oid) from pg_constraint where conname =
+// 'activity_sessions_source_check'` om de huidige toegestane waarden te
+// bevestigen, dan de SQL-migratie klaarzetten, dan pas de code.
 
 export const SOURCE_PRIORITEIT: Record<string, number> = {
   concept2: 100,
