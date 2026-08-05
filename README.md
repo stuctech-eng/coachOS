@@ -370,6 +370,20 @@ oppakken, geen tussentijdse keuze meer nodig.**
       blijven bestaan.
 - [ ] 3. Concept2-webhook — nog te ontwerpen (verificatie, user-id-koppeling)
 - [ ] 4. Strength als volwaardige specialist — groot, apart traject (NIET in de "1 t/m 3"-opdracht, blijft los)
+- [ ] **5. Coach Decision Engine** (nieuw, 5 augustus 2026) — analyse
+      compleet (`docs/guardian-mode-coach-call-trigger-v1.md`, v1.2),
+      **niets geïmplementeerd**. Kernbesluit: Coach Call-aanmaak
+      verhuist volledig weg uit de vier (straks vijf, incl. Concept2)
+      import-routes naar één centrale Decision Engine, die pas ná
+      Matching/Performance/Recovery/Context beslist of er een
+      coachwaardige gebeurtenis is (afwijking van plan, gemiste
+      training, extreme belasting, genegeerd blessureprotocol — niet
+      simpelweg "er is een activiteit"). Master Coach voert daarna
+      alleen uit, beslist zelf niet (Decision/Execution gescheiden,
+      zelfde patroon als Coach→Specialist en Workout Builder→Workout
+      Player). Voorgestelde bouwvolgorde staat in het document zelf.
+      Nevenbevinding, nog niet beoordeeld: Concept2 maakt momenteel
+      helemaal geen Coach Call aan (bewust of gemist — onbekend).
 
 **Referentiedocument:** de "Final Architecture Update — v2.4.284"
 (gebruiker, 5 augustus 2026, met nuancering diezelfde dag) is de

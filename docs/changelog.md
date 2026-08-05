@@ -1,5 +1,40 @@
 # CoachOS — Changelog
 
+## v2.4.285 — Documentatie-inhaalslag: alle analysedocumenten van 5 augustus naar de repo
+**Geen code. Sluit de architectuurronde van vandaag formeel af — alle
+tussentijds gedeelde analyses staan nu in `docs/`, niet langer alleen
+als losse bestanden buiten de repo.**
+
+### Nieuw toegevoegd (stonden nog niet in de repo)
+- `docs/data-model-analysis-v1.md` — de eerste analyse van vandaag:
+  `training_results` vs. `activity_sessions` vs. `training_sessions`
+  vs. `training_plan_sessions`, wie schrijft/leest wat, wat canonical is
+- `docs/guardian-mode-coach-call-trigger-v1.md` (v1.2) — de Coach Call
+  Decision Engine-analyse: vier bestaande aanmaakplekken in kaart,
+  bevestigd dat Master Coach al vrijwel alle bouwstenen heeft, herzien
+  naar een aparte Decision Engine (Master Coach beslist niet zelf),
+  met de concrete JA/NEE-triggerlijst (coachwaardige gebeurtenis, geen
+  activiteit-aanwezigheid)
+
+### Al eerder toegevoegd, ter bevestiging (geen wijziging)
+`docs/platform-audit-fase0-v1.md`, `docs/dataflow-audit-running-v1.md`,
+`docs/confidence-ux-fase4-design-v1.md`/`v2.md` — stonden al in de
+repo sinds v2.4.284.
+
+### Roadmap
+Nieuw punt 5: **Coach Decision Engine** — analyse compleet, niets
+geïmplementeerd, bouwvolgorde staat in het document. Nevenbevinding
+(Concept2 maakt geen Coach Call) expliciet als nog-niet-beoordeeld
+vermeld, niet stilzwijgend meegenomen.
+
+**Status van de dag, samengevat:** Workout Completion Platform (Fase
+1-3) gebouwd en grotendeels getest, Fase 4 bewust niet gebouwd
+(herdefinieerd), Activity Bridge + Source Priority Policy gebouwd en
+getest (met twee bugs onderweg gevonden en gefixt), dedup-consolidatie
+afgerond, en een brede architectuuranalyse (Platform Audit, Dataflow
+Audit, Coach Call Decision Engine) die vooral bevestigde: de
+fundamenten bestaan al, het werk is consolideren, niet opnieuw bouwen.
+
 ## v2.4.284 — Final Architecture Update: Coach Call NIET voor matching + Source Priority Policy-gat gedicht
 **Definitief architectuurbesluit van de gebruiker, sluit de Fase 4-
 discussie af en verifieert punt 17 uit datzelfde document.**
