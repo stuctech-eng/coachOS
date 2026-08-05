@@ -265,22 +265,18 @@ Health Connect).
       de nieuwe policy in deze levering** — werken al correct, aparte
       latere consolidatie. **In-app testbaar via
       `/debug/activity-bridge` (v2.4.279).**
-- [ ] Fase 4 — confidence-UX (lage score → vraag aan gebruiker i.p.v.
-      stilzwijgend niets doen)
-- [ ] Fase 4 — retrofit Cycling-ritanalyse naar de expliciete
-      koppeling i.p.v. datum-gok
-- [ ] **Concept2-webhook** (Activity Import-laag, los van de Matching
-      Service zelf — automatische push i.p.v. handmatige "Sync nu").
-      Besproken 4 augustus 2026, nog niet ontworpen. Concept2's API
-      ondersteunt dit (zelf-registreren via hun developer-portal,
-      POST bij `result-added`/`result-updated`/`result-deleted`).
-      Nog uit te zoeken vóór bouwen: (1) hoe Concept2 de webhook-call
-      signeert/verifieert — zonder verificatie kan iedereen die de
-      URL raadt nepdata posten, (2) of `concept2_tokens` het Concept2
-      user-id al bewaart om de inkomende payload aan een CoachOS-
-      gebruiker te koppelen. De uiteindelijke registratie van de
-      webhook-URL in Concept2's portal is een handmatige stap voor de
-      gebruiker, niet iets wat via code te doen is.
+- [x] ~~Fase 4 — confidence-UX~~ / ~~Fase 4 — retrofit Cycling-
+      ritanalyse~~ — **beide HERZIEN, zie de definitieve status onder
+      "Opdracht 5 augustus 2026: 1 t/m 3. Go" → punt 2 hieronder in
+      dit README.** (Deze twee regels stonden hier verouderd/
+      tegenstrijdig — bij het doornemen van de roadmap gevonden en
+      rechtgezet, niet stilzwijgend laten staan.)
+- [x] **Concept2-webhook** — v2.4.286, gebouwd. Zie punt 1 uit
+      "Opdracht 5 augustus 2026" hieronder voor de volledige details
+      (SQL, beveiliging, eerlijke beperking bij result-deleted). Nog
+      niet getest — wacht op een werkende Concept2-site (5 augustus:
+      productiesite gaf 502 Bad Gateway, storing bij Concept2 zelf,
+      buiten onze controle) en handmatige registratie door de gebruiker.
 - [ ] **Strength als volwaardige specialist** (eigen Training Plan
       Engine) — pas dan wordt de Strength Matcher (eerder geblokkeerd)
       en Workout Matching voor Strength mogelijk. Groot, apart traject
@@ -421,6 +417,15 @@ context (RPE/gevoel/afwijkingen/stress/blessures) die apparaten nooit
 kunnen meten — maar nooit voor interne systeemlogica zoals Workout
 Matching-confidence, dat blijft een puur technisch proces zonder
 gebruikersvraag.
+
+**Status na "1 t/m 3. Go", bijgewerkt 5 augustus 2026 (avond):** alle
+drie afgerond (dedup-migratie, Fase 4 herdefinieerd, Concept2-webhook
+gebouwd). Concept2-webhook wacht op een werkende Concept2-productiesite
+(gaf een 502 Bad Gateway bij registratiepoging — storing bij Concept2
+zelf) + handmatige registratie door de gebruiker, geen blokkade voor
+verder werk. **Twee substantiële punten resteren, geen vaste
+volgorde:** Strength als volwaardige specialist (groot, apart traject)
+en de Coach Decision Engine (analyse compleet, nog niets gebouwd).
 
 ## Core Architectuurregels
 

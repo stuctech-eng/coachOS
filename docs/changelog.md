@@ -1,5 +1,29 @@
 # CoachOS — Changelog
 
+## v2.4.287 — README-opschoning: verouderde/dubbele roadmap-regels
+**Geen code. Gevonden bij het doornemen van de roadmap vóór een
+volgende stap: verouderde regels die tegenstrijdig waren met de nieuwere
+"1 t/m 3. Go"-lijst, niet stilzwijgend laten staan.**
+
+### Wat er fout stond
+Een oudere sectie van de roadmap-checklist had nog:
+- Twee losse `[ ]`-regels voor Fase 4 (confidence-UX/Cycling-
+  ritanalyse) — allebei al herzien/afgesloten, maar hier nog als open
+  getoond
+- Concept2-webhook nog als `[ ]` "nog te ontwerpen" — terwijl v2.4.286
+  'm al gebouwd had
+
+Beide gecorrigeerd, met verwijzing naar de actuele, definitieve status
+verderop in het document i.p.v. de tekst te dupliceren.
+
+### Status-update onderaan de roadmap
+Toegevoegd: bevestiging dat alle drie punten uit "1 t/m 3. Go" zijn
+afgerond, Concept2-webhook wacht op een werkende Concept2-site (502
+Bad Gateway bij registratiepoging, 5 augustus — storing bij Concept2
+zelf) + handmatige registratie, en de twee resterende substantiële
+punten (Strength-specialist, Coach Decision Engine) staan zonder vaste
+volgorde naast elkaar.
+
 ## v2.4.286 — Concept2-webhook gebouwd
 **Bron: docs/workout-completion-platform-adr-v1.md, Addendum (4
 augustus 2026) + roadmap-punt 1 (5 augustus 2026).**
