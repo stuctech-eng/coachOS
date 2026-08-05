@@ -1,5 +1,34 @@
 # CoachOS — Changelog
 
+## v2.4.297 — FIX: "Vakantie — Over -16 dagen" op Home
+**Gemeld met screenshots: Home's Coach Vooruitblik toonde een negatief
+dagen-getal voor een lopende vakantie, terwijl /coach-planning correct
+"Nu bezig" toonde voor dezelfde vakantie.**
+
+### Root cause
+`dagenTot()` in `home/page.tsx` rekende alleen dagen-tot-STARTdatum uit
+— geen enkele check of het huidige moment al voorbij die startdatum
+lag maar nog vóór de einddatum (dus: een lopende periode). De data zelf
+bevatte de einddatum al (`vooruitblik.volgendeVakantie.eindDatum`,
+onderdeel van de al-bestaande `/api/coach-planning/overzicht`-response
+die beide schermen delen), maar Home's rendering gebruikte dat veld
+nooit. `/coach-planning`'s eigen "Overzicht"-tab had kennelijk wél een
+losse, correcte check — vandaar het verschil tussen de twee schermen
+voor exact dezelfde onderliggende data.
+
+### Fix
+Nieuwe helper `labelMetPeriodeCheck()`: als een item een `eindDatum`
+heeft én vandaag daartussen valt → "Nu bezig", anders het bestaande
+dagen-tot-start-label. Toegepast op vakantie (het enige vooruitblik-
+item met een einddatum in het huidige schema) — generiek genoeg
+geschreven om ook te gelden zodra een ander vooruitblik-item ooit een
+einddatum krijgt, niet een vakantie-specifieke patch.
+
+**Geen wijziging aan** `/api/coach-planning/overzicht` zelf (de
+backend-data was al correct — beide schermen gebruiken 'm, alleen
+Home's eigen weergavelogica miste de periode-check) of aan
+`/coach-planning`'s eigen Overzicht-tab (die was al correct).
+
 ## v2.4.296 — FIX: locatietoestemming werd te vaak opnieuw gevraagd
 **Gemeld: de iOS-locatietoestemmingsvraag verscheen bij vrijwel elk
 bezoek aan Home.**

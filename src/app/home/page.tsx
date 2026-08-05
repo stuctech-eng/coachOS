@@ -857,8 +857,26 @@ export default function HomePage() {
             return Math.round((new Date(datumStr + 'T00:00:00').getTime() - nu.getTime()) / (1000 * 60 * 60 * 24))
           }
           const labelVoorDagen = (d: number) => d === 0 ? 'Vandaag' : d === 1 ? 'Morgen' : `Over ${d} dagen`
+          // v2.4.297-FIX: gemeld — "Vakantie — Over -16 dagen" op Home,
+          // terwijl /coach-planning correct "Nu bezig" toonde voor
+          // dezelfde vakantie. Root cause: dagenTot() rekende alleen
+          // dagen-tot-STARTdatum uit, zonder ooit de al-beschikbare
+          // eindDatum te raadplegen — een lopende vakantie (startdatum
+          // al voorbij, einddatum nog in de toekomst) gaf dus gewoon een
+          // negatief getal, nooit "Nu bezig". /coach-planning had die
+          // check kennelijk wel, Home niet — nu hier ook toegevoegd, één
+          // kleine helper i.p.v. de bug alleen voor vakantie te
+          // repareren (geldt straks voor elk vooruitblik-item met een
+          // einddatum).
+          const labelMetPeriodeCheck = (datumStr: string, eindDatumStr: string | null) => {
+            if (eindDatumStr) {
+              const vandaag = new Date().toISOString().split('T')[0]
+              if (datumStr <= vandaag && vandaag <= eindDatumStr) return 'Nu bezig'
+            }
+            return labelVoorDagen(dagenTot(datumStr))
+          }
           const items: { icon: string; tekst: string; datum: string }[] = []
-          if (vooruitblik.volgendeVakantie) items.push({ icon: '🏖️', tekst: `Vakantie — ${labelVoorDagen(dagenTot(vooruitblik.volgendeVakantie.datum))}`, datum: vooruitblik.volgendeVakantie.datum })
+          if (vooruitblik.volgendeVakantie) items.push({ icon: '🏖️', tekst: `Vakantie — ${labelMetPeriodeCheck(vooruitblik.volgendeVakantie.datum, vooruitblik.volgendeVakantie.eindDatum)}`, datum: vooruitblik.volgendeVakantie.datum })
           if (vooruitblik.volgendEvenement) items.push({ icon: '🏁', tekst: `Wedstrijd — ${labelVoorDagen(dagenTot(vooruitblik.volgendEvenement.datum))}`, datum: vooruitblik.volgendEvenement.datum })
           if (vooruitblik.volgendeFaseWissel) items.push({ icon: '🔥', tekst: `${FASE_LABELS[vooruitblik.volgendeFaseWissel.fase] || vooruitblik.volgendeFaseWissel.fase} — ${labelVoorDagen(dagenTot(vooruitblik.volgendeFaseWissel.datum))}`, datum: vooruitblik.volgendeFaseWissel.datum })
           if (vooruitblik.volgendeWerkdienst) {
