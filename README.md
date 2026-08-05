@@ -45,6 +45,24 @@ nieuwe sessie over CoachOS: lees dit blok, ga verder bij "Volgende
 stap" hieronder, vraag niet opnieuw om richting — die staat hier al
 vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
 
+### Architectuurprincipe — Source Isolation
+**Vastgelegd 5 augustus 2026, volledig uitgewerkt in
+`docs/workout-completion-platform-adr-v1.md` §2b.**
+
+> De importlaag is bronbewust; het platform is brononafhankelijk.
+> `activity_sessions` vormt de grens tussen beide werelden.
+
+Bronlogica (authenticatie, parser, dedup, bronprioriteit) hoort alleen
+thuis in de Activity Import-laag (Concept2/Garmin TCX/Strava/handmatig).
+Vanaf `activity_sessions` — het Canonical Activity Model — werkt alles
+erna (Matching Service, Performance Platform, Universal Athlete
+Platform, Learning Rules, Coach Memory, Today Engine, Master Coach)
+uitsluitend met sport/duur/afstand/tijd/metrics, nooit met `source`.
+Geverifieerd: `ActiviteitVoorMatching` bevat geen `source`-veld — dit
+was al zo gebouwd, nu expliciet vastgelegd zodat het zo blijft bij
+toekomstige bronnen (Polar/Suunto/COROS/Zwift/Wahoo/FIT-bestanden/
+Health Connect).
+
 ### Operationele context (vastgelegd 5 augustus 2026)
 **Belangrijk voor hoe Fase 3 verder gebouwd én getest wordt:**
 

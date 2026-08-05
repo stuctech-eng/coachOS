@@ -1,5 +1,43 @@
 # CoachOS — Changelog
 
+## v2.4.275 — Architectuurprincipe vastgelegd: Source Isolation
+**Geen code — een precisering van de architectuur, geformuleerd samen
+met de gebruiker naar aanleiding van de Strava/Garmin-operationele
+context (v2.4.274).**
+
+### Het principe
+> De importlaag is bronbewust; het platform is brononafhankelijk.
+> `activity_sessions` vormt de grens tussen beide werelden.
+
+Nieuwe sectie 2b in `docs/workout-completion-platform-adr-v1.md`:
+- **Fase 1 (Activity Import, bronbewust):** authenticatie/parser/
+  validatie/dedup/bronprioriteit hoort hier thuis — de bestaande
+  Rowing-dedup-prioriteit (Concept2 > Garmin > Strava/Apple Health/
+  handmatig) is hier een voorbeeld van, geen uitzondering
+- **Fase 2 (`activity_sessions`, normalisatiepunt):** het Canonical
+  Activity Model — vanaf hier is een activiteit gestandaardiseerd
+- **Fase 3 (Platform, brononafhankelijk):** Matching/Performance/
+  Universal Athlete Platform/Learning Rules/Coach Memory/Today Engine/
+  Master Coach zien nooit `source` — geverifieerd (niet aangenomen):
+  `ActiviteitVoorMatching` bevat al geen `source`-veld, dit was zonder
+  opzet al zo gebouwd
+
+### TCX als primaire importstrategie — nu expliciet, geen toeval
+Vastgelegd dat Garmin TCX-upload een bewuste architectuurkeuze is
+(volledige parser-controle, geen externe API-afhankelijkheid, één
+parser voor meerdere sporten), niet een tijdelijke workaround omdat
+Strava stilligt. Strava blijft mogelijk als optionele bron, de
+platformarchitectuur wordt er nooit afhankelijk van gemaakt.
+
+### Waarom dit vastgelegd is
+Voorkomt dat bron-specifieke logica zich later verspreidt door de rest
+van CoachOS — belangrijk nu er over een paar jaar mogelijk Polar/
+Suunto/COROS/Zwift/Wahoo/Health Connect bijkomen: alleen de importlaag
+zou dan moeten veranderen, niets in Matching/Performance/Learning/Coach.
+
+**Geen enkele code gewijzigd** — dit bevestigt en documenteert alleen
+wat er al zo gebouwd bleek te zijn.
+
 ## v2.4.274 — Operationele context vastgelegd: Strava gepauzeerd, Garmin via TCX
 **Geen code — een correctie op aannames, vastgelegd vóór er verder
 gebouwd wordt op Fase 3.**

@@ -129,6 +129,67 @@ die eraan voorafgaat: "is er iets gebeurd om over te leren/communiceren."
 
 ---
 
+## 2b. Architectuurprincipe — Source Isolation
+
+**Vastgelegd 5 augustus 2026, naar aanleiding van de operationele
+context (Strava gepauzeerd, Garmin via TCX) — een precisering van
+sectie 2, geen wijziging van gedrag. Geformuleerd samen met de
+gebruiker; de kernzin hieronder is zijn formulering.**
+
+> **De importlaag is bronbewust; het platform is brononafhankelijk.
+> `activity_sessions` vormt de grens tussen beide werelden.**
+
+### Fase 1 — Activity Import (bronbewust)
+De importlaag mag weten waar een activiteit vandaan komt. Hier hoort
+bronlogica thuis: authenticatie, parser, validatie, deduplicatie,
+bronprioriteit. Dit is al zo geïmplementeerd — de bestaande
+dedup-prioriteit bij Rowing (Concept2 > Garmin > Strava/Apple Health/
+handmatig, zie `concept2/sync/route.ts`) is hier een voorbeeld van, geen
+uitzondering op het principe.
+
+### Fase 2 — `activity_sessions` (normalisatiepunt)
+Het belangrijkste punt: **`activity_sessions` is het Canonical Activity
+Model.** Vanaf hier is een activiteit gestandaardiseerd — elke
+volgende laag werkt met exact hetzelfde model, ongeacht waar de rij
+oorspronkelijk vandaan kwam.
+
+### Fase 3 — Platform (brononafhankelijk)
+Vanaf `activity_sessions` is de bron geen onderdeel meer van de logica.
+Workout Matching Service, Performance Platform, Universal Athlete
+Platform, Learning Rules Engine, Coach Memory, Today Engine en Master
+Coach zien allemaal alleen sport, duur, afstand, tijd, metrics — nooit
+`source`. **Geverifieerd, niet aangenomen:** `ActiviteitVoorMatching`
+(het type dat de Workout Matching Service binnenkrijgt) bevat geen
+`source`-veld — dit was zonder opzet al zo gebouwd in Fase 1/2/3
+hierboven, dit document maakt het alleen expliciet.
+
+### Waarom dit ertoe doet
+Nieuwe bronnen (Polar, Suunto, COROS, Zwift, Wahoo, losse FIT-bestanden,
+Health Connect) kunnen ooit toegevoegd worden zonder één regel te
+wijzigen in Matching/Performance/Learning/Coach — alleen de importlaag
+verandert. Dat is precies hoe een schaalbaar platform hoort te werken,
+en precies waarom bron-specifieke logica (zoals de Rowing-dedup-
+prioriteit) nooit verder mag lekken dan de Activity Import-laag.
+
+### TCX als primaire importstrategie
+CoachOS gebruikt Garmin TCX-upload als primair importformaat — een
+bewuste architectuurkeuze, geen tijdelijke workaround (zie ook README,
+"Operationele context"):
+- Volledige controle over de parser, geen afhankelijkheid van externe
+  API-beperkingen of -kosten (zie Strava, sectie "Operationele
+  context")
+- Eén parser ondersteunt al meerdere sporten (`tcx-parser.ts`:
+  Hardlopen/Fietsen/Wandelen/Roeien/Krachttraining/Kettlebell —
+  geverifieerd, niet aangenomen)
+- De rest van het platform blijft, dankzij Source Isolation, volledig
+  onaangeraakt door deze keuze
+
+Strava blijft mogelijk als optionele bron voor gebruikers die dat
+willen, maar de platformarchitectuur wordt er nooit afhankelijk van
+gemaakt.
+
+---
+
 ## 3. Matching — generiek platform, sport-specifieke criteria
 
 **Niet hardcoded** (bijv. "duur ±20% voor alles"). In plaats daarvan:
