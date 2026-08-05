@@ -1,5 +1,46 @@
 # CoachOS — Changelog
 
+## v2.4.270 — Workout Matching Service, Fase 2 (Running Matcher) + debug-scherm gegeneraliseerd
+**Bron: `docs/workout-completion-platform-adr-v1.md`, Fase 2 — eerste
+vervolgstap na Fase 1 (Rowing).**
+
+### Nieuw — Running Matcher
+`training-plan-engine/matchers/running-matcher.ts` — zelfde structuur
+als de Rowing Matcher (Fase 1), sport `'running'`. Zelfde eerlijke
+beperking, nu geverifieerd i.p.v. aangenomen: `training_plan_sessions`
+heeft ook voor Running geen doel-afstand-veld (decision-contract-v1.md
+§4, ongewijzigd) — duur blijft het enige score-signaal. Zelfde
+ambiguïteit-garantie via `unique(plan_id, date)` (v2.4.259).
+
+**Bewust nog NIET aangesloten op een ingest-route** (Strava/Garmin) —
+dat is Fase 3, een aparte stap. Deze matcher is deze levering alleen
+bereikbaar via het debug-dashboard.
+
+### Debug-dashboard gegeneraliseerd naar meerdere sporten
+`/debug/workout-matching` was hardcoded op Rowing. Met een tweede
+Sport Matcher zou dat een aparte kopie van het hele scherm betekenen
+(tegen de architectuurregel "dubbele utilities vermijden"). Nu:
+- API: `SPORT_MATCHERS`-registry (`{ rowing, running }`) +
+  `ACTIVITEIT_NAMEN_PER_SPORT` (gespiegeld van rowing-data.ts/
+  running-data.ts, niet zelf verzonnen), aangestuurd via `?sport=`
+  (GET) en `body.sport` (POST)
+- UI: sport-selector-knoppen bovenaan, alle bestaande functionaliteit
+  (automatisch/handmatig-test/handmatig-forceer/reset) ongewijzigd van
+  gedrag, nu alleen sport-parametrisch
+
+Nieuwe sporten toevoegen (Cycling/Strength) raakt straks alleen de
+registry, niet de rest van route.ts of page.tsx.
+
+### README — roadmap-checklist bijgewerkt
+"🎯 Actieve Roadmap — Workout Completion Platform": Fase 2/Running
+afgevinkt. Volgende stap: Fase 2/Cycling Matcher — met een expliciete
+aantekening om de "geen doel-afstand-veld"-aanname opnieuw te
+verifiëren voor Cycling, niet automatisch over te nemen van Rowing/
+Running.
+
+**Nog steeds ongewijzigd:** de productieflow zelf
+(`concept2/sync` → `matchActiviteitAanPlan` → `rowingMatcher`).
+
 ## v2.4.268 — Workout Matching Debug: venster-fix + handmatige testtools
 **Twee losse meldingen tijdens het testen van de Fase 1-debugpagina
 (`/debug/workout-matching`, v2.4.267), in één keer gedocumenteerd.**

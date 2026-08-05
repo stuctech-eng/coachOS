@@ -6,7 +6,7 @@ import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 
 // ── Workout Matching Debug Dashboard ─────────────────────────────────────
-// Bron: docs/workout-completion-platform-adr-v1.md, Fase 1.
+// Bron: docs/workout-completion-platform-adr-v1.md.
 //
 // v2.4.269: naast de originele, datum-gebaseerde "Test matching"-knop
 // (echte flow, matchActiviteitAanPlan) nu ook een handmatige route: kies
@@ -17,6 +17,13 @@ import { Card } from '@/components/ui'
 // Geforceerde testkoppelingen zijn altijd herkenbaar aan een
 // "[TEST]"-label in de reden, en alleen zulke sessies zijn terug te
 // zetten via de reset-knop.
+//
+// v2.4.270 (Fase 2 — Running Matcher): sport-selector toegevoegd. Dit
+// scherm was hardcoded op Rowing — met een tweede Sport Matcher zou dat
+// een aparte kopie van dit hele scherm betekenen. `sport` gaat nu mee
+// in zowel de GET (?sport=) als de POST (body.sport); de registry aan
+// de API-kant (route.ts) bepaalt welke matcher/activiteitnamen daarbij
+// horen. Nieuwe sporten toevoegen raakt dit bestand niet meer.
 
 interface PlanSessie {
   id: string; date: string; type: string; duration: number; status: string
@@ -36,7 +43,11 @@ const STATUS_KLEUR: Record<string, string> = {
   cancelled: 'text-slate-600 bg-white/5 border-coach-border',
 }
 
+const SPORT_LABEL: Record<string, string> = { rowing: 'Rowing', running: 'Running' }
+
 export default function WorkoutMatchingDebugPage() {
+  const [sport, setSport] = useState('rowing')
+  const [beschikbareSporten, setBeschikbareSporten] = useState<string[]>(['rowing'])
   const [laden, setLaden] = useState(true)
   const [heeftActiefPlan, setHeeftActiefPlan] = useState(false)
   const [sessies, setSessies] = useState<PlanSessie[]>([])
@@ -48,8 +59,9 @@ export default function WorkoutMatchingDebugPage() {
   const laadData = useCallback(async () => {
     setLaden(true)
     try {
-      const res = await fetch('/api/debug/workout-matching', { credentials: 'include' })
+      const res = await fetch(`/api/debug/workout-matching?sport=${sport}`, { credentials: 'include' })
       const data = await res.json()
+      setBeschikbareSporten(data.beschikbareSporten || ['rowing'])
       setHeeftActiefPlan(!!data.heeftActiefPlan)
       setSessies(data.geplandeSessies || [])
       setActiviteiten(data.activiteiten || [])
@@ -58,7 +70,7 @@ export default function WorkoutMatchingDebugPage() {
     } finally {
       setLaden(false)
     }
-  }, [])
+  }, [sport])
 
   useEffect(() => { laadData() }, [laadData])
 
@@ -69,7 +81,7 @@ export default function WorkoutMatchingDebugPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actie, activiteitId, planSessieId }),
+        body: JSON.stringify({ actie, sport, activiteitId, planSessieId }),
       })
       const data = await res.json()
       if (data.resultaat) setTestResultaten(prev => ({ ...prev, [sleutel]: data.resultaat }))
@@ -91,14 +103,26 @@ export default function WorkoutMatchingDebugPage() {
           </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Workout Matching Debug</h1>
-            <p className="text-xs text-slate-500">Rowing — sessies: laatste 21 dagen + komende 7 · activiteiten: laatste 30</p>
+            <p className="text-xs text-slate-500">sessies: laatste 21 dagen + komende 7 · activiteiten: laatste 30</p>
           </div>
+        </div>
+
+        <div className="flex gap-2">
+          {beschikbareSporten.map(s => (
+            <button
+              key={s}
+              onClick={() => setSport(s)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium ${s === sport ? 'bg-primary-600 text-white' : 'bg-white/5 text-slate-400 active:bg-white/10'}`}
+            >
+              {SPORT_LABEL[s] || s}
+            </button>
+          ))}
         </div>
 
         {laden && <div className="h-64 bg-slate-800/50 rounded-2xl animate-pulse" />}
 
         {!laden && !heeftActiefPlan && (
-          <Card className="p-5"><p className="text-sm text-slate-400">Geen actief Rowing-trainingsplan gevonden.</p></Card>
+          <Card className="p-5"><p className="text-sm text-slate-400">Geen actief {SPORT_LABEL[sport] || sport}-trainingsplan gevonden.</p></Card>
         )}
 
         {!laden && heeftActiefPlan && (
@@ -144,7 +168,7 @@ export default function WorkoutMatchingDebugPage() {
           <Card className="p-5">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Geïmporteerde activiteiten</p>
             {activiteiten.length === 0 ? (
-              <p className="text-sm text-slate-500">Geen Rowing-activiteiten gevonden.</p>
+              <p className="text-sm text-slate-500">Geen {SPORT_LABEL[sport] || sport}-activiteiten gevonden.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {activiteiten.map(a => {

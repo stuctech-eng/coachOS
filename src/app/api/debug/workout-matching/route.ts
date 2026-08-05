@@ -5,7 +5,9 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/workout-matcher'
+import type { SportMatcher } from '@/lib/specialists/training-plan-engine/workout-matcher-types'
 import { rowingMatcher } from '@/lib/specialists/training-plan-engine/matchers/rowing-matcher'
+import { runningMatcher } from '@/lib/specialists/training-plan-engine/matchers/running-matcher'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -19,35 +21,48 @@ async function getUser() {
 }
 
 // ── Workout Matching Debug Dashboard — API ───────────────────────────────
-// Bron: docs/workout-completion-platform-adr-v1.md, Fase 1. Zelfde
-// opzet als debug/recovery — puur uitlezen, GEEN eigen berekening, en
-// gebruikt exact dezelfde functie (matchActiviteitAanPlan) als de echte
-// concept2/sync-route voor de 'automatisch'-actie.
+// Bron: docs/workout-completion-platform-adr-v1.md.
 //
-// v2.4.269: drie extra, expliciet HANDMATIGE test-acties toegevoegd —
-// gemeld dat er met de bestaande (historische) data geen enkele
-// geslaagde match te produceren was, omdat alle sessies met een
-// koppelbare status (scheduled/planned) nog in de toekomst liggen.
-// 'handmatig-test' en 'handmatig-forceer' matchen NIET op datum — de
-// gebruiker kiest zelf een sessie, ongeacht datum, puur om de
-// matcher-logica (confidence-berekening) te kunnen zien werken zonder
-// te hoeven wachten. Alle drie de nieuwe acties zijn duidelijk als test
-// gelabeld (match_reden krijgt een "[TEST]"-prefix) zodat ze nooit met
-// een echte, automatische match verward kunnen worden — en 'reset'
-// weigert expliciet iets te resetten dat niet zo gelabeld is, zodat een
-// echte koppeling nooit per ongeluk via dit scherm ongedaan gemaakt kan
-// worden.
+// v2.4.270 (Fase 2 — Running Matcher): dit scherm was tot nu toe
+// hardcoded op Rowing. Zodra Fase 2 een tweede Sport Matcher opleverde,
+// zou hardcoding hier per matcher een aparte kopie van dit hele bestand
+// betekenen — tegen de architectuurregel "dubbele utilities vermijden".
+// In plaats daarvan: een kleine registry (SPORT_MATCHERS +
+// ACTIVITEIT_NAMEN_PER_SPORT), aangestuurd via een ?sport=-query-param.
+// Nieuwe matchers (Cycling/Strength, Fase 2 vervolg) hoeven straks
+// alleen deze twee objecten uit te breiden, niets anders in dit bestand.
 
-export async function GET() {
+const SPORT_MATCHERS: Record<string, SportMatcher> = {
+  rowing: rowingMatcher,
+  running: runningMatcher,
+}
+
+// Bron voor de activiteit-namen: rowing-data.ts (['Roeien']) en
+// running-data.ts (RUNNING_ACTIVITEIT_NAMEN = ['Hardlopen']) — hier
+// bewust hergebruikt/gespiegeld, niet zelf verzonnen.
+const ACTIVITEIT_NAMEN_PER_SPORT: Record<string, string[]> = {
+  rowing: ['Roeien'],
+  running: ['Hardlopen'],
+}
+
+function geldigeSport(sport: string | null): sport is keyof typeof SPORT_MATCHERS {
+  return !!sport && sport in SPORT_MATCHERS
+}
+
+export async function GET(request: NextRequest) {
   try {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+
+    const sportParam = request.nextUrl.searchParams.get('sport')
+    const sport = geldigeSport(sportParam) ? sportParam : 'rowing'
+
     const supabase = createAdminClient()
 
     const { data: plan } = await supabase
       .from('training_plans')
       .select('id')
-      .eq('athlete_id', user.id).eq('sport', 'rowing').eq('status', 'active')
+      .eq('athlete_id', user.id).eq('sport', sport).eq('status', 'active')
       .order('created_at', { ascending: false }).limit(1).maybeSingle()
 
     const vanaf = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -64,12 +79,14 @@ export async function GET() {
       supabase.from('activity_sessions')
         .select('id, date, duration, source, notes, activities!inner(name)')
         .eq('user_id', user.id)
-        .in('activities.name', ['Roeien'])
+        .in('activities.name', ACTIVITEIT_NAMEN_PER_SPORT[sport])
         .order('date', { ascending: false })
         .limit(30),
     ])
 
     return NextResponse.json({
+      sport,
+      beschikbareSporten: Object.keys(SPORT_MATCHERS),
       heeftActiefPlan: !!plan,
       geplandeSessies: sessiesRes.data || [],
       activiteiten: (activiteitenRes.data || []).slice().reverse(),
@@ -90,12 +107,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => null) as {
       actie?: 'automatisch' | 'handmatig-test' | 'handmatig-forceer' | 'reset'
+      sport?: string
       activiteitId?: string
       planSessieId?: string
     } | null
     const actie = body?.actie || 'automatisch'
+    const sport = geldigeSport(body?.sport || null) ? (body!.sport as string) : 'rowing'
+    const matcher = SPORT_MATCHERS[sport]
 
-    // ── actie: automatisch — ongewijzigd, de originele, echte flow ──────
+    // ── actie: automatisch — ongewijzigd qua gedrag, nu sport-generiek ───
     if (actie === 'automatisch') {
       if (!body?.activiteitId) return NextResponse.json({ error: 'activiteitId ontbreekt' }, { status: 400 })
       const { data: activiteit } = await supabase
@@ -106,8 +126,8 @@ export async function POST(request: NextRequest) {
       if (!activiteit) return NextResponse.json({ error: 'Activiteit niet gevonden' }, { status: 404 })
 
       const resultaat = await matchActiviteitAanPlan(
-        { id: activiteit.id, userId: user.id, sport: 'rowing', date: activiteit.date, durationMinutes: activiteit.duration, metrics: activiteit.metrics },
-        rowingMatcher,
+        { id: activiteit.id, userId: user.id, sport, date: activiteit.date, durationMinutes: activiteit.duration, metrics: activiteit.metrics },
+        matcher,
       )
       return NextResponse.json({ resultaat })
     }
@@ -131,21 +151,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Sessie hoort niet bij deze gebruiker' }, { status: 403 })
       }
 
-      const { confidence, reden } = rowingMatcher.berekenConfidence(
-        { id: activiteit.id, userId: user.id, sport: 'rowing', date: activiteit.date, durationMinutes: activiteit.duration, metrics: activiteit.metrics },
+      const { confidence, reden } = matcher.berekenConfidence(
+        { id: activiteit.id, userId: user.id, sport, date: activiteit.date, durationMinutes: activiteit.duration, metrics: activiteit.metrics },
         { id: planSessie.id, planId: planSessie.plan_id, date: planSessie.date, type: planSessie.type, durationMinutes: planSessie.duration, loadTarget: planSessie.load_target },
       )
       const gelabeldeReden = `${TEST_PREFIX} handmatig gekozen paar (datum activiteit ${activiteit.date} ≠ datum sessie ${planSessie.date}, alleen mogelijk via dit debug-scherm) — ${reden}`
 
       if (actie === 'handmatig-test') {
-        // Dry-run — GEEN database-schrijving, puur laten zien wat de
-        // matcher zou berekenen.
         return NextResponse.json({ resultaat: { gematcht: false, planSessieId: planSessie.id, confidence, reden: gelabeldeReden, dryRun: true } })
       }
 
-      // actie === 'handmatig-forceer' — schrijft WEL, ongeacht drempel,
-      // met expliciete test-labeling zodat dit nooit voor een echte
-      // match kan worden aangezien.
       await supabase.from('training_plan_sessions').update({
         status: 'completed',
         completed_activity_id: activiteit.id,
@@ -156,11 +171,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ resultaat: { gematcht: true, planSessieId: planSessie.id, confidence, reden: gelabeldeReden, dryRun: false } })
     }
 
-    // ── actie: reset — alleen toegestaan op sessies die zelf met dit
-    //    debug-scherm zijn dichtgezet (herkenbaar aan de TEST_PREFIX in
-    //    match_reden). Weigert expliciet bij een echte, automatische
-    //    match — voorkomt dat dit scherm ooit per ongeluk productiedata
-    //    ongedaan maakt.
+    // ── actie: reset — alleen toegestaan op sessies met een [TEST]-label ─
     if (actie === 'reset') {
       if (!body?.planSessieId) return NextResponse.json({ error: 'planSessieId ontbreekt' }, { status: 400 })
       const { data: planSessie } = await supabase

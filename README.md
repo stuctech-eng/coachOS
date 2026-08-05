@@ -54,7 +54,12 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
       ErgData-training + sync op 7 of 9 augustus 2026 (eerstvolgende
       geplande Rowing-sessies). Check: wordt de sessie automatisch
       `completed`, ZONDER `[TEST]`-label?
-- [ ] Fase 2 — Running Matcher
+- [x] Fase 2 — Running Matcher — v2.4.270. Zelfde eerlijke beperking
+      als Rowing (geen doel-afstand-veld om tegen te toetsen — alleen
+      duur). Debug-dashboard gegeneraliseerd naar meerdere sporten
+      (sport-selector, `?sport=`) i.p.v. per matcher een kopie van het
+      hele scherm. Nog NIET aangesloten op een ingest-route — dat is
+      Fase 3, apart
 - [ ] Fase 2 — Cycling Matcher
 - [ ] Fase 2 — Strength Matcher
 - [ ] Fase 3 — Strava aansluiten op de Matching Service
@@ -79,9 +84,12 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
       gebruiker, niet iets wat via code te doen is.
 
 ### Volgende stap
-Verificatie Fase 1 in productie (zie hierboven) kan pas ná 7/9
-augustus. Tot die tijd: begin bij **Fase 2, Running Matcher** — die
-hoeft nergens op te wachten.
+Verificatie Fase 1 in productie kan pas ná 7/9 augustus — niet te
+versnellen. Tot die tijd: **Fase 2, Cycling Matcher** (zelfde patroon
+als Running — kopieer rowing-matcher.ts/running-matcher.ts qua opzet,
+check eerst of `training_plan_sessions` ook voor Cycling geen
+doel-afstand/vermogen-veld heeft, ga niet uit van dezelfde beperking
+zonder het te verifiëren).
 
 ## Core Architectuurregels
 
