@@ -87,7 +87,7 @@ Cardio Specialisten              Gym Specialisten
                 │                      │
                 └──────────────┬───────┘
                                ▼
-                 (brug: nog te bouwen, zie roadmap)
+                 (brug: v2.4.278 — alleen activiteitssporten)
                                ▼
                      activity_sessions (uniform)
                                ▼
@@ -243,19 +243,27 @@ Health Connect).
       route.ts` schrijft naar `training_results`, een andere tabel dan
       `activity_sessions`. Vervangen door het punt hieronder, dat het
       eigenlijke werk preciezer beschrijft.
-- [ ] **`training_results` → `activity_sessions`-brug** (Final
-      Architecture-besluit, gebruiker 5 augustus 2026): na het afronden
-      van een Strength/Kettlebell/Bodyweight-training (via Trainer AI/
-      Universal Training Engine) automatisch ook een `activity_sessions`-
-      rij aanmaken, met de juiste metadata. **Scope-grens, expliciet
-      vastgelegd:** dit ontsluit GEEN Workout Matching voor deze
-      sporten — die blijven geblokkeerd tot ze een eigen Training Plan
-      Engine hebben (`training_plan_sessions` bestaat niet voor
-      Strength). De brug lost alleen de zichtbaarheid/consistentie op,
-      niet de matching-blokkade. Geverifieerd, geen risico voor
-      Performance Platform: `load-engine.ts` leest alleen cycling/
-      running/rowing-grafieken, een Strength-`activity_session` zou
-      daar simpelweg genegeerd worden.
+- [x] **`training_results` → `activity_sessions`-brug** — v2.4.278.
+      **Scope gecorrigeerd t.o.v. eerdere versie van dit punt** (stond
+      hier omgekeerd): geldt voor **activiteitssporten zonder externe
+      bron** (Running/Cycling/Rowing/Walking/Swimming — via Trainer
+      AI/bibliotheek, geen Garmin-horloge om), NIET voor Strength/
+      Kettlebell/Bodyweight — die blijven bewust bij `training_results`
+      alleen (Final Architecture, expliciete regel, gebruiker 5
+      augustus 2026). Nieuw: `activity-import/source-priority-policy.ts`
+      (generieke prioriteitstabel i.p.v. losse if/else-dedup — Concept2
+      100/Garmin 90/Strava 80/Apple Health 70/Trainer AI 10/Manual 0,
+      uitbreidbaar zonder herontwerp) + `activity-import/
+      activity-bridge.ts` (eigen verantwoordelijkheid: "moet hier een
+      activiteit uit ontstaan?", gescheiden van `training/complete/
+      route.ts` die alleen "training is afgerond" registreert).
+      Eerlijke beperking: `metrics` blijft leeg (geen afstand/hartslag
+      beschikbaar vanuit deze flow) — geen schijndata. Roept na een
+      geslaagde brug ook de Workout Matching Service aan (dezelfde flow
+      als elke andere bron, Source Isolation-principe). **Bestaande
+      dedup-checks (Concept2/Garmin/Strava) bewust NIET gemigreerd naar
+      de nieuwe policy in deze levering** — werken al correct, aparte
+      latere consolidatie.
 - [ ] Fase 4 — confidence-UX (lage score → vraag aan gebruiker i.p.v.
       stilzwijgend niets doen)
 - [ ] Fase 4 — retrofit Cycling-ritanalyse naar de expliciete
@@ -284,12 +292,16 @@ Health Connect).
       onderzoeken bij een concrete aanleiding, geen speculatieve bouw.
 
 ### Volgende stap
-**Analysefase afgesloten (5 augustus 2026) — vanaf nu implementatie,
+**Analysefase afgesloten (5 augustus 2026) — implementatiefase,
 volgens de bevroren architectuur hierboven.** Verificatie Fase 1 in
 productie kan nog steeds pas ná 7/9 augustus — niet te versnellen, geen
-actie voor nodig. Eerstvolgende bouwstap: **de `training_results` →
-`activity_sessions`-brug** (zie hierboven) — kleinste, meest concrete
-openstaande implementatiepunt, met een al vastgelegde scope-grens.
+actie voor nodig. Activity Bridge gebouwd (v2.4.278) — **nog niet
+getest** (geen historische testdata zoals bij Rowing/Concept2; vergt
+een echte Trainer AI-sessie voor Running/Cycling/Rowing zonder
+Garmin-import diezelfde dag, of handmatig testen via een directe
+aanroep). Daarna resterende punten: bestaande dedup-checks migreren
+naar de Source Priority Policy (consolidatie, geen haast), Fase 4
+(confidence-UX), Concept2-webhook, Strength als volwaardige specialist.
 
 ## Core Architectuurregels
 

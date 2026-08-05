@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
+import { overwegActiviteitUitTrainingResultaat } from '@/lib/activity-import/activity-bridge'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -127,6 +128,30 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) throw error
+
+    // v2.4.278 (Activity Bridge, Final Architecture v1.0 — gebruiker
+    // 5 augustus 2026): voor activiteitssporten (Running/Cycling/
+    // Rowing/Walking/Swimming) die hier binnenkomen ZONDER externe
+    // bron (bijv. via Trainer AI, geen Garmin-horloge om), alsnog een
+    // activity_session laten ontstaan — zodat Performance Platform/
+    // Workout Matching deze training niet missen. Strength/Kettlebell/
+    // Bodyweight/etc. worden door de Bridge zelf overgeslagen
+    // (training_results blijft voor hen de enige waarheid). Bewust in
+    // try/catch — een fout hier mag de evaluatie-opslag zelf nooit
+    // laten falen.
+    if (result?.id) {
+      try {
+        await overwegActiviteitUitTrainingResultaat({
+          trainingResultId: result.id,
+          userId: user.id,
+          trainingType: training_type || module || null,
+          actualDuration: actual_duration ?? null,
+          date: today,
+        })
+      } catch (bridgeErr) {
+        console.error('[training/complete] Activity Bridge mislukt (evaluatie zelf blijft opgeslagen):', bridgeErr)
+      }
+    }
 
     // ── Stap 2: Exercise Records opslaan ────────────────────────────────────
     // Sla individuele oefeningen op voor progressietracking

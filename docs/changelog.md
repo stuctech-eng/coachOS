@@ -1,5 +1,65 @@
 # CoachOS — Changelog
 
+## v2.4.278 — Activity Bridge + Source Priority Policy
+**Bron: CoachOS Platform Final Architecture v1.0 (gebruiker, 5 augustus
+2026), verfijnd met een generieke Source Priority Policy i.p.v.
+hardcoded dedup-regels.**
+
+### Scope-correctie t.o.v. de vorige README-versie
+Het roadmap-punt stond eerder omgekeerd: de brug is voor
+**activiteitssporten zonder externe bron** (Running/Cycling/Rowing/
+Walking/Swimming), NIET voor Strength/Kettlebell/Bodyweight — die
+blijven bewust bij `training_results` alleen. Rechtgezet vóór het
+bouwen, niet erna.
+
+### Nieuw — Source Priority Policy
+`src/lib/activity-import/source-priority-policy.ts` — generieke
+prioriteitstabel i.p.v. losse if/else-dedup-checks:
+```
+concept2: 100, garmin: 90, strava: 80, apple_health: 70,
+trainer_ai: 10, manual: 0
+```
+Uitbreidbaar zonder herontwerp: een toekomstige bron (Polar/COROS/
+Zwift/Wahoo) voegt alleen een regel toe, geen enkele aanroeper wijzigt.
+**Bewust NIET met terugwerkende kracht toegepast** op de bestaande
+dedup-checks (Concept2/Garmin/Strava-routes) — die werken al correct,
+migratie is een aparte, latere consolidatie.
+
+### Nieuw — Activity Bridge
+`src/lib/activity-import/activity-bridge.ts` —
+`overwegActiviteitUitTrainingResultaat()`. Eigen, aparte
+verantwoordelijkheid ("moet hier een activiteit uit ontstaan?"),
+bewust gescheiden van `training/complete/route.ts` (die alleen "de
+training is afgerond" registreert) — één verantwoordelijkheid per
+component.
+
+- Alleen voor `training_type` in `{running, cycling, rowing, walking,
+  swimming}` — andere types (strength/kettlebell/etc.) worden
+  overgeslagen, geen brug
+- Idempotent: `notes: training_result:{id}`, zelfde patroon als
+  concept2:/strava:/garmin_tcx_import:-markers elders
+- Dedup via de nieuwe Source Priority Policy: bestaat er die dag al een
+  activity_session met hogere/gelijke prioriteit (bijv. een
+  Garmin-import), dan wordt de brug overgeslagen — geen dubbele
+  registratie
+- **Eerlijke beperking:** `metrics` blijft leeg — `training/complete`
+  levert geen afstand/hartslag, geen schijndata verzinnen
+- Na een geslaagde brug: roept ook de Workout Matching Service aan
+  (dezelfde flow als elke andere bron — Source Isolation-principe,
+  ADR §2b, geen uitzondering voor deze nieuwe bron)
+
+### Aangesloten op `training/complete/route.ts`
+Na de bestaande `training_results`-insert, in try/catch (fout hier mag
+de evaluatie-opslag zelf nooit laten falen).
+
+### Nog niet getest
+Geen historische testdata beschikbaar zoals bij Rowing/Concept2 —
+vergt een echte Trainer AI-sessie voor Running/Cycling/Rowing zonder
+Garmin-import diezelfde dag, of een handmatige test.
+
+**Nog steeds ongewijzigd:** alle bestaande ingest-routes
+(Concept2/Garmin TCX/Strava), Rowing/Running/Cycling-matchers zelf.
+
 ## v2.4.277 — Analysefase afgesloten: Platform Audit, Dataflow Audit, architectuur bevroren
 **Grote documentatie-consolidatie, geen code. Sluit de architectuurronde
 af die begon met de Workout Completion Platform-ADR (4 augustus) en
