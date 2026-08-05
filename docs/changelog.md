@@ -1,5 +1,14 @@
 # CoachOS — Changelog
 
+## v2.4.282 — Roadmap bijgewerkt: Activity Bridge volledig doorgetest
+**Geen code — documentatie-update na afronding van het testen.**
+
+`/debug/activity-bridge` volledig doorlopen (5 augustus): basistest
+geslaagd, dedup-herhaaltest geslaagd — na twee tussentijds gevonden en
+gefixte bugs (v2.4.280 constraint, v2.4.281 dedup-logica). Roadmap
+bijgewerkt om dit te weerspiegelen, met de vier resterende openstaande
+punten expliciet als keuze neergezet i.p.v. impliciet volgordelijk.
+
 ## v2.4.281 — FIX: Source Priority Policy blokkeerde gelijke prioriteit niet
 **Gemeld via /debug/activity-bridge: dezelfde test twee keer achter
 elkaar (Running, 45 min, vandaag) gaf BEIDE keren "✓ aangemaakt" —

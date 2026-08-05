@@ -296,14 +296,25 @@ Health Connect).
 **Analysefase afgesloten (5 augustus 2026) — implementatiefase,
 volgens de bevroren architectuur hierboven.** Verificatie Fase 1 in
 productie kan nog steeds pas ná 7/9 augustus — niet te versnellen, geen
-actie voor nodig. Activity Bridge gebouwd (v2.4.278), **in-app
-testbaar via `/debug/activity-bridge`** (v2.4.279 — zelfde opzet als
-`/debug/workout-matching`, maar met een synthetisch training_result-id
-i.p.v. historische data, want die bestaat hier niet). Nog te doen door
-de gebruiker: die debugpagina daadwerkelijk doorlopen. Daarna
-resterende punten: bestaande dedup-checks migreren
-naar de Source Priority Policy (consolidatie, geen haast), Fase 4
-(confidence-UX), Concept2-webhook, Strength als volwaardige specialist.
+actie voor nodig. **Activity Bridge volledig doorgetest (5 augustus,
+via `/debug/activity-bridge`)** — twee bugs gevonden en gefixt tijdens
+het testen zelf, precies waarvoor de debugpagina bedoeld was:
+- v2.4.280: `activity_sessions_source_check` stond `'trainer_ai'` niet
+  toe (constraint niet geverifieerd vóór het bouwen — zelfde
+  foutpatroon als eerder bij v2.4.221/24, nu een derde keer expliciet
+  vastgelegd als les)
+- v2.4.281: `nieuweBronWint()` gebruikte `>=` i.p.v. `>`, waardoor een
+  gelijke source-prioriteit ten onrechte niet blokkeerde — de Bridge
+  kon zichzelf dupliceren bij een herhaalde aanroep
+
+Beide bevestigd gefixt (basistest + dedup-herhaaltest, beide correct).
+
+**Resterende punten, ter keuze:**
+1. Bestaande dedup-checks (Concept2/Garmin/Strava) migreren naar de
+   Source Priority Policy — kleine, veilige consolidatie
+2. Fase 4 — confidence-UX (lage score → vraag aan gebruiker)
+3. Concept2-webhook — nog te ontwerpen (verificatie, user-id-koppeling)
+4. Strength als volwaardige specialist — groot, apart traject
 
 ## Core Architectuurregels
 
