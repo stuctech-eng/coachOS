@@ -1,5 +1,53 @@
 # CoachOS — Changelog
 
+## v2.4.292 — Coach Decision Engine, Fase 2 + nieuwe architectuurregel
+**Verkenning bevestigde opnieuw het patroon dat deze hele week
+terugkwam: alles bleek al te bestaan. Bron: gebruiker, 5 augustus
+2026.**
+
+### Nieuwe, expliciete architectuurregel (Core Architectuurregels #0)
+*"Nieuwe functionaliteit mag pas gebouwd worden nadat expliciet is
+vastgesteld dat de benodigde logica niet al elders in CoachOS bestaat.
+De standaardaanname is consolidatie en hergebruik, niet nieuwbouw."*
+Vastgelegd na herhaalde bevestiging over meerdere audits heen (Platform
+Audit, Dataflow Audit, deze Coach Decision Engine-verkenning).
+
+### Fase 2 — drie nieuwe signalen, alle drie consolidatie
+- **Blessure:** `injuries`-tabel (`active=true`) — exact dezelfde query
+  die `genereerCoachPolicy()` zelf al intern doet
+- **Herstel:** `genereerCoachPolicy()`'s kant-en-klare `recoveryState`
+  ('low'/'moderate'/'good') — geen aparte `calculateRecoveryScore()`-
+  aanroep nodig, CoachPolicy wrapt dat al. Alleen relevant bij een
+  sessie ≥20 min (drempel tegen ruis bij korte activiteiten)
+- **Cross-sport:** nieuwe query (andere sport gepland dezelfde dag),
+  bestaande tabellen — geen nieuwe databron
+
+Alle drie gecontroleerd VÓÓR de Fase 1-planningscheck: een sessie kan
+matchen met het plan én alsnog coachwaardig zijn (bijv. wél volgens
+schema getraind, ondanks een actieve blessure).
+
+**Bewust NIET meegenomen: cumulatieve belasting** (meerdere zware
+trainingen/herhaald overslaan) — vergt een periode-analyse (meerdere
+dagen tegelijk), een ander soort vraag dan de per-activiteit-signalen
+hierboven. Apart traject, niet stilzwijgend overgeslagen.
+
+### Naamgeving — bewust NIET gewijzigd
+Voorstel was "Coach Decision Service/Layer" — inhoudelijk juist
+(bestandsnaam `coach-decision-engine.ts` beschrijft nu een pure
+aggregator, geen eigen berekeningen), maar een file-rename zou de drie
+al-gekoppelde aanroeppunten onnodig laten schuiven zonder functionele
+winst. Documentatie in de module-comment zelf past de framing wel aan.
+
+### Aangesloten
+Alle drie bestaande aanroeppunten (Concept2/Garmin TCX/Bibliotheek)
+geven nu ook de sessieduur mee — nodig voor het herstel-signaal.
+
+**Nog niet getest** — vergt een scenario met een actieve blessure of
+lage herstelscore, geen debug-tool gebouwd deze keer.
+
+**Nog steeds ongewijzigd:** Fase 1-logica zelf, Workout Matching
+Service, Activity Bridge, Source Priority Policy.
+
 ## v2.4.291 — Roadmap opgeruimd: stale checkbox + samenvattend overzicht
 **Geen code. Gevonden op verzoek van de gebruiker ("buiten de laatste
 specialist is alles gedaan?") — één stale checkbox rechtgezet, en een

@@ -141,15 +141,12 @@ verdwaalt.
 **Nog niet gebouwd, geen externe blokkade:**
 - **Strength als volwaardige specialist** (eigen Training Plan Engine)
   — groot, apart traject
-- **Coach Decision Engine, Fase 2** — cross-sport-afwijking (andere
-  sport dan gepland), Recovery/HRV, blessureprotocol-naleving,
-  cumulatieve belasting. Fase 1 (alleen "was er een geplande sessie
-  voor deze sport/datum") is klaar en aangesloten op alle vier
-  bronnen — Fase 2 vergt eerst onderzoek naar waar Recovery/HRV/
-  blessuredata al vandaan komt, nog niet gedaan
 - **Intelligence Platform / Knowledge Platform** — bewust niet
   opgepakt, vermoeden (Platform Audit) dat het grotendeels
   consolidatie is, nooit bevestigd
+- **Cumulatieve belasting (meerdere zware trainingen/herhaald
+  overslaan)** — bewust nog NIET in Fase 2 meegenomen, zie de
+  Coach Decision Engine-sectie verderop voor de reden
 
 ### Architectuurprincipe — Source Isolation
 **Vastgelegd 5 augustus 2026, volledig uitgewerkt in
@@ -492,6 +489,38 @@ oppakken, geen tussentijdse keuze meer nodig.**
       overgeslagen — ligt stil (zie Operationele context), geen
       prioriteit zolang er geen nieuwe Strava-data binnenkomt.
 
+      **Fase 2 — v2.4.292: drie nieuwe signalen, ALLEMAAL consolidatie,
+      GEEN nieuwe berekening.** Verkenning bevestigde het vermoeden van
+      de gebruiker (Platform Audit-patroon, opnieuw): Recovery Engine,
+      blessuremodule, CoachPolicy — alles bestond al, rijp en getest.
+      - **Blessure:** `injuries`-tabel (`active=true`) — exact dezelfde
+        query die `genereerCoachPolicy()` zelf ook al intern doet
+      - **Herstel:** `genereerCoachPolicy()`'s kant-en-klare
+        `recoveryState`-veld ('low'/'moderate'/'good') — geen aparte
+        `calculateRecoveryScore()`-aanroep nodig, CoachPolicy wrapt dat
+        al. Alleen bij een sessie ≥20 min (drempel om ruis bij korte
+        activiteiten te vermijden)
+      - **Cross-sport:** nieuwe QUERY (stond er een ANDERE sport
+        gepland dezelfde dag), geen nieuwe tabel of logica
+      - Alle drie CONTROLEREN vóór de bestaande Fase 1-planningscheck,
+        want een blessure/laag-herstel-signaal is relevanter dan "komt
+        overeen met planning" — een sessie kan matchen met het plan én
+        alsnog coachwaardig zijn (bijv. wél volgens schema getraind,
+        ondanks een blessure)
+      - **Bewust NIET meegenomen: cumulatieve belasting** (meerdere
+        zware trainingen/herhaald overslaan) — dat vergt een periode-
+        analyse (meerdere dagen tegelijk bekijken), een ander soort
+        vraag dan de per-activiteit-signalen hierboven. Apart traject,
+        niet stilzwijgend overgeslagen.
+      - **Naamgeving bewust NIET gewijzigd** (bestandsnaam blijft
+        `coach-decision-engine.ts`) ondanks het voorstel voor "Decision
+        Service/Layer" — een rename zou de drie al-gekoppelde
+        aanroeppunten onnodig laten schuiven zonder functionele winst.
+        Inhoudelijk is het wél een pure aggregator geworden, zoals
+        voorgesteld: roept alleen bestaande, al-geteste functies aan.
+      - Alle drie de aanroeppunten (Concept2/Garmin TCX/Bibliotheek)
+        geven nu ook de sessieduur mee — nodig voor het herstel-signaal.
+
 **Referentiedocument:** de "Final Architecture Update — v2.4.284"
 (gebruiker, 5 augustus 2026, met nuancering diezelfde dag) is de
 nieuwe, definitieve architectuurreferentie — vervangt eerdere aannames
@@ -519,6 +548,17 @@ en de Coach Decision Engine (analyse compleet, nog niets gebouwd).
 
 ## Core Architectuurregels
 
+0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
+   herhaalde bevestiging: Recovery Engine/HRV/blessuremodule/Context
+   Resolver/ACWR/Today Engine/CoachPolicy/Workout Matching/
+   Specialisten — stuk voor stuk bleek al te bestaan toen er
+   "nieuwe" functionaliteit gevraagd werd). **Nieuwe functionaliteit
+   mag pas gebouwd worden nadat expliciet is vastgesteld dat de
+   benodigde logica niet al elders in CoachOS bestaat. De
+   standaardaanname is consolidatie en hergebruik, niet nieuwbouw.**
+   Componenten die andere subsystemen samenbrengen (zoals de Coach
+   Decision Engine) mogen uitsluitend bestaande subsystemen raadplegen
+   — geen parallelle berekeningen introduceren.
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
 2. **AI never creates exercises** — AI verzint geen oefeningen buiten de gefilterde lijst
 3. **Filter first, assemble second** — route filtert → AI assembleert

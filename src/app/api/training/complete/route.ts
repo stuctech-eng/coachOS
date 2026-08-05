@@ -233,7 +233,7 @@ export async function POST(req: NextRequest) {
         // nodig:true terug (v2.4.290-FIX) — behoudt exact het oude
         // "altijd vragen"-gedrag voor die sporten, geen regressie.
         const sportSleutel = training_type || module || ''
-        const behoefte = await evalueerCoachCallBehoefte(supabase, user.id, sportSleutel, today)
+        const behoefte = await evalueerCoachCallBehoefte(supabase, user.id, sportSleutel, today, actual_duration ?? 0)
 
         if (behoefte.nodig) {
           const sportLabel: Record<string, string> = {

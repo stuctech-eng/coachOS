@@ -323,7 +323,7 @@ export async function POST(req: NextRequest) {
       try {
         const sportSleutelVoorCoachCall = ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL[activityLabel]
         if (sportSleutelVoorCoachCall) {
-          const behoefte = await evalueerCoachCallBehoefte(adminSupabase, user.id, sportSleutelVoorCoachCall, today)
+          const behoefte = await evalueerCoachCallBehoefte(adminSupabase, user.id, sportSleutelVoorCoachCall, today, durationMin)
           if (behoefte.nodig) {
             await schrijfCoachCallItem(adminSupabase, user.id, today, {
               activiteitId: session.id,

@@ -140,7 +140,7 @@ export async function verwerkConcept2Resultaat(
   // eerste toe te passen). Bewust in try/catch — mag de import zelf
   // nooit laten falen.
   try {
-    const behoefte = await evalueerCoachCallBehoefte(supabase, userId, 'rowing', dagStr)
+    const behoefte = await evalueerCoachCallBehoefte(supabase, userId, 'rowing', dagStr, duurMinuten)
     if (behoefte.nodig) {
       await schrijfCoachCallItem(supabase, userId, dagStr, {
         activiteitId: nieuweRij.id,
