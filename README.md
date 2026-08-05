@@ -60,7 +60,12 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
       (sport-selector, `?sport=`) i.p.v. per matcher een kopie van het
       hele scherm. Nog NIET aangesloten op een ingest-route — dat is
       Fase 3, apart
-- [ ] Fase 2 — Cycling Matcher
+- [x] Fase 2 — Cycling Matcher — v2.4.271. Beperking geverifieerd
+      (niet aangenomen): `core.ts` insert in `training_plan_sessions`
+      gebruikt voor alle sporten dezelfde kolommen, geen vermogen/
+      afstand-target specifiek voor Cycling. Debug-scherm: registry
+      uitgebreid, Cycling heeft 3 activiteit-namen i.p.v. 1 (indoor/
+      buiten-varianten). Nog NIET aangesloten op een ingest-route
 - [ ] Fase 2 — Strength Matcher
 - [ ] Fase 3 — Strava aansluiten op de Matching Service
 - [ ] Fase 3 — Garmin (TCX + Vision) aansluiten op de Matching Service
@@ -85,11 +90,13 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
 
 ### Volgende stap
 Verificatie Fase 1 in productie kan pas ná 7/9 augustus — niet te
-versnellen. Tot die tijd: **Fase 2, Cycling Matcher** (zelfde patroon
-als Running — kopieer rowing-matcher.ts/running-matcher.ts qua opzet,
-check eerst of `training_plan_sessions` ook voor Cycling geen
-doel-afstand/vermogen-veld heeft, ga niet uit van dezelfde beperking
-zonder het te verifiëren).
+versnellen. Tot die tijd: **Fase 2, Strength Matcher** — laatste
+matcher van Fase 2. Let op: Strength werkt vermoedelijk anders dan
+Rowing/Running/Cycling (geen duur-gedreven cardio, eerder oefening+
+volume — zie ADR §3, "Strength Matcher: datum, oefening, volume"). Niet
+zomaar de duur-tolerantie-aanpak kopiëren zonder eerst
+`training_plan_sessions` en de Strength-adapter te checken op welke
+velden daar wél beschikbaar zijn.
 
 ## Core Architectuurregels
 

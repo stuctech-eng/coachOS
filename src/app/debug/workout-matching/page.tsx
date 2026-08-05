@@ -43,7 +43,7 @@ const STATUS_KLEUR: Record<string, string> = {
   cancelled: 'text-slate-600 bg-white/5 border-coach-border',
 }
 
-const SPORT_LABEL: Record<string, string> = { rowing: 'Rowing', running: 'Running' }
+const SPORT_LABEL: Record<string, string> = { rowing: 'Rowing', running: 'Running', cycling: 'Cycling' }
 
 export default function WorkoutMatchingDebugPage() {
   const [sport, setSport] = useState('rowing')

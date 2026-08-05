@@ -8,6 +8,7 @@ import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/w
 import type { SportMatcher } from '@/lib/specialists/training-plan-engine/workout-matcher-types'
 import { rowingMatcher } from '@/lib/specialists/training-plan-engine/matchers/rowing-matcher'
 import { runningMatcher } from '@/lib/specialists/training-plan-engine/matchers/running-matcher'
+import { cyclingMatcher } from '@/lib/specialists/training-plan-engine/matchers/cycling-matcher'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -32,17 +33,26 @@ async function getUser() {
 // Nieuwe matchers (Cycling/Strength, Fase 2 vervolg) hoeven straks
 // alleen deze twee objecten uit te breiden, niets anders in dit bestand.
 
+// v2.4.271 (Fase 2 — Cycling Matcher): registry uitgebreid met
+// 'cycling'. Enige bijzonderheid t.o.v. Rowing/Running: Cycling heeft
+// 3 activiteit-namen i.p.v. 1 (indoor/buiten-varianten,
+// cycling-data.ts) — vandaar dat ACTIVITEIT_NAMEN_PER_SPORT een array
+// per sport is, niet een losse string. Geen andere wijziging nodig.
+
 const SPORT_MATCHERS: Record<string, SportMatcher> = {
   rowing: rowingMatcher,
   running: runningMatcher,
+  cycling: cyclingMatcher,
 }
 
-// Bron voor de activiteit-namen: rowing-data.ts (['Roeien']) en
-// running-data.ts (RUNNING_ACTIVITEIT_NAMEN = ['Hardlopen']) — hier
-// bewust hergebruikt/gespiegeld, niet zelf verzonnen.
+// Bron voor de activiteit-namen: rowing-data.ts (['Roeien']),
+// running-data.ts (['Hardlopen']) en cycling-data.ts
+// (CYCLING_ACTIVITEIT_NAMEN — 3 varianten, i.t.t. Rowing/Running die er
+// maar 1 hebben — hier bewust hergebruikt/gespiegeld, niet verzonnen).
 const ACTIVITEIT_NAMEN_PER_SPORT: Record<string, string[]> = {
   rowing: ['Roeien'],
   running: ['Hardlopen'],
+  cycling: ['Fietsen', 'Fietsen (buiten)', 'Indoor Fietsen'],
 }
 
 function geldigeSport(sport: string | null): sport is keyof typeof SPORT_MATCHERS {

@@ -1,5 +1,36 @@
 # CoachOS — Changelog
 
+## v2.4.271 — Workout Matching Service, Fase 2 (Cycling Matcher)
+**Bron: `docs/workout-completion-platform-adr-v1.md`, Fase 2 — tweede
+Sport Matcher na Running.**
+
+### Nieuw — Cycling Matcher
+`training-plan-engine/matchers/cycling-matcher.ts` — zelfde structuur
+als Rowing/Running. Beperking dit keer expliciet GEVERIFIEERD, niet
+overgenomen: `core.ts`'s insert in `training_plan_sessions` gebruikt
+voor alle sporten identiek dezelfde kolommen (`duration`,
+`load_target`) — geen vermogen- of afstand-target, ook niet specifiek
+voor Cycling. Duur blijft dus ook hier het enige score-signaal.
+
+Bewust nog NIET aangesloten op een ingest-route (Fase 3, apart).
+
+### Debug-dashboard — registry uitgebreid
+`SPORT_MATCHERS` + `ACTIVITEIT_NAMEN_PER_SPORT` in
+`api/debug/workout-matching/route.ts` uitgebreid met `cycling`. Enige
+bijzonderheid t.o.v. Rowing/Running: Cycling heeft 3 activiteit-namen
+i.p.v. 1 (`'Fietsen'`, `'Fietsen (buiten)'`, `'Indoor Fietsen'` —
+gespiegeld van `cycling-data.ts`, niet verzonnen). Sport-selector in de
+UI toont nu Rowing/Running/Cycling.
+
+### README — roadmap-checklist bijgewerkt
+Cycling Matcher afgevinkt. Volgende stap: **Fase 2, Strength Matcher**
+— met een expliciete waarschuwing dat Strength waarschijnlijk niet
+dezelfde duur-tolerantie-aanpak kan gebruiken (geen duur-gedreven
+cardio — eerder oefening+volume, zie ADR §3).
+
+**Nog steeds ongewijzigd:** de productieflow zelf
+(`concept2/sync` → `matchActiviteitAanPlan` → `rowingMatcher`).
+
 ## v2.4.270 — Workout Matching Service, Fase 2 (Running Matcher) + debug-scherm gegeneraliseerd
 **Bron: `docs/workout-completion-platform-adr-v1.md`, Fase 2 — eerste
 vervolgstap na Fase 1 (Rowing).**
