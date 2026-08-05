@@ -1,5 +1,33 @@
 # CoachOS — Changelog
 
+## v2.4.296 — FIX: locatietoestemming werd te vaak opnieuw gevraagd
+**Gemeld: de iOS-locatietoestemmingsvraag verscheen bij vrijwel elk
+bezoek aan Home.**
+
+### Root cause
+`src/app/home/page.tsx`'s `visibilitychange`-listener riep
+`vraagGpsEnHaalWeerOp()` aan bij ELKE terugkeer naar de voorgrond
+(schermontgrendeling, tussen apps wisselen, etc. — op mobiel heel
+frequent), en elke aanroep deed een nieuwe
+`navigator.geolocation.getCurrentPosition()`-aanvraag zonder enige
+cache. Elke aanvraag kan de systeem-toestemmingsvraag opnieuw tonen,
+afhankelijk van hoe iOS/Safari de toestemming voor dit specifieke PWA-
+scenario cachet.
+
+### Fix
+`localStorage`-cache toegevoegd (`coachos_weer_cache_v1`, 60 minuten
+geldig). Bij een verse cache: weerdata direct tonen, GEEN nieuwe GPS-
+aanvraag — dus ook geen nieuwe toestemmingsvraag. Bewust niet langer
+dan 60 minuten, want "opnieuw ophalen tijdens reizen" (de
+oorspronkelijke reden voor de visibilitychange-listener, v2.4.168) moet
+een werkende functie blijven — deze fix lost alleen de te-frequente-
+aanvraag op, niet de onderliggende functionaliteit. Bij een
+`localStorage`-fout (bijv. volle quota in privémodus): valt terug op
+het oude gedrag, geen regressie.
+
+**Nog steeds ongewijzigd:** de GPS-eerst/IP-als-vangnet-volgorde
+(v2.4.168), de foutafhandeling/logging (v2.4.181), de weather-API zelf.
+
 ## v2.4.295 — Eindopschoning: platform-status definitief bijgewerkt
 **Geen code. Twee verouderde, tegenstrijdige regels rechtgezet die nog
 "niet bevestigd"/"nog niets gebouwd" zeiden over dingen die inmiddels

@@ -115,16 +115,67 @@ export default function HomePage() {
   // Weerbericht ophalen — v2.4.168-FIX: GPS eerst, IP-locatie alleen als
   // vangnet (was andersom, gaf verkeerde locatie tijdens reizen — zie
   // overleg 22 juli 2026)
+  //
+  // v2.4.296-FIX: gemeld — de iOS-locatietoestemmingsvraag verscheen bij
+  // vrijwel elk bezoek aan Home. Root cause: de visibilitychange-listener
+  // hieronder riep vraagGpsEnHaalWeerOp() aan bij ELKE terugkeer naar de
+  // voorgrond (schermontgrendeling, app wisselen, etc. — op mobiel heel
+  // frequent), en elke aanroep deed een nieuwe getCurrentPosition()-
+  // aanvraag. Nu: een cache (localStorage, 60 min geldig) — een verse
+  // cache betekent geen nieuwe GPS-aanvraag, dus geen nieuwe
+  // toestemmingsvraag. Bewust NIET langer dan 60 min, want "opnieuw
+  // ophalen tijdens reizen" (de oorspronkelijke reden voor de
+  // visibilitychange-listener) moet een werkende functie blijven — dit
+  // lost alleen de te-frequente-aanvraag op, niet de onderliggende
+  // functionaliteit.
+  const WEER_CACHE_KEY = 'coachos_weer_cache_v1'
+  const WEER_CACHE_GELDIG_MS = 60 * 60 * 1000 // 60 minuten
+
   useEffect(() => {
+    function leesCache(): { weer: WeerData; tijdstip: number } | null {
+      try {
+        const ruw = localStorage.getItem(WEER_CACHE_KEY)
+        if (!ruw) return null
+        const geparsed = JSON.parse(ruw) as { weer: WeerData; tijdstip: number }
+        if (Date.now() - geparsed.tijdstip > WEER_CACHE_GELDIG_MS) return null
+        return geparsed
+      } catch {
+        return null
+      }
+    }
+
+    function schrijfCache(data: WeerData) {
+      try {
+        localStorage.setItem(WEER_CACHE_KEY, JSON.stringify({ weer: data, tijdstip: Date.now() }))
+      } catch {
+        // localStorage kan falen (bijv. privémodus met volle quota) —
+        // geen probleem, dan wordt gewoon elke keer opnieuw opgehaald,
+        // exact het oude gedrag, geen regressie.
+      }
+    }
+
     function haalWeerOp(lat?: number, lon?: number) {
       const url = lat !== undefined && lon !== undefined ? `/api/weather?lat=${lat}&lon=${lon}` : '/api/weather'
       fetch(url)
         .then(r => r.ok ? r.json() : null)
-        .then(data => { if (data && !data.error) setWeer(data) })
+        .then(data => {
+          if (data && !data.error) {
+            setWeer(data)
+            schrijfCache(data)
+          }
+        })
         .catch(() => {})
     }
 
     function vraagGpsEnHaalWeerOp() {
+      const cache = leesCache()
+      if (cache) {
+        // Verse cache — direct tonen, GEEN nieuwe GPS-aanvraag (dus ook
+        // geen nieuwe toestemmingsvraag).
+        setWeer(cache.weer)
+        return
+      }
+
       if (!navigator.geolocation) { haalWeerOp(); return }
       navigator.geolocation.getCurrentPosition(
         pos => haalWeerOp(pos.coords.latitude, pos.coords.longitude),
@@ -157,7 +208,11 @@ export default function HomePage() {
     vraagGpsEnHaalWeerOp()
 
     // Opnieuw ophalen zodra de app weer op de voorgrond komt — belangrijk
-    // als je onderweg bent en van locatie verandert
+    // als je onderweg bent en van locatie verandert. Sinds v2.4.296:
+    // alleen daadwerkelijk een nieuwe GPS-aanvraag als de cache verlopen
+    // is (zie vraagGpsEnHaalWeerOp hierboven) — dus dit blijft werken
+    // tijdens reizen, zonder bij elke terugkeer naar de app opnieuw om
+    // toestemming te vragen.
     function onZichtbaarheidWijziging() {
       if (document.visibilityState === 'visible') vraagGpsEnHaalWeerOp()
     }
