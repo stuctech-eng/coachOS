@@ -27,7 +27,7 @@ energie) blijven terecht leeg — daar bestaat écht geen databron voor.
 | **Rolling horizon-verlenging** | ✅ **Gefixt (v2.4.248), automatisch gemaakt (v2.4.249)** — was het voorbeeld dat tot deze lijst leidde. Eerste versie was per-sport handmatig (moest de juiste pagina bezoeken); nu automatisch voor alle actieve sporten bij elke Today Engine-aanroep | `today-engine.ts` + `training-plan-engine/core.ts` | — |
 | **Performance Platform CTL/ATL/TSB sluit Rowing volledig uit** | ✅ **Gefixt (v2.4.252)** — 2k-testtijd-baseline toegevoegd aan Rowing Profiel (Fase 2 uit het overleg: Population Model → Personal Baseline), `rowing-grafieken.ts` gebouwd (spiegelbeeld van running-grafieken.ts), `load-engine.ts` neemt Rowing nu volledig mee | `rowing-grafieken.ts` + `core/performance/engines/load-engine.ts` | — |
 | **"Rowing vergeten"-patroon (systematisch gecheckt)** | ✅ **5 instanties gevonden en gefixt (v2.4.251)** — `api/action-plan/route.ts` (bronlabel-ternary), `api/specialists/[type]/data/route.ts` (generieke data-fetcher-tabel, laag risico want overruled door de specifieke Rowing-route), `app/goals/page.tsx` (Rowing stond nog op `beschikbaar:false`, stale sinds v2.4.216) | Meerdere bestanden | — |
-| **Workout Matching Service** (`completed_activity_id` werd sinds v2.4.96 nergens gevuld — elke sessie werd na de datum als `missed_session` behandeld, ook echt uitgevoerde trainingen) | 🟡 **Fase 1 afgerond (v2.4.267)** — generieke Core + Rowing Matcher (referentie-implementatie, alleen Concept2), in-app testbaar via `/debug/workout-matching`. Fase 2 (Running/Cycling/Strength Matchers), Fase 3 (Strava/Garmin/handmatig aansluiten), Fase 4 (confidence-UX) nog niet gebouwd — zie `docs/workout-completion-platform-adr-v1.md` | `training-plan-engine/workout-matcher.ts` + `training-plan-engine/matchers/rowing-matcher.ts` + `debug/workout-matching/` | Buiten Rowing/Concept2 blijft het oorspronkelijke gat bestaan tot Fase 2/3 |
+| **Workout Matching Service** (`completed_activity_id` werd sinds v2.4.96 nergens gevuld — elke sessie werd na de datum als `missed_session` behandeld, ook echt uitgevoerde trainingen) | 🟡 **Fase 1 + Fase 2 afgerond (v2.4.267-271)** — generieke Core + Matchers voor Rowing/Running/Cycling (de 3 sporten mét een Training Plan Engine), in-app testbaar via `/debug/workout-matching` (sport-selector). Strength Matcher bewust geblokkeerd (Strength heeft nog geen Training Plan Engine — zie roadmap). Fase 3 (Strava/Garmin/handmatig aansluiten), Fase 4 (confidence-UX) nog niet gebouwd — zie `docs/workout-completion-platform-adr-v1.md` en de roadmap-sectie hieronder | `training-plan-engine/workout-matcher.ts` + `training-plan-engine/matchers/*` + `debug/workout-matching/` | Buiten Rowing/Concept2 blijft het oorspronkelijke gat bestaan tot Fase 3 |
 
 **Waarom dit soort dingen gebeuren, eerlijk benoemd:** bij het bouwen
 van een nieuwe engine (Learning Rules/Alternative/etc.) ligt de focus
@@ -66,7 +66,20 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
       afstand-target specifiek voor Cycling. Debug-scherm: registry
       uitgebreid, Cycling heeft 3 activiteit-namen i.p.v. 1 (indoor/
       buiten-varianten). Nog NIET aangesloten op een ingest-route
-- [ ] Fase 2 — Strength Matcher
+- [~] ~~Fase 2 — Strength Matcher~~ — **GEBLOKKEERD, ontdekt 5 augustus
+      2026 vóór het bouwen (geen los eindje willen achterlaten):**
+      Strength heeft geen Training Plan Engine — geen
+      `strength-adapter.ts` (404), en het staat al expliciet in dit
+      README als "⏳ Niet gestart" onder "Rowing/Strength/Kettlebell
+      als volwaardige specialisten". Zonder Training Plan Engine
+      bestaan er geen `training_plan_sessions` voor Strength om tegen
+      te matchen — een matcher bouwen zou nu een matcher zijn zonder
+      iets om te matchen. Pas oppakken zodra Strength een eigen
+      Training Plan Engine heeft (apart, groter traject — zie sectie
+      "Rowing/Strength/Kettlebell als volwaardige specialisten"
+      verderop in dit README). Fase 2 is voor nu inhoudelijk klaar met
+      de drie sporten die wél een Training Plan Engine hebben
+      (Rowing/Running/Cycling).
 - [ ] Fase 3 — Strava aansluiten op de Matching Service
 - [ ] Fase 3 — Garmin (TCX + Vision) aansluiten op de Matching Service
 - [ ] Fase 3 — handmatige/bibliotheek-import aansluiten op de Matching
@@ -90,13 +103,14 @@ vast. Bron: `docs/workout-completion-platform-adr-v1.md`.**
 
 ### Volgende stap
 Verificatie Fase 1 in productie kan pas ná 7/9 augustus — niet te
-versnellen. Tot die tijd: **Fase 2, Strength Matcher** — laatste
-matcher van Fase 2. Let op: Strength werkt vermoedelijk anders dan
-Rowing/Running/Cycling (geen duur-gedreven cardio, eerder oefening+
-volume — zie ADR §3, "Strength Matcher: datum, oefening, volume"). Niet
-zomaar de duur-tolerantie-aanpak kopiëren zonder eerst
-`training_plan_sessions` en de Strength-adapter te checken op welke
-velden daar wél beschikbaar zijn.
+versnellen. Tot die tijd: **Fase 3, Strava aansluiten op de Matching
+Service** (Running + Cycling komen allebei via Strava binnen — eerste
+kans om de matchers ook daadwerkelijk in een echte ingest-route te
+laten draaien, niet alleen via het debug-scherm). Vóór bouwen eerst
+checken: hoe herkent `strava-activity-processor.ts` per activiteit
+welke sport het is (SPORT_TYPE_MAP), en hoe wordt dat vertaald naar
+de juiste matcher uit de registry — dat mapping-stuk bestaat nu alleen
+in het debug-scherm, niet in een productie-ingest-route.
 
 ## Core Architectuurregels
 

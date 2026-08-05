@@ -1,5 +1,43 @@
 # CoachOS — Changelog
 
+## v2.4.272 — Fase 2 afgesloten: Strength Matcher bewust geblokkeerd
+**Geen code deze keer — een bevinding, vóór het bouwen vastgesteld,
+precies om te voorkomen dat er een los eindje ontstaat.**
+
+### Wat er gecheckt is vóór er iets gebouwd werd
+Volgende punt op de roadmap was de Strength Matcher (laatste van
+Fase 2). Voordat daarmee begonnen werd, eerst gecontroleerd of
+Strength dezelfde basis heeft als Rowing/Running/Cycling:
+
+- Geen `strength-adapter.ts` — 404 bij ophalen
+- Dit README zegt het al expliciet, elders: "Rowing/Strength/
+  Kettlebell als volwaardige specialisten — ⏳ Niet gestart"
+- Strength heeft alleen een oefeningenbibliotheek (100 oefeningen,
+  `strength-exercises.ts`), geen Training Plan Engine
+
+**Conclusie:** zonder Training Plan Engine bestaan er geen
+`training_plan_sessions` voor Strength. Een Strength Matcher bouwen nu
+zou een matcher zijn zonder iets om tegen te matchen — precies het
+soort "ziet er klaar uit maar doet functioneel niks"-resultaat dat
+vermeden moet worden.
+
+### Besluit
+Strength Matcher **geblokkeerd**, niet geannuleerd — pas oppakken
+zodra Strength een eigen Training Plan Engine krijgt (apart, groter
+traject, al langer bekend als openstaand punt in dit README).
+
+Fase 2 is daarmee inhoudelijk klaar voor de drie sporten die wél een
+Training Plan Engine hebben: Rowing, Running, Cycling — alle drie
+gebouwd, doorgetest via `/debug/workout-matching`.
+
+### Volgende stap: Fase 3
+Strava aansluiten op de Matching Service — eerste kans om de Running/
+Cycling-matchers ook daadwerkelijk in een productie-ingest-route te
+laten draaien, niet alleen via het debug-scherm. Aandachtspunt vooraf:
+hoe `strava-activity-processor.ts` per activiteit de sport herkent
+(`SPORT_TYPE_MAP`) moet vertaald worden naar de juiste matcher uit de
+registry — dat mapping-stuk bestaat nu alleen in het debug-scherm.
+
 ## v2.4.271 — Workout Matching Service, Fase 2 (Cycling Matcher)
 **Bron: `docs/workout-completion-platform-adr-v1.md`, Fase 2 — tweede
 Sport Matcher na Running.**
