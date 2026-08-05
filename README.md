@@ -387,20 +387,39 @@ oppakken, geen tussentijdse keuze meer nodig.**
       webhook-URL zelf registreren in Concept2's developer-portal.
       **Nog niet getest** — vergt een echte Concept2-registratie.
 - [ ] 4. Strength als volwaardige specialist — groot, apart traject (NIET in de "1 t/m 3"-opdracht, blijft los)
-- [ ] **5. Coach Decision Engine** (nieuw, 5 augustus 2026) — analyse
-      compleet (`docs/guardian-mode-coach-call-trigger-v1.md`, v1.2),
-      **niets geïmplementeerd**. Kernbesluit: Coach Call-aanmaak
-      verhuist volledig weg uit de vier (straks vijf, incl. Concept2)
-      import-routes naar één centrale Decision Engine, die pas ná
-      Matching/Performance/Recovery/Context beslist of er een
-      coachwaardige gebeurtenis is (afwijking van plan, gemiste
-      training, extreme belasting, genegeerd blessureprotocol — niet
-      simpelweg "er is een activiteit"). Master Coach voert daarna
-      alleen uit, beslist zelf niet (Decision/Execution gescheiden,
-      zelfde patroon als Coach→Specialist en Workout Builder→Workout
-      Player). Voorgestelde bouwvolgorde staat in het document zelf.
-      Nevenbevinding, nog niet beoordeeld: Concept2 maakt momenteel
-      helemaal geen Coach Call aan (bewust of gemist — onbekend).
+- [x] **5. Coach Decision Engine — Fase 1** — v2.4.288. Ontwerp:
+      `docs/guardian-mode-coach-call-trigger-v1.md`, v1.2. **Scope,
+      bewust beperkt:** dekt alleen de vergelijkingsfunctie "was er een
+      geplande sessie voor deze sport op deze datum" (rustdag-toch-
+      getraind, extra/onaangekondigde training, sessie geannuleerd-
+      toch-uitgevoerd) — NOG NIET: andere sport dan gepland (cross-
+      sport), Recovery/HRV, blessureprotocol-naleving, cumulatieve
+      belasting. Die vergen bredere signaalbronnen die nog niet
+      geverifieerd zijn — apart uit te breiden (Fase 2), niet nu
+      aangenomen dat het al werkt.
+
+      **Eerste, enige toepassing: Concept2** — bewust gekozen omdat dit
+      de nevenbevinding uit het analysedocument in één beweging oplost:
+      Concept2 had NUL bestaande Coach Call-logica om te verplaatsen of
+      te vervangen, dus dit is een schone, risicoloze eerste toepassing
+      (geen oude code om te ontmantelen). Garmin TCX/Strava/Bibliotheek
+      behouden voorlopig hun oude, directe aanmaaklogica — bewust NIET
+      in deze levering aangepast, migreren komt later, één voor één,
+      zelfde incrementele discipline als de Workout Matching Service
+      (eerst Rowing bewijzen, dan uitbreiden).
+
+      Nieuw: `coach/coach-decision-engine.ts` (eigen databasequery
+      i.p.v. `bepaalTodayPlan()` hergebruiken — die laatste vergt een
+      request-context/cookieHeader, niet bruikbaar vanuit een
+      achtergrondproces zoals Concept2-verwerking) +
+      `coach/coach-call-writer.ts` (schema/aanmaakpatroon 1-op-1
+      hergebruikt van de bestaande Strava-route, nieuw veld
+      `deviation_reason` puur additief).
+
+      **Nog niet getest** — geen debug-tool gebouwd deze keer (zou een
+      test-training_plan_sessions-scenario vergen); vergt een echte
+      Concept2-sync op een dag met/zonder geplande sessie om te zien of
+      het juiste Coach Call-gedrag ontstaat.
 
 **Referentiedocument:** de "Final Architecture Update — v2.4.284"
 (gebruiker, 5 augustus 2026, met nuancering diezelfde dag) is de

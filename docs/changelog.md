@@ -1,28 +1,59 @@
 # CoachOS — Changelog
 
-## v2.4.287 — README-opschoning: verouderde/dubbele roadmap-regels
-**Geen code. Gevonden bij het doornemen van de roadmap vóór een
-volgende stap: verouderde regels die tegenstrijdig waren met de nieuwere
-"1 t/m 3. Go"-lijst, niet stilzwijgend laten staan.**
+## v2.4.288 — Coach Decision Engine, Fase 1 (Concept2)
+**Bron: docs/guardian-mode-coach-call-trigger-v1.md (v1.2), Final
+Architecture Update (gebruiker, 5 augustus 2026).**
 
-### Wat er fout stond
-Een oudere sectie van de roadmap-checklist had nog:
-- Twee losse `[ ]`-regels voor Fase 4 (confidence-UX/Cycling-
-  ritanalyse) — allebei al herzien/afgesloten, maar hier nog als open
-  getoond
-- Concept2-webhook nog als `[ ]` "nog te ontwerpen" — terwijl v2.4.286
-  'm al gebouwd had
+### Scope, bewust beperkt
+Twee bewuste beperkingen, geen aannames:
+1. **Vergelijkingsfunctie:** alleen "was er een geplande sessie voor
+   deze sport op deze datum" (rustdag-toch-getraind/extra-training/
+   ondanks-annulering). Cross-sport-vergelijking, Recovery/HRV,
+   blessureprotocol-naleving en cumulatieve belasting zijn NIET gedekt
+   — vergen bredere, nog niet geverifieerde signaalbronnen. Expliciet
+   Fase 2, niet stilzwijgend weggelaten.
+2. **Eerste toepassing: alleen Concept2.** Bewust gekozen — Concept2
+   had NUL bestaande Coach Call-logica (nevenbevinding uit de
+   Guardian Mode-analyse), dus dit is de enige plek zonder oude code om
+   te ontmantelen. Garmin TCX/Strava/Bibliotheek behouden hun oude,
+   directe aanmaaklogica — bewust niet aangeraakt in deze levering.
 
-Beide gecorrigeerd, met verwijzing naar de actuele, definitieve status
-verderop in het document i.p.v. de tekst te dupliceren.
+### Nieuw
+- **`coach/coach-decision-engine.ts`** —
+  `evalueerCoachCallBehoefte(supabase, userId, sport, datum)`. Eigen,
+  directe databasequery i.p.v. `bepaalTodayPlan()` (today-engine.ts)
+  hergebruiken — die laatste vergt een cookieHeader/baseUrl
+  (request-context, voor interne API-aanroepen) en is dus niet bruikbaar
+  vanuit een achtergrondproces. Zelfde onderliggende tabel
+  (`training_plan_sessions`) rechtstreeks bevraagd, geen duplicatie van
+  businesslogica.
+- **`coach/coach-call-writer.ts`** —
+  `schrijfCoachCallItem(supabase, userId, datum, item)`. Schema en
+  aanmaakpatroon ("zoek bestaande call, voeg toe of maak aan, heropen
+  indien nodig") 1-op-1 hergebruikt van de bestaande logica in
+  `api/coach-calls/route.ts` (Strava-pad) — geen nieuw schema verzonnen.
+  Idempotent: een dubbele aanroep voor dezelfde activiteit levert geen
+  dubbel item op.
+- **`coach_call_items.deviation_reason`** (SQL) — puur additief, de
+  bestaande vier aanmaakplekken vulden dit nooit (geen "waarom"-
+  classificatie), breekt niets aan bestaande rendering.
 
-### Status-update onderaan de roadmap
-Toegevoegd: bevestiging dat alle drie punten uit "1 t/m 3. Go" zijn
-afgerond, Concept2-webhook wacht op een werkende Concept2-site (502
-Bad Gateway bij registratiepoging, 5 augustus — storing bij Concept2
-zelf) + handmatige registratie, en de twee resterende substantiële
-punten (Strength-specialist, Coach Decision Engine) staan zonder vaste
-volgorde naast elkaar.
+### Aangesloten op `concept2-result-processor.ts`
+Na matching/dedup, in try/catch (fout hier mag de import zelf nooit
+laten falen).
+
+### SQL
+```sql
+alter table coach_call_items add column if not exists deviation_reason text;
+```
+
+### Nog niet getest
+Geen debug-tool deze keer (zou een test-`training_plan_sessions`-
+scenario vergen). Vergt een echte Concept2-sync op een dag met/zonder
+geplande sessie.
+
+**Nog steeds ongewijzigd:** Garmin TCX/Strava/Bibliotheek's bestaande
+Coach Call-aanmaaklogica, Workout Matching Service zelf.
 
 ## v2.4.286 — Concept2-webhook gebouwd
 **Bron: docs/workout-completion-platform-adr-v1.md, Addendum (4

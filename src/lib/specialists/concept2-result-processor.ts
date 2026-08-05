@@ -6,6 +6,8 @@ import { pasGeleerdeAanpassingenToe, type GeleerdPatroon } from '@/core/athlete-
 import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/workout-matcher'
 import { rowingMatcher } from '@/lib/specialists/training-plan-engine/matchers/rowing-matcher'
 import { nieuweBronWint } from '@/lib/activity-import/source-priority-policy'
+import { evalueerCoachCallBehoefte } from '@/lib/coach/coach-decision-engine'
+import { schrijfCoachCallItem } from '@/lib/coach/coach-call-writer'
 
 // ── Gedeelde Concept2-resultaatverwerking ────────────────────────────────
 // Bron: v2.4.286 (Concept2-webhook). Geëxtraheerd uit
@@ -127,6 +129,30 @@ export async function verwerkConcept2Resultaat(
     .map(rij => rij.id)
   if (teVerwijderen.length > 0) {
     await supabase.from('activity_sessions').delete().in('id', teVerwijderen)
+  }
+
+  // v2.4.288 (Coach Decision Engine, Fase 1 — eerste toepassing, zie
+  // module-comment in coach-decision-engine.ts): Concept2 had tot nu
+  // toe GEEN enkele Coach Call-trigger (nevenbevinding uit
+  // guardian-mode-coach-call-trigger-v1.md, nu opgelost — niet door
+  // Concept2 dezelfde oude, directe aanmaaklogica te geven als Garmin/
+  // Strava, maar door de nieuwe, centrale Decision Engine hier als
+  // eerste toe te passen). Bewust in try/catch — mag de import zelf
+  // nooit laten falen.
+  try {
+    const behoefte = await evalueerCoachCallBehoefte(supabase, userId, 'rowing', dagStr)
+    if (behoefte.nodig) {
+      await schrijfCoachCallItem(supabase, userId, dagStr, {
+        activiteitId: nieuweRij.id,
+        sportNaam: 'Roeien',
+        afstandM: resultaat.distance || null,
+        duurMin: duurMinuten,
+        redenType: behoefte.type,
+        reden: behoefte.reden,
+      })
+    }
+  } catch (decisionErr) {
+    console.error('[concept2-result-processor] Coach Decision Engine mislukt:', decisionErr)
   }
 
   return { status: 'geimporteerd', activiteitId: nieuweRij.id }
