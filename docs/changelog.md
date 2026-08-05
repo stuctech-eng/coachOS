@@ -1,5 +1,35 @@
 # CoachOS — Changelog
 
+## v2.4.289 — Coach Decision Engine, Fase 2 (Garmin TCX)
+**Vervolg op v2.4.288 — zelfde incrementele opbouw als Workout
+Matching (Rowing eerst bewijzen, dan uitbreiden).**
+
+### Garmin TCX gemigreerd
+Oude, onvoorwaardelijke Coach Call-aanmaak (nieuwe-insert-pad)
+vervangen door de Coach Decision Engine — zelfde patroon als Concept2.
+
+**Bewust ONGEWIJZIGD gelaten:** het overschrijf-pad (her-upload van
+hetzelfde TCX-bestand) — dat werkt al correct anders (update van de
+duur op een bestaand `coach_call_item`, geen nieuwe call aanmaken).
+Geen "moet ik hier iets aanmaken"-beslissing, dus geen Decision Engine
+nodig op dat pad.
+
+### Bug gevonden en gefixt tijdens het bouwen zelf
+Eerste versie van de wijziging nam aan dat een `sportSleutel`-variabele
+uit de matching-aanroep (hoger in het bestand) hergebruikt kon worden.
+Bleek lokaal gescoped binnen `probeerMatching()`, niet beschikbaar op
+de nieuwe plek — bij het schrijven zelf opgemerkt (code-review op
+mezelf), niet via een latere test. Rechtgezet: sport-sleutel wordt op
+de nieuwe plek opnieuw opgezocht via de al-bestaande
+`ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL`-mapping.
+
+### Resterend
+Strava en Bibliotheek behouden nog hun oude, directe aanmaaklogica —
+volgen later, één voor één.
+
+**Nog steeds ongewijzigd:** Concept2 (v2.4.288, apart), Workout
+Matching Service, Activity Bridge.
+
 ## v2.4.288 — Coach Decision Engine, Fase 1 (Concept2)
 **Bron: docs/guardian-mode-coach-call-trigger-v1.md (v1.2), Final
 Architecture Update (gebruiker, 5 augustus 2026).**

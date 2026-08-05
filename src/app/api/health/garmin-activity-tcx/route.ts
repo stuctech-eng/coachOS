@@ -9,6 +9,8 @@ import { matchActiviteitAanPlan } from '@/lib/specialists/training-plan-engine/w
 import { SPORT_MATCHERS } from '@/lib/specialists/training-plan-engine/matcher-registry'
 import { ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL } from '@/lib/specialists/training-plan-engine/activiteit-sport-mapping'
 import { nieuweBronWint } from '@/lib/activity-import/source-priority-policy'
+import { evalueerCoachCallBehoefte } from '@/lib/coach/coach-decision-engine'
+import { schrijfCoachCallItem } from '@/lib/coach/coach-call-writer'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -311,32 +313,30 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // v2.4.289 (Coach Decision Engine, Fase 2 — Garmin TCX): vervangt
+      // de oude, onvoorwaardelijke Coach Call-aanmaak door de centrale
+      // Decision Engine (zie coach-decision-engine.ts). Zelfde
+      // try/catch-discipline als voorheen — mag de import zelf nooit
+      // laten falen. Sport-sleutel hier opnieuw opgezocht (was alleen
+      // lokaal beschikbaar binnen probeerMatching() hierboven, niet in
+      // deze scope — bij het bouwen zelf gevonden, niet aangenomen).
       try {
-        const { data: existingCall } = await adminSupabase
-          .from('coach_calls').select('id, status').eq('user_id', user.id).eq('date', today).single()
-
-        let callId = existingCall?.id
-        if (!callId) {
-          const { data: newCall } = await adminSupabase
-            .from('coach_calls').insert({ user_id: user.id, date: today, status: 'pending' })
-            .select('id').single()
-          callId = newCall?.id
-        }
-
-        if (callId) {
-          await adminSupabase.from('coach_call_items').insert({
-            coach_call_id: callId,
-            activity_session_id: session.id,
-            sport_type: activityLabel,
-            duration_min: durationMin,
-            status: 'pending',
-          })
-          if (existingCall && (existingCall.status === 'completed' || existingCall.status === 'expired')) {
-            await adminSupabase.from('coach_calls').update({ status: 'pending', completed_at: null }).eq('id', callId)
+        const sportSleutelVoorCoachCall = ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL[activityLabel]
+        if (sportSleutelVoorCoachCall) {
+          const behoefte = await evalueerCoachCallBehoefte(adminSupabase, user.id, sportSleutelVoorCoachCall, today)
+          if (behoefte.nodig) {
+            await schrijfCoachCallItem(adminSupabase, user.id, today, {
+              activiteitId: session.id,
+              sportNaam: activityLabel,
+              afstandM: (metrics.distance as number) || null,
+              duurMin: durationMin,
+              redenType: behoefte.type,
+              reden: behoefte.reden,
+            })
           }
         }
       } catch (coachCallErr) {
-        console.error('[garmin-activity-tcx] coach_call aanmaken mislukt:', coachCallErr)
+        console.error('[garmin-activity-tcx] Coach Decision Engine mislukt:', coachCallErr)
       }
 
       await adminSupabase.from('garmin_activity_imports')

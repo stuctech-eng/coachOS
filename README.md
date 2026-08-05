@@ -421,6 +421,20 @@ oppakken, geen tussentijdse keuze meer nodig.**
       Concept2-sync op een dag met/zonder geplande sessie om te zien of
       het juiste Coach Call-gedrag ontstaat.
 
+      **Fase 2 — v2.4.289: Garmin TCX gemigreerd.** Oude,
+      onvoorwaardelijke Coach Call-aanmaak (nieuwe-insert-pad) vervangen
+      door dezelfde Decision Engine. Het overschrijf-pad (her-upload van
+      hetzelfde bestand) is bewust ONGEWIJZIGD gelaten — dat werkt al
+      correct anders (update van de duur op een bestaand item, geen
+      nieuwe call), geen "moet ik hier iets aanmaken"-beslissing, dus geen
+      Decision Engine nodig. **Bug gevonden en gefixt tijdens het bouwen
+      zelf:** de eerste versie van de wijziging nam aan dat een
+      `sportSleutel`-variabele uit de matching-aanroep hoger in het
+      bestand hergebruikt kon worden — bleek lokaal gescoped binnen een
+      andere functie, niet beschikbaar op de nieuwe plek. Rechtgezet
+      vóór levering, niet via een latere bugfix. Strava en Bibliotheek
+      volgen later, één voor één.
+
 **Referentiedocument:** de "Final Architecture Update — v2.4.284"
 (gebruiker, 5 augustus 2026, met nuancering diezelfde dag) is de
 nieuwe, definitieve architectuurreferentie — vervangt eerdere aannames
