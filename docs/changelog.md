@@ -1,5 +1,42 @@
 # CoachOS — Changelog
 
+## v2.4.279 — Activity Bridge Debug Dashboard
+**Bron: vervolg op v2.4.278 (Activity Bridge + Source Priority
+Policy). Zelfde reden als destijds bij Rowing: eerst in-app kunnen
+testen, niet blind vertrouwen op ongeziene code.**
+
+### Verschil met /debug/workout-matching
+Geen historische testdata beschikbaar (geen oude, ongematchte
+`training_results` zoals er bij Rowing wél oude Concept2-activiteiten
+waren). `/debug/activity-bridge` roept daarom de Bridge aan met een
+**synthetisch** `training_result`-id (`debug-<uuid>`) — test specifiek
+de Bridge- en Source Priority Policy-logica zelf, zonder een echte
+`training_results`-rij nodig te hebben (die insert-logica bestond al
+en is ongewijzigd).
+
+### Nieuw
+- `api/debug/activity-bridge/route.ts` — GET toont activiteiten van de
+  laatste 14 dagen (alle 5 activiteitssporten), POST met `actie: 'test'`
+  roept `overwegActiviteitUitTrainingResultaat()` rechtstreeks aan
+  (sport/duur/datum zelf te kiezen), `actie: 'reset'` verwijdert een
+  debug-testrij — geweigerd als de rij niet `source: 'trainer_ai'` +
+  `notes` met het `debug-`-label heeft, zodat een echte Bridge-rij hier
+  nooit per ongeluk kan verdwijnen
+- `debug/activity-bridge/page.tsx` — formulier (sport-dropdown, duur,
+  optionele datum) + resultaat + lijst met reset-knop per debug-rij
+- Link toegevoegd aan `/debug` (hoofdscherm)
+- Kleine correctie tegelijk meegenomen: de bestaande
+  `/debug/workout-matching`-link zei nog "(Rowing)" — al lang
+  multi-sport (Running/Cycling toegevoegd in Fase 2), label
+  bijgewerkt
+
+### Nog te doen
+Gebruiker moet de debugpagina daadwerkelijk doorlopen — zelfde
+stappenplan-aanpak als bij Rowing/Running/Cycling (lage/hoge
+confidence-achtige checks, hier: sport zonder externe bron testen,
+daarna dedup checken door dezelfde sport+datum nog een keer te testen
+met een bestaande device-activiteit ernaast).
+
 ## v2.4.278 — Activity Bridge + Source Priority Policy
 **Bron: CoachOS Platform Final Architecture v1.0 (gebruiker, 5 augustus
 2026), verfijnd met een generieke Source Priority Policy i.p.v.

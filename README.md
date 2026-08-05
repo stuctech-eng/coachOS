@@ -263,7 +263,8 @@ Health Connect).
       als elke andere bron, Source Isolation-principe). **Bestaande
       dedup-checks (Concept2/Garmin/Strava) bewust NIET gemigreerd naar
       de nieuwe policy in deze levering** — werken al correct, aparte
-      latere consolidatie.
+      latere consolidatie. **In-app testbaar via
+      `/debug/activity-bridge` (v2.4.279).**
 - [ ] Fase 4 — confidence-UX (lage score → vraag aan gebruiker i.p.v.
       stilzwijgend niets doen)
 - [ ] Fase 4 — retrofit Cycling-ritanalyse naar de expliciete
@@ -295,11 +296,12 @@ Health Connect).
 **Analysefase afgesloten (5 augustus 2026) — implementatiefase,
 volgens de bevroren architectuur hierboven.** Verificatie Fase 1 in
 productie kan nog steeds pas ná 7/9 augustus — niet te versnellen, geen
-actie voor nodig. Activity Bridge gebouwd (v2.4.278) — **nog niet
-getest** (geen historische testdata zoals bij Rowing/Concept2; vergt
-een echte Trainer AI-sessie voor Running/Cycling/Rowing zonder
-Garmin-import diezelfde dag, of handmatig testen via een directe
-aanroep). Daarna resterende punten: bestaande dedup-checks migreren
+actie voor nodig. Activity Bridge gebouwd (v2.4.278), **in-app
+testbaar via `/debug/activity-bridge`** (v2.4.279 — zelfde opzet als
+`/debug/workout-matching`, maar met een synthetisch training_result-id
+i.p.v. historische data, want die bestaat hier niet). Nog te doen door
+de gebruiker: die debugpagina daadwerkelijk doorlopen. Daarna
+resterende punten: bestaande dedup-checks migreren
 naar de Source Priority Policy (consolidatie, geen haast), Fase 4
 (confidence-UX), Concept2-webhook, Strength als volwaardige specialist.
 

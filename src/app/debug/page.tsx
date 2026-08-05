@@ -625,9 +625,14 @@ export default function DebugPage() {
           🌍 Weer Debug (locatiebron)
         </a>
 
-        {/* v2.4.268: link naar Workout Matching Debug */}
+        {/* v2.4.268: link naar Workout Matching Debug — v2.4.279: label bijgewerkt, is inmiddels multi-sport (Rowing/Running/Cycling) */}
         <a href="/debug/workout-matching" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
-          🔗 Workout Matching Debug (Rowing)
+          🔗 Workout Matching Debug
+        </a>
+
+        {/* v2.4.279: link naar Activity Bridge Debug */}
+        <a href="/debug/activity-bridge" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+          🌉 Activity Bridge Debug
         </a>
 
         <button
