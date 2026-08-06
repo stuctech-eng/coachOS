@@ -1068,8 +1068,20 @@ bevestiging:**
   `slaEventOp()` — geen nieuwe opslaglogica.
 
 **Nog niet gebouwd:** spraak (aparte, kleinere stap — browser-eigen
-spraakherkenning, geen nieuwe API nodig), Quick Cards, Fase C (Coach
-Inbox, patroonherkenning), Fase D (externe sync).
+spraakherkenning, geen nieuwe API nodig), Quick Cards (AI-
+geïnterpreteerde bevestigingskaarten — niet te verwarren met "Snel
+instellen" hieronder, dat is iets anders), Fase C (Coach Inbox,
+patroonherkenning), Fase D (externe sync).
+
+**Ook gebouwd, tot nu toe niet gedocumenteerd — gevonden 5 augustus
+2026 bij een screenshot-check:** `SnelInstellenRij` (`coach-planning/
+page.tsx`) — drie knoppen (🏖️ Vakantie, 🤒 Ziek, 🩹 Blessure) onder
+"Snel instellen". Geen AI, geen aparte logica: Vakantie/Ziek zetten
+`snelType` en openen dezelfde bottom-sheet als een handmatige
+toevoeging (voorgevuld type, gebruiker kiest nog wel de datums) —
+Blessure linkt gewoon door naar de bestaande `/injuries`-module. Puur
+een UI-snelkoppeling naar bestaande, al-geteste opslaglogica, geen
+nieuw systeem.
 
 #### Coach Agenda — Fase A + B (tekst) afgerond, spraak/Quick Cards/C/D nog visie
 
@@ -1096,7 +1108,13 @@ gewijzigd:**
   uitgesteld naar Fase C/D, niet meegenomen in Fase A
 - SQL: `supabase/coach_agenda_fase_a.sql` — puur additieve kolommen
 
-**Fase B-D blijven visie, niets gebouwd:**
+**Wat van Fase B-D nog puur visie is, niets gebouwd:** spraak-invoer,
+Quick Cards, Rule Engine, virtuele gebeurtenissen automatisch tonen,
+Fase C (Coach Inbox), Fase D (externe agenda-sync). **Wel al gebouwd**
+(zie hierboven en de Coach Vooruitblik-sectie elders in dit README):
+tekst-invoer met verplichte bevestiging (v2.4.188), de Coach
+Vooruitblik-kaart op Home (v2.4.201), en "Snel instellen" — deze regel
+zei eerder ten onrechte "niets gebouwd", rechtgezet 5 augustus 2026.
 
 **Filosofie:** een gewone agenda vraagt "welke afspraak wil je
 toevoegen?". CoachOS vraagt "waar moet ik als coach rekening mee

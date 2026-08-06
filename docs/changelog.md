@@ -1,5 +1,28 @@
 # CoachOS — Changelog
 
+## v2.4.298 — Documentatie: Coach Agenda-status rechtgezet + "Snel instellen" toegevoegd
+**Geen code. Nieuwe staande afspraak: documentatie altijd bijhouden,
+niet pas na een expliciet verzoek (opgeslagen in Claude's geheugen).
+Eerste toepassing: bij een screenshot-check bleek het README zichzelf
+tegen te spreken over Coach Agenda's status.**
+
+### Wat er fout stond
+Regel "Fase B-D blijven visie, niets gebouwd" sprak de paar regels
+erboven tegen, die juist specifiek beschreven wat er wél gebouwd was
+(tekst-invoer v2.4.188, Coach Vooruitblik-kaart v2.4.201). Rechtgezet:
+expliciet onderscheid tussen wat wél (tekst-invoer, Vooruitblik-kaart,
+Snel instellen) en wat niet (spraak, Quick Cards, Rule Engine, Fase
+C/D) gebouwd is.
+
+### Nieuw gedocumenteerd — bestond al, was nooit beschreven
+`SnelInstellenRij` (`coach-planning/page.tsx`) — drie knoppen (🏖️
+Vakantie, 🤒 Ziek, 🩹 Blessure). Geen AI, geen aparte logica: Vakantie/
+Ziek zetten het type voor en openen dezelfde bottom-sheet als een
+handmatige toevoeging, Blessure linkt door naar de bestaande
+`/injuries`-module. Expliciet niet te verwarren met "Quick Cards" (de
+AI-geïnterpreteerde bevestigingskaarten uit de Fase B-visie) — dat
+blijft ongebouwd.
+
 ## v2.4.297 — FIX: "Vakantie — Over -16 dagen" op Home
 **Gemeld met screenshots: Home's Coach Vooruitblik toonde een negatief
 dagen-getal voor een lopende vakantie, terwijl /coach-planning correct
