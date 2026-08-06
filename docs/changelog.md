@@ -1,5 +1,32 @@
 # CoachOS — Changelog
 
+## v2.4.301 — FIX: geen manier om Concept2 opnieuw te koppelen
+**Root cause van waarom "verbreek en herverbind" (mijn eigen advies,
+meerdere keren gegeven) niet werkte: die functie bestond niet in de
+UI. Mijn fout — geadviseerd zonder de code te checken.**
+
+### Root cause
+`coach/rowing/page.tsx`: `{!concept2Verbonden ? <Verbind-link> :
+<Sync nu-knop>}` — zodra `concept2Verbonden` true is, verdwijnt de
+"Verbind"-link volledig. Er was dus letterlijk geen weg terug om de
+OAuth-flow opnieuw te triggeren zodra je al gekoppeld was. Een leeg
+`concept2_user_id` (v2.4.286) kon hierdoor nooit via de UI gerepareerd
+worden, ongeacht hoe vaak "Sync nu" werd ingedrukt — die knop doet iets
+compleet anders (nieuwe resultaten ophalen, geen OAuth).
+
+### Fix
+`coach/rowing/page.tsx`: naast "Sync nu" nu ook een kleine "Opnieuw
+koppelen"-link, altijd zichtbaar zodra gekoppeld. Geverifieerd veilig:
+`callback/route.ts` doet toch al een `upsert` (`onConflict: user_id`),
+dus opnieuw autoriseren terwijl je al gekoppeld bent overschrijft de
+bestaande rij netjes — geen aparte disconnect-stap nodig aan de
+backend-kant, alleen de UI miste de ingang ernaartoe.
+
+**Test-instructie:** ga naar `/coach/rowing`, tik nu op "Opnieuw
+koppelen" (niet "Sync nu") — dat triggert de echte OAuth-flow, en zou
+`concept2_user_id` alsnog moeten vullen als Concept2's API op dat
+moment werkt. Controleer daarna via `/debug/concept2-webhook`.
+
 ## v2.4.300 — FIX: leeg concept2_user_id was onzichtbaar voor de gebruiker
 **Gemeld: opnieuw koppelen loste een leeg `concept2_user_id` niet op,
 zonder enig zichtbaar signaal waarom.**

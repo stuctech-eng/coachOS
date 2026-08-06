@@ -231,12 +231,27 @@ export default function RowingPage() {
                 Verbind
               </a>
             ) : (
-              // v2.4.219 (data-sync): haalt nieuwe resultaten op bij
-              // Concept2 en herlaadt de lijst
-              <button onClick={syncConcept2} disabled={syncBezig}
-                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold active:bg-slate-700 disabled:opacity-50">
-                {syncBezig ? 'Bezig...' : 'Sync nu'}
-              </button>
+              // v2.4.301-FIX: gemeld — er was geen enkele manier om
+              // opnieuw te koppelen zodra concept2Verbonden true was;
+              // de "Verbind"-link verdween volledig, alleen "Sync nu"
+              // bleef over. Zonder herverbind-optie kon een leeg
+              // concept2_user_id (v2.4.286-probleem) nooit meer
+              // gerepareerd worden via de UI — de gebruiker kreeg de
+              // instructie "verbreek en herverbind" terwijl dat
+              // helemaal niet mogelijk was. Callback doet toch al een
+              // upsert (onConflict: user_id), dus opnieuw autoriseren
+              // terwijl je al gekoppeld bent is veilig — geen
+              // voorafgaande disconnect-stap nodig.
+              <div className="flex gap-2">
+                <button onClick={syncConcept2} disabled={syncBezig}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold active:bg-slate-700 disabled:opacity-50">
+                  {syncBezig ? 'Bezig...' : 'Sync nu'}
+                </button>
+                <a href="/api/specialists/rowing/concept2/authorize"
+                  className="px-3 py-2 bg-white/5 text-slate-400 rounded-xl text-xs font-medium active:bg-white/10 flex items-center">
+                  Opnieuw koppelen
+                </a>
+              </div>
             )}
           </Card>
         )}
