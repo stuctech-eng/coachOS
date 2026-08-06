@@ -96,7 +96,16 @@ export default function RowingPage() {
     // Melding tonen na terugkomst van de OAuth-flow
     const params = new URLSearchParams(window.location.search)
     if (params.get('concept2_verbonden')) {
-      setUrlMelding('Concept2 succesvol gekoppeld!')
+      // v2.4.300-FIX: onderscheid maken — een geslaagde koppeling waar
+      // Concept2's eigen user-id niet opgehaald kon worden (bijv. omdat
+      // Concept2's API op dat moment zelf een probleem had) is geen
+      // "succesvol gekoppeld" zonder kanttekening. Sync werkt nog
+      // steeds, maar de webhook zou deze gebruiker niet herkennen.
+      if (params.get('concept2_user_id_ontbreekt')) {
+        setUrlMelding('Concept2 gekoppeld — "Sync nu" werkt, maar Concept2 gaf geen gebruikers-id terug (mogelijk een probleem bij Concept2 zelf op dit moment). De automatische webhook zal hierdoor niet werken. Probeer het opnieuw te koppelen zodra Concept2 weer stabiel is — controleer daarna via /debug/concept2-webhook of het veld gevuld is.')
+      } else {
+        setUrlMelding('Concept2 succesvol gekoppeld!')
+      }
       setConcept2Verbonden(true)
       window.history.replaceState({}, '', '/coach/rowing')
     } else if (params.get('concept2_error')) {

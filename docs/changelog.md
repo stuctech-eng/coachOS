@@ -1,5 +1,38 @@
 # CoachOS — Changelog
 
+## v2.4.300 — FIX: leeg concept2_user_id was onzichtbaar voor de gebruiker
+**Gemeld: opnieuw koppelen loste een leeg `concept2_user_id` niet op,
+zonder enig zichtbaar signaal waarom.**
+
+### Root cause
+`concept2/callback/route.ts` logde een mislukte `GET /api/users/me`-
+aanroep alleen naar `console.error` — nergens zichtbaar in de app.
+Bevestigd: v2.4.286/299 stonden al live, de code werkte zoals bedoeld,
+maar als de aanroep naar Concept2 zelf faalde (waarschijnlijk: hun API
+had op dat moment ook problemen, gezien de bekende 502-storing van de
+site zelf), kreeg de gebruiker gewoon "succesvol gekoppeld" te zien —
+geen enkele aanwijzing dat er iets miste. Precies het patroon dat de
+eigen debugstrategie (§15, iPhone-first) wil voorkomen: nooit alleen op
+console vertrouwen.
+
+### Fix
+- `callback/route.ts`: bij een geslaagde koppeling zonder
+  `concept2_user_id` een extra query-param
+  (`concept2_user_id_ontbreekt=1`) mee terug
+- `coach/rowing/page.tsx`: toont in dat geval een aparte, duidelijke
+  waarschuwing i.p.v. het gewone "succesvol gekoppeld" — legt uit dat
+  Sync nu blijft werken, maar de webhook niet, en verwijst naar
+  `/debug/concept2-webhook` om het later te verifiëren
+
+**Geen wijziging aan de onderliggende logica** — de `GET /api/users/
+me`-aanroep zelf functioneert zoals bedoeld, dit maakt alleen een al
+bestaand faalscenario zichtbaar i.p.v. stil.
+
+**Blijft afhankelijk van Concept2's eigen stabiliteit** — als hun API
+op het moment van koppelen zelf een probleem heeft, zal een
+herverbinding blijven mislukken totdat dat is opgelost. Deze fix zorgt
+er alleen voor dat je dat nu kan ZIEN i.p.v. te gokken.
+
 ## v2.4.299 — Concept2-webhook debug-tool + Coach Inbox (eerste signaal)
 **Twee builds tegelijk, op verzoek: "bouw alle twee".**
 

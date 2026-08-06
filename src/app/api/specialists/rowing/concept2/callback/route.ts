@@ -118,6 +118,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/coach/rowing?concept2_error=opslaan_mislukt', req.url))
     }
 
+    // v2.4.300-FIX: gemeld — een herverbinding loste een leeg
+    // concept2_user_id niet op, en er was geen enkel signaal in de app
+    // WAAROM dat zo was. `console.error` (regel 99/102 hierboven) is
+    // niet zichtbaar voor de gebruiker — exact de fout die de eigen
+    // debugstrategie (§15) wil voorkomen: nooit alleen op console
+    // vertrouwen. De koppeling zelf slaagt nog steeds (Sync nu blijft
+    // werken), maar de gebruiker moet nu WEL kunnen zien dat de webhook
+    // daardoor niet zal werken, i.p.v. dat stil te laten gebeuren.
+    if (!concept2UserId) {
+      return NextResponse.redirect(new URL('/coach/rowing?concept2_verbonden=1&concept2_user_id_ontbreekt=1', req.url))
+    }
+
     return NextResponse.redirect(new URL('/coach/rowing?concept2_verbonden=1', req.url))
   } catch (err) {
     console.error('[concept2/callback]', err)
