@@ -1,5 +1,49 @@
 # CoachOS — Changelog
 
+## v2.4.299 — Concept2-webhook debug-tool + Coach Inbox (eerste signaal)
+**Twee builds tegelijk, op verzoek: "bouw alle twee".**
+
+### 1. Concept2-webhook Debug Simulator
+`/debug/concept2-webhook` — test de webhook-verwerkingslogica zonder
+op een echte Concept2-push te wachten. Twee stappen:
+1. **Koppelingsstatus** — checkt of `concept2_tokens.concept2_user_id`
+   gevuld is (zonder dit zou de echte webhook de gebruiker nooit
+   herkennen — vaak de eerste reden waarom "het doet niks" bij een
+   bestaande, oude koppeling)
+2. **Volledige verwerking** — simuleert een `result-added`-payload,
+   roept exact dezelfde `verwerkConcept2Resultaat()` aan die de echte
+   webhook ook gebruikt (insert/matching/Coach Decision Engine/dedup)
+
+**Eerlijke grens, expliciet in de code en de UI benoemd:** test NIET
+het geheime pad-segment (`CONCEPT2_WEBHOOK_SECRET`) zelf — dat vergt
+een echte externe HTTP-aanroep, niet iets wat een ingelogd debug-
+scherm zinvol kan nadoen zonder de beveiliging te omzeilen.
+
+### 2. Coach Inbox — Fase C, eerste signaal
+Vakantie-pauze-voorstel: als een vakantie binnen 7 dagen begint (nog
+niet gestart) én er actieve trainingsplannen zijn, verschijnt een
+kaart op Home. "Ja, pauzeren" pauzeert alle betrokken sporten in één
+tik (dezelfde `training_plans.status → 'paused'`-mutatie als de
+bestaande, losse pauzeer-knoppen per specialist).
+
+**Consolidatie, geen nieuwbouw:** hergebruikt `haalOverzichtData()`
+(bestond al) voor de vakantie-data, geen nieuwe query verzonnen.
+
+**Nieuw:**
+- `lib/coach/coach-inbox.ts` — `evalueerCoachInboxSignalen()` +
+  `pauzeerTrainingsplannen()`
+- `api/coach-inbox/route.ts` — GET signalen, POST actie
+- `home/page.tsx` — nieuwe kaart, direct onder de bestaande
+  meldingen-secties, boven "Vandaag van je Coach"
+
+**Bewust simpel gehouden voor een eerste versie:** "Niet nu" verbergt
+de kaart alleen voor de huidige sessie (geen permanente dismissal-
+opslag) — als daar behoefte aan blijkt, een latere toevoeging.
+
+**Nog niet getest, geen van beide** — vergt respectievelijk een echte
+Concept2-koppeling met gevuld `concept2_user_id`, en een geplande
+vakantie binnen 7 dagen om te zien verschijnen.
+
 ## v2.4.298 — Documentatie: Coach Agenda-status rechtgezet + "Snel instellen" toegevoegd
 **Geen code. Nieuwe staande afspraak: documentatie altijd bijhouden,
 niet pas na een expliciet verzoek (opgeslagen in Claude's geheugen).

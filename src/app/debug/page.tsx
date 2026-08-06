@@ -635,6 +635,11 @@ export default function DebugPage() {
           🌉 Activity Bridge Debug
         </a>
 
+        {/* v2.4.299: link naar Concept2-webhook Debug */}
+        <a href="/debug/concept2-webhook" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+          🔌 Concept2-webhook Debug
+        </a>
+
         <button
           onClick={runDiagnostiek}
           disabled={bezig}

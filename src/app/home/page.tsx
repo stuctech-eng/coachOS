@@ -104,6 +104,11 @@ export default function HomePage() {
   const [coachCall, setCoachCall] = useState<{ id: string; pending_count: number; coach_call_items: { id: string }[] } | null>(null)
   const [weer, setWeer] = useState<WeerData | null>(null)
   const [weerUitgeklapt, setWeerUitgeklapt] = useState(false)
+  // v2.4.299 (Coach Inbox, Fase C — eerste signaal): proactieve
+  // meldingen op Home, los van de bestaande Coach Vooruitblik-kaart
+  // (die toont, dit stelt een actie voor)
+  const [inboxSignalen, setInboxSignalen] = useState<{ type: string; titel: string; tekst: string; sporten: string[] }[]>([])
+  const [inboxBezig, setInboxBezig] = useState(false)
   // v2.4.14: automatische update-detectie + lichte gezondheidscheck
   const [updateProbleem, setUpdateProbleem] = useState<{ nieuweVersie: string; problemen: number } | null>(null)
 
@@ -219,6 +224,34 @@ export default function HomePage() {
     document.addEventListener('visibilitychange', onZichtbaarheidWijziging)
     return () => document.removeEventListener('visibilitychange', onZichtbaarheidWijziging)
   }, [])
+
+  // v2.4.299 (Coach Inbox, Fase C — eerste signaal): één keer per
+  // Home-bezoek ophalen, geen visibilitychange-herhaling nodig zoals bij
+  // weer — deze signalen veranderen niet binnen een sessie.
+  useEffect(() => {
+    fetch('/api/coach-inbox', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.signalen) setInboxSignalen(data.signalen) })
+      .catch(() => {})
+  }, [])
+
+  async function pauzeerVanuitInbox(sporten: string[]) {
+    setInboxBezig(true)
+    try {
+      await fetch('/api/coach-inbox', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actie: 'pauzeer_trainingsplannen', sporten }),
+      })
+      setInboxSignalen(prev => prev.filter(s => s.type !== 'vakantie_pauze_voorstel'))
+    } catch {
+      // stil falen — gebruiker kan het altijd nog handmatig doen via de
+      // specialist-trainingsplan-pagina zelf
+    } finally {
+      setInboxBezig(false)
+    }
+  }
 
   // v2.4.169: Today Engine — de enige bron voor "wat moet ik vandaag
   // doen", kiest zelf tussen Specialist-trainingsplan en Trainer AI
@@ -686,6 +719,30 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
+        {/* v2.4.299 (Coach Inbox, Fase C — eerste signaal) */}
+        {inboxSignalen.map(signaal => (
+          <div key={signaal.type} className="bg-primary-500/10 border border-primary-500/30 rounded-2xl p-5">
+            <p className="text-xs text-primary-400 uppercase tracking-wider mb-2">📥 Coach Inbox</p>
+            <p className="text-white font-semibold mb-1">{signaal.titel}</p>
+            <p className="text-sm text-slate-300 mb-4">{signaal.tekst}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => pauzeerVanuitInbox(signaal.sporten)}
+                disabled={inboxBezig}
+                className="flex-1 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium active:bg-primary-700 disabled:opacity-50"
+              >
+                {inboxBezig ? '⏳' : 'Ja, pauzeren'}
+              </button>
+              <button
+                onClick={() => setInboxSignalen(prev => prev.filter(s => s.type !== signaal.type))}
+                className="flex-1 py-2.5 rounded-lg bg-white/5 text-slate-300 text-sm font-medium active:bg-white/10"
+              >
+                Niet nu
+              </button>
+            </div>
+          </div>
+        ))}
 
         {/* Vandaag van je Coach */}
         <Card className="p-5">

@@ -134,9 +134,12 @@ verdwaalt.
 **Genuanceerd — wacht op een externe gebeurtenis, geen actie nodig:**
 - Verificatie Fase 1 (Rowing/Concept2) in productie — wacht op 7/9
   augustus, een echte training
-- Concept2-webhook — gebouwd (v2.4.286), nooit getest — wacht op
-  Concept2's eigen site (502 Bad Gateway, 5 augustus, storing bij
-  Concept2 zelf) + handmatige registratie door de gebruiker
+- Concept2-webhook — gebouwd (v2.4.286), **verwerkingslogica nu
+  testbaar via `/debug/concept2-webhook` (v2.4.299)** — het geheime
+  pad-segment zelf (CONCEPT2_WEBHOOK_SECRET) kan alleen extern getest
+  worden, wacht nog op Concept2's eigen site (502 Bad Gateway, 5
+  augustus, storing bij Concept2 zelf) + handmatige registratie door
+  de gebruiker
 
 **Nog niet gebouwd, geen externe blokkade:**
 - **Strength als volwaardige specialist** (eigen Training Plan Engine)
@@ -588,6 +591,28 @@ geen bouwwerk meer, maar wachten op iets extern:**
 **Bewust buiten scope, op eigen verzoek:** Strength als volwaardige
 specialist (een aparte specialist, geen platformwerk — "kan altijd
 later").
+
+## Coach Inbox — Fase C, eerste signaal (v2.4.299)
+**Bron: Coach Agenda-visie Fase C, letterlijke voorbeeldzin die er al
+stond: "Volgende week begint je vakantie — trainingsplan pauzeren?"**
+Bewust met precies dit ene signaal gebouwd, niet de volledige
+patroonherkenning-visie — zelfde incrementele aanpak als de rest van
+deze week.
+
+**Signaal: vakantie-pauze-voorstel.** `lib/coach/coach-inbox.ts`,
+`evalueerCoachInboxSignalen()` — hergebruikt `haalOverzichtData()`
+(bestond al, gedeeld met Coach Planning, geen nieuwe query op
+`life_events`). Als een vakantie binnen 7 dagen begint (nog niet
+gestart — bewust hetzelfde onderscheid als de "Nu bezig"-fix,
+v2.4.297) én er actieve trainingsplannen zijn: een kaart op Home,
+"Ja, pauzeren" roept dezelfde databasemutatie aan als de bestaande
+pauzeer-knoppen per specialist (`training_plans.status → 'paused'`),
+"Niet nu" verbergt de kaart voor deze sessie (geen permanente
+dismissal-opslag — bewust simpel gehouden voor een eerste versie).
+
+**Nog niet gebouwd:** overige Coach Inbox-signalen (patroonherkenning
+— "je hebt 3 weken op rij op maandag getraind", herhaald overslaan,
+etc.) — dit is bewust alleen het eerste, concrete signaal.
 
 ## Core Architectuurregels
 
