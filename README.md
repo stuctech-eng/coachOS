@@ -215,10 +215,16 @@ Health Connect).
 - [x] Fase 1 — in-app debug-dashboard + handmatige testtools
       (dry-run/forceer/reset) — v2.4.268, volledig doorgetest door de
       gebruiker, alles gedroeg zich zoals ontworpen
-- [ ] **Verificatie Fase 1 in productie** — wacht op een échte
-      ErgData-training + sync op 7 of 9 augustus 2026 (eerstvolgende
-      geplande Rowing-sessies). Check: wordt de sessie automatisch
-      `completed`, ZONDER `[TEST]`-label?
+- [x] **Verificatie Fase 1 in productie — BEVESTIGD GESLAAGD, 7 augustus
+      2026.** Een echte Rowing-training (31 min) via "Sync nu" werd
+      automatisch `completed`, zonder `[TEST]`-label — precies zoals
+      bedoeld, geen debug-omweg meer nodig. **Bijkomende, niet eerder
+      geteste bevestiging:** de Coach Decision Engine reageerde
+      correct — geen Coach Call, want de sessie kwam exact overeen met
+      de planning (31 min gepland, 31 min gedaan). Dit was de laatste
+      resterende onzekerheid van het hele Workout Completion Platform
+      — nu volledig, organisch bevestigd in productie, niet alleen via
+      debug-tools.
 - [x] Fase 2 — Running Matcher — v2.4.270. Zelfde eerlijke beperking
       als Rowing (geen doel-afstand-veld om tegen te toetsen — alleen
       duur). Debug-dashboard gegeneraliseerd naar meerdere sporten
@@ -575,15 +581,22 @@ kunnen meten — maar nooit voor interne systeemlogica zoals Workout
 Matching-confidence, dat blijft een puur technisch proces zonder
 gebruikersvraag.
 
-**EINDSTATUS, bijgewerkt 5 augustus 2026 (avond) — het platform is af.**
+**EINDSTATUS, bijgewerkt 7 augustus 2026 — het platform is af, en nu
+ook organisch bevestigd in productie.**
 Workout Completion Platform (Fase 1-4), Activity Bridge, Source
 Priority Policy, Coach Decision Engine (Fase 1-3), Intelligence/
-Knowledge Platform-verkenning: allemaal afgerond. **Wat resteert is
+Knowledge Platform-verkenning: allemaal afgerond. **Fase 1-verificatie
+is BEVESTIGD GESLAAGD** (7 augustus — echte Rowing-training,
+automatisch `completed`, Coach Decision Engine reageerde correct met
+"geen afwijking, dus geen Coach Call"). Dit was de laatste,
+niet-via-debug-bevestigde onzekerheid — nu gesloten. **Wat resteert is
 geen bouwwerk meer, maar wachten op iets extern:**
-- Fase 1-verificatie in productie — wacht op 7/9 augustus (een echte
-  Rowing-training)
-- Concept2-webhook-test — wacht op Concept2's eigen site (502 Bad
-  Gateway bij registratiepoging, 5 augustus) + handmatige registratie
+- Concept2-webhook-test — wacht op een structureel probleem bij
+  Concept2's eigen API-server (niet alleen de eerdere 502 op de site
+  zelf — ook `GET /api/users/me` faalt losstaand daarvan). Gebruiker
+  gebruikt intussen "Sync nu" handmatig, wat prima werkt via dezelfde
+  verwerkingslogica als de webhook zou gebruiken — geen blokkade voor
+  dagelijks gebruik, alleen voor de automatische push
 - Coach Decision Engine's nieuwere signalen (blessure/herstel/
   cumulatieve belasting) — nog nooit organisch gezien, wacht op een
   natuurlijk scenario of een bewuste test
