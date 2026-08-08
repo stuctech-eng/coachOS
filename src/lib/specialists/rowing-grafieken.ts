@@ -304,7 +304,12 @@ export async function haalWekelijkseRowingTrend(userId: string, aantalWeken: num
 // (raakt een gedeeld bestand dat alle sporten gebruikt, niet alleen
 // Rowing — groter risico dan de Concept2-only-aanpassing hierboven).
 
-const STANDAARD_TESTAFSTANDEN = [500, 1000, 2000, 5000, 6000, 10000]
+// v2.4.311: 21097m (halve marathon) en 42195m (marathon) toegevoegd —
+// bevestigd officiële Concept2-standaardafstanden (log.concept2.com's
+// eigen ranking-documentatie: "500m, 1000m, 2000m, 5000m, 6000m,
+// 10000m, 21097m, 42195m or 100,000m"), niet zelf verzonnen. Zelfde
+// waarden als Running's PROGRESSIE_AFSTANDEN.
+const STANDAARD_TESTAFSTANDEN = [500, 1000, 2000, 5000, 6000, 10000, 21097, 42195]
 const AFSTAND_TOLERANTIE_PCT = 0.02 // ±2% — vangt normale erg-stopvariatie op, niet een toevallig gepasseerde afstand in een langere training
 
 export interface RowingRecord {

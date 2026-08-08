@@ -53,6 +53,23 @@ nogmaals expliciet tegen de nieuwe exports gelegd vóór levering.
 **Nog niet getest** — vergt een blik op de echte pagina met een
 2k-test en/of 5k-test als losse, gesynchroniseerde Concept2-sessie.
 
+
+## v2.4.311 — Halve marathon + marathon toegevoegd
+**Gemeld: deze twee testafstanden ontbraken. Bevestigd vóór
+toevoegen, niet aangenomen.**
+
+Concept2's eigen ranking-documentatie (forumcitaat, direct van hun
+site): *"500m, 1000m, 2000m, 5000m, 6000m, 10000m, 21097m, 42195m or
+100,000m"* — 21097m (halve marathon) en 42195m (marathon) zijn dus
+officiële Concept2-standaardafstanden, geen verzinsel. Exact dezelfde
+waarden als Running's `PROGRESSIE_AFSTANDEN`.
+
+`STANDAARD_TESTAFSTANDEN` (`rowing-grafieken.ts`) en de labellijst in
+`/coach/rowing/performance/page.tsx` beide aangevuld. Geen wijziging
+aan de tolerantielogica nodig (±2% blijft ruim genoeg, ook voor deze
+langere afstanden — Concept2's preset-distance-workouts stoppen
+sowieso automatisch exact op de ingestelde afstand).
+
 ## v2.4.309 — Rowing Performance Center
 **Het bevestigde gat gedicht — Cycling/Running hadden dit al, Rowing
 nu ook. Zelfde eerlijke aanpak: geen nieuwe formules verzinnen, alleen

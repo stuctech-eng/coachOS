@@ -747,6 +747,15 @@ bewust niet in deze levering aangepast. Garmin-TCX-Rowing-sessies
 tellen dus nog niet mee in Records/Progressie. Kleiner vervolgpunt dan
 eerst gedacht, maar nog steeds een apart puntje.
 
+**v2.4.311 — Halve marathon + marathon toegevoegd aan de
+testafstanden.** Gemeld: deze twee ontbraken. Bevestigd, niet
+aangenomen: Concept2's eigen ranking-documentatie noemt expliciet
+"500m, 1000m, 2000m, 5000m, 6000m, 10000m, 21097m, 42195m or
+100,000m" als officiële standaardafstanden — 21097/42195 zijn dus
+geen verzinsel, exact dezelfde waarden als Running's
+`PROGRESSIE_AFSTANDEN`. `STANDAARD_TESTAFSTANDEN` in
+`rowing-grafieken.ts` en de labellijst in de pagina beide aangevuld.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

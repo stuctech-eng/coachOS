@@ -41,6 +41,7 @@ interface RowingAfstandTrendPunt { datum: string; tijd_sec: number }
 
 const TESTAFSTANDEN_MET_LABEL: [number, string][] = [
   [500, '500m'], [1000, '1000m'], [2000, '2000m'], [5000, '5000m'], [6000, '6000m'], [10000, '10.000m'],
+  [21097, 'Halve marathon'], [42195, 'Marathon'],
 ]
 
 function formatTijd(sec: number): string {
