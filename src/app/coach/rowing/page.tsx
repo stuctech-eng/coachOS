@@ -207,6 +207,18 @@ export default function RowingPage() {
           </Card>
         </Link>
 
+        {/* v2.4.309: link naar het nieuwe Rowing Performance Center —
+            bevestigd gat, Cycling/Running hadden dit al */}
+        <Link href="/coach/rowing/performance">
+          <Card className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">Performance Center</p>
+              <p className="text-xs text-slate-400 mt-0.5">Dashboard, belasting &amp; trends</p>
+            </div>
+            <span className="text-slate-500">→</span>
+          </Card>
+        </Link>
+
         {laden && <div className="h-40 bg-slate-800/50 rounded-2xl animate-pulse" />}
 
         {urlMelding && (

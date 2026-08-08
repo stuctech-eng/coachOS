@@ -31,7 +31,7 @@ export interface DagelijkseBelasting {
 interface RowingActiviteitRij {
   date: string
   duration: number
-  metrics: { distance?: number } | null
+  metrics: { distance?: number; avg_hr?: number; avg_stroke_rate?: number } | null
 }
 
 /** 2k-testtijd (seconden) → drempelsnelheid in meters/minuut.
@@ -111,4 +111,173 @@ export async function haalRowingCTLATLTSB(userId: string, aantalDagen: number): 
   }
 
   return resultaat.slice(-aantalDagen)
+}
+
+// ── Rowing Dashboard — Activiteiten-scherm-vervolg, 8 augustus 2026 ─────
+// Bron: "Rowing Performance Center ontbreekt"-gat, bevestigd tijdens de
+// Activiteiten-scherm-verificatiefase. Spiegelbeeld van
+// haalRunningDashboard() (running-grafieken.ts) — zelfde structuur,
+// zelfde jaar-tot-nu-beperking eerlijk zo benoemd, geen "totaal"-
+// suggestie die meer omvat dan het doet.
+//
+// Roei-conventie i.p.v. Running's pace/cadans: split per 500m
+// (Concept2/British Rowing-standaard, niet km/u) en slagfrequentie
+// i.p.v. cadans. Snelheid wordt — net als bij de TSS-berekening
+// hierboven — altijd afgeleid uit afstand/duur, nooit uit een
+// eventueel los opgeslagen avg_speed-veld: Concept2's eigen sync
+// (concept2-result-processor.ts) slaat geen avg_speed op, alleen
+// distance/avg_stroke_rate/avg_hr — consistent dezelfde afleiding
+// hergebruiken i.p.v. een veld aan te nemen dat er niet is.
+
+export interface RowingDashboard {
+  week_km: number
+  maand_km: number
+  jaar_km: number
+  totaal_km: number
+  trainingen_deze_week: number
+  gemiddelde_split_sec_per_500m: number | null
+  gemiddelde_hartslag: number | null
+  gemiddelde_slagfrequentie: number | null
+  trainingstijd_minuten: number
+  langste_sessie: { minuten: number; datum: string } | null
+  snelste_training: { split_sec_per_500m: number; datum: string } | null
+}
+
+function maandagVanWeekRowing(datum: Date): Date {
+  const d = new Date(datum)
+  const dagIndex = (d.getDay() + 6) % 7
+  d.setDate(d.getDate() - dagIndex)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+/** meters/minuut -> seconden per 500m (roei-conventie). */
+function mPerMinNaarSplitPer500m(mPerMin: number): number {
+  if (mPerMin <= 0) return 0
+  return Math.round((500 / mPerMin) * 60)
+}
+
+export async function haalRowingDashboard(userId: string): Promise<RowingDashboard> {
+  const supabase = createAdminClient()
+  const vandaag = new Date()
+  const jaarStart = new Date(vandaag.getFullYear(), 0, 1)
+
+  const { data, error } = await supabase
+    .from('activity_sessions')
+    .select('date, duration, metrics, activities!inner(name)')
+    .eq('user_id', userId)
+    .in('activities.name', ['Roeien'])
+    .gte('date', isoDatum(jaarStart))
+    .order('date', { ascending: true })
+
+  if (error) throw error
+  const activiteiten = (data || []) as unknown as RowingActiviteitRij[]
+
+  if (activiteiten.length === 0) {
+    return {
+      week_km: 0, maand_km: 0, jaar_km: 0, totaal_km: 0,
+      trainingen_deze_week: 0, gemiddelde_split_sec_per_500m: null,
+      gemiddelde_hartslag: null, gemiddelde_slagfrequentie: null,
+      trainingstijd_minuten: 0, langste_sessie: null, snelste_training: null,
+    }
+  }
+
+  const weekStart = maandagVanWeekRowing(vandaag)
+  const maandStart = new Date(vandaag.getFullYear(), vandaag.getMonth(), 1)
+
+  let weekKm = 0, maandKm = 0, jaarKm = 0
+  let trainingenDezeWeek = 0
+  let trainingstijdMinuten = 0
+  const mPerMinWaarden: number[] = []
+  const hrWaarden: number[] = []
+  const slagfrequentieWaarden: number[] = []
+  let langsteSessie: { minuten: number; datum: string } | null = null
+  let snelsteTraining: { split_sec_per_500m: number; datum: string } | null = null
+
+  for (const a of activiteiten) {
+    const datum = new Date(a.date)
+    const km = (a.metrics?.distance || 0) / 1000
+    jaarKm += km
+    if (datum >= maandStart) maandKm += km
+    if (datum >= weekStart) { weekKm += km; trainingenDezeWeek++ }
+
+    trainingstijdMinuten += a.duration || 0
+    if (a.metrics?.avg_hr) hrWaarden.push(a.metrics.avg_hr)
+    if (a.metrics?.avg_stroke_rate) slagfrequentieWaarden.push(a.metrics.avg_stroke_rate)
+
+    if (a.duration > 0 && (!langsteSessie || a.duration > langsteSessie.minuten)) {
+      langsteSessie = { minuten: a.duration, datum: a.date }
+    }
+    if (a.metrics?.distance && a.duration > 0) {
+      const mPerMin = a.metrics.distance / a.duration
+      mPerMinWaarden.push(mPerMin)
+      const splitSecPer500m = mPerMinNaarSplitPer500m(mPerMin)
+      if (!snelsteTraining || splitSecPer500m < snelsteTraining.split_sec_per_500m) {
+        snelsteTraining = { split_sec_per_500m: splitSecPer500m, datum: a.date }
+      }
+    }
+  }
+
+  const gemiddelde = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null
+  const gemMPerMin = gemiddelde(mPerMinWaarden)
+
+  return {
+    week_km: Math.round(weekKm * 10) / 10,
+    maand_km: Math.round(maandKm * 10) / 10,
+    jaar_km: Math.round(jaarKm * 10) / 10,
+    totaal_km: Math.round(jaarKm * 10) / 10, // jaar-tot-nu, zelfde eerlijke beperking als Running
+    trainingen_deze_week: trainingenDezeWeek,
+    gemiddelde_split_sec_per_500m: gemMPerMin ? mPerMinNaarSplitPer500m(gemMPerMin) : null,
+    gemiddelde_hartslag: gemiddelde(hrWaarden) ? Math.round(gemiddelde(hrWaarden)!) : null,
+    gemiddelde_slagfrequentie: gemiddelde(slagfrequentieWaarden) ? Math.round(gemiddelde(slagfrequentieWaarden)!) : null,
+    trainingstijd_minuten: trainingstijdMinuten,
+    langste_sessie: langsteSessie,
+    snelste_training: snelsteTraining,
+  }
+}
+
+export interface WekelijkseRowingTrend {
+  week_start: string
+  gemiddelde_split_sec_per_500m: number | null
+  gemiddelde_hartslag: number | null
+  gemiddelde_slagfrequentie: number | null
+}
+
+export async function haalWekelijkseRowingTrend(userId: string, aantalWeken: number): Promise<WekelijkseRowingTrend[]> {
+  const supabase = createAdminClient()
+  const vandaag = new Date()
+  const periodeStart = new Date(vandaag)
+  periodeStart.setDate(periodeStart.getDate() - aantalWeken * 7)
+
+  const { data: activiteiten, error } = await supabase
+    .from('activity_sessions')
+    .select('date, duration, metrics, activities!inner(name)')
+    .eq('user_id', userId)
+    .in('activities.name', ['Roeien'])
+    .gte('date', isoDatum(periodeStart))
+    .order('date', { ascending: true })
+
+  if (error) throw error
+
+  const perWeek: Record<string, { mPerMinSom: number; mPerMinCount: number; hrSom: number; hrCount: number; slagSom: number; slagCount: number }> = {}
+
+  for (const a of (activiteiten || []) as unknown as RowingActiviteitRij[]) {
+    const weekKey = isoDatum(maandagVanWeekRowing(new Date(a.date)))
+    if (!perWeek[weekKey]) perWeek[weekKey] = { mPerMinSom: 0, mPerMinCount: 0, hrSom: 0, hrCount: 0, slagSom: 0, slagCount: 0 }
+    if (a.metrics?.distance && a.duration > 0) {
+      perWeek[weekKey].mPerMinSom += a.metrics.distance / a.duration
+      perWeek[weekKey].mPerMinCount++
+    }
+    if (a.metrics?.avg_hr) { perWeek[weekKey].hrSom += a.metrics.avg_hr; perWeek[weekKey].hrCount++ }
+    if (a.metrics?.avg_stroke_rate) { perWeek[weekKey].slagSom += a.metrics.avg_stroke_rate; perWeek[weekKey].slagCount++ }
+  }
+
+  return Object.entries(perWeek)
+    .map(([week_start, w]) => ({
+      week_start,
+      gemiddelde_split_sec_per_500m: w.mPerMinCount > 0 ? mPerMinNaarSplitPer500m(w.mPerMinSom / w.mPerMinCount) : null,
+      gemiddelde_hartslag: w.hrCount > 0 ? Math.round(w.hrSom / w.hrCount) : null,
+      gemiddelde_slagfrequentie: w.slagCount > 0 ? Math.round(w.slagSom / w.slagCount) : null,
+    }))
+    .sort((a, b) => a.week_start.localeCompare(b.week_start))
 }

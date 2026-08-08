@@ -704,17 +704,33 @@ nodig.
 echte data, inclusief de Concept2-link (blijft "gebouwd, niet
 geverifieerd" zolang Concept2's API instabiel is).
 
-## 📋 Bevestigd gat, bewust NIET nu opgepakt — Rowing Performance Center
-**Vastgesteld 8 augustus 2026, tijdens het Activiteiten-scherm-traject.**
-Cycling (Power Center) en Running (Performance Center: VDOT/Pace
-Curve/records/zones/progressie) hebben allebei een eigen, uitgebreide
-performance-pagina. **Rowing niet** — `rowing-grafieken.ts` bestaat en
-werkt (voedt het gecombineerde platform-Performance-scherm via
-`load-engine.ts`), maar heeft geen eigen zichtbare pagina zoals de
-andere twee sporten. **Volgorde, expliciet afgesproken:** eerst het
-Activiteiten-scherm afmaken (het oorspronkelijke, actieve doel), dán
-een Rowing Performance Center bouwen — niet nu al meenemen, zou het
-Activiteiten-scherm vertragen.
+## ✅ Rowing Performance Center — v2.4.309
+**Gat uit de vorige notitie gedicht.** Cycling/Running hadden het al —
+Rowing nu ook, met exact dezelfde eerlijke aanpak (geen nieuwe
+formules, alleen bestaande data samengevoegd).
+
+**Nieuw:**
+- `rowing-grafieken.ts` uitgebreid — `haalRowingDashboard()` en
+  `haalWekelijkseRowingTrend()`, spiegelbeeld van Running's
+  equivalenten, met roei-conventies (split per 500m i.p.v. pace/km,
+  slagfrequentie i.p.v. cadans). Snelheid altijd afgeleid uit
+  afstand/duur — Concept2's eigen sync slaat geen los `avg_speed`-veld
+  op, dus geen veld aangenomen dat er niet is
+- `api/specialists/rowing/grafieken` — nieuwe route, spiegelbeeld van
+  Running's, combineert Dashboard + CTL/ATL/TSB + Wekelijkse Trend
+- `/coach/rowing/performance` — nieuwe pagina, één gecombineerd scherm
+  (Dashboard + Trainingsbelasting-grafiek + drie wekelijkse-trend-
+  staafdiagrammen), zelfde dependency-vrije SVG/CSS-aanpak als
+  Running/Cycling — geen nieuwe chart-library
+- Link toegevoegd op `/coach/rowing` zelf (was nergens vindbaar zonder)
+
+**Bewust NIET meegenomen, expliciet benoemd — geen stille beperking:**
+Records (PR's per afstand) en Afstand-trends. Running's versie hiervan
+leest uit een aparte tabel (`running_distance_records`), gevuld door
+parser-logica tijdens TCX-import (`tcx-parser.ts`+`afstandscurve.ts`).
+Voor Rowing bestaat geen equivalente tabel of import-tijd-berekening —
+dat toevoegen is een eigen, groter traject (nieuwe tabel + parser-
+wijziging), niet iets voor deze levering. Apart vervolgpunt.
 
 ## Core Architectuurregels
 

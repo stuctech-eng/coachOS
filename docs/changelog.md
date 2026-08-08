@@ -1,5 +1,55 @@
 # CoachOS — Changelog
 
+## v2.4.309 — Rowing Performance Center
+**Het bevestigde gat gedicht — Cycling/Running hadden dit al, Rowing
+nu ook. Zelfde eerlijke aanpak: geen nieuwe formules verzinnen, alleen
+bestaande data samengevoegd achter één scherm.**
+
+### `rowing-grafieken.ts` — twee nieuwe functies
+- **`haalRowingDashboard()`** — spiegelbeeld van `haalRunningDashboard()`.
+  Roei-conventies: split per 500m (Concept2/British Rowing-standaard)
+  i.p.v. pace/km, slagfrequentie i.p.v. cadans. Snelheid altijd
+  afgeleid uit `distance/duration` — Concept2's eigen sync slaat geen
+  los `avg_speed`-veld op (bevestigd, niet aangenomen), dus geen veld
+  gebruikt dat er niet is
+- **`haalWekelijkseRowingTrend()`** — spiegelbeeld van
+  `haalWekelijkseRunningTrend()`, zelfde patroon
+
+### `api/specialists/rowing/grafieken` — nieuwe route
+Combineert Dashboard + CTL/ATL/TSB (bestond al, `haalRowingCTLATLTSB`)
++ Wekelijkse Trend. Spiegelbeeld van `api/specialists/running/grafieken`.
+
+### `/coach/rowing/performance` — nieuwe pagina
+E�n gecombineerd scherm i.p.v. Running's twee losse pagina's (bewust
+compacter, sluit aan bij Cycling's single-page aanpak). Dashboard-
+kaart, Trainingsbelasting-kaart met CTL/ATL-lijngrafiek, drie
+wekelijkse-trend-staafdiagrammen (split/hartslag/slagfrequentie).
+**Zelfde dependency-vrije SVG/CSS-grafiekcomponenten
+(`LijnGrafiek`/`StaafGrafiek`) 1-op-1 hergebruikt van
+`coach/running/grafieken/page.tsx`** — geen nieuwe chart-library,
+geen nieuwe implementatie van iets dat al bestond.
+
+### `/coach/rowing/page.tsx` — link toegevoegd
+Nieuwe pagina was nergens vanuit de app bereikbaar — kaart toegevoegd,
+direct onder de bestaande Trainingsplan-kaart.
+
+### Bewust NIET meegenomen — expliciet benoemd, niet stilzwijgend
+**Records en Afstand-trends.** Running's versie hiervan leest uit een
+aparte tabel (`running_distance_records`), gevuld door parser-logica
+tijdens TCX-import. Voor Rowing bestaat geen equivalente tabel of
+import-tijd-berekening — een eigen, groter traject (nieuwe tabel +
+parser-wijziging in `tcx-parser.ts`/de Concept2-sync), niet iets voor
+deze levering.
+
+### Extra zorgvuldigheid bij imports
+Na de v2.4.305/306-importfout (verkeerd bestand voor Running's
+drempelfunctie) dit keer expliciet alle imports in de nieuwe route
+tegen de zojuist geschreven exports gelegd, vóór levering — niet
+achteraf via een mislukte build ontdekt.
+
+**Nog niet getest** — vergt een blik op de echte pagina, idealiter met
+een ingevulde 2k-testtijd en wat Concept2-historie.
+
 ## v2.4.308 — Activiteiten-scherm: visuele verfijning (contrast/lucht)
 **Overleg: witte kaarten (zoals de mockup) vs. donker (consistent met
 de rest van de app). Besloten: donker blijft, met een lichte
