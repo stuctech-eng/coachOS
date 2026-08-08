@@ -15,6 +15,7 @@ interface StatusData {
   concept2Gekoppeld: boolean
   concept2UserId: number | null
   klaarVoorWebhook: boolean
+  concept2DeepLinkCheck: { resultId: string | null; kandidaatUrl: string | null; datum: string | null } | null
 }
 interface TestResultaat {
   stap: string
@@ -93,6 +94,38 @@ export default function Concept2WebhookDebugPage() {
                   Verbreek en herverbind de Concept2-koppeling op /coach/rowing om dit te vullen.
                 </p>
               )}
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-5">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">
+            Concept2-deep-link-verificatie (Activiteiten-scherm)
+          </p>
+          <p className="text-xs text-slate-500 mb-4">
+            Handmatige controle — tik de link aan en kijk of de juiste training opent.
+            Automatisch aannemen dat het klopt is niet genoeg.
+          </p>
+          {!status?.concept2DeepLinkCheck ? (
+            <p className="text-sm text-slate-500">Geen Concept2-activiteit gevonden om te testen.</p>
+          ) : !status.concept2DeepLinkCheck.kandidaatUrl ? (
+            <p className="text-sm text-amber-400">
+              Wel een activiteit gevonden ({status.concept2DeepLinkCheck.datum}), maar concept2_user_id
+              of het result-ID ontbreekt — link kan nu niet gebouwd worden.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-slate-300">
+                Testactiviteit: {status.concept2DeepLinkCheck.datum} (result-ID: {status.concept2DeepLinkCheck.resultId})
+              </p>
+              <a
+                href={status.concept2DeepLinkCheck.kandidaatUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary-400 break-all underline"
+              >
+                {status.concept2DeepLinkCheck.kandidaatUrl}
+              </a>
             </div>
           )}
         </Card>

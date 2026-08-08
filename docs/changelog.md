@@ -1,5 +1,27 @@
 # CoachOS — Changelog
 
+## v2.4.304 — Concept2-deep-link-verificatietool (Activiteiten-scherm, voorbereiding)
+**Geen nieuwe pagina — bestaande `/debug/concept2-webhook` uitgebreid,
+zelfde discipline als de rest van deze week (hergebruik, niet
+dupliceren).**
+
+### Aanleiding
+Vóór de Activiteiten-scherm-bouw eerst handmatig bevestigen dat
+`log.concept2.com/profile/{concept2_user_id}/log/{resultId}` ook
+daadwerkelijk naar de juiste training leidt — niet aannemen op basis
+van twee forumberichten.
+
+### Nieuw
+- `GET /api/debug/concept2-webhook` — haalt nu ook één echte,
+  bestaande `activity_session` met `source: 'concept2'` op, extraheert
+  het result-ID uit `notes`, en bouwt de kandidaat-URL
+- `/debug/concept2-webhook`-pagina — toont deze URL als klikbare link,
+  met expliciete instructie: handmatig aantikken en controleren, niet
+  automatisch aannemen dat het klopt
+
+**Puur leesfunctionaliteit, geen schrijfactie, geen risico voor
+bestaande data.**
+
 ## v2.4.303 — Twee notities vastgelegd: gesloten besluiten + Rowing-gat
 **Geen code. Aanleiding: een extern voorstel (GPT) met verouderde
 aannames over Coach Decision Engine/Matching-confidence, en een vraag

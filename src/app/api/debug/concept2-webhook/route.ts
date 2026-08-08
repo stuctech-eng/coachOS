@@ -50,10 +50,38 @@ export async function GET() {
       .eq('user_id', user.id)
       .maybeSingle()
 
+    // v2.4.304 (Activiteiten-scherm, Concept2-deep-link-verificatie):
+    // haalt één echte, bestaande activity_session met source='concept2'
+    // op, extraheert het result-ID uit notes ('concept2:{id}'), en bouwt
+    // de kandidaat-URL — puur ter handmatige controle door de gebruiker
+    // (tik 'm aan, kijk of de juiste training opent), NIET om automatisch
+    // aan te nemen dat het klopt.
+    const { data: voorbeeldActiviteit } = await supabase
+      .from('activity_sessions')
+      .select('id, date, notes')
+      .eq('user_id', user.id).eq('source', 'concept2')
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    let concept2DeepLinkCheck: { resultId: string | null; kandidaatUrl: string | null; datum: string | null } | null = null
+    if (voorbeeldActiviteit) {
+      const match = voorbeeldActiviteit.notes?.match(/concept2:(\d+)/)
+      const resultId = match ? match[1] : null
+      concept2DeepLinkCheck = {
+        resultId,
+        datum: voorbeeldActiviteit.date,
+        kandidaatUrl: (tokenRij?.concept2_user_id && resultId)
+          ? `https://log.concept2.com/profile/${tokenRij.concept2_user_id}/log/${resultId}`
+          : null,
+      }
+    }
+
     return NextResponse.json({
       concept2Gekoppeld: !!tokenRij,
       concept2UserId: tokenRij?.concept2_user_id ?? null,
       klaarVoorWebhook: !!tokenRij?.concept2_user_id,
+      concept2DeepLinkCheck,
     })
   } catch (err) {
     console.error('[debug/concept2-webhook GET]', err)
