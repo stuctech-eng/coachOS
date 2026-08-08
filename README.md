@@ -627,6 +627,35 @@ dismissal-opslag — bewust simpel gehouden voor een eerste versie).
 — "je hebt 3 weken op rij op maandag getraind", herhaald overslaan,
 etc.) — dit is bewust alleen het eerste, concrete signaal.
 
+## 🔒 Gesloten architectuurbesluiten — niet opnieuw ter discussie stellen
+**Vastgelegd 8 augustus 2026**, na een extern voorstel (GPT) dat
+verouderde aannames bevatte over precies deze punten — hier expliciet
+vastgelegd zodat een volgende sessie (of extern voorstel) ze niet
+opnieuw als "openstaand" behandelt:
+- **Coach Decision Engine (Fase 1-3, v2.4.288-293) is af** — planning-
+  vergelijking, blessure, herstel, cross-sport, cumulatieve belasting.
+  Concept2/Garmin TCX/Bibliotheek zijn gemigreerd; Strava/Garmin Vision
+  bewust nog niet (liggen stil, geen prioriteit)
+- **Workout Matching-confidence blijft volledig intern** — geen
+  gebruikersvraag, geen Match Review UI, geen "was dit je geplande
+  training?"-scherm. Alleen loggen (`match_confidence`/`match_reden`,
+  bestaan al sinds v2.4.267)
+- **Matching en Coach Call zijn en blijven twee gescheiden vragen** —
+  Matching: "welke geplande sessie hoort hierbij?" Coach Call: "moet
+  de Coach hierover praten?" Nooit samenvoegen tot één systeem
+
+## 📋 Bevestigd gat, bewust NIET nu opgepakt — Rowing Performance Center
+**Vastgesteld 8 augustus 2026, tijdens het Activiteiten-scherm-traject.**
+Cycling (Power Center) en Running (Performance Center: VDOT/Pace
+Curve/records/zones/progressie) hebben allebei een eigen, uitgebreide
+performance-pagina. **Rowing niet** — `rowing-grafieken.ts` bestaat en
+werkt (voedt het gecombineerde platform-Performance-scherm via
+`load-engine.ts`), maar heeft geen eigen zichtbare pagina zoals de
+andere twee sporten. **Volgorde, expliciet afgesproken:** eerst het
+Activiteiten-scherm afmaken (het oorspronkelijke, actieve doel), dán
+een Rowing Performance Center bouwen — niet nu al meenemen, zou het
+Activiteiten-scherm vertragen.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

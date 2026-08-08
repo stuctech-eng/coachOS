@@ -1,5 +1,26 @@
 # CoachOS — Changelog
 
+## v2.4.303 — Twee notities vastgelegd: gesloten besluiten + Rowing-gat
+**Geen code. Aanleiding: een extern voorstel (GPT) met verouderde
+aannames over Coach Decision Engine/Matching-confidence, en een vraag
+van de gebruiker of Rowing een eigen Performance Center mist.**
+
+### Gesloten architectuurbesluiten, expliciet vastgelegd
+Voorkomt dat een volgende sessie (of extern voorstel) dit opnieuw als
+open beschouwt:
+- Coach Decision Engine (Fase 1-3, v2.4.288-293) is af
+- Workout Matching-confidence blijft volledig intern — geen Match
+  Review UI, geen gebruikersvraag
+- Matching en Coach Call blijven twee gescheiden vragen
+
+### Bevestigd gat: Rowing Performance Center ontbreekt
+Cycling (Power Center) en Running (Performance Center: VDOT/Pace
+Curve/records/zones/progressie) hebben allebei een eigen pagina.
+Rowing niet — `rowing-grafieken.ts` bestaat en werkt, voedt alleen het
+gecombineerde platform-Performance-scherm, geen eigen zichtbare
+pagina. **Expliciet afgesproken volgorde:** eerst het Activiteiten-
+scherm afmaken, dan dit oppakken.
+
 ## v2.4.302 — MIJLPAAL: Fase 1-verificatie in productie geslaagd
 **Geen code. De laatste, niet-via-debug-bevestigde onzekerheid van het
 hele Workout Completion Platform is nu gesloten — 7 augustus 2026, een
