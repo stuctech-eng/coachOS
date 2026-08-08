@@ -36,6 +36,9 @@ interface ActivitySession {
   source: string
   notes: string | null
   activities: { name: string } | null
+  tss: number | null
+  intensiteit: 'laag' | 'gemiddeld' | 'hoog' | null
+  bronLink: string | null
 }
 
 const SPORT_ICONS: Record<string, string> = {
@@ -50,6 +53,35 @@ const SPORT_ICONS: Record<string, string> = {
   Tennis: '🎾',
   CrossFit: '💪',
   Kettlebell: '🔔',
+}
+
+// v2.4.305: expliciete bronlabel-mapping — verving een bug
+// (session.source === 'strava' ? 'Strava' : 'Garmin'), waardoor
+// Concept2- én Trainer AI-activiteiten ten onrechte "Garmin" toonden.
+// Alle vier bevestigde source-waarden (zie regressiecontrole,
+// verificatiefase) expliciet benoemd, plus een neutrale fallback voor
+// 'manual' (toegestaan door de constraint, nergens actief gebruikt) en
+// eventuele toekomstige, nu-onbekende waarden.
+const BRON_LABELS: Record<string, string> = {
+  strava: 'Strava',
+  garmin: 'Garmin',
+  concept2: 'Concept2',
+  trainer_ai: 'In-app',
+  manual: 'Handmatig',
+}
+function bronLabel(source: string): string {
+  return BRON_LABELS[source] || 'Onbekend'
+}
+
+const INTENSITEIT_KLEUR: Record<string, string> = {
+  laag: 'bg-green-500',
+  gemiddeld: 'bg-blue-500',
+  hoog: 'bg-red-500',
+}
+const INTENSITEIT_LABEL: Record<string, string> = {
+  laag: 'Laag',
+  gemiddeld: 'Gemiddeld',
+  hoog: 'Hoog',
 }
 
 function formatDuur(min: number): string {
@@ -69,19 +101,19 @@ function formatDatum(dateStr: string): string {
   return d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-function getStravaActivityId(notes: string | null): string | null {
-  if (!notes) return null
-  const match = notes.match(/strava:(\d+)/)
-  return match ? match[1] : null
-}
+// v2.4.305: getStravaActivityId() verwijderd — enige gebruik was de
+// oude, per-activiteit Strava-link, nu vervangen door het algemene
+// dashboard (session.bronLink) — geen dode code laten staan.
 
 // compact = true: geen eigen paginatitel/header, bedoeld om als sectie
 // binnen een andere pagina (Voortgang) te worden getoond
 export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
   const router = useRouter()
   const [sessions, setSessions] = useState<ActivitySession[]>([])
+  const [weekdoelMinuten, setWeekdoelMinuten] = useState(0)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('alle')
+  const [periode, setPeriode] = useState<'week' | 'maand'>('week')
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<{ success: boolean; message: string; importedNames?: string[] } | null>(null)
   const [langzameSync, setLangzameSync] = useState(false)
@@ -119,6 +151,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
       const res = await fetch('/api/activities')
       const data = await res.json()
       setSessions(data.sessions || [])
+      setWeekdoelMinuten(data.weekdoelMinuten || 0)
     } catch {
       setSessions([])
     } finally {
@@ -132,11 +165,40 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
     ? sessions
     : sessions.filter(s => (s.activities?.name || 'Anders') === filter)
 
-  const weekAgo = new Date()
-  weekAgo.setDate(weekAgo.getDate() - 7)
-  const weekSessions = sessions.filter(s => new Date(s.date) >= weekAgo)
-  const weekMinuten = weekSessions.reduce((acc, s) => acc + s.duration, 0)
-  const weekKm = weekSessions.reduce((acc, s) => acc + (s.metrics.distance || 0), 0) / 1000
+  // v2.4.305 (Activiteiten-scherm, Stap 3): Dashboard-berekening.
+  // Bewust dezelfde definitie van "periode" als de bestaande, al-
+  // werkende week-telling hierboven had (rollend, niet kalender-
+  // gebaseerd) — geen nieuwe, afwijkende periode-definitie invoeren.
+  // "Deze maand" = rollend 30 dagen, zelfde patroon.
+  const periodeDagen = periode === 'week' ? 7 : 30
+  const nu = new Date()
+  const periodeStart = new Date(nu); periodeStart.setDate(periodeStart.getDate() - periodeDagen)
+  const vorigePeriodeStart = new Date(nu); vorigePeriodeStart.setDate(vorigePeriodeStart.getDate() - periodeDagen * 2)
+
+  const dashboardSessies = filter === 'alle' ? sessions : gefilterd
+  const huidigePeriodeSessies = dashboardSessies.filter(s => new Date(s.date) >= periodeStart)
+  const vorigePeriodeSessies = dashboardSessies.filter(s => new Date(s.date) >= vorigePeriodeStart && new Date(s.date) < periodeStart)
+
+  function periodeTotalen(lijst: ActivitySession[]) {
+    const duurMin = lijst.reduce((acc, s) => acc + s.duration, 0)
+    // Alleen sessies MET afstand tellen mee — geen sessie zonder afstand
+    // laten meetellen als 0 (zou de gemiddelde afstand-indruk vertekenen,
+    // architectuurbesluit "nooit ontbrekende data als 0 meenemen")
+    const afstandM = lijst.reduce((acc, s) => acc + (s.metrics.distance || 0), 0)
+    const tssWaarden = lijst.map(s => s.tss).filter((t): t is number => t !== null)
+    const gemTss = tssWaarden.length > 0 ? Math.round(tssWaarden.reduce((a, b) => a + b, 0) / tssWaarden.length) : null
+    return { duurMin, afstandKm: afstandM / 1000, gemTss }
+  }
+
+  const huidig = periodeTotalen(huidigePeriodeSessies)
+  const vorig = periodeTotalen(vorigePeriodeSessies)
+  const trendPct = vorig.duurMin > 0 ? Math.round(((huidig.duurMin - vorig.duurMin) / vorig.duurMin) * 100) : null
+
+  // Weekdoel-voortgang — alleen zinvol bij "week" (er bestaat geen
+  // maanddoel-bron, niet zelf verzinnen door het weekdoel × 4 te doen)
+  const weekdoelVoortgangPct = periode === 'week' && weekdoelMinuten > 0
+    ? Math.min(100, Math.round((huidig.duurMin / weekdoelMinuten) * 100))
+    : null
 
   return (
     <div className="text-white">
@@ -146,18 +208,81 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
         </div>
       )}
 
-      <div className={compact ? 'mb-4 grid grid-cols-2 gap-3' : 'px-4 mb-4 grid grid-cols-2 gap-3'}>
-        <div className="bg-[#1c2128] rounded-2xl p-4">
-          <p className="text-xs text-gray-400 mb-1">Deze week</p>
-          <p className="text-2xl font-bold text-white">{weekSessions.length}</p>
-          <p className="text-xs text-gray-400">activiteiten</p>
+      {compact ? (
+        // v2.4.305: compact-modus ONGEWIJZIGD gelaten — heeft op dit
+        // moment geen consumers (bevestigd tijdens de verificatiefase),
+        // maar de prop zelf blijft bestaan; geen regressie riskeren op
+        // iets dat morgen weer in gebruik genomen kan worden.
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="bg-[#1c2128] rounded-2xl p-4">
+            <p className="text-xs text-gray-400 mb-1">Deze week</p>
+            <p className="text-2xl font-bold text-white">{huidigePeriodeSessies.length}</p>
+            <p className="text-xs text-gray-400">activiteiten</p>
+          </div>
+          <div className="bg-[#1c2128] rounded-2xl p-4">
+            <p className="text-xs text-gray-400 mb-1">Tijd</p>
+            <p className="text-2xl font-bold text-white">{formatDuur(huidig.duurMin)}</p>
+            {huidig.afstandKm > 0 && <p className="text-xs text-gray-400">{huidig.afstandKm.toFixed(1)} km</p>}
+          </div>
         </div>
-        <div className="bg-[#1c2128] rounded-2xl p-4">
-          <p className="text-xs text-gray-400 mb-1">Tijd</p>
-          <p className="text-2xl font-bold text-white">{formatDuur(weekMinuten)}</p>
-          {weekKm > 0 && <p className="text-xs text-gray-400">{weekKm.toFixed(1)} km</p>}
+      ) : (
+        // v2.4.305: Voortgang Dashboard — screenshot-referentie
+        // (gebruiker, 8 augustus 2026). Alleen op de volledige pagina.
+        <div className="px-4 mb-4">
+          <div className="bg-[#1c2128] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-gray-400 uppercase tracking-wider">Voortgang Dashboard</p>
+            </div>
+            <div className="flex bg-[#0d1117] rounded-xl p-1 mb-4">
+              <button onClick={() => setPeriode('week')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${periode === 'week' ? 'bg-white text-black' : 'text-gray-400'}`}>
+                Deze week
+              </button>
+              <button onClick={() => setPeriode('maand')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${periode === 'maand' ? 'bg-white text-black' : 'text-gray-400'}`}>
+                Deze maand
+              </button>
+            </div>
+
+            <div className="flex justify-between gap-3 mb-3">
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase">Totaal tijd</p>
+                <p className="text-xl font-bold text-white">{formatDuur(huidig.duurMin)}</p>
+              </div>
+              {huidig.afstandKm > 0 && (
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase">Totaal afstand</p>
+                  <p className="text-xl font-bold text-white">{huidig.afstandKm.toFixed(1)} km</p>
+                </div>
+              )}
+              {huidig.gemTss !== null && (
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase">Gem. Trainingsbelasting</p>
+                  <p className="text-xl font-bold text-white">{huidig.gemTss}</p>
+                </div>
+              )}
+            </div>
+
+            {trendPct !== null && (
+              <p className={`text-xs mb-3 ${trendPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {trendPct >= 0 ? '↗' : '↘'} {trendPct >= 0 ? '+' : ''}{trendPct}% (vs. vorige {periode === 'week' ? 'week' : 'maand'})
+              </p>
+            )}
+
+            {weekdoelVoortgangPct !== null && (
+              <>
+                <div className="w-full h-2 bg-[#0d1117] rounded-full overflow-hidden mb-1">
+                  <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${weekdoelVoortgangPct}%` }} />
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-[11px] text-gray-500">Weekdoel ({formatDuur(weekdoelMinuten)})</p>
+                  <p className="text-[11px] text-gray-400">{weekdoelVoortgangPct}%</p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={compact ? 'mb-4' : 'px-4 mb-4'}>
         <Link href={'/settings/garmin-activity-import'}
@@ -249,7 +374,10 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
             const icoon = SPORT_ICONS[naam] || '🏅'
             const { distance, avg_hr, calories, avg_speed, max_speed, avg_cadence, max_cadence, avg_watts, max_watts } = session.metrics
             const elevationGain = session.metrics.elevation ?? session.metrics.elevation_gain
-            const stravaId = session.source === 'strava' ? getStravaActivityId(session.notes) : null
+            // v2.4.305: bronLink komt nu server-side kant-en-klaar mee
+            // (Concept2 specifieke workout, Garmin/Strava algemeen
+            // dashboard) — vervangt de oude, Strava-only getStravaActivityId-check.
+            const externeLink = session.bronLink
 
             const kaartInhoud = (
               <>
@@ -263,12 +391,12 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
                       <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
                         session.source === 'strava' ? 'bg-orange-900/40 text-orange-400' : 'bg-blue-900/40 text-blue-400'
                       }`}>
-                        {session.source === 'strava' ? 'Strava' : 'Garmin'}
+                        {bronLabel(session.source)}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{formatDatum(session.date)}</p>
                   </div>
-                  {stravaId && <ChevronRight size={18} className="text-gray-600 flex-shrink-0" />}
+                  {externeLink && <ChevronRight size={18} className="text-gray-600 flex-shrink-0" />}
                 </div>
 
                 <div className="mt-3 flex gap-4 flex-wrap">
@@ -322,12 +450,32 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
                     </div>
                   )}
                 </div>
+
+                {/* v2.4.305: Trainingsbelasting — alleen tonen als de
+                    server 'm kon berekenen (Cycling/Running/Rowing met
+                    profiel + de juiste metric). Wandelen en ontbrekende
+                    data: geen regel, nooit een gegokt cijfer. */}
+                {session.tss !== null && session.intensiteit !== null && (
+                  <div className="mt-3 pt-3 border-t border-white/5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-gray-500">Trainingsbelasting</p>
+                      <p className="text-xs text-gray-400">{INTENSITEIT_LABEL[session.intensiteit]}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-[#2d333b] rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${INTENSITEIT_KLEUR[session.intensiteit]}`}
+                          style={{ width: `${Math.min(100, session.tss)}%` }} />
+                      </div>
+                      <p className="text-xs font-medium text-white flex-shrink-0">{session.tss}/100</p>
+                    </div>
+                  </div>
+                )}
               </>
             )
 
-            if (stravaId) {
+            if (externeLink) {
               return (
-                <a key={session.id} href={`https://www.strava.com/activities/${stravaId}`} target="_blank" rel="noopener noreferrer"
+                <a key={session.id} href={externeLink} target="_blank" rel="noopener noreferrer"
                   className="block bg-[#1c2128] rounded-2xl p-4 active:bg-[#22272e] transition-colors">
                   {kaartInhoud}
                 </a>

@@ -644,6 +644,66 @@ opnieuw als "openstaand" behandelt:
   Matching: "welke geplande sessie hoort hierbij?" Coach Call: "moet
   de Coach hierover praten?" Nooit samenvoegen tot één systeem
 
+## 🏃 Activiteiten-scherm — redesign (v2.4.305)
+**Vastgelegd 8 augustus 2026. Screenshot-referentie (gebruiker) als
+UX-doel, volledige verificatiefase vooraf (7 punten, geen aannames)
+vóór er iets gebouwd is.**
+
+**Bestaande architectuur behouden, uitgebreid — niet vervangen:**
+`src/app/activities/page.tsx` blijft de dunne wrapper,
+`src/components/ActiviteitenSectie.tsx` blijft de hoofdcomponent,
+`GET /api/activities` blijft dezelfde route, `/activities/[id]` blijft
+ongewijzigd (routekaart + Ritanalyse, unieke waarde).
+
+**Belangrijke correctie tijdens de verificatiefase:** `compact={true}`
+(gebruikt door `ActiviteitenSectie` binnen Voortgang) bleek **nul
+consumers** te hebben — `progressie/page.tsx` importeert het
+component niet meer sinds v2.4.93's terugdraai. De harde "compact mag
+niet breken"-regel uit de opdracht was dus gebaseerd op een verouderd
+code-commentaar, niet de actuele routing. De prop is niet verwijderd
+(geen onnodig risico), maar heeft het ontwerp niet meer beperkt dan
+nodig.
+
+**API (`GET /api/activities`) uitgebreid, server-side:**
+- `tss`/`intensiteit` per sessie — **geen nieuwe formule**, de drie
+  bestaande, geëxporteerde pure functies (`berekenGeschatteTSS`
+  Cycling/`berekenGeschatteRunningTSS` Running/`berekenGeschatteRowingTSS`
+  Rowing) rechtstreeks aangeroepen met de bestaande profiel-drempel-
+  waarden (`ftp`/VDOT-afgeleid/`laatste_2k_tijd_sec`). Wandelen: bewust
+  altijd `null`, geen formule verzonnen
+- `bronLink` per sessie — Concept2 naar de specifieke workout
+  (`concept2_user_id` + result-ID uit `notes`, **nog niet handmatig
+  geverifieerd** — Concept2's eigen API-instabiliteit blokkeert dit nog
+  steeds, zie `/debug/concept2-webhook`), Garmin/Strava naar hun
+  algemene dashboard (geen specifieke-activiteit-ID meer construeren —
+  Strava's betaalmodel maakt dat onbetrouwbaar, Garmin's TCX-import
+  geeft geen bruikbaar web-ID), Trainer AI/onbekend: geen link
+- `weekdoelMinuten` — som van `beschikbare_uren_per_week × 60` over
+  Cycling/Running/Rowing-profielen met een ingevulde waarde. Geen
+  nieuw doelensysteem
+
+**`ActiviteitenSectie.tsx` uitgebreid:**
+- Nieuw "Voortgang Dashboard" (alleen op de volledige pagina, niet in
+  `compact`): Week/Maand-schakelaar (rollend 7/30 dagen, zelfde
+  periode-definitie als de al-bestaande week-telling — geen nieuwe
+  invoeren), totaal tijd/afstand/gem. TSS, trend vs. vorige periode,
+  weekdoel-voortgangsbalk (**alleen bij "week"** — er bestaat geen
+  maanddoel-bron, niet zelf verzonnen door het weekdoel te
+  vermenigvuldigen)
+- **Bug gefixt:** bronlabel was `session.source === 'strava' ? 'Strava'
+  : 'Garmin'` — Concept2 en Trainer AI-activiteiten kregen dus ten
+  onrechte "Garmin". Nu een expliciete mapping, alle vier bevestigde
+  source-waarden benoemd
+- Trainingsbelasting-regel op de kaart (kleurcode groen/blauw/rood,
+  "Suffer Score" bewust niet gebruikt — bestaande CoachOS-term
+  "Trainingsbelasting"/TSS)
+- `getStravaActivityId()` verwijderd — dode code na de bronLink-
+  vervanging
+
+**Nog niet handmatig getest** — vergt een blik op de echte pagina met
+echte data, inclusief de Concept2-link (blijft "gebouwd, niet
+geverifieerd" zolang Concept2's API instabiel is).
+
 ## 📋 Bevestigd gat, bewust NIET nu opgepakt — Rowing Performance Center
 **Vastgesteld 8 augustus 2026, tijdens het Activiteiten-scherm-traject.**
 Cycling (Power Center) en Running (Performance Center: VDOT/Pace

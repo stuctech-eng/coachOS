@@ -1,5 +1,54 @@
 # CoachOS — Changelog
 
+## v2.4.305 — Activiteiten-scherm-redesign (Stap 3, implementatie)
+**Volledige verificatiefase (7 punten) vooraf doorlopen, geen aannames
+— zie v2.4.304 en de chatgeschiedenis 8 augustus 2026 voor de details.
+Screenshot-referentie van de gebruiker als UX-doel.**
+
+### Belangrijke correctie tijdens de verificatiefase
+`compact={true}` (bedoeld voor hergebruik binnen Voortgang) bleek
+**nul consumers** te hebben — `progressie/page.tsx` importeert
+`ActiviteitenSectie` niet meer sinds v2.4.93's terugdraai (bevestigd
+via de navigatie-config, niet via het verouderde code-commentaar in
+het component zelf). De prop blijft bestaan, maar beperkte het
+ontwerp niet meer dan nodig.
+
+### `GET /api/activities` — uitgebreid, server-side
+- **`tss`/`intensiteit` per sessie** — geen nieuwe formule: de drie
+  bestaande, geëxporteerde pure functies
+  (`berekenGeschatteTSS`/`berekenGeschatteRunningTSS`/
+  `berekenGeschatteRowingTSS`) rechtstreeks aangeroepen met de
+  bestaande specialist-profiel-drempelwaarden. Wandelen: altijd
+  `null`, geen formule
+- **`bronLink` per sessie** — Concept2 naar de specifieke workout
+  (`log.concept2.com/profile/{id}/log/{resultId}`, **nog niet
+  handmatig geverifieerd**, wacht op Concept2's API-stabiliteit),
+  Garmin/Strava naar hun algemene dashboard, Trainer AI/onbekend: geen
+  link
+- **`weekdoelMinuten`** — som van `beschikbare_uren_per_week × 60`
+  over specialist-profielen, geen nieuw doelensysteem
+
+### `ActiviteitenSectie.tsx` — uitgebreid
+- Nieuw Voortgang Dashboard (alleen volledige pagina): Week/Maand
+  (rollend 7/30 dagen), totalen, trend vs. vorige periode,
+  weekdoel-voortgangsbalk (alleen bij "week")
+- **Bug gefixt:** bronlabel toonde Concept2/Trainer AI ten onrechte
+  als "Garmin" — nu een expliciete mapping
+- Trainingsbelasting-regel met kleurcode (groen/blauw/rood) —
+  "Trainingsbelasting"/TSS, bewust niet "Suffer Score"
+- `getStravaActivityId()` verwijderd (dode code na de bronLink-
+  vervanging)
+
+### Ongewijzigd
+`src/app/activities/page.tsx` (wrapper), `/activities/[id]/page.tsx`
+(routekaart/Ritanalyse, unieke waarde, blijft bestaan),
+`compact={true}`-gedrag zelf (2-kaarten-grid, ongewijzigde logica).
+
+### Nog niet getest
+Handmatige controle op de echte pagina met echte data volgt. Concept2-
+deep-link blijft "gebouwd, niet geverifieerd" zolang Concept2's API
+instabiel blijft.
+
 ## v2.4.304 — Concept2-deep-link-verificatietool (Activiteiten-scherm, voorbereiding)
 **Geen nieuwe pagina — bestaande `/debug/concept2-webhook` uitgebreid,
 zelfde discipline als de rest van deze week (hergebruik, niet
