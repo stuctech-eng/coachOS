@@ -6,8 +6,8 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { ACTIVITEIT_NAAM_NAAR_SPORT_SLEUTEL } from '@/lib/specialists/training-plan-engine/activiteit-sport-mapping'
 import { berekenGeschatteTSS } from '@/lib/specialists/cycling-grafieken'
-import { berekenGeschatteRunningTSS } from '@/lib/specialists/running-grafieken'
-import { berekenDrempelsnelheidKmh, berekenVDOT } from '@/lib/specialists/running-zones'
+import { berekenGeschatteRunningTSS, berekenDrempelsnelheidKmh } from '@/lib/specialists/running-grafieken'
+import { berekenVDOT } from '@/lib/specialists/running-zones'
 import { berekenGeschatteRowingTSS, berekenRowingDrempelsnelheid } from '@/lib/specialists/rowing-grafieken'
 
 async function getUser() {

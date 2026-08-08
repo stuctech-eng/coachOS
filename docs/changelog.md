@@ -1,5 +1,33 @@
 # CoachOS — Changelog
 
+## v2.4.306 — FIX: build-fout, verkeerd geïmporteerd bestand
+**De v2.4.305-build faalde op Vercel — mijn eigen fout, niet
+gecontroleerd vóór levering.**
+
+### Root cause
+`import { berekenDrempelsnelheidKmh } from '@/lib/specialists/running-zones'`
+— maar die functie zit in `running-grafieken.ts`, niet in
+`running-zones.ts` (waar wél `berekenVDOT` zit). Bij het schrijven van
+de import-regel per ongeluk allebei uit hetzelfde bestand aangenomen,
+zonder dat apart terug te checken tegen de eerdere verificatie (die
+wél het juiste bestand vond).
+
+### Fix
+Import gesplitst over de twee juiste bestanden:
+```ts
+import { berekenGeschatteRunningTSS, berekenDrempelsnelheidKmh } from '@/lib/specialists/running-grafieken'
+import { berekenVDOT } from '@/lib/specialists/running-zones'
+```
+Ter controle nog eens alle vier TSS-gerelateerde imports (Cycling/
+Running/Rowing) tegen de bevestigde bronbestanden gelegd — de andere
+drie klopten al.
+
+### Les
+Balans-check (haakjes/accolades) vangt dit type fout niet — een
+verkeerd geïmporteerd, wél bestaand symbool is syntactisch geldig.
+Vergt een aparte, expliciete controle van elke import-regel tegen de
+eerder-geverifieerde bronlocatie, niet alleen syntaxcontrole.
+
 ## v2.4.305 — Activiteiten-scherm-redesign (Stap 3, implementatie)
 **Volledige verificatiefase (7 punten) vooraf doorlopen, geen aannames
 — zie v2.4.304 en de chatgeschiedenis 8 augustus 2026 voor de details.
