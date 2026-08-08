@@ -724,13 +724,28 @@ formules, alleen bestaande data samengevoegd).
   Running/Cycling — geen nieuwe chart-library
 - Link toegevoegd op `/coach/rowing` zelf (was nergens vindbaar zonder)
 
-**Bewust NIET meegenomen, expliciet benoemd — geen stille beperking:**
-Records (PR's per afstand) en Afstand-trends. Running's versie hiervan
-leest uit een aparte tabel (`running_distance_records`), gevuld door
-parser-logica tijdens TCX-import (`tcx-parser.ts`+`afstandscurve.ts`).
-Voor Rowing bestaat geen equivalente tabel of import-tijd-berekening —
-dat toevoegen is een eigen, groter traject (nieuwe tabel + parser-
-wijziging), niet iets voor deze levering. Apart vervolgpunt.
+**v2.4.310 — Records/Progressie alsnog toegevoegd** (op verzoek: "niet
+laten liggen"). **Herziening van de eigen eerdere inschatting:** bij
+het echt uitwerken bleek de "nieuwe tabel + parser"-aanpak (zoals
+Running die heeft) niet nodig te zijn voor Rowing. Running haalt
+records uit **losse lap-segmenten** binnen één langere activiteit
+(sub-segment-extractie, vergt parser-tijd-berekening). Roeiers doen
+daarentegen typisch een **hele sessie** exact als 2k-test/5k-test —
+geen sub-segment nodig, dus query-time af te leiden direct uit
+`activity_sessions`, geen nieuwe tabel.
+
+**Wel een echt gat gevonden en gedicht:** de opgeslagen duur
+(`activity_sessions.duration`) is afgerond op hele minuten — te grof
+voor een PR (7:32 zou 8:00 worden). Nieuw, puur additief veld:
+`metrics.precieze_duur_sec` (Concept2 geeft dit al in tienden van een
+seconde, nooit eerder bewaard).
+
+**Eerlijke beperking, expliciet:** alleen Concept2-sessies — Garmin
+TCX heeft hetzelfde afrondingsprobleem (`tcx-parser.ts` rondt ook af
+op hele minuten), maar dat bestand is gedeeld door alle sporten, dus
+bewust niet in deze levering aangepast. Garmin-TCX-Rowing-sessies
+tellen dus nog niet mee in Records/Progressie. Kleiner vervolgpunt dan
+eerst gedacht, maar nog steeds een apart puntje.
 
 ## Core Architectuurregels
 

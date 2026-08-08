@@ -1,5 +1,58 @@
 # CoachOS — Changelog
 
+## v2.4.310 — Rowing Records/Progressie ("niet laten liggen")
+**Het in v2.4.309 opengelaten gat alsnog gedicht, op expliciet
+verzoek. Bij het uitwerken bleek de eigen eerdere inschatting te
+zwaar — geen nieuwe tabel nodig, wel een klein, echt precisiegat
+gevonden en gefixt.**
+
+### Herziening van de aanpak
+Running haalt records uit **losse lap-segmenten** binnen één langere
+activiteit — vergt een aparte tabel (`running_distance_records`) +
+parser-tijd-berekening (`tcx-parser.ts`+`afstandscurve.ts`). Roeiers
+doen typisch een **hele sessie** exact als testafstand (2k-test,
+5k-test) — geen sub-segment-extractie nodig. Daarom: query-time
+afgeleid direct uit `activity_sessions`, geen nieuwe tabel, geen
+parser-wijziging.
+
+### Gevonden tijdens het bouwen: precisiegat
+`activity_sessions.duration` is afgerond op hele minuten (7:32 zou
+8:00 worden) — te grof voor een betekenisvolle PR. Nieuw, puur
+additief veld in `concept2-result-processor.ts`:
+`metrics.precieze_duur_sec` — Concept2 geeft dit al (tienden van een
+seconde), nooit eerder bewaard. **Bestaande `duration`-afronding blijft
+ongewijzigd** (CTL/ATL/TSB heeft er niets aan een preciezere waarde,
+niet aangeraakt).
+
+### `rowing-grafieken.ts` — twee nieuwe functies
+- `haalRowingRecords()` — beste tijd per standaard testafstand
+  (500/1000/2000/5000/6000/10.000m), ±2% tolerantie (vangt normale
+  erg-stopvariatie op)
+- `haalRowingAfstandTrends()` — chronologische reeks per testafstand,
+  zelfde brondata, gedeelde filterlogica (`groepeerPerTestafstand()`)
+
+### `api/specialists/rowing/grafieken` + `/coach/rowing/performance`
+Beide uitgebreid met `records`/`afstand_trends` — Records-kaart en
+Progressie-kaart, zelfde visuele patroon als Running's equivalenten.
+
+### Eerlijke beperking, expliciet — niet stilzwijgend
+**Alleen Concept2-sessies.** Garmin TCX heeft hetzelfde
+afrondingsprobleem, maar `tcx-parser.ts` is gedeeld door alle sporten
+— bewust niet in deze levering aangepast (groter risico dan de
+Concept2-only-wijziging). Garmin-TCX-Rowing-sessies tellen dus nog
+niet mee. Kleiner vervolgpunt dan de oorspronkelijke inschatting, maar
+nog steeds een apart puntje.
+
+### Extra controle na eerdere importfouten
+Zelf-check vóór het toevoegen van de nieuwe functies: fresh live-fetch
+van `rowing-grafieken.ts` vergeleken met het lokale werkbestand om
+zeker te weten dat de basis klopte (niet een verouderde lokale versie
+per ongeluk uitgebreid). Alle imports in de bijgewerkte route
+nogmaals expliciet tegen de nieuwe exports gelegd vóór levering.
+
+**Nog niet getest** — vergt een blik op de echte pagina met een
+2k-test en/of 5k-test als losse, gesynchroniseerde Concept2-sessie.
+
 ## v2.4.309 — Rowing Performance Center
 **Het bevestigde gat gedicht — Cycling/Running hadden dit al, Rowing
 nu ook. Zelfde eerlijke aanpak: geen nieuwe formules verzinnen, alleen

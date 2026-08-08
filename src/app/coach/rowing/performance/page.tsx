@@ -11,13 +11,15 @@ import { Card } from '@/components/ui'
 // dependency-vrije SVG/CSS-grafiekaanpak als coach/running/grafieken/
 // page.tsx (LijnGrafiek/StaafGrafiek 1-op-1 hergebruikt, niet opnieuw
 // uitgevonden). Eén gecombineerde pagina (Dashboard + CTL/ATL/TSB +
-// wekelijkse trends) i.p.v. Running's twee losse pagina's — bewust
-// compacter, sluit aan bij Cycling's single-page "Power"-aanpak.
+// wekelijkse trends + Records/Progressie) i.p.v. Running's twee losse
+// pagina's — bewust compacter, sluit aan bij Cycling's single-page
+// "Power"-aanpak.
 //
-// BEWUST NIET MEEGENOMEN: Records/Afstand-trends — vergen een nieuwe
-// tabel + parser-tijd-berekening die voor Rowing niet bestaat (zie
-// api/specialists/rowing/grafieken/route.ts's module-comment voor de
-// volledige toelichting). Apart, groter vervolgpunt.
+// v2.4.310: Records/Progressie alsnog toegevoegd — bewust ZONDER
+// nieuwe tabel (zie module-comment in rowing-grafieken.ts): roeiers
+// doen typisch hele sessies als testafstand, query-time af te leiden.
+// Eerlijke beperking: alleen Concept2-sessies, Garmin TCX-Rowing nog
+// niet (mist de precieze duur die hiervoor nodig is).
 
 interface RowingDashboard {
   week_km: number
@@ -34,6 +36,19 @@ interface RowingDashboard {
 }
 interface DagelijkseBelasting { datum: string; geschatte_tss: number; ctl: number; atl: number; tsb: number }
 interface WekelijkseTrend { week_start: string; gemiddelde_split_sec_per_500m: number | null; gemiddelde_hartslag: number | null; gemiddelde_slagfrequentie: number | null }
+interface RowingRecord { afstand_m: number; tijd_sec: number; datum: string }
+interface RowingAfstandTrendPunt { datum: string; tijd_sec: number }
+
+const TESTAFSTANDEN_MET_LABEL: [number, string][] = [
+  [500, '500m'], [1000, '1000m'], [2000, '2000m'], [5000, '5000m'], [6000, '6000m'], [10000, '10.000m'],
+]
+
+function formatTijd(sec: number): string {
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  const s = Math.round(sec % 60)
+  return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`
+}
 
 function formatSplit(secPer500m: number): string {
   const min = Math.floor(secPer500m / 60)
@@ -131,6 +146,8 @@ export default function RowingPerformanceCenterPage() {
   const [dashboard, setDashboard] = useState<RowingDashboard | null>(null)
   const [ctlAtlTsb, setCtlAtlTsb] = useState<DagelijkseBelasting[]>([])
   const [wekelijkseTrend, setWekelijkseTrend] = useState<WekelijkseTrend[]>([])
+  const [records, setRecords] = useState<RowingRecord[]>([])
+  const [afstandTrends, setAfstandTrends] = useState<Record<number, RowingAfstandTrendPunt[]>>({})
 
   useEffect(() => {
     async function laadAlles() {
@@ -147,6 +164,8 @@ export default function RowingPerformanceCenterPage() {
         setDashboard(grafiekenData?.dashboard || null)
         setCtlAtlTsb(grafiekenData?.ctl_atl_tsb || [])
         setWekelijkseTrend(grafiekenData?.wekelijkse_trend || [])
+        setRecords(grafiekenData?.records || [])
+        setAfstandTrends(grafiekenData?.afstand_trends || {})
       } catch {
         // Elke sectie checkt zelf op aanwezige data
       } finally {
@@ -242,6 +261,55 @@ export default function RowingPerformanceCenterPage() {
               <StaafGrafiek data={wekelijkseTrend} veld="gemiddelde_slagfrequentie" formatter={v => `${Math.round(v)} spm`} kleur="bg-amber-500" />
             </Card>
           </>
+        )}
+
+        {/* v2.4.310: Records — hele sessies rond een standaard
+            testafstand, geen lap-extractie zoals bij Running. Alleen
+            Concept2-sessies (metrics.precieze_duur_sec), zie de
+            module-comment in rowing-grafieken.ts. */}
+        {!laden && records.length > 0 && (
+          <Card className="p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Persoonlijke records</p>
+            <p className="text-[10px] text-slate-600 mb-3">Op basis van hele sessies die (bijna) exact een testafstand waren — alleen via Concept2 gesynchroniseerde sessies.</p>
+            <div className="flex flex-col gap-2">
+              {records.map(r => {
+                const label = TESTAFSTANDEN_MET_LABEL.find(([m]) => m === r.afstand_m)?.[1] || `${r.afstand_m}m`
+                return (
+                  <div key={r.afstand_m} className="flex items-center justify-between text-sm border-t border-coach-border pt-2 first:border-0 first:pt-0">
+                    <span className="text-slate-400">{label}</span>
+                    <div className="text-right">
+                      <p className="text-white font-medium">{formatTijd(r.tijd_sec)}</p>
+                      <p className="text-[10px] text-slate-600">{new Date(r.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        )}
+
+        {/* v2.4.310: Progressie per testafstand — chronologische reeks
+            i.p.v. alleen het record, zelfde bron als hierboven */}
+        {!laden && TESTAFSTANDEN_MET_LABEL.some(([m]) => (afstandTrends[m] || []).length >= 2) && (
+          <Card className="p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Progressie</p>
+            <div className="flex flex-col gap-3">
+              {TESTAFSTANDEN_MET_LABEL.map(([m, label]) => {
+                const trend = afstandTrends[m] || []
+                if (trend.length < 2) return null
+                const eerste = trend[0], laatste = trend[trend.length - 1]
+                const verbeterdSec = eerste.tijd_sec - laatste.tijd_sec
+                return (
+                  <div key={m} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">{label}</span>
+                    <span className={`font-medium ${verbeterdSec > 0 ? 'text-green-400' : verbeterdSec < 0 ? 'text-slate-300' : 'text-slate-400'}`}>
+                      {formatTijd(laatste.tijd_sec)} {verbeterdSec !== 0 ? `(${verbeterdSec > 0 ? '−' : '+'}${formatTijd(Math.abs(verbeterdSec))})` : ''}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
         )}
 
         {geenDataHelemaal && (

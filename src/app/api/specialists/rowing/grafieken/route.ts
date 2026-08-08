@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { haalRowingDashboard, haalRowingCTLATLTSB, haalWekelijkseRowingTrend } from '@/lib/specialists/rowing-grafieken'
+import { haalRowingDashboard, haalRowingCTLATLTSB, haalWekelijkseRowingTrend, haalRowingRecords, haalRowingAfstandTrends } from '@/lib/specialists/rowing-grafieken'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -18,18 +18,14 @@ async function getUser() {
 
 // ── Rowing grafieken-route — Performance Center, 8 augustus 2026 ────────
 // Bron: bevestigd gat ("Rowing Performance Center ontbreekt", Cycling/
-// Running hebben het al) — Activiteiten-scherm-verificatiefase. Spiegelt
-// api/specialists/running/grafieken, maar bewust ZONDER records/
-// afstand_trends.
+// Running hebben het al) — Activiteiten-scherm-verificatiefase.
 //
-// Reden, expliciet: Running's haalRunningRecords()/haalAfstandTrends()
-// lezen uit `running_distance_records` — een tabel die alleen gevuld
-// wordt door parser-logica tijdens TCX-import (tcx-parser.ts +
-// afstandscurve.ts). Voor Rowing bestaat geen equivalente tabel, geen
-// equivalente import-tijd-berekening. Dat toevoegen is een eigen,
-// grotere uitbreiding (nieuwe tabel + parser-wijziging), niet iets wat
-// hier stilzwijgend meegenomen kan worden — apart vervolgpunt, expliciet
-// vastgelegd in het README, niet nu gebouwd.
+// v2.4.310: records/afstand_trends toegevoegd — bewust ZONDER nieuwe
+// tabel (zie module-comment in rowing-grafieken.ts voor de volledige
+// toelichting: roeiers doen typisch hele sessies als testafstand,
+// query-time af te leiden uit activity_sessions, geen Running-achtige
+// lap-extractie nodig). Eerlijke beperking: alleen Concept2-sessies
+// (metrics.precieze_duur_sec), Garmin TCX-Rowing nog niet.
 
 export async function GET(req: NextRequest) {
   try {
@@ -39,16 +35,20 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url)
     const weken = parseInt(url.searchParams.get('weken') || '12', 10)
 
-    const [dashboard, ctlAtlTsb, wekelijkseTrend] = await Promise.all([
+    const [dashboard, ctlAtlTsb, wekelijkseTrend, records, afstandTrends] = await Promise.all([
       haalRowingDashboard(user.id),
       haalRowingCTLATLTSB(user.id, weken * 7),
       haalWekelijkseRowingTrend(user.id, weken),
+      haalRowingRecords(user.id),
+      haalRowingAfstandTrends(user.id),
     ])
 
     return NextResponse.json({
       dashboard,
       ctl_atl_tsb: ctlAtlTsb,
       wekelijkse_trend: wekelijkseTrend,
+      records,
+      afstand_trends: afstandTrends,
       tss_is_schatting: true, // expliciet in de respons — geen NP-achtig gegeven beschikbaar, zelfde als Running
     })
   } catch (err) {

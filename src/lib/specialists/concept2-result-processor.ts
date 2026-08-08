@@ -78,6 +78,14 @@ export async function verwerkConcept2Resultaat(
   if (resultaat.heart_rate?.max) metrics.max_hr = resultaat.heart_rate.max
   if (resultaat.calories_total) metrics.calories = resultaat.calories_total
   if (resultaat.drag_factor) metrics.drag_factor = resultaat.drag_factor
+  // v2.4.310 (Rowing Performance Center — Records/Afstand-trends):
+  // Concept2 geeft de duur in tienden van een seconde (resultaat.time),
+  // maar activity_sessions.duration wordt bewust afgerond op hele
+  // minuten (regel hieronder, ongewijzigd — de CTL/ATL/TSB-berekening
+  // heeft daar niets aan een preciezere waarde). Voor een PR/record is
+  // een afronding op de minuut te grof (7:32 zou 8:00 worden) — daarom
+  // hier apart, puur additief, de precieze waarde bewaard.
+  metrics.precieze_duur_sec = Math.round(resultaat.time / 10)
 
   const duurMinuten = Math.round(resultaat.time / 600)
   const dagStr = resultaat.date.split(' ')[0]

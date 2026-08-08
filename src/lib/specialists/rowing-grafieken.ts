@@ -281,3 +281,108 @@ export async function haalWekelijkseRowingTrend(userId: string, aantalWeken: num
     }))
     .sort((a, b) => a.week_start.localeCompare(b.week_start))
 }
+
+// ── Records & Afstand-trends — v2.4.310 ─────────────────────────────────
+// Bron: expliciet, eerder opengelaten gat alsnog gedicht, op verzoek
+// van de gebruiker ("niet laten liggen"). BEWUST GEEN nieuwe tabel en
+// GEEN parser-tijd-berekening zoals Running's running_distance_records
+// — die aanpak past niet bij hoe roeiers records zetten.
+//
+// Running haalt records uit LOSSE LAP-SEGMENTEN binnen één langere
+// activiteit (bijv. de snelste 5km ergens midden in een duurloop).
+// Roeiers doen daarentegen typisch een HELE SESSIE exact als
+// 2k-test/5k-test — geen sub-segment nodig. Daarom: query-time
+// afgeleid direct uit activity_sessions, geen aparte tabel.
+//
+// EERLIJKE BEPERKING, EXPLICIET (niet stilzwijgend): vergt een
+// precieze duur (metrics.precieze_duur_sec, v2.4.310) — momenteel
+// ALLEEN gevuld door de Concept2-sync. Garmin TCX-Rowing-sessies
+// hebben dit veld nog niet (tcx-parser.ts rondt ook af op hele
+// minuten, net als Concept2 vóór deze fix deed) — die tellen hier dus
+// nog niet mee. Apart, kleiner vervolgpunt: hetzelfde precieze-duur-
+// veld ook aan de TCX-parser toevoegen, bewust nu niet meegenomen
+// (raakt een gedeeld bestand dat alle sporten gebruikt, niet alleen
+// Rowing — groter risico dan de Concept2-only-aanpassing hierboven).
+
+const STANDAARD_TESTAFSTANDEN = [500, 1000, 2000, 5000, 6000, 10000]
+const AFSTAND_TOLERANTIE_PCT = 0.02 // ±2% — vangt normale erg-stopvariatie op, niet een toevallig gepasseerde afstand in een langere training
+
+export interface RowingRecord {
+  afstand_m: number
+  tijd_sec: number
+  datum: string
+}
+
+interface RowingActiviteitMetPrecisie {
+  date: string
+  metrics: { distance?: number; precieze_duur_sec?: number } | null
+}
+
+async function haalRowingSessiesMetPrecisie(userId: string, sindsDagenGeleden?: number): Promise<RowingActiviteitMetPrecisie[]> {
+  const supabase = createAdminClient()
+  let query = supabase
+    .from('activity_sessions')
+    .select('date, metrics, activities!inner(name)')
+    .eq('user_id', userId)
+    .in('activities.name', ['Roeien'])
+    .order('date', { ascending: true })
+
+  if (sindsDagenGeleden) {
+    const vanaf = new Date()
+    vanaf.setDate(vanaf.getDate() - sindsDagenGeleden)
+    query = query.gte('date', isoDatum(vanaf))
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data || []) as unknown as RowingActiviteitMetPrecisie[]
+}
+
+/** Voor elke standaard testafstand: welke sessies vallen binnen de
+ * tolerantie, gesorteerd chronologisch. Gedeeld door zowel records als
+ * afstand-trends, geen dubbele filterlogica. */
+function groepeerPerTestafstand(sessies: RowingActiviteitMetPrecisie[]): Record<number, { datum: string; tijd_sec: number }[]> {
+  const resultaat: Record<number, { datum: string; tijd_sec: number }[]> = {}
+  for (const s of sessies) {
+    const afstand = s.metrics?.distance
+    const tijd = s.metrics?.precieze_duur_sec
+    if (!afstand || !tijd) continue
+    for (const testafstand of STANDAARD_TESTAFSTANDEN) {
+      if (Math.abs(afstand - testafstand) <= testafstand * AFSTAND_TOLERANTIE_PCT) {
+        if (!resultaat[testafstand]) resultaat[testafstand] = []
+        resultaat[testafstand].push({ datum: s.date, tijd_sec: tijd })
+      }
+    }
+  }
+  for (const afstand of Object.keys(resultaat)) {
+    resultaat[Number(afstand)].sort((a, b) => a.datum.localeCompare(b.datum))
+  }
+  return resultaat
+}
+
+export async function haalRowingRecords(userId: string): Promise<RowingRecord[]> {
+  const sessies = await haalRowingSessiesMetPrecisie(userId)
+  const perAfstand = groepeerPerTestafstand(sessies)
+
+  const records: RowingRecord[] = []
+  for (const [afstandStr, pogingen] of Object.entries(perAfstand)) {
+    const beste = pogingen.reduce((snelste, p) => p.tijd_sec < snelste.tijd_sec ? p : snelste)
+    records.push({ afstand_m: Number(afstandStr), tijd_sec: beste.tijd_sec, datum: beste.datum })
+  }
+  return records.sort((a, b) => a.afstand_m - b.afstand_m)
+}
+
+export interface RowingAfstandTrendPunt {
+  datum: string
+  tijd_sec: number
+}
+
+export async function haalRowingAfstandTrends(userId: string): Promise<Record<number, RowingAfstandTrendPunt[]>> {
+  const sessies = await haalRowingSessiesMetPrecisie(userId)
+  const perAfstand = groepeerPerTestafstand(sessies)
+  const resultaat: Record<number, RowingAfstandTrendPunt[]> = {}
+  for (const [afstandStr, pogingen] of Object.entries(perAfstand)) {
+    resultaat[Number(afstandStr)] = pogingen.map(p => ({ datum: p.datum, tijd_sec: p.tijd_sec }))
+  }
+  return resultaat
+}
