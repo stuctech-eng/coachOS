@@ -1,5 +1,24 @@
 # CoachOS — Changelog
 
+## v2.4.308 — Activiteiten-scherm: visuele verfijning (contrast/lucht)
+**Overleg: witte kaarten (zoals de mockup) vs. donker (consistent met
+de rest van de app). Besloten: donker blijft, met een lichte
+tussenweg-verfijning voor iets meer contrast en witruimte.**
+
+### Wijziging
+`ActiviteitenSectie.tsx`:
+- Alle 9 voorkomens van de hardcoded `bg-[#1c2128]` vervangen door het
+  al-bestaande, gedeelde design-token `bg-coach-card` (`#1E293B`,
+  hergebruikt van de standaard `Card`-component elders in de app —
+  geen nieuwe kleur verzonnen, iets lichter dan de vorige waarde)
+- Activiteitenkaarten en het Voortgang Dashboard-kaartje: subtiele
+  rand toegevoegd (`border-coach-border/40`, eveneens een bestaand
+  token) + padding `p-4` → `p-5` voor iets meer lucht
+
+**Bewust ongewijzigd:** het algehele donkere kleurenschema, de overige
+kaarten (sync-knoppen, loading-skeleton, compact-modus-statistieken) —
+scope bewust beperkt tot wat besproken is, geen bredere restyling.
+
 ## v2.4.307 — FIX: verkeerde Garmin-dashboard-URL
 **Gemeld door de gebruiker: `connect.garmin.com/modern/activities`
 werkt niet.**

@@ -214,12 +214,12 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
         // maar de prop zelf blijft bestaan; geen regressie riskeren op
         // iets dat morgen weer in gebruik genomen kan worden.
         <div className="mb-4 grid grid-cols-2 gap-3">
-          <div className="bg-[#1c2128] rounded-2xl p-4">
+          <div className="bg-coach-card rounded-2xl p-4">
             <p className="text-xs text-gray-400 mb-1">Deze week</p>
             <p className="text-2xl font-bold text-white">{huidigePeriodeSessies.length}</p>
             <p className="text-xs text-gray-400">activiteiten</p>
           </div>
-          <div className="bg-[#1c2128] rounded-2xl p-4">
+          <div className="bg-coach-card rounded-2xl p-4">
             <p className="text-xs text-gray-400 mb-1">Tijd</p>
             <p className="text-2xl font-bold text-white">{formatDuur(huidig.duurMin)}</p>
             {huidig.afstandKm > 0 && <p className="text-xs text-gray-400">{huidig.afstandKm.toFixed(1)} km</p>}
@@ -229,7 +229,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
         // v2.4.305: Voortgang Dashboard — screenshot-referentie
         // (gebruiker, 8 augustus 2026). Alleen op de volledige pagina.
         <div className="px-4 mb-4">
-          <div className="bg-[#1c2128] rounded-2xl p-4">
+          <div className="bg-coach-card border border-coach-border/40 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-gray-400 uppercase tracking-wider">Voortgang Dashboard</p>
             </div>
@@ -286,7 +286,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
 
       <div className={compact ? 'mb-4' : 'px-4 mb-4'}>
         <Link href={'/settings/garmin-activity-import'}
-          className="w-full bg-[#1c2128] rounded-2xl p-4 flex items-center gap-3 active:bg-[#22272e] transition-colors">
+          className="w-full bg-coach-card rounded-2xl p-4 flex items-center gap-3 active:bg-[#22272e] transition-colors">
           <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
             <Plus size={20} className="text-blue-400" />
           </div>
@@ -298,7 +298,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
         </Link>
 
         <button onClick={handleStravaSync} disabled={syncing}
-          className="w-full mt-2 bg-[#1c2128] rounded-2xl p-4 flex items-center gap-3 active:bg-[#22272e] transition-colors disabled:opacity-60">
+          className="w-full mt-2 bg-coach-card rounded-2xl p-4 flex items-center gap-3 active:bg-[#22272e] transition-colors disabled:opacity-60">
           <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
             <RefreshCw size={18} className={`text-orange-400 ${syncing ? 'animate-spin' : ''}`} />
           </div>
@@ -339,7 +339,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
                 className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                   filter === type
                     ? 'bg-blue-600 text-white'
-                    : 'bg-[#1c2128] text-gray-400 hover:text-white'
+                    : 'bg-coach-card text-gray-400 hover:text-white'
                 }`}
               >
                 {type === 'alle' ? 'Alle' : `${SPORT_ICONS[type] || '🏅'} ${type}`}
@@ -352,7 +352,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
       <div className={compact ? 'space-y-3' : 'px-4 space-y-3 pb-6'}>
         {loading ? (
           Array.from({ length: compact ? 2 : 4 }).map((_, i) => (
-            <div key={i} className="bg-[#1c2128] rounded-2xl p-4 animate-pulse">
+            <div key={i} className="bg-coach-card rounded-2xl p-4 animate-pulse">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#2d333b]" />
                 <div className="flex-1">
@@ -476,7 +476,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
             if (externeLink) {
               return (
                 <a key={session.id} href={externeLink} target="_blank" rel="noopener noreferrer"
-                  className="block bg-[#1c2128] rounded-2xl p-4 active:bg-[#22272e] transition-colors">
+                  className="block bg-coach-card border border-coach-border/40 rounded-2xl p-5 active:bg-[#22272e] transition-colors">
                   {kaartInhoud}
                 </a>
               )
@@ -484,7 +484,7 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
 
             return (
               <button key={session.id} onClick={() => router.push(`/activities/${session.id}`)}
-                className="block w-full text-left bg-[#1c2128] rounded-2xl p-4 active:bg-[#22272e] transition-colors">
+                className="block w-full text-left bg-coach-card border border-coach-border/40 rounded-2xl p-5 active:bg-[#22272e] transition-colors">
                 {kaartInhoud}
               </button>
             )
