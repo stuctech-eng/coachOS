@@ -154,7 +154,11 @@ export async function GET() {
         const match = (sessie.notes as string | null)?.match(/concept2:(\d+)/)
         if (match) bronLink = `https://log.concept2.com/profile/${concept2TokenRij.concept2_user_id}/log/${match[1]}`
       } else if (sessie.source === 'garmin') {
-        bronLink = 'https://connect.garmin.com/modern/activities'
+        // v2.4.307-FIX: 'connect.garmin.com/modern/activities' bleek
+        // niet te werken (gemeld door de gebruiker) — nooit zelf
+        // bevestigd, alleen aangenomen. Vervangen door de URL die de
+        // gebruiker daadwerkelijk getest heeft op een echt account.
+        bronLink = 'https://connect.garmin.com/app/activities?activityType=All'
       } else if (sessie.source === 'strava') {
         bronLink = 'https://www.strava.com/dashboard'
       }

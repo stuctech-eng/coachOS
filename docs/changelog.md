@@ -1,5 +1,30 @@
 # CoachOS — Changelog
 
+## v2.4.307 — FIX: verkeerde Garmin-dashboard-URL
+**Gemeld door de gebruiker: `connect.garmin.com/modern/activities`
+werkt niet.**
+
+### Root cause
+Deze URL was aangenomen, niet geverifieerd — ik kon 'm niet
+betrouwbaar bevestigen via zoeken (Garmin's site is zwaar in
+JavaScript, matig doorzoekbaar) en heb 'm destijds ingevuld zonder dat
+hardop te benoemen als aanname. Zelfde soort fout als de
+Running-import van v2.4.305/306, nu bij een URL in plaats van een
+importpad.
+
+### Fix
+Vervangen door de URL die de gebruiker daadwerkelijk getest heeft op
+een echt Garmin Connect-account:
+```
+https://connect.garmin.com/app/activities?activityType=All
+```
+
+### Les, herhaald
+Een aanname die ik niet hardop als aanname benoem, wordt te makkelijk
+als feit behandeld — ook door mezelf. Bij externe URL's die ik niet
+sluitend kan verifiëren: dat expliciet zo melden, niet stilzwijgend
+het meest waarschijnlijke antwoord invullen.
+
 ## v2.4.306 — FIX: build-fout, verkeerd geïmporteerd bestand
 **De v2.4.305-build faalde op Vercel — mijn eigen fout, niet
 gecontroleerd vóór levering.**
