@@ -1,5 +1,30 @@
 # CoachOS — Changelog
 
+## v2.4.316 — FIX: minuten-precisie ontbrak in de werktijden-instructie
+**Gemeld met bewijs (screenshot echte event vs. coach-advies):
+"14:00-00:00" i.p.v. de echte "14:45-00:45".**
+
+### Root cause — mijn eigen fout, niet gecontroleerd vóór v2.4.315
+`start_minute`/`end_minute` bestaan al sinds v2.4.196, specifiek voor
+dit precisieprobleem gebouwd ("AI-invoer met 14:45 kon niet correct
+worden opgeslagen"). Bij het schrijven van de v2.4.315-fix
+(werktijden aan de coach-instructie toevoegen) heb ik niet
+gecontroleerd of zulke velden al bestonden — precies de fout die
+Architectuurregel #0 (consolidatie vóór nieuwbouw) had moeten
+voorkomen.
+
+### Fix
+- `life-events-context.ts`: `start_minute`/`end_minute` toegevoegd aan
+  `LifeEventRow` en de select-query (ontbraken)
+- `context-resolver.ts`: `LifeEventInput` uitgebreid, nieuwe
+  `formatUurMinuut()`-helper, `werkTijdenTekst` toont nu de echte
+  minuten (`?? 0` als terugval voor rijen zonder ingevulde minuten —
+  bestaand gedrag voor die gevallen blijft ongewijzigd)
+
+**Geverifieerd met de exacte waarden uit de melding:**
+`formatUurMinuut(14, 45) + '-' + formatUurMinuut(0, 45)` → `"14:45-00:45"`
+— exacte match met het echte event.
+
 ## v2.4.315 — Vier gemelde bevindingen opgelost
 **Overleg n.a.v. vier screenshots. Alle vier onafhankelijk onderzocht
 (geen aannames), drie bevestigde bugs + één inconsistentie gevonden en

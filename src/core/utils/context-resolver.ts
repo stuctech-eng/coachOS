@@ -42,6 +42,10 @@ export interface LifeEventInput {
   type: string
   start_hour: number | null
   end_hour: number | null
+  // v2.4.316-FIX: zie toelichting bij werkTijdenTekst hieronder —
+  // ontbraken, waardoor "14:45" als "14:00" getoond werd.
+  start_minute?: number | null
+  end_minute?: number | null
   notes: string | null
   recovery_impact?: number | null
   stress_load?: number | null
@@ -172,8 +176,16 @@ export function bepaalDagContext(input: DagContextInput): ResolvedContext {
   const winnendWerkEvent = winnendeCategorie === 'werk'
     ? lifeEvents.find(e => categorieVan(e.type) === 'werk' && e.start_hour !== null && e.end_hour !== null)
     : null
+  // v2.4.316-FIX: gemeld — "14:00-00:00" i.p.v. de echte "14:45-00:45".
+  // start_minute/end_minute bestaan al sinds v2.4.196 (bewust daarvoor
+  // gebouwd), maar ontbraken hier — mijn eigen v2.4.315-fix checkte dit
+  // niet vóór het schrijven van de formattering. Nu met minuten,
+  // ?? 0 als terugval voor rijen zonder ingevulde minuten (bestaand,
+  // ongewijzigd gedrag voor die gevallen).
+  const formatUurMinuut = (uur: number, minuut: number | null | undefined) =>
+    `${String(uur).padStart(2, '0')}:${String(minuut ?? 0).padStart(2, '0')}`
   const werkTijdenTekst = winnendWerkEvent
-    ? ` (${String(winnendWerkEvent.start_hour).padStart(2, '0')}:00-${String(winnendWerkEvent.end_hour).padStart(2, '0')}:00) — plan geen training in dit tijdvak`
+    ? ` (${formatUurMinuut(winnendWerkEvent.start_hour!, winnendWerkEvent.start_minute)}-${formatUurMinuut(winnendWerkEvent.end_hour!, winnendWerkEvent.end_minute)}) — plan geen training in dit tijdvak`
     : ''
   // Feestdag wint (of is de enige reden dat vrije_tijd de winnende
   // categorie is) — noem 'm expliciet bij naam, niet alleen "vrije_tijd"

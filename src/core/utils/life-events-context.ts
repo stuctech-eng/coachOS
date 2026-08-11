@@ -30,6 +30,14 @@ export interface LifeEventRow {
   type: string
   start_hour: number | null
   end_hour: number | null
+  // v2.4.316-FIX: gemeld — "Avonddienst 14:00-00:00" i.p.v. de echte
+  // "14:45-00:45". Root cause: start_minute/end_minute bestaan al
+  // sinds v2.4.196 (specifiek voor dit precisieprobleem gebouwd), maar
+  // mijn eigen v2.4.315-fix checkte dat niet vóór het schrijven van
+  // nieuwe code — exact de fout die Regel 0 (consolidatie vóór
+  // nieuwbouw) had moeten voorkomen. Nu alsnog opgehaald en gebruikt.
+  start_minute: number | null
+  end_minute: number | null
   notes: string | null
   recurrence: string | null
   recurrence_days: number[] | null
@@ -71,7 +79,7 @@ export async function fetchTodaysLifeEvents(
   dagNummer: number,
   isWeekend: boolean
 ): Promise<LifeEventRow[]> {
-  const SELECT_FIELDS = 'type, start_hour, end_hour, notes, recurrence, recurrence_days, recovery_impact, stress_load, sleep_disruption, start_time, end_date, recurrence_exceptions, recurrence_end_date'
+  const SELECT_FIELDS = 'type, start_hour, end_hour, start_minute, end_minute, notes, recurrence, recurrence_days, recovery_impact, stress_load, sleep_disruption, start_time, end_date, recurrence_exceptions, recurrence_end_date'
   const vandaag = lokaleDagStr(new Date())
   const negentigDagenGeleden = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
 
