@@ -1,5 +1,39 @@
 # CoachOS — Changelog
 
+## v2.4.312 — AI Output Integrity Rule + Adaptation Engine-onderzoek beantwoord
+**Geen code. Overleg met gebruiker + GPT (Claude eindverantwoordelijk,
+zie standing rule), stap A en B van de afgesproken volgorde.**
+
+### A — Nieuwe architectuurregel vastgelegd (Regel 0b)
+**AI Output Integrity Rule:** de AI mag geen concrete
+trainingsparameter (duur/intensiteit/afstand/sets/gewicht/tempo)
+presenteren die niet uit een gestructureerde Coach-/Adjustment-
+beslissing komt. Aanleiding: gevonden kaart/tekst-mismatch op Home
+("Coach zegt 35 min, kaart zegt 50 min") — de AI noemde een getal dat
+nergens in de data was vastgelegd.
+
+### B — Onderzoeksvraag beantwoord: lopen specialistsessies door de Adaptation Engine?
+**Gedeeltelijk ja, met exact bewijs, niet aangenomen:**
+- `api/specialists/{sport}/training-plan/workout` (gedetailleerde
+  workout-weergave) roept al `bouwWorkout()` + `pasWorkoutAan()` aan
+- `today-engine.ts`'s `proposalNaarTodayPlan()` (de Home-kaart, waar
+  de AI-tekst over praat) leest dezelfde `training_plan_sessions.
+  duration`-kolom rechtstreeks — **nooit** de Adaptation Engine
+
+**Consequentie voor het vervolgontwerp (nog niet gebouwd):** geen
+nieuw/parallel systeem — Today Engine's kaart-logica moet aansluiten
+op hetzelfde `pasWorkoutAan()`-mechanisme dat de detailpagina al
+gebruikt. Dit is stap D uit de afgesproken volgorde, wacht nog op een
+apart akkoord.
+
+### Overig, vastgelegd maar niet uitgevoerd
+- Locatietoestemming (vraag 1): bevestigd dat de app als PWA
+  geïnstalleerd is — dus als het probleem aanhoudt ondanks de correcte
+  60-min-cache, is er een ander probleem dan een simpel verlopen
+  cache. Apart op te pakken (stap E), niet nu.
+- "Connect 69"/slaapgegevens (vraag 3): derde screenshot niet
+  beschikbaar — blijft open tot een nieuwe upload (stap F).
+
 ## v2.4.310 — Rowing Records/Progressie ("niet laten liggen")
 **Het in v2.4.309 opengelaten gat alsnog gedicht, op expliciet
 verzoek. Bij het uitwerken bleek de eigen eerdere inschatting te

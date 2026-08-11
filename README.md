@@ -769,6 +769,35 @@ geen verzinsel, exact dezelfde waarden als Running's
    Componenten die andere subsystemen samenbrengen (zoals de Coach
    Decision Engine) mogen uitsluitend bestaande subsystemen raadplegen
    — geen parallelle berekeningen introduceren.
+0b. **AI Output Integrity Rule** (vastgelegd 11 augustus 2026, na de
+   "35 vs. 50 minuten"-bevinding — gebruiker + GPT-overleg, Claude
+   eindverantwoordelijk). **De AI mag geen concrete
+   trainingsparameter presenteren (duur, intensiteit, afstand, sets,
+   gewicht, tempo, en vergelijkbare uitvoeringsparameters) die niet
+   afkomstig is uit een bestaande, gestructureerde Coach-/Adjustment-
+   beslissing. De AI mag een beslissing uitleggen, maar nooit zelf
+   een trainingsparameter creëren.** Concreet gevonden gat: Today
+   Engine gaf de AI `todayPlan.duration` (ongewijzigd, 50 min) mee als
+   "autoritatieve bron", maar niets weerhield de AI ervan om in de
+   vrije advies-tekst een ander getal (35 min) te noemen zonder dat
+   dit ergens in de data was vastgelegd — een kaart/tekst-mismatch die
+   de gebruiker kon zien.
+
+   **Onderzoeksvraag beantwoord, 11 augustus 2026 (bewijs, geen
+   aanname):** lopen Cycling/Running/Rowing-specialistsessies door de
+   bestaande Adaptation Engine? **Gedeeltelijk ja, maar niet op de
+   plek waar het probleem zit.** `api/specialists/{sport}/training-
+   plan/workout` (de gedetailleerde workout-weergave) roept al
+   `bouwWorkout()` + `pasWorkoutAan()` aan — loopt dus al door de
+   Adaptation Engine. Today Engine's `proposalNaarTodayPlan()` (de
+   Home-kaart, waar de AI-tekst over praat) leest dezelfde
+   `training_plan_sessions.duration`-kolom rechtstreeks, zonder ooit
+   de Adaptation Engine te raadplegen. **Consequentie voor het
+   toekomstige ontwerp:** geen nieuw/parallel aanpassingssysteem —
+   Today Engine's kaart-logica moet aansluiten op hetzelfde,
+   al-bestaande `pasWorkoutAan()`-mechanisme dat de detailpagina al
+   gebruikt. Nog niet gebouwd — wacht op een apart akkoord (stap D,
+   overleg 11 augustus 2026).
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
 2. **AI never creates exercises** — AI verzint geen oefeningen buiten de gefilterde lijst
 3. **Filter first, assemble second** — route filtert → AI assembleert
