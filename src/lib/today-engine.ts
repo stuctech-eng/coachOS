@@ -15,6 +15,10 @@ import type { WorkoutTrainingType, WorkoutMesocycle } from '@/core/workout-build
 import { haalAthleteState } from '@/core/athlete-platform/storage'
 import { bepaalKruisSportSignaal } from '@/core/athlete-platform/cross-sport-bridge'
 import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
+// v2.4.319 (CoachDecision-contract): genereerCoachPolicy() bevat nu de
+// centrale REST/TRAIN/ADJUST-beslissing — hier hergebruikt, geen
+// tweede engine.
+import { genereerCoachPolicy, type CoachDecision } from '@/lib/specialists/coach-policy'
 
 // ── Today Engine ──────────────────────────────────────────────────────
 // Bron: overleg 22 juli 2026, uitgebreid 22 juli 2026 (multi-sport-
@@ -87,6 +91,13 @@ export interface TodayPlan {
    * geen aanpassing is. De AI krijgt dit letterlijk mee, mag het niet
    * zelf verzinnen of herformuleren naar een ander getal. */
   adjustmentReason: string | null
+  // v2.4.319 (CoachDecision-contract): REST | TRAIN | ADJUST, direct
+  // van genereerCoachPolicy() overgenomen — de enige plek die dit
+  // bepaalt. null bij Trainer AI/rust-pad (geen specialist-sessie om
+  // over te beslissen — dat pad kent CoachDecision niet, blijft
+  // ongewijzigd). Bij REST: duration/originalDuration/adjustmentReason
+  // zijn ook null — er is geen workout, alleen een reden.
+  trainingDecision: CoachDecision | null
 }
 
 // v2.4.315: geëxporteerd (was lokaal) — hergebruikt door de Cycling/
@@ -206,6 +217,38 @@ export async function berekenDefinitieveDuur(userId: string, proposal: Specialis
 }
 
 async function proposalNaarTodayPlan(userId: string, proposal: SpecialistProposal): Promise<TodayPlan> {
+  // ── CoachDecision — v2.4.319, contract-vastgelegd 11 augustus 2026 ────
+  // ÉÉN aanroep, aan het begin, vóór er ook maar iets van een workout
+  // gebouwd wordt. Bij REST: direct terug, bouwWorkout()/pasWorkoutAan()
+  // worden NOOIT aangeroepen — "REST krijgt geen workout" is hiermee
+  // technisch afgedwongen, niet alleen een prompt-instructie.
+  let policy
+  try {
+    policy = await genereerCoachPolicy(userId)
+  } catch (err) {
+    console.error('[today-engine] CoachPolicy ophalen mislukt, val terug op TRAIN (geen blokkade bij een fout):', err)
+    policy = null
+  }
+
+  if (policy?.decision === 'REST') {
+    const SPORT_NAAM_LABEL_REST: Record<string, string> = { cycling: 'Cycling', running: 'Running', rowing: 'Rowing' }
+    return {
+      source: proposal.sport,
+      title: 'Rustdag',
+      duration: null,
+      intensity: null,
+      reason: policy.reasons.join('; '),
+      coachMessage: `Vandaag geen ${SPORT_NAAM_LABEL_REST[proposal.sport] || proposal.sport}-training — ${policy.reasons[policy.reasons.length - 1] || 'rust staat voorop'}.`,
+      actionHref: `/coach/${proposal.sport}/trainingsplan`,
+      actionLabel: 'Bekijk trainingsplan',
+      trainingPhase: proposal.sessie.mesocycle_type ? { mesocycleType: proposal.sessie.mesocycle_type } : null,
+      sessieId: proposal.sessie.id,
+      originalDuration: proposal.sessie.duration,
+      adjustmentReason: null,
+      trainingDecision: 'REST',
+    }
+  }
+
   // v2.4.231-FIX: Rowing gebruikt 'recovery' i.p.v. 'herstel' voor
   // hetzelfde concept (zie SPORT_LABELS hierboven) — zonder deze
   // toevoeging zou een Rowing-hersteldag als 'matig' (i.p.v. 'licht')
@@ -239,6 +282,7 @@ async function proposalNaarTodayPlan(userId: string, proposal: SpecialistProposa
     sessieId: proposal.sessie.id,
     originalDuration: proposal.sessie.duration,
     adjustmentReason: aanpassingsReden,
+    trainingDecision: policy?.decision ?? null,
   }
 }
 
@@ -298,7 +342,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
       reason: 'Coach adviseert vandaag volledige rust',
       coachMessage: 'Vandaag is herstel de training. Geen sportieve inspanning gepland.',
       actionHref: '/coach', actionLabel: 'Bekijk Coach-advies',
-      trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null,
+      trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null, trainingDecision: null,
     }
   }
 
@@ -373,7 +417,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
           reason: instr.reason || 'Trainer AI-sessie',
           coachMessage: instr.coach_message || 'Veel succes met je training!',
           actionHref: '/training', actionLabel: 'Start Training',
-          trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null,
+          trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null, trainingDecision: null,
         }
       } else {
         console.error('[today-engine] Trainer AI gaf geen bruikbare instructie terug:', JSON.stringify(data).slice(0, 300))
@@ -389,6 +433,6 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
     reason: 'Geen actief trainingsplan en Trainer AI kon geen sessie bepalen',
     coachMessage: 'Wil je toch trainen? Kies zelf een module in de bibliotheek.',
     actionHref: '/training', actionLabel: 'Bibliotheek openen',
-    trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null,
+    trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null, trainingDecision: null,
   }
 }

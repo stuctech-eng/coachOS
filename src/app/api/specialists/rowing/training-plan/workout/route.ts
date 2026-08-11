@@ -16,6 +16,7 @@ import { haalAthleteState } from '@/core/athlete-platform/storage'
 import { bepaalKruisSportSignaal } from '@/core/athlete-platform/cross-sport-bridge'
 import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
 import { rowingAdapter } from '@/lib/specialists/training-plan-engine/rowing-adapter'
+import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -75,6 +76,17 @@ export async function GET(req: NextRequest) {
       .from('training_plans').select('athlete_id, sport').eq('id', sessie.plan_id).maybeSingle()
     if (plan?.athlete_id !== user.id) return NextResponse.json({ error: 'Geen toegang tot deze sessie' }, { status: 403 })
     if (plan?.sport !== 'rowing') return NextResponse.json({ error: 'Dit is geen Rowing-sessie' }, { status: 400 })
+
+    // v2.4.319 (CoachDecision-contract) — zie Running's equivalente
+    // route voor de volledige toelichting.
+    try {
+      const policy = await genereerCoachPolicy(user.id)
+      if (policy.decision === 'REST') {
+        return NextResponse.json({ rest: true, reasons: policy.reasons })
+      }
+    } catch (policyErr) {
+      console.error('[rowing/workout] CoachPolicy ophalen mislukt, val terug op gewoon bouwen:', policyErr)
+    }
 
     const trainingType = TRAININGTYPE_MAP[sessie.type] || 'endurance'
     const mesocycle = MESOCYCLE_MAP[sessie.mesocycle_type] || 'basis'

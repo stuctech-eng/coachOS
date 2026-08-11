@@ -954,6 +954,86 @@ geen verzinsel, exact dezelfde waarden als Running's
      **Nog te testen:** een scenario waarbij `fatigueSignaal` wél
      vuurt (écht laag herstel + duurtraining) — nog niet organisch
      gezien, alleen het "geen aanpassing"-pad is nu bevestigd getest.
+
+0d. **CoachDecision-contract** (vastgelegd + geïmplementeerd 11
+   augustus 2026, v2.4.319 — gebruiker + GPT-overleg, na de "rustdag
+   geadviseerd, training toch aangemaakt"-feedback die de gebruiker
+   zelf van de in-app Coach kreeg). **De belangrijkste architectuur-
+   uitbreiding van vandaag:** een nieuwe, hogere-orde beslissing die
+   vóór elke workout-opbouw wordt genomen — geen prompt-instructie,
+   technisch afgedwongen.
+
+   **Aanleiding, kort:** Regel 0c (Coach Decision Integrity) loste op
+   dat verschillende schermen niet meer een ander GETAL konden tonen
+   voor dezelfde sessie. Maar er bleef een groter gat: niets voorkwam
+   dat de AI zelfstandig **"vandaag geen training"** kon adviseren
+   terwijl het systeem daarnaast gewoon een training aanmaakte — geen
+   getalverschil, maar een tegenstrijdige **beslissing**. Guardian-
+   onderzoek bevestigde: nergens in CoachOS bestond een structurele
+   REST-uitkomst — `genereerCoachPolicy()` kende alleen gradaties van
+   "wel trainen" (`allowedTrainingTypes` bleef zelfs bij `recoveryState:
+   'low'` gevuld).
+
+   **Semantiek, letterlijk uit het contract:**
+   | Decision | Betekenis | Workout |
+   |---|---|---|
+   | **REST** | Actieve blessure OF ziekte — bestaande `-100%`-blokkade in `context-resolver.ts`'s `MODIFIERS`, geen nieuwe regel | Geen workout |
+   | **TRAIN** | Geen REST, geen bestaande aanpassing nodig | Originele workout |
+   | **ADJUST** | Geen REST, bestaande context (herstel/vakantie/cross-sport/belasting) vereist aanpassing | Originele workout → `pasWorkoutAan()` → aangepaste workout |
+
+   **Expliciet NIET gedaan:** ACWR > 1,7 wordt **geen** REST — geen
+   bestaand contract voor volledige blokkade op basis van ACWR alleen
+   gevonden, blijft binnen ADJUST. **Geen `confidence`-veld** —
+   consistent met het eerdere besluit dat een technische
+   onzekerheidsscore geen rol speelt in een gebruikersgerichte
+   beslissing.
+
+   **Prioriteit — ongewijzigd hergebruikt** uit `context-resolver.ts`'s
+   `CONTEXT_PRIORITY`: blessure > ziekte > vakantie > herstel >
+   wedstrijd > werk > training > vrije_tijd. Een wedstrijd morgen
+   overrulet dus geen actieve blessure.
+
+   **Producent, bevestigd vóór bouwen (niet aangenomen):**
+   `genereerCoachPolicy()` haalde tot dan toe géén `life_events` op —
+   kon dus geen ziekte/vakantie/wedstrijd/werk zien, alleen blessures.
+   Uitgebreid met `fetchTodaysLifeEvents()` + `bepaalDagContext()` —
+   **beide al bestaande, ongewijzigde functies, geen duplicatie, geen
+   tweede engine.**
+
+   **Zeven gewijzigde bestanden:**
+   1. **`coach-policy.ts`** — kern. Nieuw `decision`-veld,
+      `CoachDecision`-type, haalt nu ook `life_events` op en roept
+      `bepaalDagContext()` aan. De bestaande, mildere blessure-
+      intensiteitsverlaging (`verlaagIntensiteit()`) blijft ongewijzigd
+      voor `maxIntensity` — mag de nieuwe REST-blokkade niet
+      "verzachten" (expliciet zo besloten in het contract-overleg)
+   2. **`today-engine.ts`** — `TodayPlan` krijgt `trainingDecision`.
+      `proposalNaarTodayPlan()` roept `genereerCoachPolicy()` nu als
+      ALLEREERSTE stap aan — bij REST: direct terug, `bouwWorkout()`/
+      `pasWorkoutAan()` worden **nooit** aangeroepen. Bij een fout in
+      de policy-check: terugval op gewoon doorgaan (nooit blokkeren
+      door een eigen bug)
+   3-5. **Cycling/Running/Rowing `training-plan/workout`-routes** —
+      dezelfde REST-check vóór `bouwWorkout()`, zodat ook de
+      detailpagina (niet alleen Today Engine) een workout weigert te
+      bouwen bij REST — integratietest-eis, zie hieronder
+   6-7. **`api/coach/route.ts` + `api/action-plan/route.ts`** —
+      nieuwe, harde REST-instructie: bij REST mag de AI geen enkele
+      training voorstellen, ook geen "lichte duurtraining" of "wandeling
+      als training". **Bug gevonden en gefixt tijdens eindcontrole:**
+      de bestaande `geenAanpassingContext` (v2.4.318) zou bij REST ook
+      afvuren met `todayPlan.duration = null`, wat onzin-tekst zou
+      opleveren ("null min is de originele duur") — nu expliciet
+      uitgesloten bij `trainingDecision === 'REST'`
+
+   **Integratietest-eis, letterlijk uit het overleg — de belangrijkste
+   regressietest van deze wijziging:** als CoachDecision = REST, mag
+   **geen enkele** downstream-route alsnog TRAIN/ADJUST produceren.
+   Niet alleen `CoachPolicy geeft REST` en `TodayPlan toont REST`
+   los testen, maar de **volledige keten**: REST → TodayPlan → Home →
+   Dagplan → Coach → Workout-endpoint — nergens mag een workout
+   ontstaan. **Nog niet end-to-end getest in de draaiende app** — vergt
+   een scenario met een actieve blessure of ziekte-levensgebeurtenis.
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
 2. **AI never creates exercises** — AI verzint geen oefeningen buiten de gefilterde lijst
 3. **Filter first, assemble second** — route filtert → AI assembleert

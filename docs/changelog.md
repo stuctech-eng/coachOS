@@ -1,5 +1,55 @@
 # CoachOS — Changelog
 
+## v2.4.319 — CoachDecision-contract: REST | TRAIN | ADJUST
+**De belangrijkste architectuurwijziging van vandaag. Gebruiker + GPT-
+overleg, na feedback die de gebruiker zelf van de in-app Coach kreeg:
+"rustdag geadviseerd, systeem maakte toch een training aan."**
+
+### Wat dit oplost
+Regel 0c (Coach Decision Integrity, v2.4.317-318) zorgde dat schermen
+niet meer een ander GETAL konden tonen voor dezelfde sessie. Maar
+niets voorkwam dat de AI zelfstandig "vandaag geen training" kon
+adviseren terwijl het systeem gewoon een training aanmaakte — geen
+getalverschil, een tegenstrijdige BESLISSING. Guardian-onderzoek
+bevestigde: nergens in CoachOS bestond een structurele REST-uitkomst.
+
+### Semantiek
+- **REST** = actieve blessure OF ziekte (bestaande `-100%`-blokkade in
+  `context-resolver.ts`, geen nieuwe regel) → geen workout
+- **TRAIN** = geen REST, geen aanpassing nodig → originele workout
+- **ADJUST** = geen REST, context vereist aanpassing → `pasWorkoutAan()`
+
+**Expliciet niet gedaan:** ACWR > 1,7 wordt geen REST (geen bestaand
+contract daarvoor). Geen `confidence`-veld. Prioriteit ongewijzigd
+hergebruikt (blessure > ziekte > vakantie > herstel > wedstrijd >
+werk > training > vrije_tijd).
+
+### Zeven gewijzigde bestanden
+1. **`coach-policy.ts`** — kern, nieuw `decision`-veld, haalt nu ook
+   `life_events` op (bevestigd: kon dat eerder niet), roept
+   `bepaalDagContext()` aan — beide bestaande functies, geen
+   duplicatie, geen tweede engine
+2. **`today-engine.ts`** — `genereerCoachPolicy()` als allereerste
+   stap; bij REST: direct terug, `bouwWorkout()`/`pasWorkoutAan()`
+   nooit aangeroepen
+3-5. **Cycling/Running/Rowing workout-routes** — dezelfde REST-check
+   vóór het bouwen, ook op de detailpagina
+6-7. **`api/coach/route.ts` + `api/action-plan/route.ts`** — harde
+   REST-instructie: AI mag geen training voorstellen bij REST
+
+### Bug gevonden en gefixt tijdens eindcontrole
+`geenAanpassingContext` (v2.4.318) zou bij REST ook afvuren met
+`todayPlan.duration = null` — onzin-tekst ("null min is de originele
+duur"). Nu expliciet uitgesloten bij `trainingDecision === 'REST'`, in
+beide AI-routes.
+
+### Integratietest-eis — belangrijkste regressietest, nog niet uitgevoerd
+Als CoachDecision = REST, mag geen enkele downstream-route alsnog
+TRAIN/ADJUST produceren. Volledige keten testen: REST → TodayPlan →
+Home → Dagplan → Coach → Workout-endpoint. **Vergt een scenario met
+een actieve blessure of ziekte-levensgebeurtenis — nog niet
+organisch getest.**
+
 ## v2.4.318 — Twee vervolgfixes na productietest van v2.4.317
 **Gemeld met screenshots, direct na het pushen van v2.4.317.**
 

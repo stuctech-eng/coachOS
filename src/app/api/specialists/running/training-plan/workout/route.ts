@@ -16,6 +16,9 @@ import { haalAthleteState } from '@/core/athlete-platform/storage'
 import { bepaalKruisSportSignaal } from '@/core/athlete-platform/cross-sport-bridge'
 import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
 import { runningAdapter } from '@/lib/specialists/training-plan-engine/running-adapter'
+// v2.4.319 (CoachDecision-contract): centrale REST-check, vóór er ooit
+// een workout gebouwd wordt — zie module-comment bij de GET-handler.
+import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -76,6 +79,20 @@ export async function GET(req: NextRequest) {
       .from('training_plans').select('athlete_id, sport').eq('id', sessie.plan_id).maybeSingle()
     if (plan?.athlete_id !== user.id) return NextResponse.json({ error: 'Geen toegang tot deze sessie' }, { status: 403 })
     if (plan?.sport !== 'running') return NextResponse.json({ error: 'Dit is geen Running-sessie' }, { status: 400 })
+
+    // v2.4.319 (CoachDecision-contract, integratietest-eis: "nergens
+    // mag alsnog TRAIN/ADJUST ontstaan als CoachDecision = REST" —
+    // geldt dus ook voor deze detailpagina, niet alleen Today Engine).
+    // Eigen catch: bij een fout hier val terug op gewoon bouwen — nooit
+    // de gebruiker blokkeren door een fout in de policy-laag zelf.
+    try {
+      const policy = await genereerCoachPolicy(user.id)
+      if (policy.decision === 'REST') {
+        return NextResponse.json({ rest: true, reasons: policy.reasons })
+      }
+    } catch (policyErr) {
+      console.error('[running/workout] CoachPolicy ophalen mislukt, val terug op gewoon bouwen:', policyErr)
+    }
 
     const trainingType = TRAININGTYPE_MAP[sessie.type] || 'endurance'
     const mesocycle = MESOCYCLE_MAP[sessie.mesocycle_type] || 'basis'

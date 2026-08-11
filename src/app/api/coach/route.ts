@@ -318,10 +318,22 @@ export async function POST(req: NextRequest) {
         // min → 75 min, want HRV is ongebalanceerd") — precies het gat
         // dat Regel 0c moest dichten. Nu een expliciete, niet mis te
         // verstane tegenhanger van de aanpassingsContext hierboven.
-        const geenAanpassingContext = (todayPlan.originalDuration && !aanpassingsContext)
+        const geenAanpassingContext = (todayPlan.trainingDecision !== 'REST' && todayPlan.originalDuration && !aanpassingsContext)
           ? `\n- GEEN AANPASSING: de Adjustment Engine heeft vandaag GEEN reductie/aanpassing besloten — ${todayPlan.duration} min is de ORIGINELE, ONGEWIJZIGDE geplande duur, geen "al gecorrigeerd" getal. Ook als de Garmin/HRV-data hieronder op vermoeidheid of slecht herstel wijst, mag je ZELF GEEN kortere duur voorstellen, en mag je NOOIT beweren dat er al een aanpassing/reductie heeft plaatsgevonden (bijv. NIET zeggen "de -10% is al meegenomen" of "dit is al het gecorrigeerde advies") — dat is gewoon niet waar en is exact zo'n zelfverzonnen trainingsparameter-claim die verboden is. Je mag de HRV/herstelcontext wél benoemen als observatie (bijv. "je HRV is wat lager, houd het rustig aan binnen de geplande ${todayPlan.duration} minuten"), maar nooit alsof dat al in het getal verwerkt zit.`
           : ''
-        todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype, en verzin nooit een eigen duur/intensiteit/afstand — gebruik uitsluitend de hier gegeven waarden):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${bronLabel}\n- Reden: ${todayPlan.reason}${aanpassingsContext}${geenAanpassingContext}${todayPlan.trainingPhase ? `\n- Trainingsfase: ${todayPlan.trainingPhase.mesocycleType} — leg desgewenst uit waarom de belasting van vandaag past bij deze fase (bijv. "omdat je in een opbouwweek zit, hoort deze hogere belasting bij de opbouw" of "ondanks dat je je fit voelt, zit je in een herstelweek — daarom nu bewust rustiger")` : ''}\n`
+        // v2.4.319 (CoachDecision-contract, gebruiker + GPT-overleg, 11
+        // augustus 2026 — na de "rustdag geadviseerd, training toch
+        // aangemaakt"-bevinding). De HARDSTE regel van allemaal: bij
+        // REST bestaat er geen workout, en de AI mag er ZELF ook geen
+        // een verzinnen — ongeacht wat andere context (Garmin, journal,
+        // motivatie) suggereert. CoachDecision.REST is nu al
+        // technisch afgedwongen (geen bouwWorkout()-aanroep meer, zie
+        // today-engine.ts) — deze tekst zorgt dat de AI dat ook
+        // consistent uitlegt i.p.v. tegenspreekt.
+        const restContext = todayPlan.trainingDecision === 'REST'
+          ? `\n- RUST — GEEN TRAINING VANDAAG: dit is een REST-beslissing van de Coach Policy, geen suggestie. Je mag GEEN training van welke soort dan ook voorstellen — geen "lichte duurtraining", geen "korte easy run", geen alternatieve activiteit die op training lijkt. Leg alleen uit WAAROM (${todayPlan.reason}), en geef eventueel niet-trainingsgerelateerd herstelhadvies (slaap, voeding, ontspanning).`
+          : ''
+        todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype, en verzin nooit een eigen duur/intensiteit/afstand — gebruik uitsluitend de hier gegeven waarden):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${bronLabel}\n- Reden: ${todayPlan.reason}${restContext}${aanpassingsContext}${geenAanpassingContext}${todayPlan.trainingPhase ? `\n- Trainingsfase: ${todayPlan.trainingPhase.mesocycleType} — leg desgewenst uit waarom de belasting van vandaag past bij deze fase (bijv. "omdat je in een opbouwweek zit, hoort deze hogere belasting bij de opbouw" of "ondanks dat je je fit voelt, zit je in een herstelweek — daarom nu bewust rustiger")` : ''}\n`
 
         // v2.4.250 (Universal Athlete Platform — Stap 2, Coach Intelligence):
         // als de workout is aangepast door een ANDERE sport (kruis-sport-
