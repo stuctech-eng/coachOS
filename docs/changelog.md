@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.317 — Coach Decision Integrity, deel 2: fatigue uitgebreid + Regel 0c technisch afgedwongen
+**Vervolg op v2.4.314-316. Overleg gebruiker + GPT: de "84/75/76
+minuten"-bevinding was geen herhaling van eerdere bugs, maar een
+dieper gat — de AI kon zelf trainingsparameters berekenen uit rauwe
+Garmin/HRV-data, langs het gestructureerde signalensysteem heen.**
+
+### Deel 1 — fatigue-signaal uitgebreid naar duurtrainingen
+**Onderzocht vóór wijzigen:** het oorspronkelijke contract
+(`docs/adaptive-training-plan-decision-contract-v1.md`) omschrijft
+`fatigue_detected` breder dan de huidige implementatie. Geen ADR/
+changelog-regel gevonden die de "alleen intervallen"-beperking als
+bewuste, fysiologisch onderbouwde keuze vastlegt.
+
+`adjuster-core.ts`: `vandaagSessie.type === adapter.hoogIntensiteitsType`
+verwijderd — geldt nu voor elke geplande sessie bij laag herstel.
+**Drempelwaarde ongewijzigd** (`recoveryState === 'low'`, confidence
+65).
+
+### Deel 2 — Regel 0c technisch afgedwongen, niet alleen als instructie
+- **`api/coach/route.ts`:** nieuwe, expliciete "GEEN AANPASSING"-tak —
+  als er geen signaal vuurde, mag de AI letterlijk geen eigen
+  kortere duur meer voorstellen, ook niet op basis van HRV/Garmin.
+  Garmin-context kreeg een expliciete kopregel: alleen voor uitleg,
+  nooit voor trainingsparameter-berekening
+- **`api/action-plan/route.ts`:** had de aanpassings-/geen-
+  aanpassings-tekst nog helemaal niet (alleen coach/route.ts had 'm
+  sinds v2.4.314) — nu identiek toegevoegd, plus dezelfde
+  Garmin-grens
+
+### Bewust niet gedaan
+Geen database-migratie, geen tweede Adjustment Engine, geen nieuwe
+drempelwaarden. Cycling's route (`training-plan-adjuster.ts`)
+bevestigd een dunne wrapper om dezelfde `voerDailyAdjustmentUitCore()`
+— profiteert automatisch mee, geen aparte wijziging.
+
+### Getest tijdens implementatie
+Balans-check op alle drie gewijzigde bestanden. Bevestigd:
+`adapter`-parameter blijft elders in `adjuster-core.ts` gebruikt (geen
+ongebruikte variabele). Cycling's wrapper-relatie expliciet
+geverifieerd vóór aanname dat de fix daar ook aankomt.
+
+**Nog niet getest in de draaiende app** — vergt een scenario met laag
+herstel + een geplande duurtraining, controle dat kaart/Dagplan/
+hoofdadvies nu consistent hetzelfde getal tonen.
+
 ## v2.4.316 — FIX: minuten-precisie ontbrak in de werktijden-instructie
 **Gemeld met bewijs (screenshot echte event vs. coach-advies):
 "14:00-00:00" i.p.v. de echte "14:45-00:45".**

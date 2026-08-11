@@ -127,7 +127,21 @@ export async function POST(req: NextRequest) {
         // "Rust" in de AI-prompt hebben aangemerkt, exact hetzelfde
         // patroon als eerder vandaag gevonden in coach/route.ts en
         // meerdere andere plekken.
-        todayEngineContext = `Vandaag gepland (Today Engine, autoritatief — gebruik dit, verzin geen ander sessietype): ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''} via ${todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'rowing' ? 'Rowing Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'}${todayPlan.trainingPhase ? ` — trainingsfase: ${todayPlan.trainingPhase.mesocycleType}` : ''}`
+        // v2.4.317-FIX (Coach Decision Integrity, vervolg op v2.4.314 —
+        // "84/75/76 minuten"-bevinding): zelfde aanpassings-/geen-
+        // aanpassings-tekst als api/coach/route.ts nu toegevoegd — dit
+        // bestand had 'm nog niet, waardoor het Dagplan zelf een
+        // reductie kon verzinnen op basis van de rauwe Garmin-data
+        // verderop, ondanks dat todayPlan.duration al de definitieve,
+        // ongewijzigde waarde was.
+        const bronLabel = todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'rowing' ? 'Rowing Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'
+        const aanpassingsContext = (todayPlan.originalDuration && todayPlan.duration && todayPlan.originalDuration !== todayPlan.duration)
+          ? ` LET OP, AANGEPAST: oorspronkelijk gepland ${todayPlan.originalDuration} min, definitief vandaag ${todayPlan.duration} min — reden: ${todayPlan.adjustmentReason || 'niet gespecificeerd'}. Gebruik UITSLUITEND dit getal (${todayPlan.duration} min) — noem nooit ${todayPlan.originalDuration} min, en verzin geen ander, eigen getal.`
+          : ''
+        const geenAanpassingContext = (todayPlan.originalDuration && !aanpassingsContext)
+          ? ` GEEN AANPASSING: de Adjustment Engine heeft vandaag geen reductie besloten. Ook als de Garmin/HRV-data hieronder op vermoeidheid wijst, mag je ZELF GEEN kortere duur voorstellen dan hierboven — dat is niet jouw beslissing. Je mag het wél benoemen (bijv. "je HRV is wat lager, houd het rustig aan binnen de geplande ${todayPlan.duration} minuten"), maar de sessie zelf blijft ${todayPlan.duration} min.`
+          : ''
+        todayEngineContext = `Vandaag gepland (Today Engine, autoritatief — gebruik dit, verzin geen ander sessietype, en verzin nooit een eigen duur/intensiteit — gebruik uitsluitend de hier gegeven waarden): ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''} via ${bronLabel}${todayPlan.trainingPhase ? ` — trainingsfase: ${todayPlan.trainingPhase.mesocycleType}` : ''}.${aanpassingsContext}${geenAanpassingContext}`
       }
     } catch (err) {
       console.error('[action-plan] Today Engine ophalen mislukt, gaat door zonder dit blok:', err)
@@ -142,7 +156,7 @@ export async function POST(req: NextRequest) {
     if (garmin) {
       const label = garminIsVandaag ? 'vandaag' : 'gisteren'
       garminContext = [
-        `Garmin data (${label}):`,
+        `Garmin data (${label}) — ALLEEN voor context/uitleg (slaap, hydratatie, herstel-tips). NOOIT gebruiken om zelf een trainingsduur/-intensiteit te berekenen — die komt uitsluitend uit "Vandaag gepland" hierboven (Regel 0c):`,
         garmin.resting_hr ? `- Rusthartslag: ${garmin.resting_hr} bpm` : '',
         garmin.body_battery?.current !== null ? `- Body Battery: ${garmin.body_battery.current} (opgeladen +${garmin.body_battery.charged}, verbruikt -${garmin.body_battery.spent})` : '',
         garmin.sleep?.score ? `- Slaapscore: ${garmin.sleep.score}/100 (${Math.floor((garmin.sleep.duration_minutes || 0) / 60)}u ${(garmin.sleep.duration_minutes || 0) % 60}m)` : '',

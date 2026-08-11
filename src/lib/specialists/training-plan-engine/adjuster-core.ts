@@ -130,12 +130,27 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
     }
   }
 
-  // ── Trigger 3: fatigue_detected — GEDEELTELIJK, alleen vandaag ───────
-  // v2.4.265 (ADR-007): muteert de database NIET meer. Bepaalt alleen
-  // OF er een hoge-intensiteits-sessie vandaag gepland staat bij laag
-  // herstel, en levert dat als signaal — de daadwerkelijke aanpassing
-  // (inclusief eventuele combinatie met andere signalen) gebeurt nu
-  // uitsluitend in de Workout Builder's Adaptation Engine.
+  // ── Trigger 3: fatigue_detected — alleen vandaag ──────────────────────
+  // v2.4.265 (ADR-007): muteert de database NIET meer. Bepaalt alleen OF
+  // er bij laag herstel een sessie vandaag gepland staat, en levert dat
+  // als signaal — de daadwerkelijke aanpassing gebeurt uitsluitend in de
+  // Workout Builder's Adaptation Engine.
+  //
+  // v2.4.317-FIX (Coach Decision Integrity — "84/75/76 minuten"-bevinding,
+  // overleg gebruiker + GPT, 11 augustus 2026): de eis
+  // `vandaagSessie.type === adapter.hoogIntensiteitsType` verwijderd.
+  // Onderzocht vóór wijzigen: het oorspronkelijke contract
+  // (adaptive-training-plan-decision-contract-v1.md) beschrijft
+  // fatigue_detected breder ("microcyclus verzwakt"), en er is geen
+  // enkele documentatie/ADR gevonden die deze beperking tot intervallen
+  // als bewuste, fysiologisch onderbouwde keuze vastlegt — dus
+  // behandeld als onvolledige scope, niet als grens die met bewijs
+  // overschreven wordt. DREMPELWAARDE ONGEWIJZIGD
+  // (policy.recoveryState === 'low', confidence 65) — alleen de
+  // sessietype-restrictie is weg. Zonder deze fix kon de AI bij laag
+  // herstel op een duurtraining zelf een reductie "verzinnen" (rauwe
+  // HRV-data elders in de prompt), terwijl de kaart 84 bleef tonen —
+  // precies het gat dat Regel 0c moet dichten.
   const policy = await genereerCoachPolicy(userId)
   if (policy.recoveryState === 'low') {
     const { data: vandaagSessie } = await supabase
@@ -146,11 +161,12 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
       .in('status', ['scheduled', 'planned'])
       .maybeSingle()
 
-    if (vandaagSessie && vandaagSessie.type === adapter.hoogIntensiteitsType) {
+    if (vandaagSessie) {
       // Confidence: CoachPolicy heeft geen eigen expliciet confidence-
       // getal — 65 is een redelijk, MEDIUM-achtig startpunt (zelfde
       // orde van grootte als de Universal Athlete Platform-adapters),
-      // geen verzonnen precisie.
+      // geen verzonnen precisie. Ongewijzigd t.o.v. de eerdere,
+      // interval-only-versie — geen nieuwe drempelwaarde verzonnen.
       fatigueSignaal = {
         source: 'fatigue', severity: 'high', confidence: 65,
         reden: 'laag herstel vandaag',

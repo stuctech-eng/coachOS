@@ -878,6 +878,58 @@ geen verzinsel, exact dezelfde waarden als Running's
      **Nog niet getest:** een echt vakantie-scenario in de draaiende
      app (vergt een actieve vakantie-`life_event` + een geplande
      specialist-sessie dezelfde dag)
+
+   - **v2.4.317 — Vervolgbevinding: "84 / 75 / 76 minuten" tegelijk.**
+     Gemeld met screenshot: kaart toonde 84 min (correct — geen
+     signaal vuurde), maar het hoofdadvies noemde "75 minuten" en het
+     Dagplan "76 minuten (-10%, HRV ongebalanceerd)" — de AI had dit
+     **zelf berekend** uit rauwe Garmin/HRV-data die los in haar
+     prompt-context beschikbaar was, volledig langs het gestructureerde
+     signalensysteem heen. Dit was geen herhaling van de v2.4.314-bug
+     (kaart/tekst-dezelfde-bron), maar een dieper gat: Regel 0c was tot
+     dan toe alleen een prompt-*instructie*, geen technische garantie.
+
+     **Root cause van waarom er structureel geen signaal vuurde:**
+     `adjuster-core.ts`'s `fatigueSignaal` was beperkt tot
+     `vandaagSessie.type === adapter.hoogIntensiteitsType` (alleen
+     intervallen) — nooit toegepast op duurtrainingen. Onderzocht vóór
+     wijzigen (overleg gebruiker + GPT): het oorspronkelijke contract
+     (`docs/adaptive-training-plan-decision-contract-v1.md`) omschrijft
+     `fatigue_detected` juist breder ("microcyclus verzwakt"), en er is
+     geen enkele ADR/changelog-regel gevonden die de intervallen-only-
+     beperking als bewuste, fysiologisch onderbouwde keuze vastlegt —
+     behandeld als onvolledige scope, niet als bewijs-gedekte grens.
+
+     **Twee samenhangende fixes, beide geïmplementeerd (niet los van
+     elkaar, zoals GPT terecht aangaf):**
+     1. **`adjuster-core.ts`:** de sessietype-restrictie verwijderd —
+        `fatigueSignaal` geldt nu voor élke geplande sessie van
+        vandaag bij laag herstel, niet alleen intervallen.
+        **Drempelwaarde ongewijzigd** (`policy.recoveryState ===
+        'low'`, confidence 65) — alleen de type-check is weg
+     2. **`api/coach/route.ts` + `api/action-plan/route.ts`:** Regel
+        0c technisch verstevigd, niet alleen als instructie. Nieuwe,
+        expliciete "GEEN AANPASSING"-tak in de Today Engine-context:
+        als er geen signaal vuurde, wordt de AI letterlijk verboden om
+        zelf een kortere duur voor te stellen — mag het wél *benoemen*
+        in de uitleg, nooit de sessie zelf wijzigen. De
+        Garmin/HRV-rauwe-databron kreeg een expliciete kopregel:
+        "ALLEEN voor context/uitleg... NOOIT gebruiken om zelf een
+        trainingsduur te berekenen." `api/action-plan/route.ts` had de
+        aanpassings-/geen-aanpassings-tekst nog helemaal niet (alleen
+        `api/coach/route.ts` had 'm sinds v2.4.314) — nu in beide
+        identiek
+
+     **Bewust niet gedaan:** geen database-migratie, geen tweede
+     Adjustment Engine, geen nieuwe drempelwaarden. Cycling's route
+     bleek een dunne wrapper (`training-plan-adjuster.ts` →
+     `voerDailyAdjustmentUitCore()`) — profiteert automatisch mee,
+     geen aparte wijziging nodig.
+
+     **Nog niet getest in de draaiende app** — vergt een scenario met
+     laag herstel + een geplande duurtraining, en controle dat kaart/
+     Dagplan/hoofdadvies nu daadwerkelijk hetzelfde (aangepaste of
+     ongewijzigde) getal tonen.
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
 2. **AI never creates exercises** — AI verzint geen oefeningen buiten de gefilterde lijst
 3. **Filter first, assemble second** — route filtert → AI assembleert

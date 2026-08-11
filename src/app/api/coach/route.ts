@@ -310,7 +310,18 @@ export async function POST(req: NextRequest) {
         const aanpassingsContext = (todayPlan.originalDuration && todayPlan.duration && todayPlan.originalDuration !== todayPlan.duration)
           ? `\n- LET OP, AANGEPAST: oorspronkelijk gepland ${todayPlan.originalDuration} min, definitief vandaag ${todayPlan.duration} min — reden: ${todayPlan.adjustmentReason || 'niet gespecificeerd'}. Gebruik UITSLUITEND dit getal (${todayPlan.duration} min) in je advies — noem nooit ${todayPlan.originalDuration} min als de huidige sessieduur, en verzin geen ander, eigen getal.`
           : ''
-        todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype, en verzin nooit een eigen duur/intensiteit/afstand — gebruik uitsluitend de hier gegeven waarden):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${bronLabel}\n- Reden: ${todayPlan.reason}${aanpassingsContext}${todayPlan.trainingPhase ? `\n- Trainingsfase: ${todayPlan.trainingPhase.mesocycleType} — leg desgewenst uit waarom de belasting van vandaag past bij deze fase (bijv. "omdat je in een opbouwweek zit, hoort deze hogere belasting bij de opbouw" of "ondanks dat je je fit voelt, zit je in een herstelweek — daarom nu bewust rustiger")` : ''}\n`
+        // v2.4.317-FIX (Coach Decision Integrity, vervolg op v2.4.314 —
+        // "84/75/76 minuten"-bevinding): expliciete "geen aanpassing"-tak
+        // toegevoegd. Vóór deze fix kon de AI, ook al toonde todayPlan
+        // gewoon de ongewijzigde 84 min, via de rauwe Garmin/HRV-context
+        // elders in de prompt zelf een reductie "beredeneren" (bijv. "84
+        // min → 75 min, want HRV is ongebalanceerd") — precies het gat
+        // dat Regel 0c moest dichten. Nu een expliciete, niet mis te
+        // verstane tegenhanger van de aanpassingsContext hierboven.
+        const geenAanpassingContext = (todayPlan.originalDuration && !aanpassingsContext)
+          ? `\n- GEEN AANPASSING: de Adjustment Engine heeft vandaag geen reductie/aanpassing besloten voor deze sessie. Ook als de Garmin/HRV-data hieronder op vermoeidheid of slecht herstel wijst, mag je ZELF GEEN kortere duur, lagere intensiteit of andere trainingsparameter voorstellen dan hierboven gegeven — dat is niet jouw beslissing. Je mag het wél benoemen in je uitleg (bijv. "je HRV is wat lager, houd het rustig aan binnen de geplande ${todayPlan.duration} minuten"), maar de sessie zelf blijft ${todayPlan.duration} min.`
+          : ''
+        todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype, en verzin nooit een eigen duur/intensiteit/afstand — gebruik uitsluitend de hier gegeven waarden):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${bronLabel}\n- Reden: ${todayPlan.reason}${aanpassingsContext}${geenAanpassingContext}${todayPlan.trainingPhase ? `\n- Trainingsfase: ${todayPlan.trainingPhase.mesocycleType} — leg desgewenst uit waarom de belasting van vandaag past bij deze fase (bijv. "omdat je in een opbouwweek zit, hoort deze hogere belasting bij de opbouw" of "ondanks dat je je fit voelt, zit je in een herstelweek — daarom nu bewust rustiger")` : ''}\n`
 
         // v2.4.250 (Universal Athlete Platform — Stap 2, Coach Intelligence):
         // als de workout is aangepast door een ANDERE sport (kruis-sport-
@@ -441,7 +452,7 @@ export async function POST(req: NextRequest) {
     if (garmin) {
       const label = garminIsVandaag ? 'vandaag' : 'gisteren'
       garminContext = [
-        `\nGarmin data (${label}):`,
+        `\nGarmin data (${label}) — ALLEEN voor context/uitleg (slaap, hydratatie, herstel-tips). NOOIT gebruiken om zelf een trainingsduur/-intensiteit/-afstand te berekenen of voor te stellen — die komen uitsluitend uit VANDAAG STAAT GEPLAND hierboven (Regel 0c):`,
         garmin.resting_hr ? `Rusthartslag: ${garmin.resting_hr} bpm` : '',
         garmin.body_battery?.current !== null ? `Body Battery: ${garmin.body_battery.current} (opgeladen +${garmin.body_battery.charged}, verbruikt -${garmin.body_battery.spent})` : '',
         garmin.sleep?.score ? `Slaapscore: ${garmin.sleep.score}/100, duur: ${Math.floor((garmin.sleep.duration_minutes || 0) / 60)}u ${(garmin.sleep.duration_minutes || 0) % 60}m` : '',
