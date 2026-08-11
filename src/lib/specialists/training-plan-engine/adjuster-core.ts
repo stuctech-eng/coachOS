@@ -54,7 +54,21 @@ export interface DailyAdjustmentResultaat {
   vacationSignaal: AdaptationSignal | null
 }
 
-export async function voerDailyAdjustmentUitCore(userId: string, planId: string, adapter: TrainingPlanSportAdapter): Promise<DailyAdjustmentResultaat> {
+// v2.4.320-FIX: gemeld — "Open trainingsplan" verscheen vaak niet meer
+// bij Snelle Acties. Root cause: deze functie roept genereerCoachPolicy()
+// aan (Trigger 3), maar Today Engine (today-engine.ts) roept die functie
+// SINDS v2.4.319 ook al zelf aan, vóór deze functie ooit bereikt wordt
+// (de nieuwe REST-check). Binnen één Today Engine-aanroep gebeurde de
+// volledige CoachPolicy-berekening dus TWEE keer — genoeg extra latency
+// om Smart Actions' bestaande, harde 2,5-seconden-tijdslimiet
+// (api/smart-actions/route.ts) te overschrijden, waardoor het
+// trainingsvoorstel stil werd overgeslagen.
+//
+// Fix: optioneel, vierde parameter — een al-berekend recoveryState. Als
+// meegegeven: geen tweede genereerCoachPolicy()-aanroep. Als weggelaten
+// (de drie workout-detail-routes, die geen "buiten" al-berekende policy
+// hebben): ONGEWIJZIGD gedrag, zelfde als vóór deze fix.
+export async function voerDailyAdjustmentUitCore(userId: string, planId: string, adapter: TrainingPlanSportAdapter, vooraf_berekend_recoveryState?: 'low' | 'moderate' | 'good'): Promise<DailyAdjustmentResultaat> {
   const supabase = createAdminClient()
   const aanpassingen: AanpassingResultaat[] = []
   let fatigueSignaal: AdaptationSignal | null = null
@@ -151,7 +165,9 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
   // herstel op een duurtraining zelf een reductie "verzinnen" (rauwe
   // HRV-data elders in de prompt), terwijl de kaart 84 bleef tonen —
   // precies het gat dat Regel 0c moet dichten.
-  const policy = await genereerCoachPolicy(userId)
+  const policy = vooraf_berekend_recoveryState
+    ? { recoveryState: vooraf_berekend_recoveryState }
+    : await genereerCoachPolicy(userId)
   if (policy.recoveryState === 'low') {
     const { data: vandaagSessie } = await supabase
       .from('training_plan_sessions')

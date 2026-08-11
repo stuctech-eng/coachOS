@@ -179,7 +179,11 @@ const ADAPTER_PER_SPORT: Record<string, typeof cyclingAdapter> = { cycling: cycl
  * nooit laten crashen (zelfde principe als de bestaande try/catches
  * in de workout-routes zelf).
  */
-export async function berekenDefinitieveDuur(userId: string, proposal: SpecialistProposal): Promise<{ duur: number; reden: string | null }> {
+// v2.4.320-FIX: optioneel vierde parameter, doorgegeven aan
+// voerDailyAdjustmentUitCore() — zie de toelichting daar (adjuster-core.ts)
+// voor de volledige root cause. Voorkomt een dubbele
+// genereerCoachPolicy()-aanroep binnen dezelfde Today Engine-aanroep.
+export async function berekenDefinitieveDuur(userId: string, proposal: SpecialistProposal, vooraf_berekend_recoveryState?: 'low' | 'moderate' | 'good'): Promise<{ duur: number; reden: string | null }> {
   const origineleDuur = proposal.sessie.duration
   try {
     const supabase = createAdminClient()
@@ -199,7 +203,7 @@ export async function berekenDefinitieveDuur(userId: string, proposal: Specialis
     if (kruisSportSignaal) alleSignalen.push(kruisSportSignaal)
 
     const adapter = ADAPTER_PER_SPORT[proposal.sport]
-    const dailyAdjustment = await voerDailyAdjustmentUitCore(userId, proposal.sessie.plan_id, adapter)
+    const dailyAdjustment = await voerDailyAdjustmentUitCore(userId, proposal.sessie.plan_id, adapter, vooraf_berekend_recoveryState)
     if (dailyAdjustment.fatigueSignaal) alleSignalen.push(dailyAdjustment.fatigueSignaal)
     if (dailyAdjustment.vacationSignaal) alleSignalen.push(dailyAdjustment.vacationSignaal)
 
@@ -263,7 +267,7 @@ async function proposalNaarTodayPlan(userId: string, proposal: SpecialistProposa
   // engine/core.ts — zou bij Rowing altijd "Running" tonen. Nu generiek.
   const SPORT_NAAM_LABEL: Record<string, string> = { cycling: 'Cycling', running: 'Running', rowing: 'Rowing' }
 
-  const { duur: definitieveDuur, reden: aanpassingsReden } = await berekenDefinitieveDuur(userId, proposal)
+  const { duur: definitieveDuur, reden: aanpassingsReden } = await berekenDefinitieveDuur(userId, proposal, policy?.recoveryState)
 
   return {
     source: proposal.sport,

@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.320 — FIX: performance-regressie in Smart Actions, veroorzaakt door v2.4.319
+**Gemeld: "Open trainingsplan" verscheen vaak niet meer bij Snelle
+Acties.**
+
+### Root cause
+`api/smart-actions/route.ts` heeft al sinds v2.4.207 een harde 2,5-
+seconden-tijdslimiet op Today Engine (bewuste, eerder goedgekeurde
+keuze — bij overschrijding wordt het trainingsvoorstel stil
+overgeslagen, de rest van Smart Actions blijft snel). v2.4.319's
+nieuwe CoachDecision-REST-check riep `genereerCoachPolicy()` aan
+vóór de bestaande, interne aanroep binnen `voerDailyAdjustmentUitCore()`
+— **twee keer dezelfde, meerdere-queries-kostende berekening binnen
+één Today Engine-aanroep**, genoeg extra latency om de bestaande
+tijdslimiet vaak te overschrijden.
+
+### Fix
+Geen tijdslimiet-verhoging — geen bewijs dat dat de juiste correctie
+zou zijn, en lost de onderliggende trage berekening niet op. In
+plaats daarvan de daadwerkelijke dubbele berekening weggenomen:
+
+- **`adjuster-core.ts`**: `voerDailyAdjustmentUitCore()` accepteert nu
+  een optioneel, vierde parameter (`vooraf_berekend_recoveryState`) —
+  backward-compatible. De drie workout-detailroutes (Cycling/Running/
+  Rowing), die dit dubbel-probleem nooit hadden, blijven volledig
+  ongewijzigd — ze geven de nieuwe parameter niet mee, dus exact
+  hetzelfde gedrag als vóór deze fix
+- **`today-engine.ts`**: `berekenDefinitieveDuur()` uitgebreid met
+  hetzelfde optionele parameter, `proposalNaarTodayPlan()` geeft nu
+  zijn al-berekende `policy.recoveryState` door
+
+**Resultaat:** binnen één Today Engine-aanroep wordt
+`genereerCoachPolicy()` weer precies één keer aangeroepen — exact
+zoals vóór v2.4.319, met de nieuwe REST-check erbij zonder de eerder
+opgetreden dubbele kostbare berekening.
+
+### Twee gewijzigde bestanden
+`adjuster-core.ts`, `today-engine.ts`.
+
+**Nog niet gemeten of dit de 2,5-seconden-tijdslimiet daadwerkelijk
+weer voldoende onder controle brengt** — vergt observatie in de
+draaiende app of "Open trainingsplan" nu weer consistent verschijnt.
+
 ## v2.4.319 — CoachDecision-contract: REST | TRAIN | ADJUST
 **De belangrijkste architectuurwijziging van vandaag. Gebruiker + GPT-
 overleg, na feedback die de gebruiker zelf van de in-app Coach kreeg:

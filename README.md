@@ -1034,6 +1034,28 @@ geen verzinsel, exact dezelfde waarden als Running's
    Dagplan → Coach → Workout-endpoint — nergens mag een workout
    ontstaan. **Nog niet end-to-end getest in de draaiende app** — vergt
    een scenario met een actieve blessure of ziekte-levensgebeurtenis.
+
+   **v2.4.320 — Gemelde performance-regressie, direct veroorzaakt door
+   v2.4.319, gevonden en gefixt.** "Open trainingsplan" verscheen vaak
+   niet meer bij Snelle Acties. Root cause: `api/smart-actions/route.ts`
+   heeft al sinds v2.4.207 een harde 2,5-seconden-tijdslimiet op Today
+   Engine (bij overschrijding: trainingsvoorstel stil overgeslagen,
+   bewuste, eerder al goedgekeurde keuze). v2.4.319's nieuwe REST-check
+   riep `genereerCoachPolicy()` aan vóór de bestaande, interne aanroep
+   binnen `voerDailyAdjustmentUitCore()` — **twee keer dezelfde,
+   meerdere-queries-kostende berekening binnen één Today Engine-
+   aanroep**, genoeg extra latency om de bestaande tijdslimiet te
+   overschrijden.
+
+   **Fix, geen tijdslimiet-verhoging (geen bewijs dat dat de juiste
+   correctie zou zijn) — de daadwerkelijke dubbele berekening
+   weggenomen:** `voerDailyAdjustmentUitCore()` accepteert nu een
+   optioneel, vierde parameter (`vooraf_berekend_recoveryState`) —
+   backward-compatible, de drie workout-detailroutes (die dit dubbel-
+   probleem nooit hadden) blijven ongewijzigd. `today-engine.ts` geeft
+   zijn al-berekende `policy.recoveryState` nu door, dus binnen één
+   Today Engine-aanroep wordt `genereerCoachPolicy()` weer maar één
+   keer aangeroepen — precies zoals vóór v2.4.319.
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
 2. **AI never creates exercises** — AI verzint geen oefeningen buiten de gefilterde lijst
 3. **Filter first, assemble second** — route filtert → AI assembleert
