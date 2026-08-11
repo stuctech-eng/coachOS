@@ -757,14 +757,39 @@ geen verzinsel, exact dezelfde waarden als Running's
 `rowing-grafieken.ts` en de labellijst in de pagina beide aangevuld.
 
 ## ⚠️ Vereist handmatige SQL — v2.4.322: TodayPlan-cache
-**Vóór het pushen van v2.4.322 uitvoeren in Supabase:**
+**Vóór het pushen van v2.4.322 uitvoeren in Supabase.**
+
+**Correctie, 11 augustus 2026:** de oorspronkelijk gegeven SQL miste
+RLS — Supabase's eigen beveiligingswaarschuwing signaleerde dit
+terecht bij het uitvoeren ("Clients using anon or authenticated keys
+may be able to read/write today_plan_cache"). Mijn eigen fout — had
+zelf al genoteerd dat andere tabellen RLS gebruiken, maar dit niet
+toegepast. Onderstaande, gecorrigeerde versie gebruiken:
 ```sql
 create table if not exists today_plan_cache (
   user_id uuid primary key,
   plan_json jsonb not null,
   computed_at timestamptz not null default now()
 );
+
+alter table today_plan_cache enable row level security;
+
+create policy "Gebruikers zien alleen hun eigen cache"
+  on today_plan_cache for select
+  using (auth.uid() = user_id);
+
+create policy "Gebruikers schrijven alleen hun eigen cache"
+  on today_plan_cache for insert
+  with check (auth.uid() = user_id);
+
+create policy "Gebruikers werken alleen hun eigen cache bij"
+  on today_plan_cache for update
+  using (auth.uid() = user_id);
 ```
+Breekt niets aan de werkende code — de app gebruikt
+`createAdminClient()` (service-role, omzeilt RLS sowieso) om deze
+tabel te benaderen. RLS voorkomt alleen dat een gewone anon/
+authenticated-sleutel rechtstreeks bij andermans cache zou kunnen.
 **Kortlevende (60 sec) cache voor `bepaalTodayPlan()`.** Bevestigd:
 `api/coach/route.ts`, `api/action-plan/route.ts` en
 `api/smart-actions/route.ts` riepen deze functie tot nu toe alle drie
