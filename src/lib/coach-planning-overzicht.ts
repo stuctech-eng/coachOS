@@ -15,7 +15,11 @@ function lokaleDagStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-interface LifeEventRij {
+// v2.4.314: geëxporteerd (was lokaal) — hergebruikt door
+// adjuster-core.ts voor het vacation_mode-signaal, i.p.v. een tweede,
+// parallelle vakantie-datalaag te bouwen (Coach Decision Integrity-
+// bouwopdracht, 11 augustus 2026).
+export interface LifeEventRij {
   type: string
   start_time: string
   end_date: string | null
@@ -44,7 +48,9 @@ function weekVerschil(startDatumStr: string, dagStr: string): number {
 // isEenmaligActiefVandaag in coach-planning/page.tsx — bewust hier
 // gedupliceerd (server- vs. client-bestand), geen gedeelde module
 // (zou een grotere refactor zijn, niet gecombineerd met deze bugfix-ronde).
-function isEventActiefOpDag(e: LifeEventRij, dagStr: string): boolean {
+// v2.4.314: geëxporteerd (was lokaal) — zie toelichting bij
+// LifeEventRij hierboven. Logica zelf ongewijzigd.
+export function isEventActiefOpDag(e: LifeEventRij, dagStr: string): boolean {
   // v2.4.205-FIX: was e.start_time.split('T')[0] — ruwe string-
   // extractie inconsistent met lokaleDagStr() elders
   const startDatum = lokaleDagStr(new Date(e.start_time))

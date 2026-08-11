@@ -1,5 +1,84 @@
 # CoachOS — Changelog
 
+## v2.4.314 — Coach Decision Integrity geïmplementeerd (vacation_mode)
+**Bouw-akkoord gebruiker + GPT (Claude eindverantwoordelijk), na
+ontwerp (v2.4.313) en vier verificaties. Lost het "35 vs. 50
+minuten"-gat definitief op: Home-kaart, trainingsplan en AI-tekst
+gebruiken voortaan gegarandeerd dezelfde, daadwerkelijk uitgevoerde
+workout-beslissing.**
+
+### Kern
+`training_plan_sessions.duration` blijft altijd onaangetast. Een
+aanpassing (vakantie, vermoeidheid) is een runtime-beslissing —
+Today Engine bouwt nu dezelfde workout als de detailpagina
+(`bouwWorkout()` → signalen → `pasWorkoutAan()`), en leidt daaruit de
+definitieve duur af via een nieuwe, pure `totaalDuurVanWorkout()` —
+nooit uit `UniversalWorkout.duration_sec` zelf (dat veld wordt door
+`pasWorkoutAan()` nooit herberekend, bevestigd tijdens verificatie).
+
+### Acht gewijzigde bestanden
+1. **`coach-planning-overzicht.ts`** — `LifeEventRij`/
+   `isEventActiefOpDag()` geëxporteerd (waren lokaal) — hergebruikt
+   voor vacation-detectie, geen nieuwe datalaag
+2. **`adaptation.ts`** — `'vacation'` toegevoegd aan
+   `AdaptationSignal['source']`; nieuwe `totaalDuurVanWorkout()`
+3. **`adjuster-core.ts`** — Trigger 5 (vacation_mode) toegevoegd aan
+   de bestaande Daily Adjustment Layer — geen database-mutatie, puur
+   een signaal (zelfde categorie als het al-bestaande
+   `fatigue_detected`)
+4-6. **Cycling/Running/Rowing `training-plan/workout`-routes** — elk
+   één regel: `vacationSignaal` meegenomen in de signalenlijst
+7. **`today-engine.ts`** — `proposalNaarTodayPlan()` nu async, roept
+   de volledige keten aan (nieuwe `berekenDefinitieveDuur()`-helper),
+   met try/catch-terugval op de originele duur bij een fout.
+   `TodayPlan` uitgebreid: `originalDuration`/`adjustmentReason`
+8. **`api/coach/route.ts`** — AI-prompt toont origineel vs. definitief
+   + reden expliciet wanneer ze verschillen, met een harde instructie:
+   nooit een ander getal noemen dan wat hier gegeven wordt
+
+### Idempotentie, bevestigd door constructie
+De keten start altijd bij de pure, onaangetaste `duration`-kolom —
+nooit bij een eerder resultaat. Herhaalde aanroepen geven dezelfde
+uitkomst zolang signalen niet veranderen (geen 50→35→24,5-cascade).
+Herstel is automatisch: vakantie voorbij → geen signaal meer →
+volgende aanroep geeft weer de originele duur, niets terug te
+schrijven.
+
+### Meerdere signalen tegelijk
+Bevestigd niet-optellend — `pasWorkoutAan()`'s bestaande
+downscale-mechaniek wordt hooguit één keer toegepast, ongeacht het
+aantal actieve signalen (vakantie + vermoeidheid + slecht herstel
+geeft dus niet -30%-20%-15%).
+
+### Niet aangeraakt, zoals gevraagd
+Coach Decision Engine, Workout Matching, Coach Call-statusmachine,
+Strava/Garmin Coach Call-logica, Trainer AI-pad, bestaande
+injury/missed-session-architectuur — geen van allen gewijzigd.
+
+### Getest tijdens implementatie
+Balans-check (haakjes/accolades) op alle acht bestanden. Elke nieuwe
+import expliciet tegen de bijbehorende export gelegd — na de eerdere
+v2.4.305/306-importfout bewust extra zorgvuldig, geen fout meer
+gevonden. Volledige, regel-voor-regel eindcontrole van
+`today-engine.ts` en `adjuster-core.ts` (de twee grootste/meest
+kritieke wijzigingen).
+
+### Nog NIET getest — vergt de draaiende app
+1. Normale sessie zonder signalen (50 → 50)
+2. Alleen vakantie (50 → aangepast, kaart/trainingsplan/AI tonen
+   dezelfde waarde)
+3. Alleen fatigue/recovery (bestaande aanpassing blijft werken)
+4. Vakantie + fatigue + recovery tegelijk (één aanpassing, geen
+   cascade)
+5. Signaal verdwijnt (originele planning komt automatisch terug)
+6-8. Cycling/Running/Rowing, elk afzonderlijk
+9. Herhaalde requests (identieke input → identieke output)
+10-12. `duration_sec` niet als bron, `repeat`-blokken correct
+   meegerekend, AI presenteert geen niet-bestaande parameter
+
+**Vergt een echte vakantie-`life_event` + een geplande
+specialist-sessie dezelfde dag om end-to-end te kunnen testen.**
+
 ## v2.4.313 — Coach Decision Integrity vastgelegd + vier verificaties afgerond
 **Geen code. Ontwerp-stap D uit het overleg met gebruiker + GPT
 (Claude eindverantwoordelijk) — vier gerichte verificaties, dan de

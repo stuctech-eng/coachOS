@@ -850,9 +850,34 @@ geen verzinsel, exact dezelfde waarden als Running's
         `life_events`-query (`type: 'vakantie'`) hergebruiken — bestaat
         al letterlijk als patroon in `coach-planning-overzicht.ts`
      4. Signaalcombinatie is bevestigd niet-optellend (zie hierboven)
-   - **Nog niet geïmplementeerd:** vacation-signaalbron toevoegen aan
-     `AdaptationSignal['source']`, Today Engine uitbreiden, AI-prompt
-     aanpassen. Wacht op een apart bouw-akkoord.
+   - **✅ Geïmplementeerd — v2.4.314** (bouw-akkoord, gebruiker + GPT,
+     11 augustus 2026). Acht bestanden, van klein naar groot:
+     1. `coach-planning-overzicht.ts` — `LifeEventRij`/
+        `isEventActiefOpDag()` geëxporteerd (waren lokaal)
+     2. `adaptation.ts` — `'vacation'` toegevoegd aan
+        `AdaptationSignal['source']`; nieuwe `totaalDuurVanWorkout()` —
+        sommeert blok-duraties (incl. `repeat`), nooit het verouderde
+        topniveau `duration_sec`
+     3. `adjuster-core.ts` — Trigger 5 (vacation_mode), hergebruikt
+        stap 1, geen database-mutatie (zelfde categorie als
+        `fatigue_detected`)
+     4-6. Cycling/Running/Rowing `training-plan/workout`-routes — elk
+        één regel, `vacationSignaal` meegenomen in de signalenlijst
+     7. `today-engine.ts` — `proposalNaarTodayPlan()` nu async, bouwt
+        dezelfde workout als de detailpagina
+        (`bouwWorkout()`→signalen→`pasWorkoutAan()`→
+        `totaalDuurVanWorkout()`), met terugval op de originele duur
+        bij een fout. `TodayPlan` uitgebreid met `originalDuration`/
+        `adjustmentReason`
+     8. `api/coach/route.ts` — AI-prompt toont expliciet origineel vs.
+        definitief + reden wanneer die verschillen, met een harde
+        instructie om nooit een ander getal te noemen
+   - **Getest tijdens implementatie:** balans-check op alle acht
+     bestanden, elke import expliciet tegen de bijbehorende export
+     gelegd (na de eerdere v2.4.305/306-importfout, extra zorgvuldig).
+     **Nog niet getest:** een echt vakantie-scenario in de draaiende
+     app (vergt een actieve vakantie-`life_event` + een geplande
+     specialist-sessie dezelfde dag)
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
 2. **AI never creates exercises** — AI verzint geen oefeningen buiten de gefilterde lijst
 3. **Filter first, assemble second** — route filtert → AI assembleert

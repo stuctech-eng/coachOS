@@ -21,7 +21,12 @@ import type { UniversalWorkout, WorkoutBlock, WorkoutTarget } from './types'
  * bronnen (Strength, Nutrition, Recovery) spreken hierdoor automatisch
  * hetzelfde protocol, zonder de Adaptation Engine zelf aan te passen. */
 export interface AdaptationSignal {
-  source: 'fatigue' | 'cross_sport' | 'sleep' | 'weather'
+  // v2.4.314: 'vacation' toegevoegd — Coach Decision Integrity-
+  // bouwopdracht, 11 augustus 2026. Loopt door dezelfde keten als de
+  // bestaande bronnen, geen aparte behandeling nodig in pasWorkoutAan()
+  // zelf (die kent alleen severity/reden, geen sport- of bron-specifieke
+  // logica — vandaar dat dit een kleine, veilige toevoeging is).
+  source: 'fatigue' | 'cross_sport' | 'sleep' | 'weather' | 'vacation'
   severity: 'low' | 'medium' | 'high'
   /** 0-100 — hoe zeker is de bron van dit signaal */
   confidence: number
@@ -155,4 +160,36 @@ export function pasWorkoutAan(origineel: UniversalWorkout, signalen: AdaptationS
 
   workout.adaptations = [...workout.adaptations, ...nieuweAanpassingen]
   return workout
+}
+
+// ── totaalDuurVanWorkout() — Coach Decision Integrity, v2.4.314 ────────
+// Bron: bouwopdracht 11 augustus 2026. KRITIEK: workout.duration_sec
+// (het topniveau-veld) wordt door pasWorkoutAan() hierboven NOOIT
+// herberekend — alleen losse blok-duration_sec-waarden veranderen (zie
+// pasDownscaleToe/pasBeschikbareTijdToe). Na een aanpassing is
+// workout.duration_sec dus VEROUDERD. Deze functie is de enige
+// betrouwbare bron voor de daadwerkelijke, aangepaste totaalduur —
+// altijd vers gesommeerd uit de blokken zelf, nooit uit het
+// topniveau-veld gelezen. Puur, geen state, geen mutatie.
+function effectieveBlokDuur(blok: WorkoutBlock): number {
+  // Een blok met repeat=5 en rust_na_repeat_sec=30 duurt in totaal:
+  // 5× de bloklengte + 4× de rust ertussen (rust NA elke herhaling
+  // behalve de laatste — vandaar repeat-1, niet repeat).
+  if (blok.repeat && blok.repeat > 1) {
+    const rustTotaal = (blok.rust_na_repeat_sec || 0) * (blok.repeat - 1)
+    return blok.duration_sec * blok.repeat + rustTotaal
+  }
+  return blok.duration_sec
+}
+
+export function totaalDuurVanWorkout(workout: UniversalWorkout): number {
+  const alleBlokken: WorkoutBlock[] = [
+    ...workout.warmup,
+    ...workout.mainBlocks,
+    ...workout.recoveryBlocks,
+    ...workout.cooldown,
+    ...(workout.mobility || []),
+  ]
+  const totaalSec = alleBlokken.reduce((som, blok) => som + effectieveBlokDuur(blok), 0)
+  return Math.round(totaalSec / 60) // minuten, consistent met training_plan_sessions.duration
 }

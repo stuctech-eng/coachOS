@@ -4,6 +4,10 @@ import { genereerCoachPolicy } from '../coach-policy'
 import { haalGoalsMetProgress } from '../goal-engine'
 import type { AanpassingResultaat, TrainingPlanSportAdapter } from './types'
 import type { AdaptationSignal } from '@/core/workout-builder/adaptation'
+// v2.4.314: hergebruikt voor Trigger 5 (vacation_mode) — geen nieuwe
+// vakantie-datalaag, exact dezelfde functie/interface als de Coach
+// Vooruitblik-kaart al gebruikt (coach-planning-overzicht.ts).
+import { isEventActiefOpDag, type LifeEventRij } from '@/lib/coach-planning-overzicht'
 
 // ── Daily Adjustment Layer Core — platformcomponent ─────────────────────
 // Bron: docs/adaptive-training-plan-decision-contract-v1.md, sectie 2-3
@@ -32,7 +36,11 @@ import type { AdaptationSignal } from '@/core/workout-builder/adaptation'
 // - goal_change:           ✅ volledig
 // - fatigue_detected:       🟡 GEDEELTELIJK — alleen de huidige dag, niet
 //   "meerdere dagen op rij" (vergt historische CoachPolicy-snapshots)
-// - vacation_mode:          ❌ NOG NIET — vergt eerst een UI
+// - vacation_mode:          ✅ v2.4.314 — Coach Decision Integrity-
+//   bouwopdracht (11 augustus 2026). Zelfde patroon als fatigue_detected:
+//   levert een signaal, muteert de database NIET. Hergebruikt
+//   isEventActiefOpDag()/LifeEventRij uit coach-planning-overzicht.ts —
+//   geen nieuwe vakantie-datalaag.
 
 export interface DailyAdjustmentResultaat {
   aanpassingen: AanpassingResultaat[]
@@ -40,12 +48,17 @@ export interface DailyAdjustmentResultaat {
    * database-mutatie — de aanroeper combineert dit zelf met andere
    * signalen vóór het bouwen van de concrete workout. */
   fatigueSignaal: AdaptationSignal | null
+  /** v2.4.314: vacation_mode — zelfde soort signaal, zelfde reden om
+   * niet te muteren (contextueel, dagafhankelijk, geen structurele
+   * planningswijziging). */
+  vacationSignaal: AdaptationSignal | null
 }
 
 export async function voerDailyAdjustmentUitCore(userId: string, planId: string, adapter: TrainingPlanSportAdapter): Promise<DailyAdjustmentResultaat> {
   const supabase = createAdminClient()
   const aanpassingen: AanpassingResultaat[] = []
   let fatigueSignaal: AdaptationSignal | null = null
+  let vacationSignaal: AdaptationSignal | null = null
   const vandaag = isoDatum(new Date())
 
   // ── Trigger 1: missed_session ────────────────────────────────────────
@@ -158,5 +171,30 @@ export async function voerDailyAdjustmentUitCore(userId: string, planId: string,
     aanpassingen.push({ sessie_id: plan.goal_id || 'onbekend', oude_type: 'macrocyclus', nieuwe_type: null, reason: 'goal_change' })
   }
 
-  return { aanpassingen, fatigueSignaal }
+  // ── Trigger 5: vacation_mode ──────────────────────────────────────────
+  // v2.4.314 (Coach Decision Integrity-bouwopdracht, 11 augustus 2026).
+  // Zelfde soort signaal als fatigue_detected hierboven — geen database-
+  // mutatie, puur een AdaptationSignal voor de aanroeper. Hergebruikt
+  // isEventActiefOpDag()/LifeEventRij (coach-planning-overzicht.ts) —
+  // geen nieuwe vakantie-datalaag. Vakantie-events zijn altijd eenmalig
+  // (nooit recurrence), maar isEventActiefOpDag() handelt dat pad ook
+  // correct af (regel `if (!e.recurrence) { ... }`), dus geen aparte,
+  // vereenvoudigde check nodig.
+  const { data: vakantieEvents } = await supabase
+    .from('life_events')
+    .select('type, start_time, end_date, recurrence, recurrence_days, recurrence_end_date, recurrence_exceptions')
+    .eq('user_id', userId)
+    .eq('type', 'vakantie')
+
+  const actieveVakantie = (vakantieEvents as LifeEventRij[] | null || [])
+    .find(e => isEventActiefOpDag(e, vandaag))
+
+  if (actieveVakantie) {
+    vacationSignaal = {
+      source: 'vacation', severity: 'medium', confidence: 100,
+      reden: 'je bent op vakantie',
+    }
+  }
+
+  return { aanpassingen, fatigueSignaal, vacationSignaal }
 }

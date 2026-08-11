@@ -104,6 +104,9 @@ export async function GET(req: NextRequest) {
 
       const dailyAdjustment = await voerDailyAdjustmentUitCore(user.id, sessie.plan_id, rowingAdapter)
       if (dailyAdjustment.fatigueSignaal) alleSignalen.push(dailyAdjustment.fatigueSignaal)
+      // v2.4.314: Coach Decision Integrity — vacation_mode meenemen,
+      // zelfde patroon als fatigue hierboven.
+      if (dailyAdjustment.vacationSignaal) alleSignalen.push(dailyAdjustment.vacationSignaal)
 
       if (alleSignalen.length > 0) {
         finaleWorkout = pasWorkoutAan(workout, { signalen: alleSignalen })

@@ -299,7 +299,18 @@ export async function POST(req: NextRequest) {
         // exact hetzelfde bug-patroon als eerder vandaag meermaals
         // gevonden en gefixt (Training Plan Engine, Smart Actions, etc.)
         const bronLabel = todayPlan.source === 'cycling' ? 'Cycling Specialist' : todayPlan.source === 'running' ? 'Running Specialist' : todayPlan.source === 'rowing' ? 'Rowing Specialist' : todayPlan.source === 'trainer' ? 'Trainer AI' : 'Rust'
-        todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${bronLabel}\n- Reden: ${todayPlan.reason}${todayPlan.trainingPhase ? `\n- Trainingsfase: ${todayPlan.trainingPhase.mesocycleType} — leg desgewenst uit waarom de belasting van vandaag past bij deze fase (bijv. "omdat je in een opbouwweek zit, hoort deze hogere belasting bij de opbouw" of "ondanks dat je je fit voelt, zit je in een herstelweek — daarom nu bewust rustiger")` : ''}\n`
+        // v2.4.314 (Coach Decision Integrity-bouwopdracht, 11 augustus
+        // 2026): todayPlan.duration is nu de DEFINITIEVE, al-aangepaste
+        // waarde (zelfde bouwWorkout()→signalen→pasWorkoutAan()-keten
+        // als de detailpagina, zie today-engine.ts). Wanneer die afwijkt
+        // van originalDuration, wordt dat hier expliciet en apart
+        // benoemd — de AI krijgt beide getallen en de reden letterlijk
+        // mee, en mag zelf geen ander getal noemen of berekenen (Regel
+        // 0c, README).
+        const aanpassingsContext = (todayPlan.originalDuration && todayPlan.duration && todayPlan.originalDuration !== todayPlan.duration)
+          ? `\n- LET OP, AANGEPAST: oorspronkelijk gepland ${todayPlan.originalDuration} min, definitief vandaag ${todayPlan.duration} min — reden: ${todayPlan.adjustmentReason || 'niet gespecificeerd'}. Gebruik UITSLUITEND dit getal (${todayPlan.duration} min) in je advies — noem nooit ${todayPlan.originalDuration} min als de huidige sessieduur, en verzin geen ander, eigen getal.`
+          : ''
+        todayEngineContext = `\nVANDAAG STAAT GEPLAND (bepaald door de Today Engine — dit is de autoritatieve bron, gebruik dit als basis voor je trainingsadvies, verzin geen ander sessietype, en verzin nooit een eigen duur/intensiteit/afstand — gebruik uitsluitend de hier gegeven waarden):\n- ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''}${todayPlan.intensity ? `, intensiteit ${todayPlan.intensity}` : ''}\n- Bron: ${bronLabel}\n- Reden: ${todayPlan.reason}${aanpassingsContext}${todayPlan.trainingPhase ? `\n- Trainingsfase: ${todayPlan.trainingPhase.mesocycleType} — leg desgewenst uit waarom de belasting van vandaag past bij deze fase (bijv. "omdat je in een opbouwweek zit, hoort deze hogere belasting bij de opbouw" of "ondanks dat je je fit voelt, zit je in een herstelweek — daarom nu bewust rustiger")` : ''}\n`
 
         // v2.4.250 (Universal Athlete Platform — Stap 2, Coach Intelligence):
         // als de workout is aangepast door een ANDERE sport (kruis-sport-

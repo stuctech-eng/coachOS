@@ -5,6 +5,16 @@ import { verlengRollingHorizonIndienNodigCore } from '@/lib/specialists/training
 import { cyclingAdapter } from '@/lib/specialists/training-plan-engine/cycling-adapter'
 import { runningAdapter } from '@/lib/specialists/training-plan-engine/running-adapter'
 import { rowingAdapter } from '@/lib/specialists/training-plan-engine/rowing-adapter'
+// v2.4.314 (Coach Decision Integrity-bouwopdracht, 11 augustus 2026):
+// dezelfde workout/adaptation-keten die de detailpagina's al gebruiken
+// (api/specialists/{sport}/training-plan/workout) — geen tweede
+// interpretatie van de aanpassing, geen nieuw/parallel systeem.
+import { bouwWorkout, type WorkoutBuilderInput } from '@/core/workout-builder/builder'
+import { pasWorkoutAan, totaalDuurVanWorkout, type AdaptationSignal } from '@/core/workout-builder/adaptation'
+import type { WorkoutTrainingType, WorkoutMesocycle } from '@/core/workout-builder/types'
+import { haalAthleteState } from '@/core/athlete-platform/storage'
+import { bepaalKruisSportSignaal } from '@/core/athlete-platform/cross-sport-bridge'
+import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
 
 // ── Today Engine ──────────────────────────────────────────────────────
 // Bron: overleg 22 juli 2026, uitgebreid 22 juli 2026 (multi-sport-
@@ -62,6 +72,21 @@ export interface TodayPlan {
   // aanpassingen) te laten ophalen. Alleen gevuld bij een specialist-
   // sessie (source cycling/running/rowing), niet bij trainer/rust.
   sessieId: string | null
+  // v2.4.314 (Coach Decision Integrity): `duration` is voortaan de
+  // DEFINITIEVE, mogelijk aangepaste waarde (uit dezelfde
+  // bouwWorkout()→signalen→pasWorkoutAan()-keten als de detailpagina) —
+  // niet langer de rauwe, ongewijzigde training_plan_sessions.duration.
+  // originalDuration bewaart die oorspronkelijke, geplande waarde apart,
+  // puur voor transparantie (kaart/AI mogen "50 → 35" laten zien zonder
+  // de oorspronkelijke planning te verliezen). null bij trainer/rust
+  // (geen specialist-workout om aan te passen) of als er geen aanpassing
+  // was (dan zijn beide gelijk, maar originalDuration blijft gevuld).
+  originalDuration: number | null
+  /** Gecombineerde redentekst van alle actieve aanpassingssignalen
+   * (bijv. "je bent op vakantie; laag herstel vandaag") — null als er
+   * geen aanpassing is. De AI krijgt dit letterlijk mee, mag het niet
+   * zelf verzinnen of herformuleren naar een ander getal. */
+  adjustmentReason: string | null
 }
 
 interface TrainingPlanSessie {
@@ -71,6 +96,10 @@ interface TrainingPlanSessie {
   status: string
   adjustment_reason: string | null
   mesocycle_type: 'basis' | 'opbouw' | 'piek' | 'herstel' | null
+  // v2.4.314: nodig voor voerDailyAdjustmentUitCore() in
+  // berekenDefinitieveDuur() — die functie vergt het plan-ID, niet het
+  // sessie-ID.
+  plan_id: string
 }
 
 interface SpecialistProposal {
@@ -103,7 +132,7 @@ async function haalSpecialistSessieVanVandaag(userId: string, sport: 'cycling' |
 
   const { data: sessie } = await supabase
     .from('training_plan_sessions')
-    .select('id, type, duration, status, adjustment_reason, mesocycle_type')
+    .select('id, type, duration, status, adjustment_reason, mesocycle_type, plan_id')
     .eq('date', vandaag)
     .in('plan_id', planIds)
     .neq('status', 'cancelled')
@@ -114,7 +143,67 @@ async function haalSpecialistSessieVanVandaag(userId: string, sport: 'cycling' |
 
 const MESOCYCLE_LABELS: Record<string, string> = { basis: 'Base-week', opbouw: 'Build-week', piek: 'Peak-week', herstel: 'Recovery-week' }
 
-function proposalNaarTodayPlan(proposal: SpecialistProposal): TodayPlan {
+// v2.4.314: exact overgenomen uit elke sport se eigen
+// api/specialists/{sport}/training-plan/workout/route.ts — niet
+// opnieuw verzonnen, letterlijk dezelfde mapping-tabellen, zodat Today
+// Engine precies dezelfde WorkoutBuilderInput bouwt als de detailpagina.
+const TRAININGTYPE_MAP_PER_SPORT: Record<string, Record<string, WorkoutTrainingType>> = {
+  cycling: { duurtraining: 'endurance', interval: 'interval', herstel: 'herstel', lange_duurtraining: 'lange_afstand' },
+  running: { easy_run: 'endurance', interval: 'interval', herstel: 'herstel', lange_duurloop: 'lange_afstand', tempo: 'tempo' },
+  rowing: { endurance: 'endurance', interval: 'interval', recovery: 'herstel', lange_afstand: 'lange_afstand', test: 'test' },
+}
+const MESOCYCLE_MAP: Record<string, WorkoutMesocycle> = { basis: 'basis', opbouw: 'opbouw', piek: 'piek', herstel: 'herstel' }
+const ADAPTER_PER_SPORT: Record<string, typeof cyclingAdapter> = { cycling: cyclingAdapter, running: runningAdapter, rowing: rowingAdapter }
+
+/**
+ * v2.4.314 (Coach Decision Integrity-bouwopdracht, 11 augustus 2026):
+ * bouwt dezelfde workout als de detailpagina (bouwWorkout → signalen
+ * → pasWorkoutAan) en leidt daaruit de DEFINITIEVE totaalduur af via
+ * totaalDuurVanWorkout() — nooit UniversalWorkout.duration_sec zelf,
+ * dat veld wordt door pasWorkoutAan() niet herberekend (geverifieerd,
+ * zie README Regel 0c). Bij elke fout: nette terugval op de
+ * oorspronkelijke, ongewijzigde duur — een probleem hier mag Home
+ * nooit laten crashen (zelfde principe als de bestaande try/catches
+ * in de workout-routes zelf).
+ */
+async function berekenDefinitieveDuur(userId: string, proposal: SpecialistProposal): Promise<{ duur: number; reden: string | null }> {
+  const origineleDuur = proposal.sessie.duration
+  try {
+    const supabase = createAdminClient()
+    const trainingType = TRAININGTYPE_MAP_PER_SPORT[proposal.sport]?.[proposal.sessie.type] || 'endurance'
+    const mesocycle = MESOCYCLE_MAP[proposal.sessie.mesocycle_type || ''] || 'basis'
+
+    const input: WorkoutBuilderInput = {
+      sport: proposal.sport, trainingType, mesocycle,
+      duration_sec: (origineleDuur || 60) * 60,
+      difficulty: 'gemiddeld',
+    }
+    let workout = bouwWorkout(input)
+
+    const alleSignalen: AdaptationSignal[] = []
+    const athleteState = await haalAthleteState(supabase, userId)
+    const kruisSportSignaal = bepaalKruisSportSignaal(athleteState)
+    if (kruisSportSignaal) alleSignalen.push(kruisSportSignaal)
+
+    const adapter = ADAPTER_PER_SPORT[proposal.sport]
+    const dailyAdjustment = await voerDailyAdjustmentUitCore(userId, proposal.sessie.plan_id, adapter)
+    if (dailyAdjustment.fatigueSignaal) alleSignalen.push(dailyAdjustment.fatigueSignaal)
+    if (dailyAdjustment.vacationSignaal) alleSignalen.push(dailyAdjustment.vacationSignaal)
+
+    let reden: string | null = null
+    if (alleSignalen.length > 0) {
+      workout = pasWorkoutAan(workout, { signalen: alleSignalen })
+      reden = alleSignalen.map(s => s.reden).join('; ')
+    }
+
+    return { duur: totaalDuurVanWorkout(workout), reden }
+  } catch (err) {
+    console.error('[today-engine] Definitieve duur berekenen mislukt, val terug op origineel:', err)
+    return { duur: origineleDuur, reden: null }
+  }
+}
+
+async function proposalNaarTodayPlan(userId: string, proposal: SpecialistProposal): Promise<TodayPlan> {
   // v2.4.231-FIX: Rowing gebruikt 'recovery' i.p.v. 'herstel' voor
   // hetzelfde concept (zie SPORT_LABELS hierboven) — zonder deze
   // toevoeging zou een Rowing-hersteldag als 'matig' (i.p.v. 'licht')
@@ -128,19 +217,26 @@ function proposalNaarTodayPlan(proposal: SpecialistProposal): TodayPlan {
   // dezelfde bug-klasse als eerder vandaag gevonden in training-plan-
   // engine/core.ts — zou bij Rowing altijd "Running" tonen. Nu generiek.
   const SPORT_NAAM_LABEL: Record<string, string> = { cycling: 'Cycling', running: 'Running', rowing: 'Rowing' }
+
+  const { duur: definitieveDuur, reden: aanpassingsReden } = await berekenDefinitieveDuur(userId, proposal)
+
   return {
     source: proposal.sport,
     title: SPORT_LABELS[proposal.sessie.type] || proposal.sessie.type,
-    duration: proposal.sessie.duration,
+    duration: definitieveDuur,
     intensity: intensiteit,
     reason: `Onderdeel van je ${SPORT_NAAM_LABEL[proposal.sport] || proposal.sport}-trainingsplan${faseLabel ? ` (${faseLabel})` : ''}`,
-    coachMessage: proposal.sessie.adjustment_reason
-      ? 'Deze sessie is aangepast op basis van je herstel — zie het trainingsplan voor de volledige uitleg.'
-      : 'Volgens schema — ga ervoor!',
+    coachMessage: aanpassingsReden
+      ? 'Deze sessie is aangepast op basis van vandaag — zie het trainingsplan voor de volledige uitleg.'
+      : (proposal.sessie.adjustment_reason
+        ? 'Deze sessie is aangepast op basis van je herstel — zie het trainingsplan voor de volledige uitleg.'
+        : 'Volgens schema — ga ervoor!'),
     actionHref: `/coach/${proposal.sport}/trainingsplan`,
     actionLabel: 'Open trainingsplan',
     trainingPhase: fase ? { mesocycleType: fase } : null,
     sessieId: proposal.sessie.id,
+    originalDuration: proposal.sessie.duration,
+    adjustmentReason: aanpassingsReden,
   }
 }
 
@@ -200,7 +296,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
       reason: 'Coach adviseert vandaag volledige rust',
       coachMessage: 'Vandaag is herstel de training. Geen sportieve inspanning gepland.',
       actionHref: '/coach', actionLabel: 'Bekijk Coach-advies',
-      trainingPhase: null, sessieId: null,
+      trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null,
     }
   }
 
@@ -243,7 +339,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
 
   if (proposals.length > 0) {
     const gekozenProposal = await kiesTussenProposals(userId, proposals)
-    return proposalNaarTodayPlan(gekozenProposal)
+    return await proposalNaarTodayPlan(userId, gekozenProposal)
   }
 
   // ── Laag 3: Trainer AI — alleen als er geen specialist-plan is ─────
@@ -275,7 +371,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
           reason: instr.reason || 'Trainer AI-sessie',
           coachMessage: instr.coach_message || 'Veel succes met je training!',
           actionHref: '/training', actionLabel: 'Start Training',
-          trainingPhase: null, sessieId: null,
+          trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null,
         }
       } else {
         console.error('[today-engine] Trainer AI gaf geen bruikbare instructie terug:', JSON.stringify(data).slice(0, 300))
@@ -291,6 +387,6 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
     reason: 'Geen actief trainingsplan en Trainer AI kon geen sessie bepalen',
     coachMessage: 'Wil je toch trainen? Kies zelf een module in de bibliotheek.',
     actionHref: '/training', actionLabel: 'Bibliotheek openen',
-    trainingPhase: null, sessieId: null,
+    trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null,
   }
 }
