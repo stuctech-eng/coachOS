@@ -798,6 +798,61 @@ geen verzinsel, exact dezelfde waarden als Running's
    al-bestaande `pasWorkoutAan()`-mechanisme dat de detailpagina al
    gebruikt. Nog niet gebouwd — wacht op een apart akkoord (stap D,
    overleg 11 augustus 2026).
+
+0c. **Coach Decision Integrity** (vastgelegd 11 augustus 2026, na
+   Ontwerp-stap D — gebruiker + GPT-overleg, Claude
+   eindverantwoordelijk). **Elke concrete trainingsparameter die aan
+   de gebruiker wordt gepresenteerd, moet afkomstig zijn uit dezelfde
+   definitieve, gestructureerde workout-beslissing die daadwerkelijk
+   wordt uitgevoerd. De AI mag deze waarden niet berekenen, aanpassen,
+   afronden naar eigen inzicht of vervangen door een eigen voorstel.**
+   Geldt voor: duur, intensiteit, afstand, sets, herhalingen, gewicht,
+   tempo, hartslagzone, rustduur. Bredere, definitieve formulering van
+   Regel 0b — dezelfde bug-klasse kan zich anders bij Recovery,
+   Training Load of toekomstige specialisten herhalen.
+
+   **Ontwerp voor de implementatie (Stap D, nog NIET gebouwd — vier
+   verificaties afgerond, wacht op bouw-akkoord):**
+   - **Kern:** `training_plan_sessions.duration` blijft altijd
+     onaangetast (de oorspronkelijke planning). Een aanpassing
+     (vakantie, vermoeidheid, etc.) is een **runtime-beslissing voor
+     vandaag**, nergens persistent opgeslagen — zelfde categorie als
+     het al-bestaande `fatigue_detected`-signaal, geen nieuwe
+     tabel/kolom nodig
+   - **Eén bron voor alles:** Today Engine moet dezelfde keten
+     aanroepen die de detailpagina al gebruikt
+     (`bouwWorkout()` → signalen verzamelen → `pasWorkoutAan()`), en
+     daaruit zelf de aangepaste totaalduur afleiden — geen tweede
+     interpretatie van de aanpassing in `today-engine.ts`
+   - **Idempotentie door constructie:** omdat de keten altijd start
+     bij de pure, onaangetaste `duration`-kolom (nooit bij een eerder
+     resultaat), levert een herhaalde aanroep exact dezelfde uitkomst
+     zolang de signalen niet veranderen — geen cascade (50→35→24,5)
+     mogelijk. Herstel is vanzelf: morgen zonder vakantie-signaal
+     → automatisch weer 50, niets terug te schrijven
+   - **Meerdere signalen tegelijk:** bevestigd, geen optelling —
+     `pasWorkoutAan()` past de downscale-mechaniek precies één keer
+     toe, ongeacht het aantal actieve signalen, met een gecombineerde
+     redentekst
+   - **Belangrijke, extra bevinding tijdens verificatie:** het
+     topniveau `UniversalWorkout.duration_sec` wordt door
+     `pasWorkoutAan()` nooit herberekend na een aanpassing (alleen
+     losse blok-`duration_sec`-waarden veranderen) — een eventuele
+     "totaalduur"-aflezing moet dus altijd vers uit de blokken
+     gesommeerd worden (incl. `repeat`-vermenigvuldiging), nooit uit
+     dit veld
+   - **Vier verificaties, alle vier bevestigd vóór dit ontwerp:**
+     1. Rowing's `training-plan/workout`-route volgt exact hetzelfde
+        signalenpatroon als Running (geverifieerd, geen aanname)
+     2. `WorkoutBlock.duration_sec` is de enige betrouwbare bron per
+        blok — zie hierboven
+     3. Vakantie-detectie kan de bestaande `isEventActiefOpDag()` +
+        `life_events`-query (`type: 'vakantie'`) hergebruiken — bestaat
+        al letterlijk als patroon in `coach-planning-overzicht.ts`
+     4. Signaalcombinatie is bevestigd niet-optellend (zie hierboven)
+   - **Nog niet geïmplementeerd:** vacation-signaalbron toevoegen aan
+     `AdaptationSignal['source']`, Today Engine uitbreiden, AI-prompt
+     aanpassen. Wacht op een apart bouw-akkoord.
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
 2. **AI never creates exercises** — AI verzint geen oefeningen buiten de gefilterde lijst
 3. **Filter first, assemble second** — route filtert → AI assembleert

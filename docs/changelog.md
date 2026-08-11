@@ -1,5 +1,45 @@
 # CoachOS — Changelog
 
+## v2.4.313 — Coach Decision Integrity vastgelegd + vier verificaties afgerond
+**Geen code. Ontwerp-stap D uit het overleg met gebruiker + GPT
+(Claude eindverantwoordelijk) — vier gerichte verificaties, dan de
+nieuwe invariant vastgelegd. Implementatie volgt pas na apart akkoord.**
+
+### Vier verificaties, alle vier bevestigd met bewijs
+1. **Rowing's workout-route** volgt exact hetzelfde signalenpatroon
+   als Running — identieke imports/structuur, geen afwijking
+2. **`WorkoutBlock.duration_sec`** is de betrouwbare bron per blok.
+   **Extra bevinding:** het topniveau `UniversalWorkout.duration_sec`
+   wordt door `pasWorkoutAan()` nooit herberekend na een aanpassing —
+   blijft verouderd. Een totaalduur moet dus altijd vers uit de
+   blokken gesommeerd worden, nooit uit dit veld gelezen
+3. **Vakantie-detectie** kan de bestaande `isEventActiefOpDag()` +
+   `life_events`-query hergebruiken — patroon bestaat al letterlijk in
+   `coach-planning-overzicht.ts`
+4. **Signaalcombinatie is bevestigd niet-optellend** — `pasWorkoutAan()`
+   past de downscale-mechaniek precies één keer toe, ongeacht het
+   aantal actieve signalen (voorkomt een 50→35→24,5-cascade)
+
+### Coach Decision Integrity — nieuwe Regel 0c
+Bredere, definitieve formulering van Regel 0b (AI Output Integrity):
+elke gepresenteerde trainingsparameter (duur/intensiteit/afstand/
+sets/herhalingen/gewicht/tempo/hartslagzone/rustduur) moet uit
+dezelfde, daadwerkelijk uitgevoerde workout-beslissing komen — de AI
+mag nooit zelf berekenen, aanpassen of vervangen.
+
+### Ontwerp voor de implementatie vastgelegd (nog NIET gebouwd)
+- Kern: `training_plan_sessions.duration` blijft altijd onaangetast —
+  een aanpassing is een runtime-beslissing, nergens persistent
+  opgeslagen (zelfde categorie als het bestaande fatigue-signaal)
+- Today Engine moet dezelfde keten aanroepen die de detailpagina al
+  gebruikt (`bouwWorkout()` → signalen → `pasWorkoutAan()`) — geen
+  tweede interpretatie, geen nieuw/parallel systeem
+- Idempotentie door constructie: altijd start bij de pure, onaangetaste
+  bron — geen cascade mogelijk, herstel gebeurt vanzelf
+
+**Status: alleen ontwerp + vastgelegde invariant. Wacht op apart
+bouw-akkoord vóór implementatie.**
+
 ## v2.4.312 — AI Output Integrity Rule + Adaptation Engine-onderzoek beantwoord
 **Geen code. Overleg met gebruiker + GPT (Claude eindverantwoordelijk,
 zie standing rule), stap A en B van de afgesproken volgorde.**
