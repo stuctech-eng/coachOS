@@ -1,5 +1,41 @@
 # CoachOS — Changelog
 
+## v2.4.318 — Twee vervolgfixes na productietest van v2.4.317
+**Gemeld met screenshots, direct na het pushen van v2.4.317.**
+
+### 1. AI verzon een vals "al gecorrigeerd"-verhaal
+Getallen kloppen nu overal (84 min consistent) — Regel 0c's
+numerieke garantie werkt. Maar de AI schreef: *"De -10% aanpassing is
+al meegenomen... dus de 84 minuten is al het gecorrigeerde advies"* —
+feitelijk onjuist, er was geen enkele aanpassing (geen signaal vuurde).
+
+**Fix:** `geenAanpassingContext` (`api/coach/route.ts` +
+`api/action-plan/route.ts`) expliciet uitgebreid — verbiedt nu ook
+letterlijk de claim dat er al een correctie heeft plaatsgevonden, niet
+alleen het verzinnen van een nieuw getal.
+
+### 2. Dagplan negeerde de echte einddienst-tijd voor avondactiviteiten
+Gemeld: "ga op tijd slapen" gepland om 23:30, terwijl de avonddienst
+pas om 00:45 eindigt.
+
+**Root cause:** de bestaande "plan niets tijdens werktijd"-instructie
+in `api/action-plan/route.ts` gebruikte een voorbeeld met een normale
+dagdienst (06:00-15:00) — bij een dienst die na middernacht eindigt,
+viel de AI kennelijk terug op generiek bedtijd-advies i.p.v. de echte
+eindtijd te respecteren.
+
+**Fix:** expliciete instructie toegevoegd — ook avond/slaap-
+gerelateerde acties moeten na de daadwerkelijke, exacte eindtijd
+vallen, met het 00:45-scenario als concreet voorbeeld in de prompt
+zelf.
+
+### Twee gewijzigde bestanden
+`api/coach/route.ts`, `api/action-plan/route.ts`.
+
+**Nog te testen:** een scenario waarbij `fatigueSignaal` wél vuurt
+(écht laag herstel + duurtraining) — tot nu toe alleen het "geen
+aanpassing"-pad organisch bevestigd.
+
 ## v2.4.317 — Coach Decision Integrity, deel 2: fatigue uitgebreid + Regel 0c technisch afgedwongen
 **Vervolg op v2.4.314-316. Overleg gebruiker + GPT: de "84/75/76
 minuten"-bevinding was geen herhaling van eerdere bugs, maar een

@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
           ? ` LET OP, AANGEPAST: oorspronkelijk gepland ${todayPlan.originalDuration} min, definitief vandaag ${todayPlan.duration} min — reden: ${todayPlan.adjustmentReason || 'niet gespecificeerd'}. Gebruik UITSLUITEND dit getal (${todayPlan.duration} min) — noem nooit ${todayPlan.originalDuration} min, en verzin geen ander, eigen getal.`
           : ''
         const geenAanpassingContext = (todayPlan.originalDuration && !aanpassingsContext)
-          ? ` GEEN AANPASSING: de Adjustment Engine heeft vandaag geen reductie besloten. Ook als de Garmin/HRV-data hieronder op vermoeidheid wijst, mag je ZELF GEEN kortere duur voorstellen dan hierboven — dat is niet jouw beslissing. Je mag het wél benoemen (bijv. "je HRV is wat lager, houd het rustig aan binnen de geplande ${todayPlan.duration} minuten"), maar de sessie zelf blijft ${todayPlan.duration} min.`
+          ? ` GEEN AANPASSING: de Adjustment Engine heeft vandaag GEEN reductie besloten — ${todayPlan.duration} min is de ORIGINELE, ONGEWIJZIGDE geplande duur, geen "al gecorrigeerd" getal. Ook als de Garmin/HRV-data hieronder op vermoeidheid wijst, mag je ZELF GEEN kortere duur voorstellen, en mag je NOOIT beweren dat er al een aanpassing/reductie heeft plaatsgevonden (bijv. NIET "de -10% is al meegenomen"). Je mag de HRV-context wél benoemen als observatie (bijv. "je HRV is wat lager, houd het rustig aan binnen de geplande ${todayPlan.duration} minuten"), maar nooit alsof dat al in het getal verwerkt zit.`
           : ''
         todayEngineContext = `Vandaag gepland (Today Engine, autoritatief — gebruik dit, verzin geen ander sessietype, en verzin nooit een eigen duur/intensiteit — gebruik uitsluitend de hier gegeven waarden): ${todayPlan.title}${todayPlan.duration ? ` (${todayPlan.duration} min)` : ''} via ${bronLabel}${todayPlan.trainingPhase ? ` — trainingsfase: ${todayPlan.trainingPhase.mesocycleType}` : ''}.${aanpassingsContext}${geenAanpassingContext}`
       }
@@ -197,6 +197,7 @@ INSTRUCTIES:
 - Coach score onder 50: focus op herstel
 - Maak 3-5 concrete acties verspreid over de dag
 - Plan NOOIT activiteiten tijdens werktijd — als iemand 06:00-15:00 werkt, plan dan alleen voor 06:00 of na 15:00
+- BELANGRIJK bij een dienst die laat/na middernacht eindigt (bijv. 14:45-00:45): elke actie na het werk — inclusief "ga op tijd slapen"/"leg je telefoon weg"-type adviezen — moet NA de daadwerkelijke eindtijd gepland worden (in dit voorbeeld dus na 00:45, niet op een generiek "normaal" bedtijdstip zoals 23:00). Gebruik de exacte eindtijd uit de levensgebeurtenis-context hierboven, verzin geen eigen, gebruikelijker tijdstip.
 - Houd elke actie KORT en bondig (max 1-2 zinnen) — dit is een dagplan, geen essay
 - Gebruik GEEN markdown, geen bold, geen bullets
 

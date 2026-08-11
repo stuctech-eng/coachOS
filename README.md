@@ -926,10 +926,34 @@ geen verzinsel, exact dezelfde waarden als Running's
      `voerDailyAdjustmentUitCore()`) — profiteert automatisch mee,
      geen aparte wijziging nodig.
 
-     **Nog niet getest in de draaiende app** — vergt een scenario met
-     laag herstel + een geplande duurtraining, en controle dat kaart/
-     Dagplan/hoofdadvies nu daadwerkelijk hetzelfde (aangepaste of
-     ongewijzigde) getal tonen.
+     **Getest in productie, 11 augustus 2026 — bevestigd, twee vervolg-
+     bevindingen gevonden en gefixt in v2.4.318:**
+
+     1. **Getallen kloppen nu** (84 overal — kaart, Dagplan, hoofdadvies
+        — geen 75/76-mix meer). Regel 0c's numerieke garantie werkt.
+     2. **Maar de AI verzon een vals verhaal:** *"De -10% aanpassing is
+        al meegenomen in de sessie, dus de 84 minuten is al het
+        gecorrigeerde advies"* — feitelijk onjuist, er was geen enkele
+        aanpassing toegepast (`fatigueSignaal` vuurde niet,
+        `recoveryState` was kennelijk niet `'low'`). De instructie liet
+        te veel ruimte om zo'n verzonnen verklaring op te hangen. Fix:
+        `geenAanpassingContext` expliciet uitgebreid — verbiedt nu ook
+        letterlijk de claim "al gecorrigeerd"/"al meegenomen", niet
+        alleen een nieuw getal.
+     3. **Los daarvan gemeld:** Dagplan plande "ga op tijd slapen" om
+        23:30, terwijl de avonddienst pas om 00:45 eindigt — 75 minuten
+        te vroeg. Root cause: de bestaande "plan niets tijdens
+        werktijd"-instructie gebruikte een voorbeeld met een normale
+        dagdienst (06:00-15:00); bij een dienst die na middernacht
+        eindigt viel de AI kennelijk terug op generiek bedtijd-advies
+        (~23:00) i.p.v. de echte eindtijd. Fix: expliciete instructie
+        toegevoegd dat ook avond/slaap-gerelateerde acties na de
+        daadwerkelijke, exacte eindtijd moeten vallen, met het
+        00:45-scenario als concreet voorbeeld.
+
+     **Nog te testen:** een scenario waarbij `fatigueSignaal` wél
+     vuurt (écht laag herstel + duurtraining) — nog niet organisch
+     gezien, alleen het "geen aanpassing"-pad is nu bevestigd getest.
 1. **Libraries are the source of truth** — oefeningen komen altijd uit de bibliotheek
 2. **AI never creates exercises** — AI verzint geen oefeningen buiten de gefilterde lijst
 3. **Filter first, assemble second** — route filtert → AI assembleert
