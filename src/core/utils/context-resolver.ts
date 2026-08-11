@@ -161,6 +161,20 @@ export function bepaalDagContext(input: DagContextInput): ResolvedContext {
     .map(e => ({ type: e.type, status: 'suppressed', reason: `overschreven door ${winnendeCategorie}` }))
 
   const modifier = MODIFIERS[winnendeCategorie]
+  // v2.4.315-FIX: gemeld — het Dagplan wist wel DAT er een werkdag was
+  // (winnendeCategorie werd correct 'werk'), maar de instructietekst
+  // was een statische, generieke zin zonder de daadwerkelijke tijden.
+  // De AI kon dus niet om het concrete tijdvak heen plannen — precies
+  // hetzelfde bug-patroon als de "35 vs. 50 minuten"-bevinding (Regel
+  // 0c): een instructie zonder gestructureerde, concrete waarden.
+  // Fix: als er een 'werk'-event met start_hour/end_hour bestaat, die
+  // tijden expliciet in de instructie opnemen.
+  const winnendWerkEvent = winnendeCategorie === 'werk'
+    ? lifeEvents.find(e => categorieVan(e.type) === 'werk' && e.start_hour !== null && e.end_hour !== null)
+    : null
+  const werkTijdenTekst = winnendWerkEvent
+    ? ` (${String(winnendWerkEvent.start_hour).padStart(2, '0')}:00-${String(winnendWerkEvent.end_hour).padStart(2, '0')}:00) — plan geen training in dit tijdvak`
+    : ''
   // Feestdag wint (of is de enige reden dat vrije_tijd de winnende
   // categorie is) — noem 'm expliciet bij naam, niet alleen "vrije_tijd"
   const feestdagIsRedenVanVrijeTijd = winnendeCategorie === 'vrije_tijd' && holiday
@@ -173,7 +187,7 @@ export function bepaalDagContext(input: DagContextInput): ResolvedContext {
         : `${winnendeCategorie} is vandaag van toepassing`
   const coachInstruction = feestdagIsRedenVanVrijeTijd
     ? `Vandaag is het ${holiday!.name} — een vrije dag, mogelijk extra ruimte om te trainen.`
-    : modifier.instructie
+    : modifier.instructie + werkTijdenTekst
 
   return {
     lifeContext: { mode: winnendeCategorie, priorityReason, coachInstruction, suppressedEvents },

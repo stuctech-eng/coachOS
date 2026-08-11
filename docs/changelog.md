@@ -1,5 +1,69 @@
 # CoachOS — Changelog
 
+## v2.4.315 — Vier gemelde bevindingen opgelost
+**Overleg n.a.v. vier screenshots. Alle vier onafhankelijk onderzocht
+(geen aannames), drie bevestigde bugs + één inconsistentie gevonden en
+opgelost.**
+
+### 1. "84 minuten" (kop) vs. "83 minuten" (blokken) — Cycling/Running
+**Root cause:** de trainingsplan-detailpagina toonde de rauwe
+`sessie.duration` in de kop, terwijl de losse workout-detail-fetch de
+daadwerkelijk gebouwde blokken toont — twee bronnen, konden uit elkaar
+lopen (zelfde bug-klasse als de "35 vs. 50 minuten"-bevinding).
+
+**Fix:** `today-engine.ts`'s `berekenDefinitieveDuur()` geëxporteerd
+en hergebruikt in de Cycling/Running `training-plan`-GET-routes —
+berekent nu ook voor de sessie van vandaag de definitieve duur. Beide
+pagina's tonen bij een verschil nu expliciet beide waarden
+(doorgestreepte originele duur + definitieve duur). Rowing had deze
+tekst niet, dus niet aangeraakt.
+
+### 2. "Vakantie voorbereiden"-kaart verscheen zonder aanleiding
+**Zelfde root cause als bevinding 3** (zie hieronder) — geen aparte
+fix nodig, lost automatisch mee op.
+
+### 3. "Vakantie — Over -22 dagen" op Home
+**Root cause:** `coach-planning-overzicht.ts`'s `volgendeVakantie`
+pakte simpelweg de EERSTE vakantie-rij op startdatum (oplopend
+gesorteerd), zonder te checken of die al voorbij was. Bij twee
+vakantie-events (oud + nieuw) won altijd de oude.
+
+**Fix:** eerst filteren op "nog actueel (isEventActiefOpDag) of
+toekomstig (start_time >= vandaag)" vóór de eerstvolgende gekozen
+wordt.
+
+### 4. Dagplan hield geen rekening met de avonddienst
+**Root cause, genuanceerder dan eerst gedacht:** de levensgebeurtenis
+werd wél degelijk correct gecategoriseerd als `'werk'`
+(`context-resolver.ts`), maar de bijbehorende coach-instructietekst
+was een **statische, generieke zin** zonder de daadwerkelijke tijden
+— de AI wist dus dat er werk was, maar niet wanneer, en kon er
+daardoor niet omheen plannen.
+
+**Fix:** `bepaalDagContext()` zoekt nu het winnende werk-event met
+`start_hour`/`end_hour` op en voegt de concrete tijden toe aan de
+instructie (bijv. "...(17:00-23:00) — plan geen training in dit
+tijdvak"). **Bonus:** deze functie wordt gedeeld door zowel
+`action-plan/route.ts` (Dagplan) als `coach/route.ts` (Coach-chat) —
+één fix, twee plekken tegelijk gecorrigeerd.
+
+### Zeven gewijzigde bestanden
+`today-engine.ts`, `api/specialists/cycling/training-plan/route.ts`,
+`api/specialists/running/training-plan/route.ts`,
+`coach/cycling/trainingsplan/page.tsx`,
+`coach/running/trainingsplan/page.tsx`,
+`coach-planning-overzicht.ts`, `context-resolver.ts`.
+
+**Correctie tijdens onderzoek:** eerste aanname over bevinding 4
+("life_events wordt nooit opgehaald") bleek bij nader inzien onjuist —
+er bestond al een gedeeld ophaalmechanisme. De echte oorzaak (een
+generieke instructie zonder concrete tijden) lag dieper. Niet
+stilzwijgend gecorrigeerd — hier expliciet benoemd.
+
+**Nog niet getest in de draaiende app** — vergt echte data voor elk
+scenario (twee vakantie-events, een avonddienst vandaag, een
+aangepaste Cycling/Running-sessie).
+
 ## v2.4.314 — Coach Decision Integrity geïmplementeerd (vacation_mode)
 **Bouw-akkoord gebruiker + GPT (Claude eindverantwoordelijk), na
 ontwerp (v2.4.313) en vier verificaties. Lost het "35 vs. 50

@@ -89,7 +89,9 @@ export interface TodayPlan {
   adjustmentReason: string | null
 }
 
-interface TrainingPlanSessie {
+// v2.4.315: geëxporteerd (was lokaal) — hergebruikt door de Cycling/
+// Running training-plan-GET-routes voor dezelfde 84-vs-83-fix als hier.
+export interface TrainingPlanSessie {
   id: string
   type: string
   duration: number
@@ -102,7 +104,7 @@ interface TrainingPlanSessie {
   plan_id: string
 }
 
-interface SpecialistProposal {
+export interface SpecialistProposal {
   sport: 'cycling' | 'running' | 'rowing'
   sessie: TrainingPlanSessie
 }
@@ -166,7 +168,7 @@ const ADAPTER_PER_SPORT: Record<string, typeof cyclingAdapter> = { cycling: cycl
  * nooit laten crashen (zelfde principe als de bestaande try/catches
  * in de workout-routes zelf).
  */
-async function berekenDefinitieveDuur(userId: string, proposal: SpecialistProposal): Promise<{ duur: number; reden: string | null }> {
+export async function berekenDefinitieveDuur(userId: string, proposal: SpecialistProposal): Promise<{ duur: number; reden: string | null }> {
   const origineleDuur = proposal.sessie.duration
   try {
     const supabase = createAdminClient()

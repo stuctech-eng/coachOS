@@ -25,6 +25,9 @@ interface Sessie {
   duration: number
   status: 'planned' | 'scheduled' | 'completed' | 'skipped' | 'adjusted' | 'cancelled'
   adjustment_reason: string | null
+  // v2.4.315-FIX: zie Cycling's equivalente pagina voor de toelichting.
+  definitieveDuur?: number
+  definitieveDuurReden?: string | null
 }
 
 interface Plan {
@@ -314,7 +317,12 @@ export default function RunningTrainingsplanPage() {
                     )}
                   </div>
                   <p className="text-lg font-bold text-white mb-1">{TYPE_LABEL[vandaagSessie.type] || vandaagSessie.type}</p>
-                  <p className="text-sm text-slate-400 mb-3">{vandaagSessie.duration} minuten · tik voor details</p>
+                  <p className="text-sm text-slate-400 mb-3">
+                    {vandaagSessie.definitieveDuur !== undefined && vandaagSessie.definitieveDuur !== vandaagSessie.duration
+                      ? <>{vandaagSessie.definitieveDuur} minuten <span className="line-through opacity-50">{vandaagSessie.duration} min</span></>
+                      : <>{vandaagSessie.definitieveDuur ?? vandaagSessie.duration} minuten</>
+                    } · tik voor details
+                  </p>
                   {uitlegLaden && <p className="text-xs text-slate-500 italic">Coach schrijft uitleg...</p>}
                   {vandaagUitleg && <p className="text-sm text-slate-200 leading-relaxed">{vandaagUitleg}</p>}
                 </Card>

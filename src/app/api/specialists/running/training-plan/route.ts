@@ -7,6 +7,9 @@ import { cookies } from 'next/headers'
 import { genereerTrainingsplanCore, verlengRollingHorizonIndienNodigCore } from '@/lib/specialists/training-plan-engine/core'
 import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
 import { runningAdapter } from '@/lib/specialists/training-plan-engine/running-adapter'
+// v2.4.315: hergebruikt voor de "84 vs. 83 minuten"-fix — dezelfde
+// berekening als Today Engine gebruikt, niet opnieuw geschreven.
+import { berekenDefinitieveDuur, type SpecialistProposal } from '@/lib/today-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -85,7 +88,24 @@ export async function GET() {
       .neq('status', 'cancelled')
       .order('date', { ascending: true })
 
-    return NextResponse.json({ plan, sessies: sessies || [], aanpassingen })
+    // v2.4.315-FIX: zelfde fix als Cycling — zie module-comment daar
+    // voor de volledige toelichting.
+    const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+    const vandaagRij = (sessies || []).find(s => s.date === vandaag)
+    let sessiesMetDefinitieveDuur = sessies || []
+    if (vandaagRij) {
+      try {
+        const proposal: SpecialistProposal = { sport: 'running', sessie: vandaagRij }
+        const { duur, reden } = await berekenDefinitieveDuur(user.id, proposal)
+        sessiesMetDefinitieveDuur = (sessies || []).map(s =>
+          s.id === vandaagRij.id ? { ...s, definitieveDuur: duur, definitieveDuurReden: reden } : s
+        )
+      } catch (duurErr) {
+        console.error('[training-plan GET] Definitieve duur berekenen mislukt:', duurErr)
+      }
+    }
+
+    return NextResponse.json({ plan, sessies: sessiesMetDefinitieveDuur, aanpassingen })
   } catch (err) {
     console.error('[training-plan GET]', err)
     return NextResponse.json({ error: 'Ophalen mislukt' }, { status: 500 })

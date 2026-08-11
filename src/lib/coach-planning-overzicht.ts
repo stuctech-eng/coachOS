@@ -143,7 +143,17 @@ export async function haalOverzichtData(supabase: SupabaseClient, userId: string
   const alleHerhalendeEvents = (herhalendeEvents || []) as LifeEventRij[]
   const sessies = sessiesRes.data || []
 
-  const volgendeVakantie = eenmaligeEvents.find(e => e.type === 'vakantie')
+  // v2.4.315-FIX: gemeld — "Vakantie — Over -22 dagen" op Home.
+  // Root cause: .find() pakte simpelweg de EERSTE 'vakantie'-rij op
+  // start_time (oplopend gesorteerd), zonder te checken of die al
+  // voorbij was. Bij twee vakantie-events (een oude + een nieuwe)
+  // won altijd de oude. Nu: eerst filteren op "nog actueel of
+  // toekomstig" (isEventActiefOpDag dekt "loopt nu nog door", de
+  // tweede voorwaarde dekt "begint nog moeten beginnen"), dan pas de
+  // eerste (= eerstvolgende) nemen.
+  const volgendeVakantie = eenmaligeEvents
+    .filter(e => e.type === 'vakantie')
+    .find(e => isEventActiefOpDag(e, vandaag) || lokaleDagStr(new Date(e.start_time)) >= vandaag)
   const volgendEvenement = eenmaligeEvents.find(e => e.type === 'evenement' || e.type === 'testdag')
 
   const sessiesMetFase = sessies.filter(s => s.mesocycle_type)

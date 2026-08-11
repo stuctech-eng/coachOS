@@ -8,6 +8,9 @@ import { genereerTrainingsplan } from '@/lib/specialists/training-plan-generator
 import { voerDailyAdjustmentUit } from '@/lib/specialists/training-plan-adjuster'
 import { verlengRollingHorizonIndienNodigCore } from '@/lib/specialists/training-plan-engine/core'
 import { cyclingAdapter } from '@/lib/specialists/training-plan-engine/cycling-adapter'
+// v2.4.315: hergebruikt voor de "84 vs. 83 minuten"-fix — dezelfde
+// berekening als Today Engine gebruikt, niet opnieuw geschreven.
+import { berekenDefinitieveDuur, type SpecialistProposal } from '@/lib/today-engine'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -78,7 +81,30 @@ export async function GET() {
       .neq('status', 'cancelled')
       .order('date', { ascending: true })
 
-    return NextResponse.json({ plan, sessies: sessies || [], aanpassingen })
+    // v2.4.315-FIX: gemeld — de kop van deze pagina toonde de rauwe
+    // sessie.duration (bijv. 84 min), terwijl de losse workout-detail-
+    // fetch (WorkoutDetail-component, andere route) de daadwerkelijk
+    // gebouwde/aangepaste blokken toont (som 83 min) — twee bronnen,
+    // konden uit elkaar lopen. Zelfde categorie bug als de "35 vs. 50
+    // minuten"-bevinding (v2.4.313/314), nu hier ook gedicht: alleen
+    // voor de sessie van VANDAAG (niet de hele lijst, onnodig zwaar)
+    // dezelfde definitieve-duur-berekening hergebruikt.
+    const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+    const vandaagRij = (sessies || []).find(s => s.date === vandaag)
+    let sessiesMetDefinitieveDuur = sessies || []
+    if (vandaagRij) {
+      try {
+        const proposal: SpecialistProposal = { sport: 'cycling', sessie: vandaagRij }
+        const { duur, reden } = await berekenDefinitieveDuur(user.id, proposal)
+        sessiesMetDefinitieveDuur = (sessies || []).map(s =>
+          s.id === vandaagRij.id ? { ...s, definitieveDuur: duur, definitieveDuurReden: reden } : s
+        )
+      } catch (duurErr) {
+        console.error('[training-plan GET] Definitieve duur berekenen mislukt:', duurErr)
+      }
+    }
+
+    return NextResponse.json({ plan, sessies: sessiesMetDefinitieveDuur, aanpassingen })
   } catch (err) {
     console.error('[training-plan GET]', err)
     return NextResponse.json({ error: 'Ophalen mislukt' }, { status: 500 })
