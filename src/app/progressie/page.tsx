@@ -479,7 +479,16 @@ export default function ProgressiePage() {
         {/* 2. Coach Compliance */}
         {compliance && compliance.totaal_hersteladviezen > 0 && (
           <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3 px-1">Coach Compliance — 30 dagen</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1 px-1">Coach Compliance — 30 dagen</p>
+            {/* v2.4.321-FIX (gebruiker + GPT-overleg, 11 augustus 2026):
+                gemeld dat "100%, uitstekend consistent herstel" naast
+                een lage trainingsfrequentie tegenstrijdig oogde — dit
+                getal meet uitsluitend opvolging van gegeven
+                hersteladviezen, niet trainingsconsistentie. Vaste
+                ondertitel toegevoegd zodat de scope duidelijk is,
+                ongeacht wat compliance.samenvatting verder zegt.
+                Berekening zelf ongewijzigd. */}
+            <p className="text-[10px] text-slate-600 mb-3 px-1">Opvolging van gegeven hersteladviezen — geen maat voor trainingsfrequentie</p>
             <Card className="p-5">
               <div className="flex items-center gap-4 mb-4">
                 <ComplianceRing pct={compliance.compliance_pct} />

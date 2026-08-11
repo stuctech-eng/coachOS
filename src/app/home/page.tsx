@@ -653,6 +653,13 @@ export default function HomePage() {
                   return <div className="w-2 h-2 rounded-full bg-slate-500" />
                 })()}
               </div>
+              {/* v2.4.321-FIX (gebruiker + GPT-overleg, 11 augustus
+                  2026): geen bug in de berekening — "Coach Score 42"
+                  naast een onveranderde trainingsduur oogde
+                  tegenstrijdig, terwijl CoachPolicy alleen "Herstel"
+                  gebruikt, niet deze samengestelde score. Presentatie
+                  verduidelijkt, logica ongewijzigd. */}
+              <p className="text-[10px] text-slate-600 mb-1">Samengesteld uit herstel, training en leefstijl</p>
               <div className="flex items-end gap-2">
                 {laden || berekenend ? (
                   <div className="h-12 w-20 bg-slate-700 rounded-xl animate-pulse" />
@@ -675,13 +682,14 @@ export default function HomePage() {
           {coachStatus && (
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: 'Herstel', score: coachStatus.recovery_score },
-                { label: 'Training', score: coachStatus.training_score },
-                { label: 'Leefstijl', score: coachStatus.lifestyle_score },
-              ].map(({ label, score: s }) => (
+                { label: 'Herstel', score: coachStatus.recovery_score, uitleg: 'Bepaalt trainingsaanpassingen' },
+                { label: 'Training', score: coachStatus.training_score, uitleg: null },
+                { label: 'Leefstijl', score: coachStatus.lifestyle_score, uitleg: null },
+              ].map(({ label, score: s, uitleg }) => (
                 <div key={label} className="bg-slate-800/60 rounded-xl p-2 text-center">
                   <p className="text-xs text-slate-500">{label}</p>
                   <p className={cn('text-lg font-bold', getScoreKleur(s))}>{s ?? '—'}</p>
+                  {uitleg && <p className="text-[9px] text-slate-600 mt-0.5 leading-tight">{uitleg}</p>}
                 </div>
               ))}
             </div>

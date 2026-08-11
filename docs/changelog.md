@@ -1,5 +1,47 @@
 # CoachOS — Changelog
 
+## v2.4.321 — Terminologie/presentatie: Coach Score, Herstel, Coach Compliance
+**Gemeld, met bewijs (twee screenshots): geen bugs gevonden bij
+onderzoek — elk getal klopt voor zijn eigen, smalle definitie, maar de
+presentatie oogde tegenstrijdig. Overleg gebruiker + GPT: berekeningen
+en CoachPolicy ONGEWIJZIGD, alleen UI/tekst aangepast.**
+
+### Bevindingen, bevestigd met bewijs
+- "Coach Score 42" naast een onveranderde 84-min-training: `Herstel:
+  53` (de sub-score) IS letterlijk `recovery.score` — dezelfde waarde
+  die CoachPolicy gebruikt voor `recoveryState`. 53 valt in
+  'moderate' (50-74), niet 'low' — dus terecht geen aanpassing. De
+  samengestelde Coach Score (42, inclusief Training/Leefstijl) is een
+  ander, breder getal dan wat de beslissing bepaalt
+- "100%, uitstekend consistent herstel" naast "inconsistent trainen
+  0,3x/week": Coach Compliance meet uitsluitend opvolging van
+  gegeven hersteladviezen, niet trainingsfrequentie — bij weinig
+  trainingen zijn er ook weinig hersteladviezen, en die paar werden
+  wél allemaal opgevolgd
+
+### Wijzigingen — puur presentatie
+- **`home/page.tsx`** — subtekst onder "Coach Score":
+  "Samengesteld uit herstel, training en leefstijl". "Herstel"-
+  subscore krijgt een eigen label: "Bepaalt trainingsaanpassingen"
+- **`progressie/page.tsx`** — vaste ondertitel bij Coach Compliance:
+  "Opvolging van gegeven hersteladviezen — geen maat voor
+  trainingsfrequentie", naast de bestaande dynamische samenvatting
+
+### Bewust ongewijzigd
+Geen enkele berekening, geen CoachPolicy-logica, geen drempelwaarden
+— zoals expliciet afgesproken, dit was een presentatieprobleem, geen
+logicaprobleem.
+
+### Nog open — Smart Actions "Open trainingsplan" blijft soms weg
+Gemeld: ondanks v2.4.320 (dubbele CoachPolicy-berekening al
+weggenomen) verschijnt "Open trainingsplan" bij Snelle Acties nog
+steeds soms niet. Resterende keten (CoachPolicy + haalAthleteState +
+voerDailyAdjustmentUitCore's eigen queries) is nog steeds substantieel
+— kan bij een trage verbinding over de bestaande 2,5-seconden-
+tijdslimiet gaan. Twee mogelijke vervolgstappen besproken (tijdslimiet
+verruimen met nieuwe onderbouwing, of Smart Actions op een gecachet
+TodayPlan laten draaien) — wacht op een keuze vóór bouwen.
+
 ## v2.4.320 — FIX: performance-regressie in Smart Actions, veroorzaakt door v2.4.319
 **Gemeld: "Open trainingsplan" verscheen vaak niet meer bij Snelle
 Acties.**
