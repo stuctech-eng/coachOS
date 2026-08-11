@@ -1,5 +1,50 @@
 # CoachOS — Changelog
 
+## v2.4.322 — TodayPlan-cache (60 sec) — lost Smart Actions-vertraging structureel op
+**Vereist handmatige SQL vóór pushen, zie README.**
+
+### Root cause, bevestigd
+`api/coach/route.ts`, `api/action-plan/route.ts` en
+`api/smart-actions/route.ts` riepen `bepaalTodayPlan()` alle drie
+volledig onafhankelijk aan — bij één Home-bezoek dus tot 3× dezelfde,
+zware berekening (CoachPolicy + 5 queries + workout-keten) tegelijk.
+v2.4.320 loste de dubbele berekening BINNEN één functie op; deze
+levering lost de verspilling OVER routes heen op.
+
+### Fix
+Nieuwe, kortlevende (60 seconden) cache — bewust kort, om nooit een
+verouderde REST/TRAIN/ADJUST-beslissing te tonen (Regel 0c/0d).
+Overwogen en afgewezen: langer-levende cache (te veel veroudering-
+risico), simpelweg de Smart Actions-tijdslimiet verruimen (lost de
+verspilling niet op).
+
+**Implementatie, `today-engine.ts`:**
+- Oorspronkelijke `bepaalTodayPlan()`-logica hernoemd naar interne
+  `bepaalTodayPlanOngecached()` — volledig ongewijzigd
+- Nieuwe, geëxporteerde `bepaalTodayPlan()` — dunne cache-wrapper:
+  lezen → hit (<60 sec) → direct terug; miss → vers berekenen + cache
+  bijwerken. Bij elke storing: stille terugval op vers berekenen
+
+**Bijwerking-kanttekening:** rolling-horizon-verlenging (achtergrond-
+onderhoud) gebeurt bij een cache-hit niet opnieuw — onschadelijk,
+loopt bij de eerstvolgende oncachete aanroep gewoon weer mee.
+
+### SQL — vóór pushen uitvoeren
+```sql
+create table if not exists today_plan_cache (
+  user_id uuid primary key,
+  plan_json jsonb not null,
+  computed_at timestamptz not null default now()
+);
+```
+
+### Eén gewijzigd bestand
+`today-engine.ts`.
+
+**Nog niet gemeten of dit "Open trainingsplan" nu consistent laat
+verschijnen** — vergt observatie in de draaiende app na het uitvoeren
+van de SQL en het pushen.
+
 ## v2.4.321 — Terminologie/presentatie: Coach Score, Herstel, Coach Compliance
 **Gemeld, met bewijs (twee screenshots): geen bugs gevonden bij
 onderzoek — elk getal klopt voor zijn eigen, smalle definitie, maar de

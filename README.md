@@ -756,6 +756,48 @@ geen verzinsel, exact dezelfde waarden als Running's
 `PROGRESSIE_AFSTANDEN`. `STANDAARD_TESTAFSTANDEN` in
 `rowing-grafieken.ts` en de labellijst in de pagina beide aangevuld.
 
+## ⚠️ Vereist handmatige SQL — v2.4.322: TodayPlan-cache
+**Vóór het pushen van v2.4.322 uitvoeren in Supabase:**
+```sql
+create table if not exists today_plan_cache (
+  user_id uuid primary key,
+  plan_json jsonb not null,
+  computed_at timestamptz not null default now()
+);
+```
+**Kortlevende (60 sec) cache voor `bepaalTodayPlan()`.** Bevestigd:
+`api/coach/route.ts`, `api/action-plan/route.ts` en
+`api/smart-actions/route.ts` riepen deze functie tot nu toe alle drie
+volledig onafhankelijk aan — bij één Home-bezoek dus tot 3× dezelfde,
+zware berekening (CoachPolicy + workout-keten) tegelijk. Directe
+aanleiding: "Open trainingsplan" verscheen vaak niet bij Snelle
+Acties, ook na v2.4.320's eerdere fix (dubbele `genereerCoachPolicy()`-
+aanroep binnen één functie al weggenomen) — de resterende, verspreide
+verdubbeling over drie routes bleef.
+
+**Bewust 60 seconden, niet langer:** lang genoeg om de 2-3 near-
+gelijktijdige aanroepen binnen één paginabezoek te dedupliceren, kort
+genoeg om nooit een verouderde REST/TRAIN/ADJUST-beslissing te tonen —
+zou anders precies het soort veroudering riskeren dat de hele
+CoachDecision-architectuur van vandaag (Regel 0c/0d) wil voorkomen.
+Overwogen en bewust afgewezen: een langer-levende cache (te veel
+risico) en simpelweg de Smart Actions-tijdslimiet verruimen (lost de
+onderliggende verspilling niet op, maakt niets sneller).
+
+**Implementatie:** `today-engine.ts`'s oorspronkelijke
+`bepaalTodayPlan()`-logica hernoemd naar een interne
+`bepaalTodayPlanOngecached()` — **volledig ongewijzigd**, puur
+hernoemd. De geëxporteerde `bepaalTodayPlan()` is nu een dunne
+wrapper: cache lezen → bij een hit (< 60 sec oud) direct teruggeven →
+bij een miss vers berekenen + cache bijwerken. Bij elke storing (lezen
+of schrijven): stille terugval op vers berekenen, nooit de gebruiker
+blokkeren door een cache-probleem.
+
+**Bijwerking-kanttekening:** de rolling-horizon-verlenging (Laag 2 in
+de ongecachete functie) gebeurt bij een cache-hit niet opnieuw —
+onschadelijk, een achtergrond-onderhoudstaak die bij de eerstvolgende
+oncachete aanroep gewoon weer meeloopt.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

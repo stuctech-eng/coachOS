@@ -328,7 +328,15 @@ async function kiesTussenProposals(userId: string, proposals: SpecialistProposal
   return proposals.find(p => p.sport === beslissing.selectedCoach) || proposals[0]
 }
 
-export async function bepaalTodayPlan(userId: string, cookieHeader: string, baseUrl: string): Promise<TodayPlan> {
+// v2.4.322 (Smart Actions-vertraging, gebruiker + GPT-overleg, 11
+// augustus 2026): hernoemd van bepaalTodayPlan() naar deze interne
+// helper — logica zelf VOLLEDIG ONGEWIJZIGD. De geëxporteerde
+// bepaalTodayPlan() hieronder is nu een dunne cache-wrapper. Reden:
+// api/coach/route.ts, api/action-plan/route.ts en
+// api/smart-actions/route.ts riepen deze functie tot nu toe alle drie
+// volledig ONAFHANKELIJK aan — bij één Home-bezoek dus tot 3× dezelfde,
+// zware berekening (CoachPolicy + workout-keten) tegelijk.
+async function bepaalTodayPlanOngecached(userId: string, cookieHeader: string, baseUrl: string): Promise<TodayPlan> {
   const supabase = createAdminClient()
   const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
@@ -439,4 +447,56 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
     actionHref: '/training', actionLabel: 'Bibliotheek openen',
     trainingPhase: null, sessieId: null, originalDuration: null, adjustmentReason: null, trainingDecision: null,
   }
+}
+
+// ── bepaalTodayPlan() — cache-wrapper, v2.4.322 ──────────────────────────
+// KORTLEVEND, bewust: 60 seconden. Lang genoeg om de 2-3 near-
+// gelijktijdige aanroepen binnen één paginabezoek te dedupliceren, kort
+// genoeg om nooit een verouderde REST/TRAIN/ADJUST-beslissing te tonen
+// (Coach Decision Integrity, Regel 0c/0d) — als iemand binnen die 60
+// seconden een blessure logt en meteen herlaadt, is dat een randgeval
+// dat bij de eerstvolgende, oncachete aanroep (na 60 sec) alsnog correct
+// wordt opgepakt. Bewust GEEN lang-levende cache — dat zou precies het
+// soort veroudering riskeren dat de hele CoachDecision-architectuur van
+// vandaag wil voorkomen.
+//
+// Bijwerking-kanttekening: bepaalTodayPlanOngecached() doet ook een
+// rolling-horizon-verlenging als bijwerking (Laag 2, hierboven) — bij
+// een cache-hit gebeurt die niet opnieuw. Onschadelijk: het is een
+// achtergrond-onderhoudstaak (toekomstige weken aanvullen), geen
+// invloed op de beslissing van vandaag, en gebeurt gewoon weer bij de
+// eerstvolgende oncachete aanroep.
+//
+// SQL, vooraf uit te voeren (nieuwe tabel, geen bestaande gewijzigd):
+//   create table if not exists today_plan_cache (
+//     user_id uuid primary key,
+//     plan_json jsonb not null,
+//     computed_at timestamptz not null default now()
+//   );
+const TODAY_PLAN_CACHE_TTL_MS = 60 * 1000
+
+export async function bepaalTodayPlan(userId: string, cookieHeader: string, baseUrl: string): Promise<TodayPlan> {
+  const supabase = createAdminClient()
+
+  try {
+    const { data: cacheRij } = await supabase
+      .from('today_plan_cache').select('plan_json, computed_at').eq('user_id', userId).maybeSingle()
+    if (cacheRij && Date.now() - new Date(cacheRij.computed_at).getTime() < TODAY_PLAN_CACHE_TTL_MS) {
+      return cacheRij.plan_json as TodayPlan
+    }
+  } catch (cacheErr) {
+    console.error('[today-engine] Cache lezen mislukt, val terug op vers berekenen:', cacheErr)
+  }
+
+  const plan = await bepaalTodayPlanOngecached(userId, cookieHeader, baseUrl)
+
+  try {
+    await supabase.from('today_plan_cache').upsert({ user_id: userId, plan_json: plan, computed_at: new Date().toISOString() }, { onConflict: 'user_id' })
+  } catch (cacheWriteErr) {
+    // Nooit de gebruiker een fout laten zien omdat het wegschrijven van
+    // de cache mislukte — het verse resultaat is en blijft correct.
+    console.error('[today-engine] Cache wegschrijven mislukt (niet blokkerend):', cacheWriteErr)
+  }
+
+  return plan
 }
