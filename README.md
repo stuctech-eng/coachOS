@@ -905,7 +905,8 @@ als eindverantwoordelijke bouwer:**
 | 8 — Migratie-specificatie | ✅ |
 | 8.1 — Migration Hardening (security_invoker, junction-tabel, SD-veld, config-versiëring) | ✅ |
 | 8.2 — SQL Hardening (atomaire config-overgang, RLS-gat gedicht, uniek-index) | ✅ |
-| **Code/migratie uitgevoerd** | **❌ Nog niet — volgende stap** |
+| **Database-migratie uitgevoerd + geverifieerd** | ✅ (20 augustus 2026) |
+| **Fase 10 — Code: pattern-detection + Coach-integratie** | ✅ (20 augustus 2026) |
 
 **De elf harde grenzen, definitief vastgelegd:**
 1. Geen diagnose, ooit
@@ -954,6 +955,59 @@ onbetrouwbaar zijn; een handmatig datumveld is eerlijker.
   het moment dat de Coach het ontdekt
 - `garmin-activity-import/page.tsx` — nieuwe datumkeuze in de
   screenshot-preview, standaard vandaag, aanpasbaar
+
+## v2.4.328 — Recovery Intelligence: Fase 10, code geïmplementeerd
+**Het patroondetectie-script, de analyse-orchestratie, en de Coach-
+integratie zijn nu gebouwd — bovenop de al bestaande, geverifieerde
+database (Fase 0-9). `enabled: false` staat nog steeds aan in
+`ri_algorithm_config_versions` — deze code draait dus, maar levert
+nog niets op totdat die vlag bewust wordt omgezet.**
+
+### Zes nieuwe bestanden, twee gewijzigd
+
+**Nieuw, `src/lib/recovery-intelligence/`:**
+- `types.ts` — gedeelde types, exact matchend met het DB-schema
+- `config.ts` — leest de actieve, versioned configuratie
+- `baseline.ts` — baseline-berekening per metric, respecteert de
+  unieke-actieve-baseline-constraint (sluit oude baseline netjes af
+  vóór een nieuwe wordt aangemaakt)
+- `pattern-detection.ts` — het kernalgoritme. **Volledig
+  deterministisch** (Fase 6, punt 7) — vergelijkbaarheid tussen
+  belastingsgebeurtenissen wordt bepaald via load-magnitude-band +
+  confounder-profiel (actieve blessure, hoge life-event-belasting),
+  nooit via een AI-oordeel. Load Proxy-dedup volgt exact de Fase
+  7.1-regel (`source != 'trainer_ai'`)
+- `context-formatter.ts` — de ENIGE plek waar RI-data de Coach-prompt
+  bereikt. Puur tekstopbouw, geen classificatie. Toont alleen patronen
+  met confidence_tier `patroon`/`sterk_patroon`, niet ouder dan 6
+  maanden onbevestigd (Fase 7.1: "geen recente bevestiging", niet
+  "ongeldig")
+
+**Nieuw, route:** `api/recovery-intelligence/analyze/route.ts` —
+lazy, rate-limited (24u) background analysis, volledige audit trail
+via `ri_analysis_runs`. Checkt de `enabled`-vlag als allereerste stap.
+
+**Gewijzigd, elk met twee toevoegingen (trigger + contextblok):**
+- `api/coach/route.ts` — fire-and-forget-aanroep naar de analyse-route
+  (zelfde patroon als de al-bestaande `/api/memory`-aanroep), plus het
+  contextblok in de finale prompt-opbouw
+- `api/action-plan/route.ts` — zelfde twee toevoegingen
+
+### Harde grens, technisch herbevestigd tijdens de bouw
+Geen enkele wijziging aan `today-engine.ts`, `adjuster-core.ts`,
+`coach-policy.ts`, of iets dat met `AdaptationSignal`/`pasWorkoutAan()`
+te maken heeft. Het contextblok gaat uitsluitend de AI-promptopbouw
+in — precies het ontwerp uit Fase 5, nu daadwerkelijk gebouwd.
+
+### Nog niet gedaan
+- **`enabled` staat nog op `false`** — bewust, wacht op een apart
+  akkoord om aan te zetten
+- Historische backfill is nog niet apart getriggerd — de eerste
+  analyse zal vanzelf lopen zodra `enabled: true` staat én de Coach
+  voor het eerst wordt aangeroepen (via de rate-limited trigger)
+- Geen enkele test uitgevoerd tegen echte data — vergt eerst
+  `enabled: true` + een Coach-aanroep + handmatige controle van wat
+  er in `ri_patterns`/`ri_hypotheses` terechtkomt
 
 ## Core Architectuurregels
 

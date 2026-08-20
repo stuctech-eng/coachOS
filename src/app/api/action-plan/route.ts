@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { haalDagContext, formatResolvedContext } from '@/core/utils/life-events-context'
 import { bepaalTodayPlan } from '@/lib/today-engine'
+import { bouwRecoveryIntelligenceContext } from '@/lib/recovery-intelligence/context-formatter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -172,12 +173,16 @@ export async function POST(req: NextRequest) {
       ].filter(Boolean).join('\n')
     }
 
+    // v2.4.328 (Recovery Intelligence): puur lezend, faalt stil.
+    const riContext = await bouwRecoveryIntelligenceContext(supabase, user.id).catch(() => '')
+
     const context = [
       `Dag: ${dag} ${isWeekend ? '(WEEKEND — vrije dag)' : '(werkdag)'}`,
       `Coach Score: ${score}/100, Herstel: ${herstel}/100`,
       todayEngineContext,
       checkin ? `Gevoel: ${checkin.feeling_score}/10, Energie: ${checkin.energy_score}/10, Stress: ${(checkin as {stress_score?: number}).stress_score || '?'}/10` : 'Geen check-in',
       garminContext,
+      riContext,
       blessures.length > 0 ? `Blessures: ${blessures.map(b => b.body_part).join(', ')}` : '',
       lifeEventsContext || (isWeekend ? 'Geen werkverplichtingen vandaag' : ''),
       goals.length > 0 ? `Doelen: ${goals.map(g => g.title).join(', ')}` : '',

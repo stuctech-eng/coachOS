@@ -14,6 +14,10 @@ import { haalGoalsMetProgress } from '@/lib/specialists/goal-engine'
 import { haalHrvTrend } from '@/lib/specialists/health-analysis-engine'
 import { haalPerformanceVoorRecovery } from '@/lib/specialists/health-analysis-engine'
 import { bepaalTodayPlan } from '@/lib/today-engine'
+// v2.4.328 (Recovery Intelligence): puur lezend, formatteert
+// al-bestaande patronen — geen classificatie hier, zie
+// context-formatter.ts se eigen module-comment.
+import { bouwRecoveryIntelligenceContext } from '@/lib/recovery-intelligence/context-formatter'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -460,6 +464,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // v2.4.328 (Recovery Intelligence): puur lezend, faalt stil bij een
+    // fout — mag Coach-advies nooit blokkeren. Retourneert '' als er
+    // geen voldoende-onderbouwde patronen zijn (het normale geval
+    // zolang er te weinig geschiedenis is).
+    const riContext = await bouwRecoveryIntelligenceContext(supabase, user.id).catch(() => '')
+
     let garminContext = ''
     if (garmin) {
       const label = garminIsVandaag ? 'vandaag' : 'gisteren'
@@ -693,7 +703,7 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       memoryRes.data || [],
       weekMetrics,
       recenteActiviteiten
-    ) + garminContext + morningHealthContext + todayEngineContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (weerContext || '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + (specialistContext || '') + trainerInstructiePrompt
+    ) + garminContext + riContext + morningHealthContext + todayEngineContext + trainingsCoachContext + (progressieContext ? progressieContext : '') + (weerContext || '') + (journalContext ? '\n' + journalContext : '') + (loadContext ? '\n' + loadContext : '') + (lifeEventsContext ? '\n' + lifeEventsContext : '') + (blessureContext ? '\n' + blessureContext : '') + (coachCallContext ? coachCallContext : '') + (specialistContext || '') + trainerInstructiePrompt
 
     const aiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -767,6 +777,17 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
     })
 
     fetch('https://coach-os-tau.vercel.app/api/memory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    }).catch(() => {})
+
+    // v2.4.328 (Recovery Intelligence, Fase 7.1 punt 3): lazy,
+    // rate-limited background analysis — zelfde fire-and-forget-
+    // patroon als /api/memory hierboven. De route zelf checkt de
+    // enabled-vlag en de 24u-snelheidsrem, dus dit is altijd
+    // veilig aan te roepen, ook duizenden keren per dag.
+    fetch('https://coach-os-tau.vercel.app/api/recovery-intelligence/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: user.id }),
