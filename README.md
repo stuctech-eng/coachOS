@@ -823,6 +823,117 @@ de ongecachete functie) gebeurt bij een cache-hit niet opnieuw —
 onschadelijk, een achtergrond-onderhoudstaak die bij de eerstvolgende
 oncachete aanroep gewoon weer meeloopt.
 
+## 🧭 CHECKPOINT — Recovery Intelligence Layer (Fase 0 afgerond, 16 augustus 2026)
+
+**Status: alleen onderzoek + architectuurbesluit. Geen code gewijzigd.
+Volgende sessie: begin direct bij Fase 1 (zie onderaan).**
+
+### Herkomst
+Uitgebreid masterplan van de gebruiker (overleg met GPT, meerdere
+revisies) om CoachOS uit te breiden met een **Recovery Intelligence
+Layer** — een langetermijn-leerlaag die energie, belastbaarheid,
+belasting, herstel en vertraagde respons over tijd leert kennen per
+persoon. Persoonlijke aanleiding van de gebruiker: eigen ervaring met
+langdurige energieproblemen/Long COVID — het doel is mensen concreet
+uit energie-crises helpen, niet alleen een technische uitbreiding.
+
+### Architectuurbesluit — vastgelegd, harde regel
+```
+COACH               = beslist
+RECOVERY SPECIALIST = kent herstel + PEM/pacing-kennis (permanente
+                       expertise, geen los aan/uit-modus)
+RECOVERY INTELLIGENCE = onthoudt + leert + herkent patronen
+                        (NIEUWE, aparte laag — geen ombouw van
+                        bestaande componenten)
+TRAINER AI          = voert uit
+BIBLIOTHEEK         = bepaalt wat bestaat
+DATA                = bewijst wat er werkelijk gebeurde
+```
+**Belangrijkste ontdekking van Fase 0:** niets bestaands hoeft kapot
+gemaakt te worden. Recovery Intelligence wordt een nieuwe laag
+bovenop bestaande componenten, geen verbouwing ervan.
+
+**Medische veiligheidsgrens, ongewijzigd te behouden:** geen diagnose,
+geen medische behandeling, geen genezing-claims. PEM/50%-regel/
+hartslag-pacing zijn **kennisdomein-input voor de Recovery
+Specialist**, geen universeel af te dwingen algoritmes — verschilt
+sterk per persoon, moet via het Individual Recovery Model leren wat
+bij déze gebruiker past, niet hardcoded.
+
+### Fase 0 — audit, volledig afgerond
+
+| Component | Wat het doet | Status |
+|---|---|---|
+| `recovery-engine.ts` | Deterministische Recovery Score (0-100), incl. Garmin Training Readiness als input | ✅ Werkt, blijft ongewijzigd bestaan |
+| `coach_memory` + `api/memory/route.ts` | AI detecteert max. 4 patronen uit de laatste 30 dagen, **overschrijft bestaande patronen volledig** bij elke run (delete + insert, geen cumulatieve historie) | ✅ Werkt (na historische fix v2.4.15 — was structureel kapot door een cookie-auth-bug bij server-naar-server-aanroepen, `.catch(() => {})` verborg dit stil) |
+| `coach_recommendations` | Eén rij per gebruiker/dag/type — dagadvies + redenering + energieniveau + herstelstatus | ✅ Werkt |
+| `coach_calls` + `coach_call_items` | Subjectieve respons per sessie: **rating, mood, notes** — waardevolle ruwe data, maar hoofdroute bevraagt slechts de laatste 3 dagen | ✅ Data bestaat, **lange geschiedenis wordt nergens geaggregeerd** |
+| `training_results` | Voltooide trainingen: rating, werkelijke duur, notities | ✅ Werkt |
+| `exercise_records` | Persoonlijke records per oefening | ✅ Werkt |
+| `ai_conversations` | Ruwe chatgeschiedenis | ✅ Bestaat, ongebruikt voor patroonherkenning |
+| `injuries`, `user_goals`, `life_events` | Uitgebreid vandaag al gebruikt voor CoachDecision | ✅ Werkt |
+| "Readiness" | Geen apart bestand — Garmin-eigen metric, gaat als input de bestaande Recovery Score in | ✅ Geen dubbele logica |
+| CoachDecision (REST/TRAIN/ADJUST) | Vandaag gebouwd, live | ✅ Blijft de beslisser — Intelligence Layer levert straks extra context, vervangt 'm niet |
+
+**Bevestigde gaten (geen aannames):**
+1. Geen cumulatieve geschiedenis — `coach_memory` overschrijft zichzelf
+2. Geen vertraagde-respons-tracking (24u/48u/72u) — ruwe ingrediënten bestaan (`coach_call_items.rating/mood`, `training_results.rating`), worden nooit over tijd gekoppeld
+3. Geen persoonlijke baselines — alles tegen vaste, voor-iedereen-gelijke drempels
+4. Geen Energy vs. Capacity-onderscheid — één Recovery Score, geen apart model
+5. Geen patroon-/hypothese-engine
+6. Geen PEM/Boom-Bust-herkenning (logisch gevolg van punt 2)
+
+**Wat NIET aangepast mag worden:** `recovery-engine.ts` zelf, `coach_memory` (blijft voor wat het al goed doet), de CoachDecision-keten, Bibliotheek-/Trainer-regels.
+
+### Status — 16 augustus 2026: alle ontwerpfasen afgerond, migratie uitvoeringsklaar
+
+**Twaalf fasen doorlopen, elk met gebruiker + GPT-overleg en Claude
+als eindverantwoordelijke bouwer:**
+
+| Fase | Status |
+|---|---|
+| 0 — Audit (bestaande componenten) | ✅ |
+| 1 — Data Inventory | ✅ |
+| 1A — Data Linkage & Historical Depth Verification | ✅ |
+| 2 — Architecture Proposal (V1/V2-scheiding) | ✅ |
+| 3 — Datamodel (eerste ontwerp) | ✅ |
+| 4 — Datamodel-review + Safety-review | ✅ |
+| 5 — Coach-integratie-ontwerp | ✅ |
+| 6 — Evidence & Pattern Algorithm Specification | ✅ |
+| 7 — Implementatieplan | ✅ |
+| 7.1 — Technische afsluiting (3 openstaande gaten gedicht) | ✅ |
+| 8 — Migratie-specificatie | ✅ |
+| 8.1 — Migration Hardening (security_invoker, junction-tabel, SD-veld, config-versiëring) | ✅ |
+| 8.2 — SQL Hardening (atomaire config-overgang, RLS-gat gedicht, uniek-index) | ✅ |
+| **Code/migratie uitgevoerd** | **❌ Nog niet — volgende stap** |
+
+**De elf harde grenzen, definitief vastgelegd:**
+1. Geen diagnose, ooit
+2. Geen patroon op basis van één gebeurtenis — minimaal 3 vergelijkbare, weinig-confounded instanties
+3. Vergelijkbaarheid is deterministische code, nooit een AI-oordeel
+4. Geen `AdaptationSignal` — architectonisch onmogelijk gemaakt, niet alleen een vlag
+5. Geen wijziging aan `today-engine.ts`, `adjuster-core.ts`, `coach-policy.ts` of `pasWorkoutAan()`
+6. V1 is uitsluitend informatieve Coach-context
+7. Coach ziet alleen voldoende onderbouwde, recent-bevestigde patronen
+8. Alle RI-data herleidbaar naar bestaande brondata (geen dubbele waarheid)
+9. Configuraties/algoritmeversies zijn reproduceerbaar (versioned, nooit stilzwijgend overschreven)
+10. `enabled=false` (kill switch): functioneel alsof RI niet bestaat
+11. Historische data eerst geanalyseerd + handmatig gevalideerd vóór Coach-integratie ooit geactiveerd wordt
+
+**Volgende stap, expliciet afgebakend:** uitsluitend de database-migratie
+(Fase 8.1+8.2, zie `docs/recovery-intelligence-migration.sql` in deze
+levering) — **geen** `pattern-detection.ts`, **geen**
+Coach-routewijzigingen, **geen** historische backfill. Die volgen pas
+na een apart akkoord, ná controle van dit schema (Fase 9 — nog niet
+gestart).
+
+**Datamodel, samengevat:** 8 tabellen (`ri_algorithm_config_versions`,
+`ri_analysis_runs`, `ri_calendar_day_response`, `ri_response_links`,
+`ri_patterns`, `ri_pattern_evidence`, `ri_hypotheses`, `ri_baselines`,
+`ri_interventions` — negen, exclusief telling hierboven) + 2 views
+(`ri_load_proxy_view`, `ri_response_observations_view`), alle met RLS,
+beide views met `security_invoker=true`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
