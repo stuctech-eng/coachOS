@@ -1032,6 +1032,26 @@ load-baseline nog niet — 9 van de 10 vereiste dagen. Zonder deze
 statusweergave was dat alleen met handmatige SQL-query's te
 achterhalen. Nu in één oogopslag zichtbaar.
 
+## v2.4.330 — /debug-pagina geordend
+**Gemeld: "kun je deze pagina een beetje ordenen" — de zeven losse
+links naar andere debug-pagina's en de vijf subtools in
+"Specialistlaag" stonden allemaal permanent uitgeklapt, waardoor de
+pagina lang en onoverzichtelijk werd.**
+
+### Wijzigingen, puur visueel — geen enkele functie gewijzigd
+- Zeven externe debug-links samengevoegd onder één inklapbare
+  sectie ("Andere debug-pagina's (7)"), standaard dicht
+- Vijf subtools (Memory Engine, Decision Engine, Recovery
+  Intelligence, Adaptive Training Plan Engine, Coach-uitleglaag) elk
+  in een eigen `<details>`-element — Recovery Intelligence staat
+  standaard open (meest recent/relevant), de andere vier dicht
+- Native HTML `<details>`/`<summary>` gebruikt — geen nieuwe state,
+  geen extra JavaScript, geen risico op het breken van bestaande
+  knoppen/fetches
+
+### Eén bestand
+`debug/page.tsx`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

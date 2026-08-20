@@ -629,40 +629,36 @@ export default function DebugPage() {
           <p className="text-slate-400 text-sm mt-0.5">CoachOS gezondheidscheck — {ALLE_TABELLEN.length} tabellen, {KERN_ROUTES_GET.length} routes, schrijftest coach_calls</p>
         </div>
 
-        {/* v2.4.144: link naar Recovery Debug Dashboard */}
-        <a href="/debug/recovery" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
-          🩺 Recovery Debug Dashboard
-        </a>
-
-        {/* v2.4.149: link naar Performance Engine Debug (Fase 1A) */}
-        <a href="/debug/performance-engine" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
-          ⚙️ Performance Engine Debug (Fase 1A)
-        </a>
-
-        {/* v2.4.170: link naar Today Engine Debug */}
-        <a href="/debug/today" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
-          📅 Today Engine Debug
-        </a>
-
-        {/* v2.4.181: link naar Weer Debug (permanent) */}
-        <a href="/debug/weer" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
-          🌍 Weer Debug (locatiebron)
-        </a>
-
-        {/* v2.4.268: link naar Workout Matching Debug — v2.4.279: label bijgewerkt, is inmiddels multi-sport (Rowing/Running/Cycling) */}
-        <a href="/debug/workout-matching" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
-          🔗 Workout Matching Debug
-        </a>
-
-        {/* v2.4.279: link naar Activity Bridge Debug */}
-        <a href="/debug/activity-bridge" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
-          🌉 Activity Bridge Debug
-        </a>
-
-        {/* v2.4.299: link naar Concept2-webhook Debug */}
-        <a href="/debug/concept2-webhook" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
-          🔌 Concept2-webhook Debug
-        </a>
+        {/* v2.4.330: zeven losse links samengevoegd onder één inklapbare
+            sectie — was een lange, verwarrende stapel losse knoppen */}
+        <details className="rounded-xl bg-white/5 overflow-hidden">
+          <summary className="px-4 py-3 text-sm font-medium text-slate-300 cursor-pointer select-none">
+            Andere debug-pagina's (7)
+          </summary>
+          <div className="px-4 pb-4 flex flex-col gap-2">
+            <a href="/debug/recovery" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+              🩺 Recovery Debug Dashboard
+            </a>
+            <a href="/debug/performance-engine" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+              ⚙️ Performance Engine Debug (Fase 1A)
+            </a>
+            <a href="/debug/today" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+              📅 Today Engine Debug
+            </a>
+            <a href="/debug/weer" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+              🌍 Weer Debug (locatiebron)
+            </a>
+            <a href="/debug/workout-matching" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+              🔗 Workout Matching Debug
+            </a>
+            <a href="/debug/activity-bridge" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+              🌉 Activity Bridge Debug
+            </a>
+            <a href="/debug/concept2-webhook" className="block w-full py-3 rounded-xl text-center text-sm font-medium bg-white/5 text-slate-300 active:bg-white/10">
+              🔌 Concept2-webhook Debug
+            </a>
+          </div>
+        </details>
 
         <button
           onClick={runDiagnostiek}
@@ -771,7 +767,9 @@ export default function DebugPage() {
           )}
 
           {/* v2.4.74: Memory Engine, sub-stap 2 — Learning Engine */}
-          <h3 className="text-xs font-bold text-white mb-2 mt-2">Memory Engine — Learning Engine (sub-stap 2/5)</h3>
+          <details className="rounded-xl bg-white/5 overflow-hidden mb-3">
+          <summary className="px-3 py-2.5 text-xs font-bold text-white cursor-pointer select-none">Memory Engine — Learning Engine (sub-stap 2/5)</summary>
+          <div className="px-3 pb-3">
           <p className="text-xs text-slate-500 mb-3">
             Handmatig een kandidaat-inzicht indienen (tijdelijk — sub-stap 3
             koppelt dit later automatisch aan de AI). Dien 3x hetzelfde
@@ -792,11 +790,15 @@ export default function DebugPage() {
             </button>
           </div>
           {memoryResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{memoryResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{memoryResultaat}</pre>
           )}
+          </div>
+          </details>
 
           {/* v2.4.85: Decision Engine — directe test met echte data */}
-          <h3 className="text-xs font-bold text-white mb-2 mt-2">Decision Engine (v2.4.84-85)</h3>
+          <details className="rounded-xl bg-white/5 overflow-hidden mb-3">
+          <summary className="px-3 py-2.5 text-xs font-bold text-white cursor-pointer select-none">Decision Engine (v2.4.84-85)</summary>
+          <div className="px-3 pb-3">
           <p className="text-xs text-slate-500 mb-3">
             Gebruikt de echte, actuele specialist_summary's van je actieve
             specialisten — geen nepdata. Vergt 2+ actieve specialisten met
@@ -807,11 +809,15 @@ export default function DebugPage() {
             {decisionBezig ? 'Bezig...' : 'Test: GET /api/specialists/decision-test'}
           </button>
           {decisionResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{decisionResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{decisionResultaat}</pre>
           )}
+          </div>
+          </details>
 
           {/* v2.4.329: Recovery Intelligence-status */}
-          <h3 className="text-xs font-bold text-white mb-2 mt-2">Recovery Intelligence (v2.4.328-329)</h3>
+          <details open className="rounded-xl bg-white/5 overflow-hidden mb-3">
+          <summary className="px-3 py-2.5 text-xs font-bold text-white cursor-pointer select-none">Recovery Intelligence (v2.4.328-329)</summary>
+          <div className="px-3 pb-3">
           <p className="text-xs text-slate-500 mb-3">
             Toont enabled-status, laatste analyse-run, huidige baselines,
             voortgang richting de load-baseline-drempel, en eventueel
@@ -822,11 +828,15 @@ export default function DebugPage() {
             {riBezig ? 'Bezig...' : 'Status ophalen: GET /api/recovery-intelligence/status'}
           </button>
           {riResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{riResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{riResultaat}</pre>
           )}
+          </div>
+          </details>
 
           {/* v2.4.96: Adaptive Training Plan Engine, Fase 1 */}
-          <h3 className="text-xs font-bold text-white mb-2 mt-2">Adaptive Training Plan Engine (Fase 1, v2.4.96)</h3>
+          <details className="rounded-xl bg-white/5 overflow-hidden mb-3">
+          <summary className="px-3 py-2.5 text-xs font-bold text-white cursor-pointer select-none">Adaptive Training Plan Engine (Fase 1, v2.4.96)</summary>
+          <div className="px-3 pb-3">
           <p className="text-xs text-slate-500 mb-3">
             Vergt een ingevuld Cycling Profile met trainingsdagen (Instellingen).
             Genereren maakt een nieuw plan (sluit het vorige actieve plan af).
@@ -843,11 +853,15 @@ export default function DebugPage() {
             </button>
           </div>
           {planResultaat && (
-            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{planResultaat}</pre>
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{planResultaat}</pre>
           )}
+          </div>
+          </details>
 
           {/* v2.4.97: Coach-uitleglaag, Fase 2 */}
-          <h3 className="text-xs font-bold text-white mb-2 mt-2">Coach-uitleglaag (Fase 2, v2.4.97)</h3>
+          <details className="rounded-xl bg-white/5 overflow-hidden">
+          <summary className="px-3 py-2.5 text-xs font-bold text-white cursor-pointer select-none">Coach-uitleglaag (Fase 2, v2.4.97)</summary>
+          <div className="px-3 pb-3">
           <p className="text-xs text-slate-500 mb-3">
             Vergt een gegenereerd plan met een sessie voor vandaag. AI zet
             de al-vastgestelde beslissing om in uitleg, beslist zelf niets.
@@ -859,6 +873,8 @@ export default function DebugPage() {
           {uitlegResultaat && (
             <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{uitlegResultaat}</pre>
           )}
+          </div>
+          </details>
         </div>
 
         {/* Wis training sessie — fix voor client-side crashes in training */}
