@@ -323,9 +323,16 @@ export default function DebugPage() {
       let tabellenFout = 0
       for (const tabel of ALLE_TABELLEN) {
         try {
+          // v2.4.331-FIX: was select('id') — brak op
+          // ri_algorithm_config_versions, de enige tabel met 'version'
+          // (tekst) als primary key i.p.v. 'id' (bewust zo ontworpen,
+          // Fase 8.1 — een configuratietabel, geen per-gebruiker-
+          // entiteit). select('*') werkt voor elke tabel, ongeacht
+          // welke kolom de primary key is — robuuster, geen losse
+          // uitzondering nodig.
           const { error: tabelError } = await supabase
             .from(tabel)
-            .select('id')
+            .select('*')
             .limit(1)
           if (tabelError) {
             log(`${tabel}: FOUT — ${tabelError.message}`, 'fout')

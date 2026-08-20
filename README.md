@@ -1052,6 +1052,32 @@ pagina lang en onoverzichtelijk werd.**
 ### Eén bestand
 `debug/page.tsx`.
 
+## v2.4.331 — FIX: gezondheidscheck brak op ri_algorithm_config_versions
+**Gemeld via de eigen diagnostiek: "column
+ri_algorithm_config_versions.id does not exist".**
+
+### Root cause, bevestigd
+De generieke tabel-check in `debug/page.tsx` deed altijd
+`select('id')` voor elke tabel in `ALLE_TABELLEN`.
+`ri_algorithm_config_versions` heeft echter bewust `version` (tekst)
+als primary key i.p.v. `id` (Fase 8.1 — een configuratietabel, geen
+per-gebruiker-entiteit) — de enige tabel in de hele app met die
+afwijking.
+
+### Fix
+`select('id')` → `select('*')` in de generieke loop — werkt voor
+elke tabel, ongeacht welke kolom de primary key is. Robuuster dan een
+losse uitzondering voor deze ene tabel.
+
+### Kanttekening, transparant
+`ri_algorithm_config_versions` heeft bewust geen RLS-policies
+(server-only). Verwachting: RLS-zonder-policies filtert stilzwijgend
+alle rijen weg voor een gewone gebruiker (leeg resultaat, geen fout)
+— nog te bevestigen door de diagnostiek opnieuw te draaien na deze fix.
+
+### Eén bestand
+`debug/page.tsx`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
