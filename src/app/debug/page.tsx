@@ -23,6 +23,13 @@ const ALLE_TABELLEN = [
   'user_goals',
   // v2.4.65: ontbrak — de twee tabellen uit de specialistlaag (SQL v2.4.59)
   'specialist_profiles', 'specialist_analyses',
+  // v2.4.329: Recovery Intelligence — negen tabellen uit de Fase
+  // 8.1/8.2-migratie (uitgevoerd + geverifieerd 20 augustus 2026).
+  // Hergebruikt de bestaande gezondheidscheck-infrastructuur, geen
+  // nieuwe debug-pagina gebouwd.
+  'ri_algorithm_config_versions', 'ri_analysis_runs', 'ri_calendar_day_response',
+  'ri_response_links', 'ri_patterns', 'ri_pattern_evidence', 'ri_hypotheses',
+  'ri_baselines', 'ri_interventions',
 ] as const
 
 // v2.4.13: kern-routes die veilig te testen zijn met GET zonder bijeffecten.
@@ -81,6 +88,9 @@ export default function DebugPage() {
   // v2.4.85: test-state voor de Decision Engine
   const [decisionBezig, setDecisionBezig] = useState(false)
   const [decisionResultaat, setDecisionResultaat] = useState('')
+  // v2.4.329: Recovery Intelligence-statuscheck
+  const [riBezig, setRiBezig] = useState(false)
+  const [riResultaat, setRiResultaat] = useState('')
   // v2.4.96: test-state voor de Adaptive Training Plan Engine
   const [planBezig, setPlanBezig] = useState(false)
   const [planResultaat, setPlanResultaat] = useState('')
@@ -211,6 +221,20 @@ export default function DebugPage() {
       setDecisionResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setDecisionBezig(false)
+    }
+  }
+
+  // v2.4.329: Recovery Intelligence-status
+  async function haalRiStatusOp() {
+    setRiBezig(true)
+    try {
+      const res = await fetch('/api/recovery-intelligence/status', { credentials: 'include' })
+      const data = await res.json()
+      setRiResultaat(`GET /api/recovery-intelligence/status →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setRiResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setRiBezig(false)
     }
   }
 
@@ -784,6 +808,21 @@ export default function DebugPage() {
           </button>
           {decisionResultaat && (
             <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{decisionResultaat}</pre>
+          )}
+
+          {/* v2.4.329: Recovery Intelligence-status */}
+          <h3 className="text-xs font-bold text-white mb-2 mt-2">Recovery Intelligence (v2.4.328-329)</h3>
+          <p className="text-xs text-slate-500 mb-3">
+            Toont enabled-status, laatste analyse-run, huidige baselines,
+            voortgang richting de load-baseline-drempel, en eventueel
+            gevonden patronen. Puur lezend, geen bijeffecten.
+          </p>
+          <button onClick={haalRiStatusOp} disabled={riBezig}
+            className="w-full mb-3 py-2.5 bg-slate-800 rounded-xl text-sm font-medium text-white disabled:opacity-50">
+            {riBezig ? 'Bezig...' : 'Status ophalen: GET /api/recovery-intelligence/status'}
+          </button>
+          {riResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap mb-4">{riResultaat}</pre>
           )}
 
           {/* v2.4.96: Adaptive Training Plan Engine, Fase 1 */}

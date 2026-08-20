@@ -1009,6 +1009,29 @@ in — precies het ontwerp uit Fase 5, nu daadwerkelijk gebouwd.
   `enabled: true` + een Coach-aanroep + handmatige controle van wat
   er in `ri_patterns`/`ri_hypotheses` terechtkomt
 
+## v2.4.329 — Recovery Intelligence zichtbaar in het Debug Panel
+**Gemeld: "kunnen we dat zien in de app" — antwoord was nee, alleen via
+directe database-query's. Toegevoegd, hergebruikt de bestaande
+`/debug`-infrastructuur in plaats van een nieuwe pagina te bouwen.**
+
+### Wijzigingen
+- **`ALLE_TABELLEN`** in `debug/page.tsx` uitgebreid met de negen
+  Recovery Intelligence-tabellen — meeliften op de bestaande
+  gezondheidscheck (bestaat-de-tabel/is-die-leesbaar)
+- **Nieuwe route, `api/recovery-intelligence/status/route.ts`** — puur
+  lezend, toont enabled-status, laatste analyse-run, huidige
+  baselines, voortgang richting de load-baseline-drempel (bijv.
+  "9/10 dagen"), en eventueel gevonden patronen
+- **Nieuwe sectie in `debug/page.tsx`** — knop + resultaatweergave,
+  exact hetzelfde patroon als de bestaande Decision Engine-sectie
+
+### Waarom dit waardevol bleek tijdens het eerste, echte testen
+Bij de allereerste analyse-run (20 augustus 2026) waren de
+respons-baselines (energie/HRV/etc.) succesvol berekend, maar de
+load-baseline nog niet — 9 van de 10 vereiste dagen. Zonder deze
+statusweergave was dat alleen met handmatige SQL-query's te
+achterhalen. Nu in één oogopslag zichtbaar.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
