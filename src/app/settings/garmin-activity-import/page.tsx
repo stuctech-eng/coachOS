@@ -66,6 +66,12 @@ export default function GarminActivityImportPage() {
   const [methode, setMethode] = useState<Methode>('tcx')
   const [fase, setFase] = useState<Fase>('idle')
   const [visionResult, setVisionResult] = useState<VisionResult | null>(null)
+  // v2.4.326-FIX: screenshot-import kwam altijd op de uploaddag te
+  // staan — de "Statistieken"-tab die de AI leest toont geen datum.
+  // Handmatige keuze i.p.v. AI-gok, standaard vandaag.
+  const [activiteitsDatum, setActiviteitsDatum] = useState<string>(
+    new Date().toLocaleDateString('en-CA')
+  )
   const [tcxResult, setTcxResult] = useState<TcxResult | null>(null)
   const [gekozenType, setGekozenType] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -79,6 +85,7 @@ export default function GarminActivityImportPage() {
     setGekozenType(null)
     setErrorMsg(null)
     setPreview(null)
+    setActiviteitsDatum(new Date().toLocaleDateString('en-CA'))
     if (fileRef.current) fileRef.current.value = ''
     if (tcxFileRef.current) tcxFileRef.current.value = ''
   }
@@ -116,6 +123,7 @@ export default function GarminActivityImportPage() {
     setFase('confirming')
     const formData = new FormData()
     formData.append('confirm_id', visionResult.import_id)
+    formData.append('activity_date', activiteitsDatum)
     try {
       const res = await fetch('/api/health/garmin-activity-vision', { method: 'POST', body: formData })
       if (!res.ok) throw new Error()
@@ -309,6 +317,17 @@ export default function GarminActivityImportPage() {
               <DataRow label="Tijd bewogen" value={formatMinuten(visionResult.parsed.duration_moved_min)} />
               <DataRow label="Hartslag" value={visionResult.parsed.avg_hr ? `${visionResult.parsed.avg_hr} bpm gem.` : '–'} sub={visionResult.parsed.max_hr ? `max ${visionResult.parsed.max_hr}` : undefined} />
               <DataRow label="Training Effect" value={visionResult.parsed.training_effect.primary_benefit || '–'} sub={visionResult.parsed.training_effect.exercise_load !== null ? `Exercise Load ${visionResult.parsed.training_effect.exercise_load}` : undefined} last />
+            </div>
+            {/* v2.4.326-FIX: handmatige datumkeuze, standaard vandaag */}
+            <div className="rounded-2xl bg-white/5 border border-white/8 px-4 py-3">
+              <label className="text-xs text-white/50 block mb-1.5">Wanneer was deze training?</label>
+              <input
+                type="date"
+                value={activiteitsDatum}
+                max={new Date().toLocaleDateString('en-CA')}
+                onChange={(e) => setActiviteitsDatum(e.target.value)}
+                className="w-full bg-transparent text-sm text-white outline-none [color-scheme:dark]"
+              />
             </div>
             <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-3">
               <p className="text-xs text-blue-400">Na bevestigen verschijnt deze activiteit als Coach Call op Home.</p>

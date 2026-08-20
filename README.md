@@ -934,6 +934,27 @@ gestart).
 (`ri_load_proxy_view`, `ri_response_observations_view`), alle met RLS,
 beide views met `security_invoker=true`.
 
+## v2.4.326 — FIX: Garmin-screenshot-import kwam altijd op uploaddag
+**Herbouwd na een gewiste werksessie — zelfde fix als eerder al
+ontworpen, nu opnieuw correct tegen de actuele codebase toegepast.**
+
+Screenshot-import (Garmin Vision) gebruikte altijd de uploaddag voor
+het `date`-veld, ongeacht wanneer de training echt plaatsvond. Anders
+dan TCX (waar de datum gegarandeerd in het bestand zelf staat) leest
+de AI-prompt hier specifiek het "Statistieken"-tabblad van Garmin
+Connect — dat scherm toont geen datum. AI-extractie zou hier dus
+onbetrouwbaar zijn; een handmatig datumveld is eerlijker.
+
+**Fix:**
+- `garmin-activity-vision/route.ts` — nieuw, optioneel
+  `activity_date`-veld bij bevestiging, gevalideerd (`YYYY-MM-DD`),
+  terugval op "vandaag" indien niet meegegeven
+- Coach Call blijft bewust op "vandaag" — consistent met TCX: de
+  training krijgt de echte datum, het coach-gesprek erover gebeurt op
+  het moment dat de Coach het ontdekt
+- `garmin-activity-import/page.tsx` — nieuwe datumkeuze in de
+  screenshot-preview, standaard vandaag, aanpasbaar
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

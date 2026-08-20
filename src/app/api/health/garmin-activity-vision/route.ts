@@ -172,6 +172,21 @@ export async function POST(req: NextRequest) {
       const durationMin = parsed.duration_moved_min ?? parsed.duration_total_min ?? 0
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
+      // v2.4.326-FIX: gemeld — een screenshot-import kwam altijd op de
+      // uploaddag te staan, ook als de training van gisteren (of eerder)
+      // was en pas later geüpload werd. Root cause, bevestigd: de AI-
+      // prompt vraagt specifiek om het "Statistieken"-tabblad van
+      // Garmin Connect te lezen — dat scherm toont geen datum, dus
+      // AI-extractie zou hier onbetrouwbaar zijn (in tegenstelling tot
+      // de TCX-route, waar de datum wél gegarandeerd in het bestand
+      // zelf staat, zie v2.4.112). Daarom hier bewust GEEN AI-datum-
+      // extractie, maar een handmatig, optioneel datumveld — met
+      // "vandaag" als terugval, exact zoals voorheen, voor bestaande
+      // aanroepen die dit veld niet meesturen.
+      const gekozenDatumRaw = formData.get('activity_date') as string | null
+      const geldigDatumFormaat = gekozenDatumRaw && /^\d{4}-\d{2}-\d{2}$/.test(gekozenDatumRaw)
+      const activiteitsDatum = geldigDatumFormaat ? gekozenDatumRaw! : today
+
       // Zoek of gebruiker deze activiteitssoort al heeft (zelfde patroon als
       // strava-activity-processor.ts, voor consistentie in de Activiteiten-lijst)
       let { data: userActivity } = await adminSupabase
@@ -192,7 +207,7 @@ export async function POST(req: NextRequest) {
       // specifieke check.
       const { data: bestaandeMetVoorrang } = await adminSupabase
         .from('activity_sessions').select('id, source')
-        .eq('user_id', user.id).eq('date', today).eq('activity_id', userActivity?.id || null)
+        .eq('user_id', user.id).eq('date', activiteitsDatum).eq('activity_id', userActivity?.id || null)
         .neq('source', 'garmin')
       const geblokkeerdDoor = (bestaandeMetVoorrang || []).find(rij => !nieuweBronWint('garmin', rij.source))
       if (geblokkeerdDoor) {
@@ -229,7 +244,7 @@ export async function POST(req: NextRequest) {
         .insert({
           user_id: user.id,
           activity_id: userActivity?.id || null,
-          date: today,
+          date: activiteitsDatum,
           duration: durationMin,
           metrics,
           source: 'garmin', // v2.4.24 FIX: was 'garmin_manual' — bestond niet in de
