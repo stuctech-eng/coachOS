@@ -1102,6 +1102,33 @@ vandaag eerder (v2.4.309-311), alleen de vindbaarheid ontbrak.
 ### Twee gewijzigde bestanden
 `activities/[id]/page.tsx`, `ActiviteitenSectie.tsx`.
 
+## v2.4.333 — Intervals.icu: Fase 9, Proof of Data (testroute)
+**Geen productiecode. Master plan "Intervals.icu → CoachOS Data
+Bridge v1.0" vastgesteld 21 augustus 2026 — dit is uitsluitend de
+eerste, geïsoleerde onderzoeksstap.**
+
+### Wat dit doet
+Nieuwe route `api/debug/intervals-icu-test/route.ts` — haalt de
+laatste 90 dagen activiteiten op via de Intervals.icu API, filtert op
+mogelijke roei-activiteiten, en toont de volledige, ruwe data van de
+eerste gevonden roeiactiviteit. Puur ter vergelijking met de
+oorspronkelijke Concept2-data (§4 van het master plan) — geen opslag,
+geen koppeling aan de Activity Bridge, geen wijziging aan bestaande
+CoachOS-logica.
+
+### Authenticatie
+`INTERVALS_ICU_API_KEY` + `INTERVALS_ICU_ATHLETE_ID` — uitsluitend
+server-side omgevingsvariabelen in Vercel, nooit in code/GitHub/de
+client. Basic auth met gebruikersnaam `API_KEY`, wachtwoord de
+daadwerkelijke sleutel — bevestigd uit Intervals.icu's eigen
+documentatie.
+
+### Eén bestand
+`api/debug/intervals-icu-test/route.ts`.
+
+**Status: nog niet uitgevoerd tegen echte data — vergt bevestiging dat
+de omgevingsvariabelen correct in Vercel staan.**
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
