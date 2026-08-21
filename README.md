@@ -1129,6 +1129,39 @@ documentatie.
 **Status: nog niet uitgevoerd tegen echte data — vergt bevestiging dat
 de omgevingsvariabelen correct in Vercel staan.**
 
+## v2.4.334 — Intervals.icu Fase 9: eerste echte test bevestigd, HR-check toegevoegd
+**Eerste testresultaat, 21 augustus 2026: echte Concept2-activiteit
+succesvol via de bridge opgehaald. Classificatie volgens §4 van het
+master plan: "2. Bruikbaar met beperkingen."**
+
+### Bevindingen uit de eerste test
+- ✅ Datum/tijd: `start_date_local` tot op de seconde —
+  **preciezer dan CoachOS zelf nu heeft** (alleen kalenderdag, zie
+  Fase 1A)
+- ✅ Duur, afstand, snelheid: aanwezig
+- ✅ Slagfrequentie: aanwezig (onder `average_cadence`, generieke naam)
+- ✅ **`external_id`** — het originele Concept2-resultaat-ID apart van
+  Intervals.icu's eigen ID — precies wat nodig is voor deduplicatie
+- ✅ `source`/`device_name`: `CONCEPT2` — schone brontoewijzing
+- ✅ Streams bevestigd beschikbaar (watts, cadence, distance als
+  tijdreeks, niet alleen gemiddeldes)
+- ❌ Hartslag ontbrak in de eerste geteste sessie — nog niet bekend of
+  incidenteel of structureel
+- 🟡 Intervallen: `icu_lap_count` aanwezig, `interval_summary` leeg —
+  vergt een aparte aanroep (`intervals=true`)
+
+### Wijziging — HR-structureel-of-incidenteel-check
+`intervals-icu-test/route.ts` toont nu een samenvatting per gevonden
+sessie (datum, hartslag-aanwezigheid, slagfrequentie, laps, external_id)
+in plaats van alleen de eerste — gebruiker heeft inmiddels meer
+historische data (vanaf 1 augustus) naar Intervals.icu gedownload om
+dit over meerdere sessies te kunnen vergelijken.
+
+### Eén gewijzigd bestand
+`api/debug/intervals-icu-test/route.ts`.
+
+**Status: Fase 9 loopt, nog niet afgerond.**
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

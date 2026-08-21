@@ -79,6 +79,29 @@ export async function GET() {
         ? [...new Set(activiteiten.map((a: { type?: string }) => a.type))]
         : [],
       roeiActiviteitenGevonden: roeiActiviteiten.length,
+      // v2.4.334: samenvatting per sessie — gevraagd om te checken of
+      // het ontbreken van hartslag in de eerste test incidenteel was
+      // (geen band die dag) of structureel (komt sowieso niet mee via
+      // Intervals.icu). Bewust GEEN aanname, gewoon per sessie tonen.
+      samenvattingPerSessie: roeiActiviteiten.map((a: {
+        id: string; start_date_local: string; name: string
+        average_heartrate: number | null; has_heartrate: boolean | null
+        distance: number; moving_time: number
+        average_cadence: number | null; icu_lap_count: number | null
+        external_id: string | null; source: string | null
+      }) => ({
+        id: a.id,
+        datum: a.start_date_local,
+        naam: a.name,
+        heeftHartslag: !!(a.average_heartrate && a.average_heartrate > 0),
+        gemHartslag: a.average_heartrate,
+        afstandM: a.distance,
+        duurSec: a.moving_time,
+        slagfrequentie: a.average_cadence,
+        laps: a.icu_lap_count,
+        externalId: a.external_id,
+        bron: a.source,
+      })),
       // Volledige, ruwe data van de EERSTE gevonden roei-activiteit —
       // dit is precies wat Fase 9 wil vergelijken met de originele
       // Concept2-data (§4: datum, tijd, duur, afstand, pace, hartslag,
