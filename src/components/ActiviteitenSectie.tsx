@@ -349,6 +349,21 @@ export function ActiviteitenSectie({ compact = false }: { compact?: boolean }) {
         </div>
       )}
 
+      {/* v2.4.332: link naar de al-bestaande Rowing Performance Center
+          (records + progressie per testafstand, gebouwd v2.4.309-311)
+          — gevraagd: "records en grafieken, voortgang/verbetering zien"
+          bij Roeien. Niet opnieuw gebouwd, alleen vindbaar gemaakt. */}
+      {filter === 'Roeien' && (
+        <Link href="/coach/rowing/performance"
+          className={`${compact ? 'mb-4' : 'mx-4 mb-4'} flex items-center justify-between bg-gradient-to-r from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-2xl px-4 py-3`}>
+          <div>
+            <p className="text-sm font-semibold text-white">Records & voortgang bekijken</p>
+            <p className="text-xs text-white/50 mt-0.5">Persoonlijke records en verbetering per testafstand</p>
+          </div>
+          <span className="text-orange-400 text-sm">→</span>
+        </Link>
+      )}
+
       <div className={compact ? 'space-y-3' : 'px-4 space-y-3 pb-6'}>
         {loading ? (
           Array.from({ length: compact ? 2 : 4 }).map((_, i) => (

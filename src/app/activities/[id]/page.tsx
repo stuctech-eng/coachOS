@@ -29,6 +29,13 @@ interface ActivityMetrics {
   avg_watts?: number
   max_watts?: number
   route?: { lat: number; lng: number }[]
+  // v2.4.332: Concept2-sync sloeg deze al op (concept2-result-
+  // processor.ts), maar ze werden hier nergens getoond — gevraagd:
+  // "veel meer gegevens laten zien" voor Roeien, totdat de Concept2-
+  // webhook weer werkt (extern nog steeds geblokkeerd).
+  avg_stroke_rate?: number
+  drag_factor?: number
+  precieze_duur_sec?: number
 }
 
 interface ActivitySession {
@@ -45,6 +52,16 @@ interface ActivitySession {
 const CYCLING_NAMEN = ['Fietsen', 'Fietsen (buiten)', 'Indoor Fietsen']
 // v2.4.165: Running Ritanalyse, Fase 2 (Professional)
 const RUNNING_NAMEN = ['Hardlopen']
+// v2.4.332: Roeien — exacte naam bevestigd in rowing-grafieken.ts
+const ROWING_NAMEN = ['Roeien']
+
+function formatSplit500m(duurSec: number, afstandM: number): string | null {
+  if (!afstandM || afstandM <= 0) return null
+  const secPer500m = duurSec / (afstandM / 500)
+  const min = Math.floor(secPer500m / 60)
+  const sec = Math.round(secPer500m % 60)
+  return `${min}:${sec.toString().padStart(2, '0')}/500m`
+}
 
 function formatDuur(min: number): string {
   if (min < 60) return `${min}m`
@@ -193,6 +210,13 @@ export default function ActivityDetailPage() {
               {session.metrics.distance ? <StatBlok label="Afstand" waarde={`${(session.metrics.distance / 1000).toFixed(2)} km`} /> : null}
               {session.metrics.avg_hr ? <StatBlok label="Hartslag" waarde={`${session.metrics.avg_hr} bpm`} sub={session.metrics.max_hr ? `max ${session.metrics.max_hr}` : undefined} /> : null}
               {session.metrics.calories ? <StatBlok label="Calorieën" waarde={`${session.metrics.calories} kcal`} /> : null}
+              {/* v2.4.332: roei-specifieke stats — waren al opgeslagen
+                  (Concept2-sync), maar nergens getoond */}
+              {session.activities?.name && ROWING_NAMEN.includes(session.activities.name) && session.metrics.distance ? (
+                <StatBlok label="Split" waarde={formatSplit500m(session.metrics.precieze_duur_sec ?? session.duration * 60, session.metrics.distance) || '—'} />
+              ) : null}
+              {session.metrics.avg_stroke_rate ? <StatBlok label="Slagfrequentie" waarde={`${session.metrics.avg_stroke_rate} spm`} /> : null}
+              {session.metrics.drag_factor ? <StatBlok label="Weerstand" waarde={`${session.metrics.drag_factor}`} sub="Drag Factor" /> : null}
               {session.metrics.avg_speed ? <StatBlok label="Snelheid" waarde={`${session.metrics.avg_speed} km/u`} sub={session.metrics.max_speed ? `max ${session.metrics.max_speed}` : undefined} /> : null}
               {session.metrics.avg_cadence ? <StatBlok label="Cadans" waarde={`${session.metrics.avg_cadence} spm`} sub={session.metrics.max_cadence ? `max ${session.metrics.max_cadence}` : undefined} /> : null}
               {session.metrics.avg_watts ? <StatBlok label="Watts" waarde={`${session.metrics.avg_watts}W`} sub={session.metrics.max_watts ? `max ${session.metrics.max_watts}W` : undefined} /> : null}

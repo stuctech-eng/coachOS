@@ -1078,6 +1078,30 @@ alle rijen weg voor een gewone gebruiker (leeg resultaat, geen fout)
 ### Eén bestand
 `debug/page.tsx`.
 
+## v2.4.332 — Roeien: meer data zichtbaar + link naar bestaande Performance Center
+**Gevraagd: "veel meer gegevens laten zien" bij Roeien-activiteiten, en
+records/grafieken/voortgang. Het laatste bestond al (Rowing
+Performance Center, v2.4.309-311) — niet opnieuw gebouwd, alleen
+vindbaar gemaakt. Het eerste was een echt gat: Concept2-sync sloeg al
+slagfrequentie en weerstand op, maar toonde die nergens.**
+
+### Wijzigingen
+- **`activities/[id]/page.tsx`** — drie nieuwe stat-blokken specifiek
+  voor Roeien: Split (afgeleid uit afstand/duur, met de precieze
+  Concept2-duur waar beschikbaar i.p.v. de afgeronde minuten-duur),
+  Slagfrequentie (`avg_stroke_rate`, al opgeslagen, nooit getoond),
+  Weerstand/Drag Factor (`drag_factor`, idem)
+- **`ActiviteitenSectie.tsx`** — nieuwe banner die verschijnt zodra het
+  Roeien-filter actief is, met een directe link naar de al-bestaande
+  `/coach/rowing/performance` (records + progressie per testafstand)
+
+### Bewust niet gedaan
+Geen nieuwe records/grafieken-pagina gebouwd — die bestond al sinds
+vandaag eerder (v2.4.309-311), alleen de vindbaarheid ontbrak.
+
+### Twee gewijzigde bestanden
+`activities/[id]/page.tsx`, `ActiviteitenSectie.tsx`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
