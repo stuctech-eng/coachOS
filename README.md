@@ -1335,6 +1335,20 @@ de eerste uitvoering waarschijnlijk 0 nieuw geïmporteerd — de
 praktische waarde zit in toekomstige dagen zonder handmatige
 Concept2-sync.
 
+## v2.4.340 — Intervals.icu dry-run/import als knoppen op /debug
+**Gemeld: "een witte pagina" — de POST-import-route werkt niet via
+directe browser-navigatie (die doet altijd GET). Opgelost door beide
+routes als knoppen toe te voegen aan de bestaande /debug-pagina,
+zelfde patroon als Recovery Intelligence.**
+
+### Wijziging
+Nieuwe sectie "Intervals.icu-bridge (Fase 13-15)" op `/debug` — twee
+knoppen (Dry-run/GET, Import/POST), gebruikt de al-ingelogde sessie
+voor `user_id` (geen handmatig UUID meer nodig).
+
+### Eén gewijzigd bestand
+`debug/page.tsx`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

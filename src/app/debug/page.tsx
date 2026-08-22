@@ -91,6 +91,10 @@ export default function DebugPage() {
   // v2.4.329: Recovery Intelligence-statuscheck
   const [riBezig, setRiBezig] = useState(false)
   const [riResultaat, setRiResultaat] = useState('')
+  // v2.4.340: Intervals.icu dry-run/import — knoppen i.p.v. handmatige
+  // POST-aanroepen, gemeld "witte pagina" bij directe browser-navigatie
+  const [intervalsBezig, setIntervalsBezig] = useState(false)
+  const [intervalsResultaat, setIntervalsResultaat] = useState('')
   // v2.4.96: test-state voor de Adaptive Training Plan Engine
   const [planBezig, setPlanBezig] = useState(false)
   const [planResultaat, setPlanResultaat] = useState('')
@@ -235,6 +239,46 @@ export default function DebugPage() {
       setRiResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setRiBezig(false)
+    }
+  }
+
+  // v2.4.340: Intervals.icu dry-run + import — knoppen i.p.v. handmatige
+  // POST-aanroepen buiten de app om
+  async function draaiIntervalsDryRun() {
+    setIntervalsBezig(true)
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+      const supabase = createBrowserClient(supabaseUrl!, supabaseKey!)
+      const { data: sessionData } = await supabase.auth.getSession()
+      const userId = sessionData.session?.user.id
+      if (!userId) { setIntervalsResultaat('FOUT: geen actieve sessie'); return }
+      const res = await fetch(`/api/debug/intervals-icu-dry-run?user_id=${userId}`, { credentials: 'include' })
+      const data = await res.json()
+      setIntervalsResultaat(`GET dry-run →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setIntervalsResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setIntervalsBezig(false)
+    }
+  }
+
+  async function draaiIntervalsImport() {
+    setIntervalsBezig(true)
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+      const supabase = createBrowserClient(supabaseUrl!, supabaseKey!)
+      const { data: sessionData } = await supabase.auth.getSession()
+      const userId = sessionData.session?.user.id
+      if (!userId) { setIntervalsResultaat('FOUT: geen actieve sessie'); return }
+      const res = await fetch(`/api/debug/intervals-icu-import?user_id=${userId}`, { method: 'POST', credentials: 'include' })
+      const data = await res.json()
+      setIntervalsResultaat(`POST import →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setIntervalsResultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setIntervalsBezig(false)
     }
   }
 
@@ -836,6 +880,30 @@ export default function DebugPage() {
           </button>
           {riResultaat && (
             <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{riResultaat}</pre>
+          )}
+          </div>
+          </details>
+
+          {/* v2.4.340: Intervals.icu-bridge — Fase 13-15 */}
+          <details open className="rounded-xl bg-white/5 overflow-hidden mb-3">
+          <summary className="px-3 py-2.5 text-xs font-bold text-white cursor-pointer select-none">Intervals.icu-bridge (Fase 13-15, v2.4.337-339)</summary>
+          <div className="px-3 pb-3">
+          <p className="text-xs text-slate-500 mb-3">
+            Dry-run: leest en vergelijkt, schrijft nooit. Import: schrijft
+            daadwerkelijk nieuwe, niet-geblokkeerde roei-activiteiten weg.
+          </p>
+          <div className="flex gap-2 mb-3">
+            <button onClick={draaiIntervalsDryRun} disabled={intervalsBezig}
+              className="flex-1 py-2.5 bg-slate-800 rounded-xl text-xs font-medium text-white disabled:opacity-50">
+              {intervalsBezig ? 'Bezig...' : 'Dry-run (GET)'}
+            </button>
+            <button onClick={draaiIntervalsImport} disabled={intervalsBezig}
+              className="flex-1 py-2.5 bg-primary-600 rounded-xl text-xs font-medium text-white disabled:opacity-50">
+              {intervalsBezig ? 'Bezig...' : 'Import (POST, schrijft echt)'}
+            </button>
+          </div>
+          {intervalsResultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{intervalsResultaat}</pre>
           )}
           </div>
           </details>
