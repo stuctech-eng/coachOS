@@ -1395,6 +1395,25 @@ was.
 **Status: migratie voor `intervals_icu_sync_state` nog niet
 uitgevoerd — vereist vóór deze wijziging kan werken.**
 
+## v2.4.342 — FIX: activiteitendetail toonde altijd "Garmin", ongeacht echte bron
+**Gemeld: eerste Intervals.icu-import toonde "Garmin" i.p.v.
+"Intervals.icu". Database bevestigd correct (`source: intervals_icu`)
+— het probleem zat puur in de weergave.**
+
+### Root cause
+`activities/[id]/page.tsx` had: `session.source === 'strava' ?
+'Strava' : 'Garmin'` — een binaire check die alles wat geen 'strava'
+was als 'Garmin' toonde. Dit gold dus ook al langer, onopgemerkt,
+voor directe Concept2-activiteiten.
+
+### Fix
+Nieuwe `bronLabel()`-functie met alle zes bestaande bronnen correct
+gelabeld: Strava, Garmin, Concept2, Intervals.icu, Apple Health,
+CoachOS (trainer_ai), Handmatig.
+
+### Eén gewijzigd bestand
+`activities/[id]/page.tsx`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

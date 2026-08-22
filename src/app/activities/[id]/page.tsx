@@ -74,6 +74,24 @@ function formatDatum(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+// v2.4.342-FIX: was `session.source === 'strava' ? 'Strava' : 'Garmin'`
+// — labelde alles wat geen 'strava' was als 'Garmin', óók concept2,
+// intervals_icu, manual, trainer_ai en apple_health. Complete,
+// correcte mapping voor alle bestaande bronnen (zie
+// source-priority-policy.ts voor de volledige, canonieke lijst).
+function bronLabel(source: string | null | undefined): string {
+  switch (source) {
+    case 'strava': return 'Strava'
+    case 'garmin': return 'Garmin'
+    case 'concept2': return 'Concept2'
+    case 'intervals_icu': return 'Intervals.icu'
+    case 'apple_health': return 'Apple Health'
+    case 'trainer_ai': return 'CoachOS'
+    case 'manual': return 'Handmatig'
+    default: return 'Onbekende bron'
+  }
+}
+
 function StatBlok({ label, waarde, sub }: { label: string; waarde: string; sub?: string }) {
   return (
     <div className="bg-white/5 rounded-2xl p-4">
@@ -201,7 +219,7 @@ export default function ActivityDetailPage() {
 
         {session && !loading && (
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-white/50 -mt-3">{formatDatum(session.date)} · {session.source === 'strava' ? 'Strava' : 'Garmin'}</p>
+            <p className="text-sm text-white/50 -mt-3">{formatDatum(session.date)} · {bronLabel(session.source)}</p>
 
             <ActivityRouteMap route={session.metrics.route || []} />
 
