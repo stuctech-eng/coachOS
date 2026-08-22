@@ -72,6 +72,26 @@ export async function GET() {
           a.type && /row/i.test(a.type))
       : []
 
+    // v2.4.335: gemeld — echte trainingsstructuur van de 21-8-sessie
+    // (5 min warmup, 42 min hoofdblok — halverwege gestopt, 3 min
+    // cooldown) om te vergelijken met wat Intervals.icu daadwerkelijk
+    // aan intervaldetails teruggeeft. interval_summary was in de
+    // basis-aanroep hierboven altijd null — dat vergt een aparte
+    // aanroep met ?intervals=true, bevestigd uit de API-documentatie.
+    let intervalDetailEersteSessie = null
+    if (roeiActiviteiten[0]) {
+      const eersteId = (roeiActiviteiten[0] as { id: string }).id
+      const intervalRes = await fetch(
+        `${INTERVALS_BASE_URL}/activity/${eersteId}?intervals=true`,
+        { headers: { Authorization: authHeader } }
+      )
+      if (intervalRes.ok) {
+        intervalDetailEersteSessie = await intervalRes.json()
+      } else {
+        intervalDetailEersteSessie = { fout: `HTTP ${intervalRes.status} bij het ophalen van intervaldetails` }
+      }
+    }
+
     return NextResponse.json({
       status: 'ok',
       totaalActiviteiten: Array.isArray(activiteiten) ? activiteiten.length : 0,
@@ -107,6 +127,10 @@ export async function GET() {
       // Concept2-data (§4: datum, tijd, duur, afstand, pace, hartslag,
       // power, stroke rate, intervallen, unieke ID).
       eersteRoeiActiviteitRuw: roeiActiviteiten[0] || null,
+      // v2.4.335: intervaldetails van de eerste sessie — vergelijk dit
+      // met de opgegeven, echte structuur (5 min warmup, 42 min
+      // hoofdblok, halverwege gestopt, 3 min cooldown)
+      intervalDetailEersteSessie,
     })
   } catch (err) {
     return NextResponse.json({

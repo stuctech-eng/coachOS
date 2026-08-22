@@ -1162,6 +1162,33 @@ dit over meerdere sessies te kunnen vergelijken.
 
 **Status: Fase 9 loopt, nog niet afgerond.**
 
+## v2.4.335 — Intervals.icu Fase 9: intervaldetails + belangrijke vervolgvraag
+**Tweede testresultaat: hartslag-afwezigheid bevestigd incidenteel
+(5 van 6 sessies hadden gewoon hartslag) — geen structureel probleem
+in de Concept2→Intervals.icu-bridge.**
+
+### Nieuwe bevinding — vergt bespreking vóór Fase 10
+Twee sessies op zowel 14 als 7 augustus stonden vlak na elkaar (4
+minuten ertussen), plus twee opvallend korte sessies (301m/105s,
+428m/150s). Mogelijk splitst Concept2/ErgData een training soms in
+losse stukken. **Nog niet opgelost — raakt de dedup-/mapping-logica
+van Fase 12-13, niet nu stilzwijgend aangenomen.**
+
+### Wijziging — intervaldetail-vergelijking
+`intervals-icu-test/route.ts` haalt nu ook de intervaldetails op van
+de eerst gevonden sessie (`?intervals=true`, bevestigd uit de API-
+documentatie als de juiste manier om lap-informatie te krijgen — de
+basisaanroep gaf altijd `interval_summary: null`). Gebruiker gaf de
+echte structuur van de 21-8-sessie op ter vergelijking: 5 min
+warmup, 42 min hoofdblok (halverwege gestopt, geen hartslagband), 3
+min cooldown.
+
+### Eén gewijzigd bestand
+`api/debug/intervals-icu-test/route.ts`.
+
+**Status: Fase 9 loopt door — resultaat van de intervalvergelijking
+nog niet bekend.**
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
