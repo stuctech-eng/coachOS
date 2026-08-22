@@ -1189,6 +1189,31 @@ min cooldown.
 **Status: Fase 9 loopt door — resultaat van de intervalvergelijking
 nog niet bekend.**
 
+## v2.4.336 — Intervals.icu Fase 9: intervaldetails over alle sessies + ErgData-vraag
+**Gevraagd: check 9 augustus specifiek (3 laps, meer dan de rest) —
+uitgebreid naar alle sessies i.p.v. alleen de eerste, om het patroon
+in één keer te zien.**
+
+### Wijziging
+`intervals-icu-test/route.ts` haalt nu voor elke gevonden roei-
+sessie de intervaldetails op (`icu_intervals`, `icu_groups`,
+`interval_summary`, `icu_lap_count`), niet alleen de eerste.
+
+### ErgData-doorschakeling — onderzocht, geen bevestigd antwoord
+Gevraagd of CoachOS bij Activiteiten kan doorschakelen naar de
+ErgData-activiteitenpagina. Gezocht naar een gedocumenteerd deeplink-
+schema voor de ErgData-app zelf — **niets bevestigd gevonden.** Wel
+bekend uit eerder werk: Concept2's eigen web-logboek
+(`log.concept2.com/profile/{user_id}/log/{result_id}`) — geen
+ErgData-app-link, maar een website met hetzelfde resultaat. De
+`result_id`-helft hebben we mogelijk nu via Intervals.icu's
+`external_id`; de `user_id`-helft ontbreekt nog steeds (dezelfde,
+al langer bekende beperking). Nog geen besluit genomen of dit de
+moeite waard is om verder uit te zoeken.
+
+### Eén gewijzigd bestand
+`api/debug/intervals-icu-test/route.ts`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
