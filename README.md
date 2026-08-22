@@ -856,7 +856,21 @@ waarschijnlijk een probleem bij Concept2 zelf, niet op te lossen
 vanuit CoachOS.** Geen verdere actie gepland — de Intervals.icu-bridge
 vervult de praktische rol.
 
-**4. Kleinere fixes/features vandaag (chronologisch, versies v2.4.320-347)**
+**4. Kettlebell Specialist (Girevoy Sport) — Fase 0 + MVP1 gebouwd, v2.4.349**
+Nieuw, eigen `specialist_type: 'kettlebell'`, los van de bestaande,
+generieke kettlebell-oefenbibliotheek (`kettlebell-exercises.ts`, blijft
+ongewijzigd bij de Trainer AI — "Kettlebell Fitness"-modus). Deze
+specialist bedient "Kettlebell Sport": Jerk/Snatch/Long Cycle/Biathlon,
+handmatige sessieregistratie (RPM/reps/bell weight/RPE/techniek), PR-
+tracking per discipline+bell weight, Data + Analysis Engine (deterministisch,
+`EngineResult<T>`-contract). Federatie Engine vanaf Fase 0 al
+federatie-onafhankelijk opgezet (`kettlebell_federations`-skeleton met
+WKSF/IUKL/GSU als naam-registratie, `federation_id` als foreign key op
+sessies) — **nog geen reglementinhoud**, wacht op het officiële WKSF
+Rules English 2023-2027-document. **Volledig detail: zie checkpoint
+onderaan dit bestand.**
+
+**5. Kleinere fixes/features vandaag (chronologisch, versies v2.4.320-347)**
 - TodayPlan-cache (60 sec) + RLS-correctie
 - Terminologie-verduidelijkingen (Coach Score-uitleg)
 - Garmin-screenshot-import-datumfix (handmatig datumveld i.p.v. altijd "vandaag")
@@ -890,11 +904,14 @@ vervult de praktische rol.
   betrouwbaarder dan bestandspaden gokken (GitHub's search-API heeft
   een lage rate-limit zonder authenticatie)
 
-### Voor de volgende sessie — geen openstaande, actieve taken
+### Voor de volgende sessie
 Alles hierboven staat live en getest. Geen halve implementaties. De
-enige "openstaande" punten zijn bewust geparkeerd (Concept2-webhook
+meeste "openstaande" punten zijn bewust geparkeerd (Concept2-webhook
 zelf, Recovery Intelligence wacht op meer data) — geen actie vereist
-tenzij de gebruiker het zelf aankaart.
+tenzij de gebruiker het zelf aankaart. **Eén echt open punt:** de
+Kettlebell Specialist kan pas met MVP2 (Federatie/Classificatie) verder
+zodra het officiële WKSF Rules English 2023-2027-document is aangeleverd
+— zie checkpoint onderaan.
 
 ## 🧭 CHECKPOINT — Recovery Intelligence Layer (Fase 0 afgerond, 16 augustus 2026)
 
@@ -5645,3 +5662,95 @@ deze conventie — die blijven ongewijzigd.
 
 Voorbeeld: Kettlebell Swing → `kettlebell-swing.png` (legacy)
 Voorbeeld: Sumo Deadlift → `sumo-deadlift.png` (huidige conventie)
+
+## 🏋️ CHECKPOINT — Kettlebell Specialist / Girevoy Sport (Fase 0 + MVP1, 22 augustus 2026)
+
+**Status: MVP1 gebouwd. Federatie Engine-fundament staat, nog geen
+reglementinhoud. Bouw NIET verder aan MVP2 zonder eerst het officiële
+WKSF-document te hebben (zie onderaan).**
+
+### Herkomst
+Uitgebreid Master Plan van de gebruiker (CodeSnap-document) voor een
+volwaardige Girevoy Sport-specialist: kennisbank, techniekcoach,
+performance analyzer, wedstrijdassistent, classificatie-/promotie-engine,
+regels-engine — géén simpele workout-generator. Architectuur eerst
+geïnspecteerd (geen aannames), voorstel goedgekeurd door de gebruiker met
+twee aanscherpingen: (1) Federatie Engine vanaf het begin
+federatie-onafhankelijk, WKSF als eerste dataset zodra beschikbaar, IUKL
+en GSU los erna; (2) expliciete koppeling met de bestaande, generieke
+Trainer AI voor "Kettlebell Fitness", i.p.v. een tweede, dubbele
+trainingsgenerator.
+
+### Kernbeslissing: twee domeinen, niet één
+- **Kettlebell Fitness** — bestaande `kettlebell-exercises.ts` +
+  generieke Trainer AI (`training/session/[module]`), **ongewijzigd**.
+- **Kettlebell Sport (Girevoy Sport)** — deze nieuwe specialist:
+  `specialist_type: 'kettlebell'`, eigen tabel, eigen engines, los van
+  `strength` (dat blijft leeg/`development`).
+- Onderscheid vastgelegd in `specialist_profiles.preferences.modus`
+  (`'fitness'` | `'sport'`), ingesteld via `/settings/kettlebell-profile`.
+
+### Wat gebouwd is (Fase 0 + MVP1)
+**Database** (`supabase/kettlebell_specialist_foundation.sql`):
+- `kettlebell_federations` — skeleton (slug/name only), geseed met WKSF/
+  IUKL/GSU als naam-registratie. **Geen reglementinhoud.**
+- `kettlebell_gs_sessions` — handmatige GS-sessieregistratie: discipline
+  (jerk/snatch/long_cycle/biathlon), bell_weight_kg, duration_sec, reps,
+  rpm_avg, hr_avg/hr_max, rpe, technique_score, no_counts, federation_id
+  (nullable FK), notes, performed_at. RLS conform bestaand patroon.
+
+**Registry/architectuur:**
+- `api/specialists/route.ts` — `kettlebell` toegevoegd aan
+  `SPECIALIST_CONFIG`, status `active`
+- `lib/specialists/capability-registry.ts` — entry toegevoegd
+  (`hasDataLayer`/`hasAnalysisEngine`: true, `hasCoachLayer`: false —
+  geen AI-coachlaag totdat de Federatie Engine echte regels heeft)
+
+**Engines** (`lib/specialists/`):
+- `kettlebell-data.ts` — Data Engine, leest `kettlebell_gs_sessions`,
+  geregistreerd in de generieke `api/specialists/[type]/data/route.ts`
+- `kettlebell-analysis.ts` — Analysis Engine, deterministisch,
+  `EngineResult<T>`-contract: volume-statistieken + PR per unieke
+  discipline+bell-weight-combinatie (geen appels-met-peren-vergelijking)
+
+**API-routes** (`api/specialists/kettlebell/`):
+- `profile/route.ts` — voorkeuren (modus, primaire discipline,
+  federatievoorkeur — puur een naam, geen normen)
+- `sessions/route.ts` — GET (lijst) + POST (nieuwe sessie, met validatie)
+- `analyse/route.ts` — Data Engine → Analysis Engine, blootgesteld voor
+  het dashboard
+
+**UI:**
+- `coach/kettlebell/page.tsx` — dashboard, eerlijke lege staat (zelfde
+  principe als Rowing Fase 1), volume + PR's + recente sessies
+- `coach/kettlebell/sessie/nieuw/page.tsx` — sessie-logformulier
+- `settings/kettlebell-profile/page.tsx` — modus/discipline/federatievoorkeur
+- `specialisten/page.tsx` — icoon toegevoegd (Gauge, RPM-geassocieerd,
+  onderscheiden van Strength's Dumbbell-icoon)
+
+### Bewust NIET gebouwd in MVP1 (met reden)
+- **Coach Layer (AI)** — zou zonder een echte regelset moeten gokken
+  over classificatie/techniek-uitleg; volgt na de Federatie Engine
+- **Today Engine-integratie / `kettlebellAdapter`** — vereist een
+  werkende Limiter/Analysis-laag om zinvolle trainingsparameters te
+  kunnen voorstellen; geplande fase: **MVP2.5, Kettlebell Trainer
+  AI-brug** (zie architectuurdocument)
+- **Federatie/classificatie/promotie/records** (MVP2) — vereist het
+  officiële WKSF-reglement, zie hieronder
+- **Limiter Engine, Fatigue Signature, Pace Coach, Competition Simulator**
+  (MVP3) — vereisen meer datapunten dan MVP1 verzamelt
+
+### Enige blokkerende open punt
+De Federatie Engine is federatie-onafhankelijk gebouwd (`federation_id`
+als foreign key vanaf dag één, WKSF/IUKL/GSU als naam-registratie), maar
+bevat **bewust geen enkele wedstrijdnorm** — dat zou gokken zijn.
+
+**Nodig om MVP2 te starten: het officiële WKSF Rules English 2023-2027-
+document (PDF of tekst), aangeleverd door de gebruiker.** Daarna IUKL als
+aparte, niet-samengevoegde regelset, daarna GSU/overige indien relevant.
+
+### Volledige architectuurdocumentatie
+Zie `kettlebell-specialist-architectuurvoorstel-v1.md` (los aangeleverd,
+niet in de repo-zip) voor de volledige inspectie, vergelijking met het
+Master Plan, en het complete MVP1-4-fasenplan inclusief de nieuwe
+MVP2.5-fase (Trainer AI-brug).

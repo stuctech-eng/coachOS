@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import { haalCyclingData } from '@/lib/specialists/cycling-data'
 import { haalRunningData } from '@/lib/specialists/running-data'
 import { haalRowingData } from '@/lib/specialists/rowing-data'
+import { haalKettlebellData } from '@/lib/specialists/kettlebell-data'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -24,10 +25,13 @@ async function getUser() {
 // voorspelde: Data Layer is per sport uniek werk (haalCyclingData vs.
 // haalRunningData), maar de ROUTE zelf is nu generiek genoeg om beide
 // aan te roepen.
+// v2.4.349: kettlebell toegevoegd — vierde specialist die deze
+// generieke route hergebruikt, geen aparte data-route nodig.
 const DATA_FETCHERS: Record<string, (userId: string, periodDays: number) => Promise<unknown>> = {
   cycling: haalCyclingData,
   running: haalRunningData,
   rowing: haalRowingData,
+  kettlebell: haalKettlebellData,
 }
 
 export async function GET(req: NextRequest, { params }: { params: { type: string } }) {

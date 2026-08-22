@@ -23,11 +23,17 @@ async function getUser() {
 // v2.4.216 (Rowing Platform Fase 1, stap 1): rowing geactiveerd —
 // derde specialist. Nog geen Concept2-koppeling (wacht op API-
 // sleutels), maar de basisstructuur (dashboard/lege staat) is er.
+// v2.4.349 (Kettlebell Specialist, Fase 0): kettlebell geactiveerd —
+// eigen specialist_type, LOS van 'strength' (die blijft leeg/
+// development — zie docs/kettlebell-specialist-architectuurvoorstel-v1.md
+// §1.2: today-engine.ts noemde Kettlebell al expliciet als eigen
+// toekomstige specialist, niet als submodule van Strength).
 const SPECIALIST_CONFIG: Record<string, { label: string; status: 'active' | 'development' }> = {
-  cycling:  { label: 'Cycling Coach',  status: 'active' },
-  running:  { label: 'Running Coach',  status: 'active' },
-  rowing:   { label: 'Rowing Coach',   status: 'active' },
-  strength: { label: 'Strength Coach', status: 'development' },
+  cycling:    { label: 'Cycling Coach',    status: 'active' },
+  running:    { label: 'Running Coach',    status: 'active' },
+  rowing:     { label: 'Rowing Coach',     status: 'active' },
+  kettlebell: { label: 'Kettlebell Coach', status: 'active' },
+  strength:   { label: 'Strength Coach',   status: 'development' },
 }
 
 // v2.4.216: rowing toegevoegd

@@ -51,6 +51,20 @@ export const CAPABILITY_REGISTRY: Record<string, SpecialistCapabilities> = {
   // in de Specialist Registry, zie api/specialists/route.ts) — bewust
   // geen entry hier totdat er daadwerkelijk iets bestaat om te
   // registreren.
+  // v2.4.349 (Kettlebell Specialist, Fase 0 + MVP1): Data Engine +
+  // Analysis Engine gebouwd (kettlebell-data.ts/kettlebell-analysis.ts).
+  // hasCoachLayer bewust false — er is nog geen AI-coachlaag voor
+  // kettlebell (die komt pas met de Federatie Engine in MVP2, zodat de
+  // coach-uitleg zich kan baseren op een echte regelset i.p.v. niets).
+  kettlebell: {
+    hasDataLayer: true,
+    hasAnalysisEngine: true,
+    hasCoachLayer: false,
+    supportsPeriodization: false,
+    supportsEvents: false,
+    supportsPredictions: false,
+    supportsBenchmarks: false,
+  },
 }
 
 export function getCapabilities(specialistType: string): SpecialistCapabilities | null {

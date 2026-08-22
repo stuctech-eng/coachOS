@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, Bike, Footprints, Waves, Dumbbell, Salad } from 'lucide-react'
+import { ChevronRight, Bike, Footprints, Waves, Dumbbell, Salad, Gauge } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
 import Link from 'next/link'
@@ -23,10 +23,14 @@ interface SpecialistInfo {
   lifecycle: { state: string; vorige_actieve_periode: { start: string; eind: string } | null } | null
 }
 
+// v2.4.349: kettlebell toegevoegd — eigen icoon (Gauge, verwijst naar
+// RPM/pacing-focus van Girevoy Sport), los van het generieke Dumbbell-
+// icoon van 'strength'.
 const SPECIALIST_ICOON: Record<string, typeof Bike> = {
   cycling: Bike,
   running: Footprints,
   rowing: Waves,
+  kettlebell: Gauge,
   strength: Dumbbell,
   nutrition: Salad,
 }
