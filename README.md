@@ -1395,24 +1395,32 @@ was.
 **Status: migratie voor `intervals_icu_sync_state` nog niet
 uitgevoerd — vereist vóór deze wijziging kan werken.**
 
-## v2.4.342 — FIX: activiteitendetail toonde altijd "Garmin", ongeacht echte bron
-**Gemeld: eerste Intervals.icu-import toonde "Garmin" i.p.v.
-"Intervals.icu". Database bevestigd correct (`source: intervals_icu`)
-— het probleem zat puur in de weergave.**
+## v2.4.343 — FIX: automatische Intervals.icu/RI-triggers vuurden niet betrouwbaar
+**Gemeld: "hij deed het niet automatisch" — moest handmatig via
+/debug importeren na het roeien.**
 
-### Root cause
-`activities/[id]/page.tsx` had: `session.source === 'strava' ?
-'Strava' : 'Garmin'` — een binaire check die alles wat geen 'strava'
-was als 'Garmin' toonde. Dit gold dus ook al langer, onopgemerkt,
-voor directe Concept2-activiteiten.
+### Root cause, bevestigd via de code
+De fire-and-forget-triggers (Recovery Intelligence-analyse +
+Intervals.icu-import) stonden alleen in `api/coach/route.ts`. Die
+route wordt via `generateAdvice()` echter ALLEEN aangeroepen als er
+nog GEEN advies voor vandaag bestaat (`isNogGeenEchtAdvies`-check in
+`home/page.tsx`). Als je 's ochtends al advies kreeg en 's middags
+gaat roeien, wordt die route de rest van de dag niet meer aangeroepen
+— de triggers kregen dus nooit de kans om te vuren.
+
+`api/action-plan/route.ts` wordt daarentegen bij ELK Home-bezoek
+onvoorwaardelijk aangeroepen — de betrouwbare plek.
 
 ### Fix
-Nieuwe `bronLabel()`-functie met alle zes bestaande bronnen correct
-gelabeld: Strava, Garmin, Concept2, Intervals.icu, Apple Health,
-CoachOS (trainer_ai), Handmatig.
+Dezelfde twee fire-and-forget-aanroepen toegevoegd aan
+`action-plan/route.ts`. De triggers in `api/coach/route.ts` blijven
+ook staan — beide routes hebben hun eigen snelheidsrem
+(`ri_analysis_runs`, `intervals_icu_sync_state`), dus dubbele
+aanroeppunten leiden nooit tot dubbel werk, alleen tot meer
+betrouwbare dekking.
 
 ### Eén gewijzigd bestand
-`activities/[id]/page.tsx`.
+`api/action-plan/route.ts`.
 
 ## Core Architectuurregels
 

@@ -316,6 +316,23 @@ Reageer ALLEEN in dit JSON formaat:
       }
     }
 
+    // v2.4.343-FIX: gemeld — deze triggers stonden alleen in
+    // api/coach/route.ts, dat alleen aangeroepen wordt als er nog
+    // GEEN advies voor vandaag bestaat. action-plan wordt daarentegen
+    // bij ELK Home-bezoek aangeroepen, onvoorwaardelijk — de juiste,
+    // betrouwbare plek voor deze achtergrondaanroepen. Zelfde
+    // fire-and-forget-patroon, elke route checkt zelf de eigen
+    // enabled-vlag/24u-snelheidsrem.
+    fetch('https://coach-os-tau.vercel.app/api/recovery-intelligence/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    }).catch(() => {})
+
+    fetch(`https://coach-os-tau.vercel.app/api/debug/intervals-icu-import?user_id=${user.id}`, {
+      method: 'POST',
+    }).catch(() => {})
+
     return NextResponse.json({ plan: acties })
   } catch (error) {
     console.error('Action plan error:', error)
