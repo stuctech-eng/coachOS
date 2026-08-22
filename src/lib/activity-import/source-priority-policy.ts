@@ -33,6 +33,12 @@
 export const SOURCE_PRIORITEIT: Record<string, number> = {
   concept2: 100,
   garmin: 90,
+  // v2.4.337 (Intervals.icu-bridge, Fase 12): gerelayde apparaatdata
+  // (bijv. Concept2 via Intervals.icu) — betrouwbaarder dan Strava
+  // (dat vaker afgeleide/samengevatte data toont), maar een directe
+  // Concept2- of Garmin-sync moet altijd blijven winnen als die ooit
+  // weer werkt. Prioriteit dus tussen garmin en strava in.
+  intervals_icu: 85,
   strava: 80,
   apple_health: 70,
   trainer_ai: 10,

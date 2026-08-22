@@ -1214,6 +1214,74 @@ moeite waard is om verder uit te zoeken.
 ### Eén gewijzigd bestand
 `api/debug/intervals-icu-test/route.ts`.
 
+## 🧭 CHECKPOINT — Intervals.icu → CoachOS Data Bridge (21 augustus 2026)
+
+**Master plan vastgesteld (gebruiker + GPT-overleg). Status per fase:**
+
+| Fase | Status |
+|---|---|
+| 9 — Proof of Data | ✅ Afgerond — echte Concept2-activiteiten succesvol opgehaald |
+| 10 — Concept2-validatie/besluit | ✅ **Classificatie: "1-2, vrijwel compleet tot bruikbaar met beperkingen"** — bij volledig afgemaakte, standaard sessies (bijv. de 5-42-3-structuur) werkt zelfs automatische intervalherkenning correct, incl. per-blok hartslag/cadans/afstand. Alleen afgebroken/atypische sessies missen dat |
+| 12 — Mapping | ✅ Gebouwd, deze levering |
+| 13 — Dedup-test | ✅ Gebouwd, als dry-run |
+| 14 — Historical Dry Run | ✅ Gebouwd, nog niet uitgevoerd tegen volledige historie |
+| 15 — Beperkte productie-import | ❌ **Nog niet — vergt eerst de database-constraint-fix hieronder, en een apart akkoord** |
+| 16-18 — Wellness/RI/Coach-context | ❌ Nog niet gestart |
+
+### Bevindingen uit Fase 9-10, met bewijs
+- Datum/tijd: `start_date_local`, tot op de seconde — **preciezer dan
+  CoachOS zelf nu heeft** voor eigen activiteiten
+- Hartslag: aanwezig in 5 van 6 geteste sessies — het ene ontbrekende
+  geval was incidenteel (geen band gedragen), niet structureel
+- Intervalstructuur: **betrouwbaar herkend bij complete sessies**
+  (bijv. exact "5m4s/42m2s/2m47s" bij een standaard 5-42-3-training,
+  met per-blok hartslag/cadans/snelheid/afstand, semantisch gelabeld
+  RECOVERY/WORK) — niet herkend bij een afgebroken sessie (logisch,
+  geen gebrek van de koppeling zelf)
+- `external_id`: aanwezig, apart van Intervals.icu's eigen ID —
+  bruikbaar voor deduplicatie zoals het master plan vereist (§9)
+- **Ontdekt patroon, nog niet opgelost:** twee keer een zeer korte
+  sessie (100-150 sec) exact 4 minuten vóór de echte training —
+  mogelijk een opname-eigenaardigheid van Concept2/ErgData zelf,
+  vergt een bewuste dedup-regel
+
+### ⚠️ Vereiste actie vóór Fase 15 (productie-import) — nog NIET gedaan
+`activity_sessions.source` heeft een database-check-constraint
+(`activity_sessions_source_check`) die bepaalt welke bronwaarden
+toegestaan zijn — geleerde les uit v2.4.280 (zie
+`source-priority-policy.ts`'s eigen module-comment). **`intervals_icu`
+moet aan die constraint toegevoegd worden vóórdat er ooit een
+werkelijke insert gebeurt.** Eerst bevestigen, niet aannemen:
+```sql
+select pg_get_constraintdef(oid) from pg_constraint
+where conname = 'activity_sessions_source_check';
+```
+Daarna een `alter table`-migratie klaarzetten. **Voor de huidige,
+uitsluitend-lezende dry-run-route is dit niet blokkerend** — die
+schrijft nooit iets weg.
+
+### Nieuwe map, `src/lib/integrations/intervals/`
+- `client.ts` — authenticatie + basis-API-aanroepen, hergebruikt door
+  alle volgende stappen
+- `mapper.ts` — puur transformatie, Intervals.icu-activiteit →
+  bestaand `activity_sessions`-formaat. Schrijft nooit, roept nooit
+  de database aan
+- `intervals-icu-dry-run/route.ts` — Fase 13+14 gecombineerd: haalt
+  activiteiten op, mapt ze, checkt tegen echte data (zowel op
+  `external_id` als op de bestaande `nieuweBronWint()`-bronprioriteit,
+  geen tweede dedup-systeem), rapporteert. **Nul schrijfacties.**
+
+### `SOURCE_PRIORITEIT` uitgebreid
+`intervals_icu: 85` — tussen `garmin` (90) en `strava` (80). Een
+directe Concept2/Garmin-sync wint altijd, mocht die ooit weer werken;
+Intervals.icu wint van Strava omdat het specifiekere apparaatdata
+doorgeeft, geen samengevatte/afgeleide waarden.
+
+### Volgende stap
+Fase 14 daadwerkelijk uitvoeren (dry-run-rapport bekijken over de
+volledige 90-dagen-historie), dan een apart, expliciet akkoord voor
+Fase 15 — inclusief de constraint-fix hierboven.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
