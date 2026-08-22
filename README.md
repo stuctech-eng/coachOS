@@ -823,6 +823,79 @@ de ongecachete functie) gebeurt bij een cache-hit niet opnieuw —
 onschadelijk, een achtergrond-onderhoudstaak die bij de eerstvolgende
 oncachete aanroep gewoon weer meeloopt.
 
+## 📋 SESSIE-OVERZICHT — 22 augustus 2026 (zeer lange sessie, chat bijna vol)
+
+**Voor de volgende sessie: lees dit eerst, dan de twee gedetailleerde
+checkpoints hieronder indien relevant voor je vraag.**
+
+### Wat er vandaag allemaal gebeurd is, kort
+
+**1. Recovery Intelligence Layer — volledig gebouwd, live, `enabled: true`**
+Twaalf ontwerpfasen (16-21 aug) + volledige code-implementatie (Fase 10,
+22 aug): database (9 tabellen + 2 views), patroondetectie-algoritme
+(volledig deterministisch, geen AI-classificatie), baseline-berekening,
+Coach-integratie (apart contextblok, NOOIT in AdaptationSignal[]),
+zichtbaar in `/debug`. Eerste analyse al succesvol gedraaid — nog
+wachtend op genoeg belastingsdagen (9/10) voor een eerste patroon.
+**Volledig detail: zie checkpoint hieronder.**
+
+**2. Intervals.icu → CoachOS Data Bridge — volledig gebouwd, live, werkend**
+Alle 15 fasen uit het master plan doorlopen en getest met echte data.
+**Eerste, echte automatische import vandaag bevestigd gelukt** (22
+augustus, sessie na het roeien, via Home-bezoek-trigger). Dient als
+vangnet wanneer Concept2's eigen, directe webhook niet werkt (zie
+punt 3). **Volledig detail: zie checkpoint hieronder.**
+
+**3. Concept2's eigen, directe webhook — onderzocht, oorzaak gevonden, NIET opgelost**
+`concept2_user_id` blijft leeg na koppelen — de daadwerkelijke
+callback-code gevonden (`api/specialists/rowing/concept2/callback/
+route.ts`): een aparte `GET /api/users/me`-aanroep naar Concept2 faalt
+stil. Een scope-verbredingsexperiment (v2.4.345) brak de autorisatie
+volledig bij Concept2 zelf — teruggedraaid (v2.4.346). **Conclusie:
+waarschijnlijk een probleem bij Concept2 zelf, niet op te lossen
+vanuit CoachOS.** Geen verdere actie gepland — de Intervals.icu-bridge
+vervult de praktische rol.
+
+**4. Kleinere fixes/features vandaag (chronologisch, versies v2.4.320-347)**
+- TodayPlan-cache (60 sec) + RLS-correctie
+- Terminologie-verduidelijkingen (Coach Score-uitleg)
+- Garmin-screenshot-import-datumfix (handmatig datumveld i.p.v. altijd "vandaag")
+- Wandelen toegevoegd als sport
+- Changelog gesplitst (was 595 KB, activeerde Working Copy's
+  "mogelijk binair"-detectie) → `docs/changelog.md` (actief) +
+  `docs/changelog-archief.md` (ouder, v2.0.3 t/m v2.4.184)
+- `/debug`-pagina geordend (inklapbare secties i.p.v. lange, platte lijst)
+- Gezondheidscheck-fix (`select('*')` i.p.v. `select('id')` — brak op
+  `ri_algorithm_config_versions`, die bewust `version` als primary key heeft)
+- Roeien-activiteitendetail uitgebreid: split/500m, slagfrequentie,
+  weerstand (Drag Factor) — data die al binnenkwam maar nooit getoond werd
+- Link naar Rowing Performance Center (records/progressie) vanuit Activiteiten
+- Bronlabel-fixes (twee aparte plekken toonden "Garmin"/"Onbekend"
+  i.p.v. de echte bron — nu overal correct: Concept2, Intervals.icu,
+  Apple Health, etc.)
+- Link naar Concept2-logboek bij Roeien-activiteiten (algemeen, geen
+  deep-link — `concept2_user_id` ontbreekt nog steeds)
+
+### Belangrijkste, terugkerende werkwijze vandaag (voor consistentie in de volgende sessie)
+- **Altijd zelf-check versie** (`curl .../package.json`) vóór én na elke wijziging
+- **Zips altijd Python-gegenereerd** (UTF-8-veiligheid, geleerde les uit vandaag)
+- **`docs/changelog.md`-wijzigingen apart als downloadbaar bestand**,
+  niet in de zip — Working Copy's zip-import blijft dat bestand als
+  "mogelijk binair" overslaan, ook na het splitsen. Gebruiker plakt
+  de inhoud zelf via GitHub's webeditor
+- **Balans-check accolades/haakjes** vóór elke levering
+- **Bij het niet kunnen vinden van een bestand:** de volledige repo
+  downloaden via `codeload.github.com/stuctech-eng/coachOS/tar.gz/
+  refs/heads/main` en lokaal met `grep -rln` doorzoeken — veel
+  betrouwbaarder dan bestandspaden gokken (GitHub's search-API heeft
+  een lage rate-limit zonder authenticatie)
+
+### Voor de volgende sessie — geen openstaande, actieve taken
+Alles hierboven staat live en getest. Geen halve implementaties. De
+enige "openstaande" punten zijn bewust geparkeerd (Concept2-webhook
+zelf, Recovery Intelligence wacht op meer data) — geen actie vereist
+tenzij de gebruiker het zelf aankaart.
+
 ## 🧭 CHECKPOINT — Recovery Intelligence Layer (Fase 0 afgerond, 16 augustus 2026)
 
 **Status: alleen onderzoek + architectuurbesluit. Geen code gewijzigd.
