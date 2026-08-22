@@ -36,8 +36,14 @@ export async function GET(req: Request) {
     const roeiActiviteiten = (Array.isArray(activiteiten) ? activiteiten : [])
       .filter((a: { type?: string }) => a.type && /row/i.test(a.type)) as IntervalsActiviteitRuw[]
 
-    // Roeien-activity_id opzoeken — bestaande tabel, geen nieuwe aanmaken
-    const { data: roeiType } = await supabase.from('activities').select('id').eq('name', 'Roeien').maybeSingle()
+    // v2.4.338-FIX: gemeld — roeiActivityIdGevonden gaf false, ondanks
+    // dat de gebruiker wel degelijk Roeien-activiteiten heeft. Root
+    // cause: deze opzoeking miste de user_id-filter. `activities` is,
+    // exact zoals de bestaande Activity Bridge al laat zien
+    // (`.insert({ user_id: input.userId, ... })`), PER GEBRUIKER
+    // opgeslagen, geen globale tabel — zonder filter kon dit dus nooit
+    // betrouwbaar de juiste rij vinden.
+    const { data: roeiType } = await supabase.from('activities').select('id').eq('user_id', userId).eq('name', 'Roeien').maybeSingle()
 
     const resultaten = []
     let nieuwCount = 0, reedsGeimporteerdCount = 0, geblokkeerdCount = 0

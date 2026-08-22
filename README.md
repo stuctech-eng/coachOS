@@ -1282,6 +1282,31 @@ Fase 14 daadwerkelijk uitvoeren (dry-run-rapport bekijken over de
 volledige 90-dagen-historie), dan een apart, expliciet akkoord voor
 Fase 15 — inclusief de constraint-fix hierboven.
 
+## v2.4.338 — FIX: dry-run vond Roeien-activity_id niet (user_id-filter ontbrak)
+**Eerste echte dry-run-uitvoering (21 augustus 2026): 6/6 sessies
+correct als "nieuw" herkend, mapping-data klopt volledig — maar
+`roeiActivityIdGevonden: false`.**
+
+### Root cause
+De `activities`-opzoeking in `intervals-icu-dry-run/route.ts` filterde
+niet op `user_id`. `activities` is, zoals de bestaande Activity Bridge
+al aantoont (`.insert({ user_id: input.userId, ... })`), een
+PER-GEBRUIKER tabel — zonder die filter kon de juiste "Roeien"-rij
+nooit betrouwbaar gevonden worden.
+
+### Fix
+`.eq('user_id', userId)` toegevoegd aan de opzoeking.
+
+### Bevestigd, uit de eerste dry-run-resultaten
+- Alle 6 sessies correct gemapt — duur, afstand, hartslag (terecht
+  leeg bij de 21-8-sessie, die had er geen), slagfrequentie,
+  calorieën, precieze duur in seconden
+- `external_id` correct doorgezet naar `notes` voor toekomstige dedup
+- 0 schrijfacties, zoals bedoeld — puur analyse
+
+### Eén gewijzigd bestand
+`api/debug/intervals-icu-dry-run/route.ts`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
