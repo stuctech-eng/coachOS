@@ -1442,6 +1442,39 @@ toegevoegd aan `BRON_LABELS`.
 ### Eén gewijzigd bestand
 `ActiviteitenSectie.tsx`.
 
+## v2.4.345 — EXPERIMENT: Concept2-scope verbreed, test voor concept2_user_id
+**Gemeld: concept2_user_id blijft leeg na koppelen ("mogelijk een
+probleem bij Concept2 zelf"). Dieper uitgezocht — de daadwerkelijke
+callback-code gevonden via een volledige repo-download (GitHub's
+zoek-API gaf rate-limit-fouten, codeload.github.com werkte wel).**
+
+### Bevinding
+`callback/route.ts` doet een aparte `GET /api/users/me`-aanroep na de
+tokenuitwisseling om Concept2's numerieke gebruikers-ID op te halen
+(nodig voor de webhook, niet voor "Sync nu"). Bij falen wordt dit
+stil overgeslagen (`concept2_user_id: null`) — een eerdere fix
+(v2.4.300) maakte dit al zichtbaar in de UI i.p.v. alleen in de
+server-log, wat bevestigt dat dit al eerder is voorgekomen.
+
+### Experiment, dit keer
+Oorspronkelijke scope (`results:read`) was mogelijk niet toereikend
+voor het gebruikersprofiel-endpoint specifiek. **Geen ongedocumenteerde
+scope-naam gegokt** — de bestaande code-comment documenteerde al dat
+Concept2 twee scopes kent (`results:read`, `results:write`). Nu beide
+samen aangevraagd, consistent in zowel de autorisatie-aanvraag als de
+tokenuitwisseling.
+
+### Twee gewijzigde bestanden
+`api/specialists/rowing/concept2/authorize/route.ts`,
+`api/specialists/rowing/concept2/callback/route.ts`.
+
+### Testprocedure
+Concept2 opnieuw koppelen (ontkoppelen + verbinden), daarna
+`concept2_user_id` controleren via `/debug/concept2-webhook` of
+rechtstreeks in `concept2_tokens`. **Als dit niet helpt:** rollback
+naar `results:read` alleen — dan ligt de oorzaak waarschijnlijk
+alsnog bij Concept2 zelf, niet bij de scope.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

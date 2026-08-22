@@ -20,9 +20,18 @@ async function getUser() {
 //
 // Endpoint: GET /oauth/authorize?client_id={}&scope={}&response_type=code&redirect_uri={}
 //
-// Scope: results:read (results:write geeft ook results:read gratis mee,
-// maar we hebben nu alleen lees-toegang nodig — minst-nodige-rechten-
-// principe, zoals ook bij de rest van CoachOS gehanteerd).
+// v2.4.345-EXPERIMENT: gemeld — concept2_user_id blijft leeg na
+// koppelen (GET /api/users/me faalt, zie callback/route.ts). Eerdere
+// aanname (v2.4.218) was dat 'results:read' voldoende is voor alles
+// wat CoachOS nodig heeft — dat blijkt niet zeker te kloppen voor het
+// gebruikersprofiel-endpoint specifiek. Test nu met BEIDE bekende,
+// gedocumenteerde scopes (results:write geeft results:read gratis
+// mee, dus dit is geen extra, ongedocumenteerde scope-naam gokken —
+// alleen de twee die al bevestigd bestaan, samen aangevraagd, voor
+// het geval het gebruikersprofiel-endpoint bredere toegang vereist).
+// Als dit NIET helpt: rollback naar 'results:read' alleen, en de
+// oorzaak ligt dan waarschijnlijk niet bij scope maar bij Concept2
+// zelf (matcht de originele, ongewijzigde hypothese).
 //
 // BEWUST: user-identiteit komt in de callback via de sessie-cookie
 // (consistent met elke andere route in CoachOS), niet via de state-
@@ -42,7 +51,7 @@ export async function GET(req: NextRequest) {
   const redirectUri = `${req.nextUrl.origin}/api/specialists/rowing/concept2/callback`
   const authorizeUrl = new URL('https://log.concept2.com/oauth/authorize')
   authorizeUrl.searchParams.set('client_id', clientId)
-  authorizeUrl.searchParams.set('scope', 'results:read')
+  authorizeUrl.searchParams.set('scope', 'results:read results:write')
   authorizeUrl.searchParams.set('response_type', 'code')
   authorizeUrl.searchParams.set('redirect_uri', redirectUri)
 
