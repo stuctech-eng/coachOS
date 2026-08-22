@@ -1,5 +1,32 @@
 # CoachOS — Changelog
 
+## v2.4.348 — Sessie-overzicht: 22 augustus 2026 volledig gedocumenteerd
+**Geen code. Chat bijna vol — compleet dagoverzicht toegevoegd aan
+het README (sectie "SESSIE-OVERZICHT — 22 augustus 2026") ter
+voorbereiding op een nieuwe sessie.**
+
+### Samenvatting van de dag
+- Recovery Intelligence Layer: volledig gebouwd en live (Fase 10,
+  code-implementatie na de eerdere 12 ontwerpfasen van 16-21 augustus)
+- Intervals.icu → CoachOS Data Bridge: alle 15 fasen doorlopen,
+  eerste echte automatische import vandaag bevestigd gelukt
+- Concept2's directe webhook: oorzaak gevonden (concept2_user_id
+  blijft leeg), scope-experiment geprobeerd en teruggedraaid,
+  geconcludeerd: waarschijnlijk een Concept2-eigen probleem
+- Twaalf kleinere fixes/features (v2.4.320-347): caching, RLS,
+  terminologie, Garmin-datumfix, changelog-splitsing,
+  debug-paginaordening, roei-detailweergave, bronlabel-fixes,
+  Concept2-logboek-link
+
+### Werkwijze-lessen vastgelegd voor consistentie
+Python-gegenereerde zips (UTF-8), changelog apart als downloadbaar
+bestand (niet in zip), volledige-repo-download bij het niet kunnen
+vinden van een bestandspad (`codeload.github.com` + lokaal `grep`).
+
+### Eén gewijzigd bestand
+`README.md`.
+
+
 > **Oudere entries (vóór v2.4.185)** staan in `docs/changelog-archief.md` — gearchiveerd op 20 augustus 2026 om het actieve bestand onder de groottedrempel van Working Copy's zip-import te houden (595 KB werd als "mogelijk binair" overgeslagen).
 
 
