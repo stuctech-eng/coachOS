@@ -793,6 +793,14 @@ Voeg aan je JSON response het veld "trainer_instructies" toe: een korte, directe
       body: JSON.stringify({ userId: user.id }),
     }).catch(() => {})
 
+    // v2.4.341 (Intervals.icu-bridge, master plan §11/§12): zelfde
+    // lazy, rate-limited fire-and-forget-patroon. GEEN force=true hier
+    // — de route respecteert dus altijd de 24u-snelheidsrem, in
+    // tegenstelling tot de handmatige knop op /debug.
+    fetch(`https://coach-os-tau.vercel.app/api/debug/intervals-icu-import?user_id=${user.id}`, {
+      method: 'POST',
+    }).catch(() => {})
+
     return NextResponse.json(saved)
   } catch (error) {
     console.error('Coach API error:', error)

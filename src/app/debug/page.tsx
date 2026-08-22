@@ -272,7 +272,7 @@ export default function DebugPage() {
       const { data: sessionData } = await supabase.auth.getSession()
       const userId = sessionData.session?.user.id
       if (!userId) { setIntervalsResultaat('FOUT: geen actieve sessie'); return }
-      const res = await fetch(`/api/debug/intervals-icu-import?user_id=${userId}`, { method: 'POST', credentials: 'include' })
+      const res = await fetch(`/api/debug/intervals-icu-import?user_id=${userId}&force=true`, { method: 'POST', credentials: 'include' })
       const data = await res.json()
       setIntervalsResultaat(`POST import →\n${JSON.stringify(data, null, 2)}`)
     } catch (e) {

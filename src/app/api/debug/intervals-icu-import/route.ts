@@ -33,6 +33,27 @@ export async function POST(req: Request) {
 
   try {
     const supabase = createAdminClient()
+
+    // v2.4.341: rate-limiting (§12 van het master plan). De handmatige
+    // knop op /debug kan dit omzeilen via ?force=true; de automatische
+    // achtergrondaanroep vanuit api/coach/route.ts doet dat NIET, en
+    // respecteert dus altijd de 24u-limiet.
+    const force = url.searchParams.get('force') === 'true'
+    if (!force) {
+      const { data: syncStatus } = await supabase
+        .from('intervals_icu_sync_state')
+        .select('last_synced_at')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (syncStatus?.last_synced_at) {
+        const urenGeleden = (Date.now() - new Date(syncStatus.last_synced_at).getTime()) / (1000 * 60 * 60)
+        if (urenGeleden < 24) {
+          return NextResponse.json({ status: 'overgeslagen_rate_limit', laatsteSyncUrenGeleden: Math.round(urenGeleden * 10) / 10 })
+        }
+      }
+    }
+
     const negentigDagenGeleden = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const vandaag = new Date().toISOString().split('T')[0]
 
@@ -105,6 +126,12 @@ export async function POST(req: Request) {
       geimporteerdCount++
       resultaten.push({ intervalsId: ruw.id, datum: gemapt.date, status: 'geimporteerd' })
     }
+
+    // v2.4.341: sync-tijdstip bijwerken, ook als er niets nieuws was —
+    // dat voorkomt dat een lege dag steeds opnieuw de volledige
+    // 90-dagen-check triggert.
+    await supabase.from('intervals_icu_sync_state')
+      .upsert({ user_id: userId, last_synced_at: new Date().toISOString() })
 
     return NextResponse.json({
       status: 'ok',

@@ -1349,6 +1349,52 @@ voor `user_id` (geen handmatig UUID meer nodig).
 ### Eén gewijzigd bestand
 `debug/page.tsx`.
 
+## v2.4.341 — Intervals.icu-import volledig automatisch
+**De bridge (Fase 9-15, gebouwd en getest) hoefde tot nu toe nog
+handmatig via /debug getriggerd te worden — dat maakte het geen echt
+vangnet. Nu volledig automatisch, zelfde lazy/rate-limited patroon
+als Recovery Intelligence.**
+
+### Nieuwe tabel
+`intervals_icu_sync_state` — één rij per gebruiker, `last_synced_at`.
+RLS aan, server-managed (geen policies voor gebruikers, zelfde
+patroon als `ri_response_links`). **Migratie nog niet uitgevoerd —
+zie SQL hieronder.**
+
+```sql
+create table if not exists intervals_icu_sync_state (
+  user_id uuid primary key references auth.users(id),
+  last_synced_at timestamptz not null default now()
+);
+
+alter table intervals_icu_sync_state enable row level security;
+create policy "select_own" on intervals_icu_sync_state for select using (auth.uid() = user_id);
+```
+
+### Wijzigingen
+- **`intervals-icu-import/route.ts`** — checkt nu eerst
+  `intervals_icu_sync_state`, slaat over als de laatste sync <24u
+  geleden was. `?force=true` omzeilt dit (voor de handmatige knop).
+  Werkt de status bij na elke run, ook als er niets nieuws was
+- **`debug/page.tsx`** — handmatige knop stuurt nu `force=true` mee,
+  blijft dus altijd direct werken
+- **`api/coach/route.ts`** — nieuwe fire-and-forget-aanroep, zelfde
+  plek als de al-bestaande `/api/memory`- en Recovery Intelligence-
+  aanroepen. GEEN `force`, respecteert dus altijd de 24u-limiet
+
+### Praktisch effect
+Vanaf nu: elke keer dat je de Coach opent, checkt het systeem zelf
+(max. 1x per dag) op nieuwe Concept2-activiteiten via Intervals.icu.
+Geen handmatige actie meer nodig — precies het vangnet dat het doel
+was.
+
+### Drie gewijzigde bestanden
+`api/debug/intervals-icu-import/route.ts`, `debug/page.tsx`,
+`api/coach/route.ts`.
+
+**Status: migratie voor `intervals_icu_sync_state` nog niet
+uitgevoerd — vereist vóór deze wijziging kan werken.**
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
