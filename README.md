@@ -1307,6 +1307,34 @@ nooit betrouwbaar gevonden worden.
 ### Eén gewijzigd bestand
 `api/debug/intervals-icu-dry-run/route.ts`.
 
+## v2.4.339 — Intervals.icu Fase 15: beperkte productie-import gebouwd
+**Eerste route die daadwerkelijk naar `activity_sessions` schrijft.
+Database-constraint eerder al aangepast (`intervals_icu` toegevoegd
+aan `activity_sessions_source_check`), dry-run (Fase 13-14) bewees de
+dedup-logica veilig — deze route hergebruikt exact diezelfde logica,
+voegt alleen de insert zelf toe.**
+
+### Nieuw bestand
+`api/debug/intervals-icu-import/route.ts` (POST) — bewust een apart
+bestand van de dry-run-route, zodat die laatste altijd puur lezend
+blijft bestaan voor toekomstige controles.
+
+### Veiligheidsgaranties, hergebruikt uit de dry-run
+- Schrijft uitsluitend activiteiten die als `nieuw` geclassificeerd
+  worden — `reeds_geimporteerd` en `geblokkeerd_door_bestaande_bron`
+  worden overgeslagen, nooit overschreven
+- Stopt volledig (nul schrijfacties) als er geen "Roeien"-activiteit
+  voor de gebruiker gevonden wordt
+- Zelfde `external_id`-gebaseerde en bronprioriteit-gebaseerde
+  dedup-checks als de dry-run, geen aparte, mogelijk-afwijkende logica
+
+### Status
+Nog niet uitgevoerd tegen echte data. Gegeven de eerdere dry-run
+(alle 6 sessies geblokkeerd door bestaande `concept2`-bron) wordt bij
+de eerste uitvoering waarschijnlijk 0 nieuw geïmporteerd — de
+praktische waarde zit in toekomstige dagen zonder handmatige
+Concept2-sync.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
