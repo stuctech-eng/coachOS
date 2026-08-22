@@ -1505,6 +1505,30 @@ concept2_user_id-mysterie blijft onopgelost — vergt ofwel geduld
 met Concept2's developer-support. De Intervals.icu-bridge van
 vandaag blijft intussen het praktische vangnet.
 
+## v2.4.347 — Link naar Concept2-logboek bij Roeien-activiteiten
+**Gevraagd: link naar Concept2 bij Roeien-activiteiten. Eerlijke
+beperking: een precieze deep-link naar de specifieke training
+(`log.concept2.com/profile/{user_id}/log/{result_id}`) vergt
+`concept2_user_id`, dat leeg blijft (extern Concept2-probleem, zie
+v2.4.346-checkpoint) — geen niet-werkende link getoond alsof die wel
+specifiek zou zijn.**
+
+### Wijziging
+Nieuwe link "Open Concept2-logboek" op de activiteitendetailpagina,
+alleen zichtbaar bij Roeien-activiteiten met bron `concept2` of
+`intervals_icu`. Wijst naar het algemene logboekoverzicht
+(`log.concept2.com/profile`), expliciet gelabeld als niet-specifiek.
+
+### Extra context, tijdens het zoeken gevonden
+Een beveiligingsblog (januari 2024) documenteert een eerder
+permissieprobleem specifiek in Concept2's `/api/users/{id}`-
+endpoint-gebied — onafhankelijke, aanvullende aanwijzing dat dit
+endpoint-gebied bij Concept2 al vaker problematisch is geweest, geen
+bewijs over de huidige status.
+
+### Eén gewijzigd bestand
+`activities/[id]/page.tsx`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

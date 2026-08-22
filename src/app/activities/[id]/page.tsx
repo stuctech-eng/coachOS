@@ -243,6 +243,25 @@ export default function ActivityDetailPage() {
               ) : null}
             </div>
 
+            {/* v2.4.347: link naar Concept2-logboek — bewust ALGEMEEN,
+                geen deep-link naar deze specifieke training. Een
+                precieze link (log.concept2.com/profile/{'{'}user_id{'}'}/
+                log/{'{'}result_id{'}'}) vergt concept2_user_id, dat momenteel
+                leeg blijft (extern Concept2-probleem, zie README-
+                checkpoint v2.4.346) — geen niet-werkende link tonen
+                alsof die wel specifiek zou zijn. */}
+            {session.activities?.name && ROWING_NAMEN.includes(session.activities.name) &&
+             (session.source === 'concept2' || session.source === 'intervals_icu') ? (
+              <a href="https://log.concept2.com/profile" target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-between bg-white/5 rounded-2xl px-4 py-3 mt-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">Open Concept2-logboek</p>
+                  <p className="text-xs text-white/50 mt-0.5">Algemeen overzicht — geen directe link naar deze training</p>
+                </div>
+                <span className="text-white/40 text-sm">↗</span>
+              </a>
+            ) : null}
+
             {/* v2.4.106/165: Ritanalyse — automatische sport-herkenning,
                 geen aparte knop meer nodig voor Running vs Cycling */}
             {session.activities?.name && (CYCLING_NAMEN.includes(session.activities.name) || RUNNING_NAMEN.includes(session.activities.name)) && (
