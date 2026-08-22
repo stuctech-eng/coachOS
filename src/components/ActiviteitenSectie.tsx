@@ -68,6 +68,13 @@ const BRON_LABELS: Record<string, string> = {
   concept2: 'Concept2',
   trainer_ai: 'In-app',
   manual: 'Handmatig',
+  // v2.4.344-FIX: gemeld — 22-8-sessie toonde "Onbekend" i.p.v.
+  // "Intervals.icu". Deze bron bestond simpelweg nog niet toen deze
+  // kaart voor het laatst bijgewerkt werd (v2.4.305) — intervals_icu
+  // is vandaag pas geïntroduceerd (Intervals.icu-bridge). apple_health
+  // stond al wel in de database-constraint, maar ook nog niet hier.
+  intervals_icu: 'Intervals.icu',
+  apple_health: 'Apple Health',
 }
 function bronLabel(source: string): string {
   return BRON_LABELS[source] || 'Onbekend'

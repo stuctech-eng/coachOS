@@ -1422,6 +1422,26 @@ betrouwbare dekking.
 ### Eén gewijzigd bestand
 `api/action-plan/route.ts`.
 
+## v2.4.344 — FIX: activiteitenlijst toonde "Onbekend" voor Intervals.icu
+**Gemeld via screenshot: 22-8-sessie toonde "Onbekend" i.p.v.
+"Intervals.icu" in de activiteitenlijst (ActiviteitenSectie.tsx) —
+een ANDER bestand dan de detailpagina die eerder vandaag (v2.4.342)
+al gefixt werd voor hetzelfde soort labelprobleem.**
+
+### Root cause
+`BRON_LABELS` in `ActiviteitenSectie.tsx` (een eigen, al eerder
+gecorrigeerde kaart, v2.4.305) kende `intervals_icu` simpelweg nog
+niet — die bron bestond nog niet toen die kaart voor het laatst werd
+bijgewerkt. `apple_health` ontbrak ook, ondanks al wel toegestaan te
+zijn door de database-constraint.
+
+### Fix
+`intervals_icu: 'Intervals.icu'` en `apple_health: 'Apple Health'`
+toegevoegd aan `BRON_LABELS`.
+
+### Eén gewijzigd bestand
+`ActiviteitenSectie.tsx`.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
