@@ -1475,6 +1475,36 @@ rechtstreeks in `concept2_tokens`. **Als dit niet helpt:** rollback
 naar `results:read` alleen — dan ligt de oorzaak waarschijnlijk
 alsnog bij Concept2 zelf, niet bij de scope.
 
+## v2.4.346 — ROLLBACK: scope-experiment mislukte, teruggedraaid
+**Bevestigd via screenshot: `results:write` toevoegen brak Concept2's
+eigen autorisatiescherm volledig ("Application Authorization —
+error"), nog vóórdat CoachOS' callback bereikt werd.**
+
+### Conclusie
+Deze CoachOS-app is bij Concept2 kennelijk alleen geregistreerd/
+goedgekeurd voor `results:read` — een niet-toegestane scope aanvragen
+breekt de hele koppeling, in plaats van 'm uit te breiden. **Dit is
+GEEN scope-probleem.** De oorspronkelijke hypothese staat weer
+overeind: het lege `concept2_user_id` ligt waarschijnlijk aan iets
+bij Concept2's `/api/users/me`-endpoint zelf, niet op te lossen vanuit
+CoachOS.
+
+### Fix
+Teruggedraaid naar `results:read` op alle drie de plekken
+(autorisatie-aanvraag, tokenuitwisseling, database-opslag) — exact de
+staat van vóór v2.4.345.
+
+### Twee gewijzigde bestanden
+`api/specialists/rowing/concept2/authorize/route.ts`,
+`api/specialists/rowing/concept2/callback/route.ts`.
+
+### Status
+Concept2-koppeling weer volledig werkend zoals voorheen. Het
+concept2_user_id-mysterie blijft onopgelost — vergt ofwel geduld
+(wachten tot Concept2 het zelf herstelt) ofwel rechtstreeks contact
+met Concept2's developer-support. De Intervals.icu-bridge van
+vandaag blijft intussen het praktische vangnet.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na

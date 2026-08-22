@@ -59,10 +59,10 @@ export async function GET(req: NextRequest) {
         grant_type: 'authorization_code',
         redirect_uri: redirectUri,
         code,
-        // v2.4.345-EXPERIMENT: moet exact matchen met de scope die bij
-        // authorize/route.ts is aangevraagd — anders zou Concept2 de
-        // aanvraag kunnen afwijzen wegens een scope-mismatch.
-        scope: 'results:read results:write',
+        // v2.4.346: teruggedraaid naar 'results:read' — 'results:write'
+        // erbij brak de autorisatie volledig bij Concept2 zelf (zie
+        // authorize/route.ts voor de volledige toelichting).
+        scope: 'results:read',
       }),
     })
 
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token,
       expires_at: expiresAt,
-      scope: 'results:read results:write',
+      scope: 'results:read',
       concept2_user_id: concept2UserId,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
