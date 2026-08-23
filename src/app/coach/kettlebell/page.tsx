@@ -50,6 +50,14 @@ interface CompetitionBest {
   behaald_op: string | null
 }
 
+interface LimiterResultaat {
+  status: 'limiter_indicated' | 'insufficient_data'
+  limiter?: string
+  reason: string
+  sessions_used?: number
+  sessions_required?: number
+}
+
 function formatDatum(iso: string): string {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
 }
@@ -59,6 +67,7 @@ export default function KettlebellPage() {
   const [sessies, setSessies] = useState<KettlebellSessie[]>([])
   const [analyse, setAnalyse] = useState<AnalyseResponse['resultaat'] | null>(null)
   const [competitionBest, setCompetitionBest] = useState<CompetitionBest[]>([])
+  const [limiter, setLimiter] = useState<LimiterResultaat | null>(null)
   const [fout, setFout] = useState<string | null>(null)
 
   useEffect(() => {
@@ -72,6 +81,16 @@ export default function KettlebellPage() {
         else setSessies(sessiesData.sessies || [])
         if (!analyseData.error) setAnalyse(analyseData.resultaat)
         if (!recordsData.error) setCompetitionBest(recordsData.resultaat?.personal_best_competition || [])
+
+        // MVP3 — Limiter Engine: gebaseerd op de meest recente sessie's
+        // discipline+bell weight. Geeft eerlijk insufficient_data terug
+        // zolang er te weinig sessies voor die combinatie zijn.
+        const meestRecent = (sessiesData.sessies || [])[0]
+        if (meestRecent) {
+          fetch(`/api/specialists/kettlebell/limiter?discipline=${meestRecent.discipline}&bell_weight_kg=${meestRecent.bell_weight_kg}`)
+            .then(r => r.json())
+            .then(d => { if (!d.error) setLimiter(d.resultaat) })
+        }
       })
       .catch(() => setFout('Kon Kettlebell-data niet ophalen'))
       .finally(() => setLaden(false))
@@ -188,6 +207,21 @@ export default function KettlebellPage() {
                 </div>
               ))}
             </div>
+          </Card>
+        )}
+
+        {!laden && limiter && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Limiter (MVP3)</p>
+            {limiter.status === 'insufficient_data' && (
+              <p className="text-sm text-slate-400">{limiter.reason}</p>
+            )}
+            {limiter.status === 'limiter_indicated' && (
+              <>
+                <p className="text-sm font-semibold text-white mb-1">{limiter.limiter}</p>
+                <p className="text-xs text-slate-500">{limiter.reason}</p>
+              </>
+            )}
           </Card>
         )}
 

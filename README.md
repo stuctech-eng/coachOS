@@ -6287,3 +6287,43 @@ op één plek.
 
 **Enige blokkerende open punt:** een primaire WKSF-bron die expliciet
 bevestigt welk kettlebellgewicht bij rankingblok A/B hoort.
+
+## 🔬 CHECKPOINT — MVP3 gestart: Limiter Engine (v2.4.362)
+
+**Status: eerste MVP3-onderdeel, met een harde data-drempel. Geen
+SQL-wijziging. Met de huidige 1 gelogde sessie geeft de engine correct
+`insufficient_data` terug — geen valse precisie.**
+
+### Waarom dit als eerste
+Limiter Engine is het fundament waar Pace Coach, Fatigue Signature en de
+rest van MVP3 op voortbouwen (spec §14). Volledig deterministisch, geen
+AI — zelfde regel als alle andere Kettlebell-engines.
+
+### Harde data-eis
+Minimaal **5 sessies** voor dezelfde discipline+bell weight, anders
+`status: 'insufficient_data'` met een expliciete reden. Dit is bewust:
+bij te weinig data levert elk signaal ruis op, niet inzicht — hetzelfde
+principe als de Classification Engine ("onbekend is beter dan fout"),
+hier toegepast op trainingsdata.
+
+### Signalen (alle uitlegbaar, geen black box)
+1. Techniekscore daalt terwijl reps gelijk blijven/stijgen → `technique`
+2. RPE stijgt terwijl reps gelijk blijven/dalen → `local_muscular_endurance`
+3. Gemiddeld ≥2 no-counts per sessie → `technique`
+4. Geen van de signalen eenduidig → `insufficient_data` (niet gegokt naar
+   de "meest waarschijnlijke" optie)
+
+### Wat is gebouwd
+- `lib/specialists/kettlebell-limiter.ts` — Limiter Engine
+- `api/specialists/kettlebell/limiter/route.ts`
+- Dashboard: nieuwe kaart, gebaseerd op de meest recente sessie's
+  discipline+bell weight, toont eerlijk `insufficient_data` of een
+  aangewezen limiter — nooit verborgen als er niets te tonen is.
+
+### Nog niet gebouwd (MVP3, resterend)
+Pace Coach, Fatigue Signature, Movement Economy, What-if Engine,
+Competition Simulator, Readiness, Autoregulation — wachten op voldoende
+data en worden in latere stappen opgepakt.
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.
