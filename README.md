@@ -6247,3 +6247,43 @@ i.p.v. te gokken.
 
 ### Regressiecontrole
 0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.
+
+## 📊 CHECKPOINT — Classification Progress: multi-discipline (v2.4.361)
+
+**Status: MVP2 kern nu functioneel compleet. Geen SQL-wijziging.**
+
+### Ontwerpkeuze: uitbreiding i.p.v. nieuwe pagina
+De master-opdracht vroeg om een apart "Classification/Progress
+dashboard" (huidig → volgend → gap → PR → percentage, per discipline).
+In plaats van een nieuwe, grotendeels overlappende pagina naast het
+Athlete Passport (v2.4.360) te bouwen, is de bestaande "Official Data"-
+sectie in het passport uitgebreid: was één snapshot voor de primaire
+discipline, is nu een lijst met **elke discipline waarvoor een echte PR
+bestaat** (niet alleen de primaire), elk met huidige klasse, volgende
+klasse, gap en voortgangsbalk. Voorkomt duplicatie, houdt "waar sta ik"
+op één plek.
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.
+
+---
+
+## MVP2 — statusoverzicht
+
+| Onderdeel | Status |
+|---|---|
+| WKSF Rulebook, disciplines, categorieën, judging | ✅ |
+| 720 classificatierijen (`strongly_indicated`) | ✅ |
+| Classification/Promotion Engine | ✅ (nooit definitief zonder bevestigde bell-weight-mapping) |
+| Beat My Class | ✅ |
+| Competition-model (aanmaken, deelname, resultaat) | ✅ |
+| Records Engine (Training/Competition/Season Best) | ✅ |
+| Athlete Passport + multi-discipline classificatie-overzicht | ✅ |
+| Federatie-/wereldrecords | ❌ geen toegankelijke officiële bron |
+| Officiële coëfficiënttabel | ❌ geen toegankelijke officiële bron |
+| Block A/B → bell weight | ⏳ `strongly_indicated`, niet bevestigd |
+| Today Engine-integratie | ⏳ bewust uitgesteld (geen periodisatie-engine) |
+| MVP2.5 (Trainer AI-brug) | ✅ al klaar sinds v2.4.353 |
+
+**Enige blokkerende open punt:** een primaire WKSF-bron die expliciet
+bevestigt welk kettlebellgewicht bij rankingblok A/B hoort.

@@ -35,9 +35,22 @@ interface RecordsResultaat {
   season_best_competition: CompetitionBest[]
 }
 
+interface ClassificatieSnapshot {
+  discipline: string
+  status: string
+  current_class?: string
+  next_class?: string
+  gap?: number
+  progress_pct?: number
+}
+
 const DISCIPLINE_NAAR_RANKING_KEY: Record<string, string> = {
   jerk: 'jerk_30', snatch: 'snatch_10', long_cycle: 'long_cycle_10',
   biathlon: 'biathlon_10', one_arm_long_cycle: 'one_arm_long_cycle_10',
+}
+const DISCIPLINE_LABEL: Record<string, string> = {
+  jerk: 'Jerk', snatch: 'Snatch', long_cycle: 'Long Cycle',
+  biathlon: 'Biathlon', one_arm_long_cycle: 'One Arm Long Cycle',
 }
 
 export default function AthletePassportPage() {
@@ -45,41 +58,45 @@ export default function AthletePassportPage() {
   const [prefs, setPrefs] = useState<Preferences>({})
   const [records, setRecords] = useState<RecordsResultaat | null>(null)
   const [aantalSessies, setAantalSessies] = useState(0)
-  const [classificatie, setClassificatie] = useState<{ status: string; current_class?: string; next_class?: string; gap?: number } | null>(null)
+  const [classificaties, setClassificaties] = useState<ClassificatieSnapshot[]>([])
 
   useEffect(() => {
     Promise.all([
       fetch('/api/specialists/kettlebell/profile').then(r => r.json()),
       fetch('/api/specialists/kettlebell/persoonlijke-records').then(r => r.json()),
       fetch('/api/specialists/kettlebell/analyse').then(r => r.json()),
-    ]).then(([p, r, a]) => {
+    ]).then(async ([p, r, a]) => {
       const preferences: Preferences = p.preferences || {}
       setPrefs(preferences)
       const recordsData: RecordsResultaat | null = r.error ? null : r.resultaat
       if (recordsData) setRecords(recordsData)
       if (!a.error) setAantalSessies(a.resultaat?.volume?.aantal_sessies || 0)
 
-      // Classificatie-snapshot alleen ophalen als (1) het profiel compleet
-      // is, EN (2) er een echte, gelogde PR bestaat voor de primaire
-      // discipline — nooit een gegokt bell weight gebruiken om de
-      // classificatie op te vragen.
-      const prBijPrimaireDiscipline = recordsData?.personal_best_training.find(
-        t => t.discipline === preferences.primaire_discipline
-      )
-      if (preferences.primaire_discipline && preferences.sex && preferences.bodyweight_class
-          && preferences.ranking_block_voorkeur && prBijPrimaireDiscipline) {
-        const rankingDiscipline = DISCIPLINE_NAAR_RANKING_KEY[preferences.primaire_discipline]
-        const params = new URLSearchParams({
-          ranking_discipline: rankingDiscipline,
-          bodyweight_class: preferences.bodyweight_class,
-          ranking_block: preferences.ranking_block_voorkeur,
-          sex: preferences.sex,
-          kettlebell_discipline: preferences.primaire_discipline,
-          bell_weight_kg: String(prBijPrimaireDiscipline.bell_weight_kg),
-        })
-        fetch(`/api/specialists/kettlebell/beat-my-class?${params}`)
-          .then(res => res.json())
-          .then(d => { if (!d.error) setClassificatie(d.resultaat) })
+      // Classification Progress-overzicht: voor ELKE discipline waar een
+      // echte, gelogde PR voor bestaat (niet alleen de primaire discipline)
+      // — zo ontstaat een multi-discipline voortgangsoverzicht zonder een
+      // aparte, bijna-dubbele pagina naast dit passport te bouwen. Alleen
+      // mogelijk als het profiel (geslacht/lichaamsgewicht/blok) compleet is.
+      if (preferences.sex && preferences.bodyweight_class && preferences.ranking_block_voorkeur && recordsData) {
+        const resultaten = await Promise.all(
+          recordsData.personal_best_training
+            .filter(t => DISCIPLINE_NAAR_RANKING_KEY[t.discipline])
+            .map(async (t) => {
+              const params = new URLSearchParams({
+                ranking_discipline: DISCIPLINE_NAAR_RANKING_KEY[t.discipline],
+                bodyweight_class: preferences.bodyweight_class!,
+                ranking_block: preferences.ranking_block_voorkeur!,
+                sex: preferences.sex!,
+                kettlebell_discipline: t.discipline,
+                bell_weight_kg: String(t.bell_weight_kg),
+              })
+              const res = await fetch(`/api/specialists/kettlebell/beat-my-class?${params}`)
+              const d = await res.json()
+              if (d.error || d.resultaat?.status !== 'promotion_tracked') return null
+              return { discipline: t.discipline, ...d.resultaat } as ClassificatieSnapshot
+            })
+        )
+        setClassificaties(resultaten.filter((x): x is ClassificatieSnapshot => x !== null))
       }
     }).finally(() => setLaden(false))
   }, [])
@@ -120,23 +137,39 @@ export default function AthletePassportPage() {
             </Card>
 
             <Card className="p-5">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Official Data — WKSF-classificatie</p>
-              {!profielCompleet && <p className="text-sm text-slate-400">Profiel nog niet compleet genoeg voor een snapshot (geslacht, lichaamsgewichtcategorie en rankingblok ontbreken).</p>}
-              {profielCompleet && !classificatie && <p className="text-sm text-slate-400">Nog geen PR gelogd voor je primaire discipline — log een sessie om een snapshot te krijgen.</p>}
-              {profielCompleet && classificatie && classificatie.status === 'classified_provisional' && (
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Official Data — WKSF-classificatie per discipline</p>
+              {!profielCompleet && <p className="text-sm text-slate-400 mt-2">Profiel nog niet compleet genoeg voor een overzicht (geslacht, lichaamsgewichtcategorie en rankingblok ontbreken).</p>}
+              {profielCompleet && classificaties.length === 0 && <p className="text-sm text-slate-400 mt-2">Nog geen PR gelogd voor een discipline met een bekende WKSF-rankingtabel.</p>}
+              {profielCompleet && classificaties.length > 0 && (
                 <>
-                  <div className="grid grid-cols-2 gap-4 mt-2">
-                    <div>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Huidige klasse</p>
-                      <p className="text-lg font-bold text-white">{classificatie.current_class || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Volgende</p>
-                      <p className="text-lg font-bold text-white">{classificatie.next_class || '—'}</p>
-                    </div>
+                  <div className="flex flex-col gap-4 mt-2">
+                    {classificaties.map(c => (
+                      <div key={c.discipline} className="border-b border-coach-border last:border-0 pb-3 last:pb-0">
+                        <p className="text-sm font-semibold text-white mb-2">{DISCIPLINE_LABEL[c.discipline] || c.discipline}</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Huidig</p>
+                            <p className="text-sm font-bold text-white">{c.current_class || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Volgende</p>
+                            <p className="text-sm font-bold text-white">{c.next_class || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Gap</p>
+                            <p className="text-sm font-bold text-white">{c.gap != null ? `${c.gap} reps` : '—'}</p>
+                          </div>
+                        </div>
+                        {c.progress_pct != null && (
+                          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden mt-2">
+                            <div className="h-full bg-primary-500" style={{ width: `${c.progress_pct}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-xs text-amber-300 bg-amber-500/10 rounded-lg p-3 mt-3">
-                    Voorlopig — bell-weight-mapping (strongly_indicated) nog niet officieel door WKSF bevestigd. Gebaseerd op je eigen PR en het rankingblok dat je zelf koos in je profiel.
+                  <p className="text-xs text-amber-300 bg-amber-500/10 rounded-lg p-3 mt-4">
+                    Voorlopig — bell-weight-mapping (strongly_indicated) nog niet officieel door WKSF bevestigd. Gebaseerd op je eigen PR's en het rankingblok dat je zelf koos in je profiel.
                   </p>
                 </>
               )}
