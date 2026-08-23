@@ -5804,3 +5804,45 @@ verwerkt is. Daarna IUKL als aparte, niet-samengevoegde regelset.
 ### Enige blokkerende open punt (ongewijzigd)
 Het officiële WKSF Rules English 2023-2027-document (PDF/tekst) is nog
 niet aangeleverd.
+
+## 📖 CHECKPOINT — WKSF Rules English 2023-2027 verwerkt (v2.4.351)
+
+**Status: officiële bron geverifieerd en deels verwerkt. Classification
+Engine nog NIET gevuld — dat vereist een apart, nog niet aangeleverd
+WKSF-rankingdocument (zie hieronder).**
+
+### Wat is gebeurd
+De gebruiker leverde de officiële WKSF Rules English 2023-2027-PDF aan
+(ook al eerder zelf publiek gevonden op wksf.site). Bron gecontroleerd
+tegen de live WKSF-site via websearch — canonieke URL bevestigd:
+`https://wksf.site/wp-content/uploads/2025/02/WKSF-Rules-English-2023-2027-UPDATE.pdf`.
+Vastgelegd in `docs/sources/wksf-rules-2023-2027.md` (verwijzing, geen
+kopie van het auteursrechtelijk beschermde PDF-bestand in de repo).
+
+`supabase/kettlebell_wksf_rules_2023_2027_import.sql` verwerkt:
+- `kettlebell_rulebooks`: status `pending_source` → `active`
+- `kettlebell_rulebook_disciplines`: Jerk/Long Cycle/Snatch/Biathlon
+  (10-minutenvorm) + Relay Race, elk met sectieverwijzing
+- `kettlebell_categories`: 18 leeftijds-/niveaucategorieën (Senior/
+  Master/Junior U22/Young U18/Children U15/Disable/Students) met
+  officieel voorgeschreven kettlebellgewicht (nieuwe kolom
+  `official_bell_weights_kg` — eligibility, GEEN classificatienorm)
+- `kettlebell_judging_rules`: DO NOT COUNT/STOP-regels per discipline,
+  uitrusting/kledingregels
+
+### Belangrijke, expliciete beperking
+Dit brondocument bevat de wedstrijd**procedure**, niet de officiële
+classificatie-/ranktabellen (Rank III/II/I, CMS, MS, MSIC — vereiste reps
+per discipline/gewicht/lichaamsgewichtklasse). Het document verwijst zelf
+(§13.2) naar een apart records/ranking-regelsdocument. De publieke WKSF
+ranking-pagina (`wksf.site/rankings/`) bevestigt dat dit apart bestaat,
+maar blokkeert geautomatiseerde toegang (robots.txt) — vereist
+handmatige aanlevering, net als het hoofddocument.
+
+**`kettlebell_classifications` blijft daarom leeg.** Promotion Engine en
+Classification Engine kunnen dus nog niet gebouwd worden — geen enkele
+reps-norm is aangenomen of geschat.
+
+### Enige blokkerende open punt
+Het officiële WKSF-rankingdocument (Rank/CMS/MS/MSIC-tabellen per
+discipline/gewicht/lichaamsgewichtklasse) is nog niet aangeleverd.
