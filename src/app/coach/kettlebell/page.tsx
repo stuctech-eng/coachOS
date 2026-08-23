@@ -58,6 +58,14 @@ interface LimiterResultaat {
   sessions_required?: number
 }
 
+interface MovementEconomyResultaat {
+  status: 'signal_indicated' | 'insufficient_data'
+  signal_type?: string
+  trend?: string
+  current_ratio?: number
+  reason: string
+}
+
 function formatDatum(iso: string): string {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
 }
@@ -68,6 +76,7 @@ export default function KettlebellPage() {
   const [analyse, setAnalyse] = useState<AnalyseResponse['resultaat'] | null>(null)
   const [competitionBest, setCompetitionBest] = useState<CompetitionBest[]>([])
   const [limiter, setLimiter] = useState<LimiterResultaat | null>(null)
+  const [movementEconomy, setMovementEconomy] = useState<MovementEconomyResultaat | null>(null)
   const [fout, setFout] = useState<string | null>(null)
 
   useEffect(() => {
@@ -82,14 +91,17 @@ export default function KettlebellPage() {
         if (!analyseData.error) setAnalyse(analyseData.resultaat)
         if (!recordsData.error) setCompetitionBest(recordsData.resultaat?.personal_best_competition || [])
 
-        // MVP3 — Limiter Engine: gebaseerd op de meest recente sessie's
-        // discipline+bell weight. Geeft eerlijk insufficient_data terug
-        // zolang er te weinig sessies voor die combinatie zijn.
+        // MVP3 — Limiter Engine + Movement Economy: beide gebaseerd op de
+        // meest recente sessie's discipline+bell weight. Geven eerlijk
+        // insufficient_data terug zolang er te weinig data is.
         const meestRecent = (sessiesData.sessies || [])[0]
         if (meestRecent) {
           fetch(`/api/specialists/kettlebell/limiter?discipline=${meestRecent.discipline}&bell_weight_kg=${meestRecent.bell_weight_kg}`)
             .then(r => r.json())
             .then(d => { if (!d.error) setLimiter(d.resultaat) })
+          fetch(`/api/specialists/kettlebell/movement-economy?discipline=${meestRecent.discipline}&bell_weight_kg=${meestRecent.bell_weight_kg}`)
+            .then(r => r.json())
+            .then(d => { if (!d.error) setMovementEconomy(d.resultaat) })
         }
       })
       .catch(() => setFout('Kon Kettlebell-data niet ophalen'))
@@ -124,6 +136,15 @@ export default function KettlebellPage() {
           <Card className="p-4 flex items-center justify-center gap-2 bg-primary-600 border-primary-500">
             <Plus size={18} className="text-white" />
             <span className="text-sm font-semibold text-white">Sessie loggen</span>
+          </Card>
+        </Link>
+
+        <Link href="/coach/kettlebell/training-genereren">
+          <Card className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-sm font-semibold text-white block">Training genereren</span>
+              <span className="text-xs text-slate-500">Laat de Trainer AI een sessie samenstellen</span>
+            </div>
           </Card>
         </Link>
 
@@ -220,6 +241,21 @@ export default function KettlebellPage() {
               <>
                 <p className="text-sm font-semibold text-white mb-1">{limiter.limiter}</p>
                 <p className="text-xs text-slate-500">{limiter.reason}</p>
+              </>
+            )}
+          </Card>
+        )}
+
+        {!laden && movementEconomy && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Movement Economy (MVP3)</p>
+            {movementEconomy.status === 'insufficient_data' && (
+              <p className="text-sm text-slate-400">{movementEconomy.reason}</p>
+            )}
+            {movementEconomy.status === 'signal_indicated' && (
+              <>
+                <p className="text-sm font-semibold text-white mb-1">Trend: {movementEconomy.trend}</p>
+                <p className="text-xs text-slate-500">{movementEconomy.reason}</p>
               </>
             )}
           </Card>

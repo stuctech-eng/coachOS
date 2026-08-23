@@ -6563,3 +6563,29 @@ Pas daarna, indien gewenst:
 TypeScript-bestanden (12 lib/engines, 15 API-routes, 6 UI-pagina's), 7
 SQL-migraties, 1 losstaand oefeningenbestand (`kettlebell-exercises.ts`,
 ongewijzigd, hoort bij Kettlebell Fitness/Trainer AI).
+
+## 🔘 CHECKPOINT — "Training genereren"-pagina: de ontbrekende knop (v2.4.367)
+
+**Status: MVP2.5 is nu daadwerkelijk testbaar vanuit de app zelf. Geen
+SQL, geen contractwijziging.**
+
+### Wat er ontbrak
+De route (`training-plan/workout`, v2.4.353) en de Pace Coach-koppeling
+(v2.4.363) bestonden al, maar er was **geen enkele knop in de app** om
+ze te proberen — alleen via een directe API-aanroep bruikbaar. Voor een
+niet-technische gebruiker onbruikbaar. Gecorrigeerd.
+
+### Wat is gebouwd
+`coach/kettlebell/training-genereren/page.tsx` — discipline/bell weight/
+duur kiezen, op "Maak training" tikken, resultaat direct leesbaar:
+warming-up/hoofdblok/cooling-down met duur, instructie en targets (RPM/
+RPE waar van toepassing), plus coach-notitie. Toont ook expliciet
+wanneer CoachPolicy rust adviseert — geen silent failure, duidelijke
+uitleg waarom.
+
+Dashboard-link toegevoegd, direct bovenaan naast "Sessie loggen" — dit
+is nu het makkelijkst vindbare startpunt.
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.
+Contract-hash ongewijzigd.
