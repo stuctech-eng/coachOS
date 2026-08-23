@@ -99,8 +99,11 @@ export default function KettlebellPage() {
         </Link>
 
         <Link href="/coach/kettlebell/beat-my-class">
-          <Card className="p-4 flex items-center justify-center gap-2">
-            <span className="text-sm font-semibold text-white">Beat My Class</span>
+          <Card className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-sm font-semibold text-white block">Beat My Class</span>
+              <span className="text-xs text-slate-500">WKSF-classificatie &amp; promotiestatus</span>
+            </div>
           </Card>
         </Link>
 

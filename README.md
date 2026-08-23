@@ -5999,3 +5999,69 @@ De officiële WKSF-bevestiging van wat rankingblok A en B qua
 kettlebellgewicht betekenen. Zodra die er is: één `UPDATE`-migratie
 (`source_status = 'verified'`, `bell_weight_kg` ingevuld) — geen
 herimport nodig.
+
+## 🧩 CHECKPOINT — MVP2 completion-ronde (v2.4.355)
+
+**Master-opdracht met 13 fases uitgevoerd, bewust getrieerd — sommige
+fases opgeleverd, andere expliciet uitgesteld met reden (geen
+placeholder-UI tegen lege tabellen).**
+
+### FASE 1 — Audit
+Bevestigd: v2.4.354 was het actuele checkpoint. Belangrijkste vondst:
+`today-engine.ts` heeft nog geen kettlebell-referentie (bewuste, nog
+geldige keuze — geen periodisatie-engine), en de Workout Adapter
+(MVP2.5) bleek al gebouwd (v2.4.353), verder dan de opdracht verwachtte.
+
+### FASE 2 — Disciplines
+Officieel WKSF-presentatiedocument gevonden (via zoekresultaat-snippet,
+PDF zelf niet volledig ophaalbaar) dat bevestigt: de 30'/60'-
+marathonformaten zijn specifiek **One Arm Jerk**/**One Arm Long Cycle**,
+en 10'-Long Cycle is specifiek **Two Arm Long Cycle (TALC)**. Vastgelegd
+als `official_alias` op de bestaande `kettlebell_rulebook_disciplines`-
+rijen — **geen rename van discipline-sleutels**, dat zou de 700 al
+geïmporteerde classificatierijen breken voor een cosmetische wijziging.
+
+### FASE 3 — Competition-model
+`kettlebell_competition_entries` uitgebreid met `sex`, `bodyweight_class`,
+`bell_weight_kg`, `ranking_block`, `reps`, `source_reference` —
+wedstrijdresultaat nu volledig los vastlegbaar van de classificatienorm.
+`kettlebell_competitions.discipline` toegevoegd (optioneel).
+
+### FASE 6 — Classification-koppeling op dashboard
+Beat My Class-kaart op het dashboard verduidelijkt (subtekst
+"WKSF-classificatie & promotiestatus"). Een volledige multi-discipline
+progressietracker (zoals de opdracht schetst) blijft toekomstig werk —
+zou nu grotendeels lege state tonen.
+
+### Capability registry
+`supportsEvents`/`supportsBenchmarks`: `false` → `true` — Beat My Class
+en Competition Entries bestaan inmiddels daadwerkelijk. Geverifieerd:
+geen enkele plek in de codebase leest deze vlaggen nog, dus geen
+gedragswijziging, puur correcte metadata.
+
+### Bewust uitgesteld (met reden)
+- **FASE 4 (Records/PR Engine — Competition/Season Best)** —
+  `kettlebell_competition_entries` is nog leeg (geen wedstrijd ooit
+  ingevoerd). Logica bouwen tegen een lege tabel is placeholder-UI.
+- **FASE 5 (Athlete Passport-uitbreiding)** — zelfde reden, hangt af van
+  FASE 4-data.
+- **FASE 9 (Dashboard 10 secties)** — de meeste secties (Competition
+  Results, Training Load, Technique-trend) vereisen data die nu niet
+  bestaat.
+- **FASE 7-statusnamen** (`eligible`/`not_eligible`/`insufficient_data`)
+  — de Promotion Engine dekt deze betekenissen al af
+  (`no_pr`≈insufficient_data, `unavailable`≈not_eligible), maar gebruikt
+  nog de oudere naamgeving; hernoemen raakt UI+route+engine tegelijk en
+  is bewust niet meegenomen om deze ronde behapbaar te houden.
+
+### FASE 10/11 — Trainer AI-contract
+Ongewijzigd bevestigd. Workout Adapter (MVP2.5) was al klaar (v2.4.353).
+
+### FASE 12 — Quality gate
+Geen `npm run build`/`tsc` (geen dependencies in deze sandbox). Wel:
+balans-check accolades/haakjes/quotes op elk gewijzigd bestand (allemaal
+gelijk na één fix), en `grep`-regressiecheck: 0 kettlebell-referenties in
+Cycling/Running/Rowing/`today-engine.ts`/Universal Workout Builder.
+
+### Enige blokkerende open punt (ongewijzigd)
+De officiële WKSF-bevestiging van rankingblok A/B → kettlebellgewicht.

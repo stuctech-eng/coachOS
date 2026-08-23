@@ -56,14 +56,19 @@ export const CAPABILITY_REGISTRY: Record<string, SpecialistCapabilities> = {
   // hasCoachLayer bewust false — er is nog geen AI-coachlaag voor
   // kettlebell (die komt pas met de Federatie Engine in MVP2, zodat de
   // coach-uitleg zich kan baseren op een echte regelset i.p.v. niets).
+  // v2.4.355: supportsBenchmarks/supportsEvents op true gezet — Beat My
+  // Class (classificatievergelijking) en kettlebell_competition_entries
+  // (wedstrijddeelname) bestaan inmiddels daadwerkelijk (v2.4.352/354).
+  // supportsPeriodization/supportsPredictions blijven false: er is geen
+  // Kettlebell Training Plan Engine en geen MVP3-voorspellingslaag.
   kettlebell: {
     hasDataLayer: true,
     hasAnalysisEngine: true,
     hasCoachLayer: false,
     supportsPeriodization: false,
-    supportsEvents: false,
+    supportsEvents: true,
     supportsPredictions: false,
-    supportsBenchmarks: false,
+    supportsBenchmarks: true,
   },
 }
 

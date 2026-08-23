@@ -30,6 +30,14 @@ interface NieuweEntryBody {
   discipline: string
   target_class?: string
   target_reps?: number
+  // FASE 3-uitbreiding (v2.4.355): het daadwerkelijke resultaat, los
+  // van de classificatienorm zelf.
+  sex?: 'male' | 'female'
+  bodyweight_class?: string
+  bell_weight_kg?: number
+  ranking_block?: 'A' | 'B'
+  reps?: number
+  source_reference?: string
 }
 
 export async function GET() {
@@ -72,6 +80,12 @@ export async function POST(req: NextRequest) {
         discipline: body.discipline,
         target_class: body.target_class ?? null,
         target_reps: body.target_reps ?? null,
+        sex: body.sex ?? null,
+        bodyweight_class: body.bodyweight_class ?? null,
+        bell_weight_kg: body.bell_weight_kg ?? null,
+        ranking_block: body.ranking_block ?? null,
+        reps: body.reps ?? null,
+        source_reference: body.source_reference ?? null,
         status: 'planned',
       })
       .select()
