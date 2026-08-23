@@ -6106,3 +6106,42 @@ gewichten, niet twee — voorkomt een definitieve conclusie).
 Een primaire WKSF-bron die expliciet stelt welk kettlebellgewicht bij
 welk blok hoort. Zonder die bron blijft `strongly_indicated` het
 maximaal haalbare — nooit `verified`.
+
+## 🥋 CHECKPOINT — Disciplines completeren: One Arm Long Cycle loggable (v2.4.357)
+
+**Status: het enige echte gat gevonden en gedicht — de rest van TALC/
+OALC/One Arm Jerk/One Arm Snatch bleek al correct verwerkt in v2.4.355.**
+
+### Wat ontbrak, écht
+`wksf.site/classic-10/` (rechtstreeks opgehaald, primair, niet
+geblokkeerd) bevestigt expliciet: **One Arm Long Cycle is een eigen
+discipline binnen Classic 10'**, apart van (Two Arm) Long Cycle. Die
+discipline stond al correct in de classificatiedata
+(`one_arm_long_cycle_10`, sinds v2.4.354), en de Beat My Class
+ranking-discipline-lijst had 'm ook al. **Maar** `kettlebell_gs_sessions`
+(sessieregistratie, MVP1) kende alleen jerk/snatch/long_cycle/biathlon —
+een atleet die specifiek voor One Arm Long Cycle traint kon dat dus niet
+apart loggen, en Beat My Class kon er daardoor nooit een PR voor vinden.
+
+### Wat al klopte (geen wijziging nodig)
+- TALC (Two Arm Long Cycle, 10') = al `long_cycle_10` + `official_alias`
+- One Arm Jerk (30'/60') = al `jerk_30`/`jerk_60` + `official_alias`
+- One Arm Snatch (OAS) = al `snatch_10`/`snatch_12`, Snatch is per Rules
+  §1.4 sowieso altijd eenarmig
+- Relay Race: bewust nog steeds niet individueel loggable
+  (teamdiscipline)
+
+### Database (`supabase/kettlebell_discipline_completion.sql`)
+`kettlebell_gs_sessions.discipline`-check uitgebreid met
+`'one_arm_long_cycle'` (5 waarden nu i.p.v. 4).
+
+### Code
+- `KettlebellDiscipline`-type uitgebreid (`kettlebell-data.ts`)
+- `kettlebell-promotion.ts` gebruikte nog een **losse, verouderde
+  hardcoded union** i.p.v. het echte type te importeren — gecorrigeerd,
+  nu één bron van waarheid
+- Discipline-kiezers bijgewerkt: sessieformulier, settings
+  (primaire discipline), Beat My Class (PR-opzoeklijst)
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.

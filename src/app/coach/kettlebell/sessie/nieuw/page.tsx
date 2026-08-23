@@ -16,6 +16,7 @@ const DISCIPLINES = [
   { waarde: 'snatch', label: 'Snatch' },
   { waarde: 'long_cycle', label: 'Long Cycle' },
   { waarde: 'biathlon', label: 'Biathlon' },
+  { waarde: 'one_arm_long_cycle', label: 'One Arm Long Cycle' },
 ] as const
 
 export default function NieuweKettlebellSessiePage() {

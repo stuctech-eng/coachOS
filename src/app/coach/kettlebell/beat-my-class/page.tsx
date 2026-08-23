@@ -28,6 +28,7 @@ const KETTLEBELL_DISCIPLINES = [
   { waarde: 'jerk', label: 'Jerk' },
   { waarde: 'snatch', label: 'Snatch' },
   { waarde: 'biathlon', label: 'Biathlon' },
+  { waarde: 'one_arm_long_cycle', label: 'One Arm Long Cycle' },
 ]
 
 interface PromotieResultaat {

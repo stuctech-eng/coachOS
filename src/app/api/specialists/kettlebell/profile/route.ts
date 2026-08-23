@@ -32,7 +32,7 @@ type KettlebellModus = 'fitness' | 'sport'
 
 interface KettlebellPreferences {
   modus?: KettlebellModus
-  primaire_discipline?: 'jerk' | 'snatch' | 'long_cycle' | 'biathlon'
+  primaire_discipline?: 'jerk' | 'snatch' | 'long_cycle' | 'biathlon' | 'one_arm_long_cycle'
   federatie_voorkeur?: 'wksf' | 'iukl' | 'gsu' | 'geen'
 }
 

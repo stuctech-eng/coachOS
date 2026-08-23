@@ -1,5 +1,5 @@
 import { classificeerAtleet, type RankingBlock } from './kettlebell-classification'
-import { haalKettlebellData } from './kettlebell-data'
+import { haalKettlebellData, type KettlebellDiscipline } from './kettlebell-data'
 import { analyseerKettlebellData, type EngineResult } from './kettlebell-analysis'
 
 // ── Kettlebell Promotion Engine — v2 ────────────────────────────────────
@@ -27,7 +27,7 @@ export async function bepaalPromotieStatus(
   bodyweightClass: string,
   rankingBlock: RankingBlock,
   sex: 'male' | 'female',
-  kettlebellDiscipline: 'jerk' | 'snatch' | 'long_cycle' | 'biathlon',
+  kettlebellDiscipline: KettlebellDiscipline,
   bellWeightKg: number,
 ): Promise<EngineResult<PromotionOutcome>> {
   const data = await haalKettlebellData(userId, 365)

@@ -12,7 +12,7 @@ import { createAdminClient } from '@/lib/supabase'
 // Zie docs/kettlebell-specialist-architectuurvoorstel-v1.md §1.5/§3 voor de
 // onderbouwing van deze keuze.
 
-export type KettlebellDiscipline = 'jerk' | 'snatch' | 'long_cycle' | 'biathlon'
+export type KettlebellDiscipline = 'jerk' | 'snatch' | 'long_cycle' | 'biathlon' | 'one_arm_long_cycle'
 
 export interface KettlebellGsSessie {
   id: string
