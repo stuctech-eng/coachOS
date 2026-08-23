@@ -1,5 +1,20 @@
 # CoachOS — Changelog
 
+## v2.4.366 — Formeel checkpoint: MVP2/MVP2.5/MVP3-status
+**Geen codewijziging. Volledige verificatie + statusoverzicht na afronding van de MVP3-uitbreidingsfase.**
+
+### Gecontroleerd (vers, niet uit geheugen)
+- `kettlebell-training-request.ts`: md5 ongewijzigd sinds v2.4.349
+- Regressie Cycling/Running/Rowing/Today Engine/Universal Workout Builder: 0 treffers
+- Block A/B: strongly_indicated (700) + source_anomaly (20) = 720, bell_weight_kg overal NULL
+- Volledige bestandsinventaris: 24 TS-bestanden, 7 SQL-migraties
+
+### Besluit
+MVP3 stopt hier (Limiter/Pace Coach/Movement Economy/Competition Simulator gebouwd; Fatigue Signature/binnen-sessie-autoregulatie/What-if bewust niet — datamodel-gat resp. duplicatie-/speculatierisico). Volgende stap: MVP2.5 end-to-end testen, niet meer intelligence-engines.
+
+**Volledig detail:** README.md, sectie "FORMEEL CHECKPOINT — Kettlebell Specialist v2.4.365, MVP2/MVP2.5/MVP3".
+
+
 ## v2.4.351 — WKSF Rules English 2023-2027 verwerkt (rulebook actief, disciplines, categorieën, judging)
 **Officiële bron geverifieerd tegen live WKSF-site. Classification Engine nog NIET gevuld — apart WKSF-rankingdocument nog nodig.**
 
