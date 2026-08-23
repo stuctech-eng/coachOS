@@ -6457,3 +6457,109 @@ Cycling/Running/Rowing/Today Engine: 0. Contract-hash ongewijzigd.
 | Fatigue Signature | ❌ datamodel-gat, gedocumenteerd niet gebouwd |
 | Autoregulation (binnen sessie) | ❌ zelfde gat als Fatigue Signature |
 | What-if Engine | ⏳ nog niet beoordeeld op haalbaarheid |
+
+## 📋 FORMEEL CHECKPOINT — Kettlebell Specialist v2.4.365, MVP2/MVP2.5/MVP3
+
+**Dit checkpoint markeert het einde van de MVP3-uitbreidingsfase.
+Volgende stap: MVP2.5 daadwerkelijk afronden (Trainer AI-brug), niet nog
+meer losse intelligence-engines.**
+
+### 1. MVP2-status — WKSF Kettlebell Sport
+| Onderdeel | Status |
+|---|---|
+| WKSF Rules 2023-2027 | ✅ actief, bronverwezen (`docs/sources/wksf-rules-2023-2027.md`) |
+| Disciplines (incl. official_alias TALC/OAJ/OALC/OAS) | ✅ |
+| Categorieën, officiële bell weights (uit Rules) | ✅ |
+| Judging-regels (DO NOT COUNT/STOP/equipment/kleding) | ✅ |
+| 720 classificatierijen (MSEC/MS/CMS/Rank1-3) | ✅ |
+| Classification Engine | ✅ — nooit definitief zonder bevestigde bell-weight-mapping |
+| Promotion Engine | ✅ — permanent `pending_source_verification` |
+| Beat My Class | ✅ |
+| Competition-model (aanmaken/deelname/resultaat) | ✅ |
+| Records Engine (Training/Competition/Season Best) | ✅ |
+| Athlete Passport + multi-discipline classificatie-overzicht | ✅ |
+| `one_arm_long_cycle` als loggable trainingsdiscipline | ✅ |
+
+### 2. MVP2.5-status — Trainer AI-brug
+| Onderdeel | Status |
+|---|---|
+| `KettlebellTrainingRequest`-contract | ✅ ongewijzigd sinds v2.4.349 (md5 geverifieerd) |
+| `kettlebell-workout-adapter.ts` | ✅ (v2.4.353) |
+| `training-plan/workout/route.ts` (on-demand, geen periodisatie) | ✅ |
+| CoachPolicy REST-check in de workout-route | ✅ |
+| Pace Coach vult `recommended_rpm` automatisch aan | ✅ (v2.4.363) |
+| Automatische, dagelijkse Today Engine-integratie | ❌ bewust niet — geen Kettlebell periodisatie-engine |
+| **Contract daadwerkelijk end-to-end getest door de gebruiker** | ⏳ **nog niet — dit is de aanbevolen volgende stap** |
+
+### 3. MVP3-status — Intelligence
+| Onderdeel | Status |
+|---|---|
+| Limiter Engine | ✅ (v2.4.362), min. 5 sessies |
+| Pace Coach | ✅ (v2.4.363), min. 3 sessies |
+| Movement Economy | ✅ (v2.4.364), min. 4 sessies |
+| Competition Simulator | ✅ (v2.4.365) |
+| Readiness | ✅ bestond al (CoachPolicy, cross-sport) |
+| Autoregulation (tussen sessies) | ✅ bestond al (Pace Coach) |
+| Fatigue Signature | ❌ datamodel-gat (zie punt 6) |
+| Autoregulation (binnen sessie) | ❌ zelfde gat |
+| What-if Engine | ❌ bewust niet gebouwd — zou dupliceren of speculeren |
+
+### 4. Openstaande WKSF-bronpunten
+- Officiële coëfficiëntformule/-tabel — niet toegankelijk gevonden
+- Officiële classificatie-/rankingdocumenten voor Relay Race — niet onderzocht
+- Officiële federatie-/wereldrecords — niet toegankelijk gevonden
+- Penalties, Auxiliary Equipment als losse documenten — niet gevonden
+
+### 5. Block A/B-status
+`source_status = 'strongly_indicated'` op 700 rijen, `'source_anomaly'`
+op 20 rijen. `bell_weight_kg` = `NULL` op **alle 720 rijen** — geverifieerd
+in deze sessie (zie punt 7). Werkhypothese (A=zwaarste, B=lichtste
+gewicht) sterk onderbouwd via 5 punten (`docs/sources/wksf-block-ab-investigation.md`),
+NIET officieel bevestigd. Enige resterende harde blokkade voor een
+volledig definitieve Classification/Promotion-uitspraak.
+
+### 6. Bekende datamodel-gaten (niet volume-gaten)
+- **Fatigue Signature**: `kettlebell_gs_sessions` heeft alleen
+  sessietotalen, geen per-minuut-tijdreeks. Toekomstig schema
+  gedocumenteerd (`docs/sources/kettlebell-fatigue-signature-toekomstig-schema.md`),
+  niet gebouwd.
+- **Binnen-sessie autoregulatie**: zelfde gat.
+
+### 7. Regressietest (vers uitgevoerd, deze sessie)
+```
+Cycling:                0 kettlebell-referenties
+Running:                0
+Rowing:                 0
+Today Engine:           0
+Universal Workout Builder: 0
+```
+
+### 8. KettlebellTrainingRequest-contract-integriteit
+```
+md5: 50eff5f867dff70480083b7307dd0409  src/lib/specialists/kettlebell-training-request.ts
+```
+Ongewijzigd sinds eerste levering (v2.4.349) — geverifieerd via
+hash-vergelijking, niet alleen "niet aangeraakt volgens mij".
+
+### 9. Cycling/Running/Rowing niet geraakt
+Bevestigd via punt 7 — 0 treffers in elk van de drie. Geen enkel bestand
+van deze drie specialisten is in deze hele Kettlebell-uitbreiding
+gewijzigd.
+
+### 10. Roadmap na MVP3
+**Aanbevolen volgende stap (in lijn met het advies van de gebruiker):**
+MVP2.5 daadwerkelijk end-to-end afronden — het contract en de
+workout-route bestaan, maar zijn nog niet in de praktijk getest met een
+echte `KettlebellTrainingRequest` die een bruikbare workout oplevert.
+Pas daarna, indien gewenst:
+- Officiële WKSF-bronnen verder aanvullen (coëfficiënten, Relay Race
+  ranking, records) zodra toegankelijk
+- Block A/B definitief oplossen zodra een primaire bron zich aandient
+- Fatigue Signature/binnen-sessie-autoregulatie: alleen als het
+  datamodel voor tijdgebaseerde sessie-segmenten er komt (bewuste,
+  losse toekomstige beslissing — niet nu)
+
+**Volledige bestandsinventaris (deze sessie geverifieerd):** 24
+TypeScript-bestanden (12 lib/engines, 15 API-routes, 6 UI-pagina's), 7
+SQL-migraties, 1 losstaand oefeningenbestand (`kettlebell-exercises.ts`,
+ongewijzigd, hoort bij Kettlebell Fitness/Trainer AI).
