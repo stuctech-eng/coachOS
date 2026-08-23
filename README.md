@@ -1619,44 +1619,6 @@ bewijs over de huidige status.
 ### Eén gewijzigd bestand
 `activities/[id]/page.tsx`.
 
-## v2.4.365 — Intervals.icu: activities-sync-trigger getest, WERKT NIET met API-sleutel
-**Gemeld: "pull werkt niet, icu moet pushen, icu webversie moet actief
-zijn, anders krijgt de icu app ook de activiteit niet."**
-
-### Bevinding, bevestigd via een Intervals.icu-forumpost (nov 2025)
-Activiteiten van externe bronnen (Concept2, maar ook Oura/Coros bij
-andere gebruikers) worden pas beschikbaar ná een bezoek aan de
-Intervals.icu-website zelf — dat bezoek triggert intern
-`POST /api/athlete/{id}/activities-sync` (geen `/api/v1/`-voorvoegsel,
-dus geen onderdeel van de publieke, gedocumenteerde API).
-
-### Test uitgevoerd, NEGATIEF resultaat
-`POST https://intervals.icu/api/athlete/{id}/activities-sync` met onze
-bestaande, publieke API-sleutel → **`401 Auth failed`**. Dit endpoint
-accepteert de API-sleutel niet — vergt vermoedelijk een echte,
-ingelogde browsersessie (cookie), niet na te bootsen met de sleutel
-die we hebben.
-
-### Conclusie — GEEN verdere actie hierop gepland
-CoachOS kan Intervals.icu's eigen Concept2-sync niet forceren. De
-gebruiker moet zelf af en toe de Intervals.icu-website (of -app)
-openen om nieuwe Concept2-activiteiten daadwerkelijk beschikbaar te
-maken — pas dáárna kan CoachOS' eigen, wél werkende import (Fase 15)
-ze ophalen. Dit is een bevestigde, externe beperking van Intervals.icu
-zelf, niet op te lossen vanuit CoachOS zonder een veel grotere
-investering (een volledige OAuth-inlogflow bouwen voor Intervals.icu
-zelf, in plaats van de huidige, simpelere API-sleutel — onzeker of
-dat dit specifieke endpoint zelfs zou vrijgeven, dus niet
-vanzelfsprekend de moeite waard).
-
-### Eén bestand (test, geen productiewijziging)
-`api/debug/intervals-icu-sync-trigger-test/route.ts` — blijft bestaan
-als bewijs/documentatie van dit uitgevoerde experiment.
-
-**Praktisch advies voor de gebruiker:** open af en toe de
-Intervals.icu-app/website na het roeien, vóórdat je op CoachOS'
-import-knop drukt of wacht op de automatische achtergrondcheck.
-
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
@@ -6404,3 +6366,94 @@ Workout Builder. Bevestigd: het `KettlebellTrainingRequest`-contract zelf
 Fatigue Signature (datamodel-gat, zie boven), Movement Economy (haalbaar
 met bestaande hr_avg/rpm_avg-velden, nog niet gebouwd), Competition
 Simulator, Readiness, Autoregulation, What-if.
+
+## ⚡ CHECKPOINT — Movement Economy Engine (v2.4.364)
+
+**Status: derde MVP3-onderdeel. GEEN nieuw contractveld toegevoegd —
+expliciet onderzocht en beargumenteerd afgezien.**
+
+### Wat is gebouwd
+`lib/specialists/kettlebell-movement-economy.ts` — twee ONAFHANKELIJKE
+output-to-effort-signalen, nooit samengevoegd tot één score:
+1. **hr_efficiency** (`rpm_avg / hr_avg`, voorkeur — objectieve meting)
+2. **rpe_efficiency** (`reps / rpe`, fallback — zelfrapportage, expliciet
+   als zwakker signaal benoemd)
+
+Trend (verbeterend/stabiel/verslechterend) via eerste-helft-vs-tweede-
+helft van de sessiereeks, zelfde methode als Pace Coach. Minimaal 4
+sessies met de benodigde velden, anders `insufficient_data` met exacte
+reden welk veld ontbreekt. Terminologie bewust neutraal ("efficiency
+signal", "output-to-effort relationship") — geen medische/fysiologische
+claims.
+
+`api/specialists/kettlebell/movement-economy/route.ts` + dashboardkaart
+(zelfde eerlijke patroon als Limiter Engine: toont `insufficient_data`
+expliciet, geen nep-score).
+
+### Trainer AI-koppeling: onderzocht, bewust NIET doorgevoerd
+`KettlebellTrainingRequestIntelligence` heeft `limiter`/
+`fatigue_point_sec`/`recommended_rpm`. Movement Economy's trend-signaal
+past bij geen van drieën (het is een diagnostisch/motiverend signaal,
+geen trainingsbouw-parameter) — een nieuw veld toevoegen zou het
+contract onnodig laten groeien voor een concept dat er niet zuiver in
+past. **Contract-bestand niet aangeraakt** (md5 geverifieerd identiek).
+
+### Fatigue Signature — nu gedocumenteerd, niet gebouwd
+`docs/sources/kettlebell-fatigue-signature-toekomstig-schema.md` — legt
+het conceptuele toekomstige schema vast (`kettlebell_gs_session_segments`,
+per-minuut RPM/HR/reps) zonder het te implementeren. Datamodel-gat, geen
+datavolume-gat — blijft geblokkeerd totdat er een manier is om
+tijdgebaseerde data tijdens een sessie vast te leggen.
+
+### Regressiecontrole (expliciet gevraagd, elk apart gecontroleerd)
+- Cycling: 0 kettlebell-referenties
+- Running: 0
+- Rowing: 0
+- Today Engine: 0
+- Universal Workout Builder: 0
+- `kettlebell-training-request.ts`: md5-hash ongewijzigd bevestigd
+
+## 🏁 CHECKPOINT — Competition Simulator + MVP3 status (v2.4.365)
+
+**Status: vierde MVP3-onderdeel. Twee andere MVP3-onderdelen bleken al
+(deels) te bestaan — geen dubbele bouw, alleen geconstateerd en
+gerapporteerd.**
+
+### Wat is gebouwd
+`lib/specialists/kettlebell-competition-simulator.ts` — combineert Pace
+Coach (`sustainable_rpm`) met de Classification Engine tot een
+**projectie**: "bij RPM X volgehouden over Y minuten, ~Z reps, dat komt
+overeen met klasse W". Puur lineaire extrapolatie (RPM × duur), **geen**
+vermoeidheidsmodel — expliciet zo benoemd in de output-`reason`, niet
+verstopt. Geen nieuwe RPM- of classificatielogica: beide hergebruikt
+1-op-1 uit de al bestaande engines.
+
+`api/specialists/kettlebell/competition-simulator/route.ts` +
+simulatieknop op de Beat My Class-pagina, gebruikt dezelfde context
+(geslacht/lichaamsgewicht/blok) die daar al staat — wedstrijdduur wordt
+afgeleid uit de ranking-disciplinesleutel zelf (`_10`/`_12`/`_30`/`_60`),
+geen los, foutgevoelig invoerveld.
+
+### Twee MVP3-onderdelen: bestonden al, niet opnieuw gebouwd
+- **Readiness** — bestaat al cross-sport via `coach-policy.ts`
+  (CoachPolicy, al aangeroepen door de Kettlebell workout-route sinds
+  v2.4.353). Een aparte Kettlebell-Readiness-engine zou dat dupliceren.
+- **Autoregulation** — bestaat al gedeeltelijk, tussen sessies door, via
+  Pace Coach's `suggested_target_rpm` (v2.4.363). Echte **binnen-sessie**
+  autoregulatie heeft hetzelfde datamodel-gat als Fatigue Signature.
+
+### Regressiecontrole
+Cycling/Running/Rowing/Today Engine: 0. Contract-hash ongewijzigd.
+
+### MVP3 — statusoverzicht
+| Onderdeel | Status |
+|---|---|
+| Limiter Engine | ✅ (v2.4.362) |
+| Pace Coach | ✅ (v2.4.363) |
+| Movement Economy | ✅ (v2.4.364) |
+| Competition Simulator | ✅ (v2.4.365) |
+| Readiness | ✅ bestond al (CoachPolicy) |
+| Autoregulation (tussen sessies) | ✅ bestond al (Pace Coach) |
+| Fatigue Signature | ❌ datamodel-gat, gedocumenteerd niet gebouwd |
+| Autoregulation (binnen sessie) | ❌ zelfde gat als Fatigue Signature |
+| What-if Engine | ⏳ nog niet beoordeeld op haalbaarheid |

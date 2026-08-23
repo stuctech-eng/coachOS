@@ -42,6 +42,24 @@ interface PromotieResultaat {
   bell_weight_note?: string
 }
 
+interface SimulatieResultaat {
+  status: 'projected' | 'insufficient_data'
+  projected_reps?: number
+  based_on_sustainable_rpm?: number
+  projected_current_class?: string
+  projected_next_class?: string
+  projected_gap?: number
+  reason: string
+}
+
+// Duur direct uit de ranking-discipline-sleutel afgeleid (10/12/30/60) —
+// geen los invoerveld nodig, geen risico op een inconsistente combinatie.
+function duurUitDiscipline(rankingDiscipline: string): number {
+  const match = rankingDiscipline.match(/_(\d+)$/)
+  const minuten = match ? Number(match[1]) : 10
+  return minuten * 60
+}
+
 export default function BeatMyClassPage() {
   const [rankingDiscipline, setRankingDiscipline] = useState('long_cycle_10')
   const [bodyweightClass, setBodyweightClass] = useState('74')
@@ -52,6 +70,8 @@ export default function BeatMyClassPage() {
   const [laden, setLaden] = useState(false)
   const [resultaat, setResultaat] = useState<PromotieResultaat | null>(null)
   const [fout, setFout] = useState<string | null>(null)
+  const [simulatie, setSimulatie] = useState<SimulatieResultaat | null>(null)
+  const [simuleren, setSimuleren] = useState(false)
 
   const check = useCallback(() => {
     setLaden(true)
@@ -68,6 +88,19 @@ export default function BeatMyClassPage() {
   }, [rankingDiscipline, bodyweightClass, rankingBlock, sex, kettlebellDiscipline, bellWeight])
 
   useEffect(() => { check() }, [check])
+
+  function simuleer() {
+    setSimuleren(true)
+    const params = new URLSearchParams({
+      kettlebell_discipline: kettlebellDiscipline, bell_weight_kg: bellWeight,
+      duration_sec: String(duurUitDiscipline(rankingDiscipline)),
+      ranking_discipline: rankingDiscipline, sex, bodyweight_class: bodyweightClass, ranking_block: rankingBlock,
+    })
+    fetch(`/api/specialists/kettlebell/competition-simulator?${params}`)
+      .then(r => r.json())
+      .then(d => { if (!d.error) setSimulatie(d.resultaat) })
+      .finally(() => setSimuleren(false))
+  }
 
   return (
     <AppShell showNav={false}>
@@ -177,6 +210,34 @@ export default function BeatMyClassPage() {
               </div>
             )}
             <p className="text-xs text-amber-300 bg-amber-500/10 rounded-lg p-3">{resultaat.bell_weight_note}</p>
+          </Card>
+        )}
+
+        <button onClick={simuleer} disabled={simuleren}
+          className="py-3 rounded-xl text-sm font-medium bg-white/5 text-slate-300">
+          {simuleren ? 'Bezig...' : `Simuleer ${Math.round(duurUitDiscipline(rankingDiscipline) / 60)}-minuten wedstrijd (MVP3)`}
+        </button>
+
+        {simulatie?.status === 'insufficient_data' && (
+          <Card className="p-4"><p className="text-sm text-slate-400">{simulatie.reason}</p></Card>
+        )}
+        {simulatie?.status === 'projected' && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Wedstrijdsimulatie</p>
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Projectie reps</p>
+                <p className="text-lg font-bold text-white">{simulatie.projected_reps}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Op basis van RPM</p>
+                <p className="text-lg font-bold text-white">{simulatie.based_on_sustainable_rpm}</p>
+              </div>
+            </div>
+            {simulatie.projected_current_class && (
+              <p className="text-sm text-white mb-2">Projectie klasse: {simulatie.projected_current_class}{simulatie.projected_next_class ? ` → ${simulatie.projected_gap} reps van ${simulatie.projected_next_class}` : ''}</p>
+            )}
+            <p className="text-xs text-amber-300 bg-amber-500/10 rounded-lg p-3">{simulatie.reason}</p>
           </Card>
         )}
       </div>
