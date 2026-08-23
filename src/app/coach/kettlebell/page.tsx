@@ -43,6 +43,13 @@ interface AnalyseResponse {
   }
 }
 
+interface CompetitionBest {
+  discipline: string
+  reps: number
+  competition_name: string
+  behaald_op: string | null
+}
+
 function formatDatum(iso: string): string {
   return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
 }
@@ -51,17 +58,20 @@ export default function KettlebellPage() {
   const [laden, setLaden] = useState(true)
   const [sessies, setSessies] = useState<KettlebellSessie[]>([])
   const [analyse, setAnalyse] = useState<AnalyseResponse['resultaat'] | null>(null)
+  const [competitionBest, setCompetitionBest] = useState<CompetitionBest[]>([])
   const [fout, setFout] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
       fetch('/api/specialists/kettlebell/sessions?limit=10').then(r => r.json()),
       fetch('/api/specialists/kettlebell/analyse').then(r => r.json()),
+      fetch('/api/specialists/kettlebell/persoonlijke-records').then(r => r.json()),
     ])
-      .then(([sessiesData, analyseData]) => {
+      .then(([sessiesData, analyseData, recordsData]) => {
         if (sessiesData.error) setFout(sessiesData.error)
         else setSessies(sessiesData.sessies || [])
         if (!analyseData.error) setAnalyse(analyseData.resultaat)
+        if (!recordsData.error) setCompetitionBest(recordsData.resultaat?.personal_best_competition || [])
       })
       .catch(() => setFout('Kon Kettlebell-data niet ophalen'))
       .finally(() => setLaden(false))
@@ -149,6 +159,23 @@ export default function KettlebellPage() {
                     <p className="text-sm font-bold text-white">{pr.reps} reps</p>
                     {pr.rpm_avg !== null && <p className="text-xs text-slate-500">{pr.rpm_avg} RPM</p>}
                   </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {!laden && competitionBest.length > 0 && (
+          <Card className="p-5">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Competition Best</p>
+            <div className="flex flex-col gap-3">
+              {competitionBest.map(c => (
+                <div key={c.discipline} className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{c.discipline}</p>
+                    <p className="text-xs text-slate-500">{c.competition_name}</p>
+                  </div>
+                  <p className="text-sm font-bold text-white">{c.reps} reps</p>
                 </div>
               ))}
             </div>

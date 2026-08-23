@@ -6186,3 +6186,34 @@ Geen officiële WKSF-wedstrijdkalender-import (bestaat niet toegankelijk),
 geen automatische Records-koppeling (een goed wedstrijdresultaat wordt
 nu niet automatisch een "record" — dat blijft aparte, nog niet gebouwde
 functionaliteit).
+
+## 📈 CHECKPOINT — Records/PR Engine (v2.4.359)
+
+**Status: Personal Best (training), Competition Best, Season Best
+werkend. Geen federatie-/wereldrecords — die bron bestaat niet
+toegankelijk.**
+
+### Wat is gebouwd
+- `lib/specialists/kettlebell-records.ts` — Records Engine.
+  `personal_best_training` hergebruikt de bestaande Analysis Engine
+  (geen dubbele PR-logica). `personal_best_competition` komt uit
+  voltooide `kettlebell_competition_entries` (nieuw sinds v2.4.358).
+  `season_best_*` filtert beide op het huidige kalenderjaar.
+- `api/specialists/kettlebell/persoonlijke-records/route.ts` — **nieuwe,
+  bewust apart genaamde route** t.o.v. de al bestaande (v2.4.352)
+  `api/specialists/kettlebell/records/route.ts` — die laatste blijft de
+  officiële WKSF-recordtabel (`kettlebell_records`, leeg). Persoonlijke
+  records en officiële federatierecords zijn conceptueel verschillende
+  dingen en worden nooit in dezelfde route/tabel vermengd.
+- Dashboard: "Competition Best"-kaart toegevoegd, **alleen zichtbaar
+  zodra er daadwerkelijk voltooide wedstrijddeelnames zijn** — geen
+  placeholder tegen een lege staat.
+
+### Bewust niet gedaan
+Geen federatie-/wereldrecords: er is geen toegankelijke, officiële
+WKSF-recordbron gevonden (zie eerdere bronaudits) — dat opnemen zou een
+record verzinnen zijn.
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine. Geen
+naamconflict tussen de twee `records`-achtige routes gecontroleerd.
