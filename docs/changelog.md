@@ -1,5 +1,25 @@
 # CoachOS — Changelog
 
+## v2.4.351 — WKSF Rules English 2023-2027 verwerkt (rulebook actief, disciplines, categorieën, judging)
+**Officiële bron geverifieerd tegen live WKSF-site. Classification Engine nog NIET gevuld — apart WKSF-rankingdocument nog nodig.**
+
+### Nieuw
+- `docs/sources/wksf-rules-2023-2027.md` — bronverwijzing (canonieke URL, geen PDF-kopie in repo, auteursrecht)
+- `supabase/kettlebell_wksf_rules_2023_2027_import.sql`:
+  - `kettlebell_rulebooks`: status `pending_source` → `active`
+  - `kettlebell_rulebook_disciplines`: Jerk/Long Cycle/Snatch/Biathlon (10 min) + Relay Race, met sectieverwijzing
+  - `kettlebell_categories`: 18 categorieën + nieuwe kolom `official_bell_weights_kg` (§2.1, eligibility — geen norm)
+  - `kettlebell_judging_rules`: DO NOT COUNT/STOP-regels, uitrusting, kleding (§5.1, §7.2, §11.9-11.16)
+
+### Bewust NIET gevuld
+`kettlebell_classifications` blijft leeg — dit brondocument bevat de wedstrijdprocedure, geen classificatie-/ranktabellen. WKSF verwijst zelf (§13.2) naar een apart rankingdocument; bestaan bevestigd via `wksf.site/rankings/`, maar niet automatisch op te halen (robots.txt) — vereist handmatige aanlevering.
+
+### Open, blokkerend punt
+Het officiële WKSF-rankingdocument (Rank III/II/I, CMS, MS, MSIC — reps per discipline/gewicht/lichaamsgewichtklasse) is nog niet aangeleverd.
+
+**Volledig detail:** README.md, sectie "CHECKPOINT — WKSF Rules English 2023-2027 verwerkt".
+Het 
+
 ## v2.4.350 — Kettlebell MVP2 schema-fundament (Federatie → Rulebook → Discipline → Classificatie/Judging/Competition/Records)
 **Schema-only. Geen enkele officiële norm, regel of record ingevuld.**
 
