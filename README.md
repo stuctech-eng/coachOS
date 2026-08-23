@@ -1619,6 +1619,44 @@ bewijs over de huidige status.
 ### Eén gewijzigd bestand
 `activities/[id]/page.tsx`.
 
+## v2.4.365 — Intervals.icu: activities-sync-trigger getest, WERKT NIET met API-sleutel
+**Gemeld: "pull werkt niet, icu moet pushen, icu webversie moet actief
+zijn, anders krijgt de icu app ook de activiteit niet."**
+
+### Bevinding, bevestigd via een Intervals.icu-forumpost (nov 2025)
+Activiteiten van externe bronnen (Concept2, maar ook Oura/Coros bij
+andere gebruikers) worden pas beschikbaar ná een bezoek aan de
+Intervals.icu-website zelf — dat bezoek triggert intern
+`POST /api/athlete/{id}/activities-sync` (geen `/api/v1/`-voorvoegsel,
+dus geen onderdeel van de publieke, gedocumenteerde API).
+
+### Test uitgevoerd, NEGATIEF resultaat
+`POST https://intervals.icu/api/athlete/{id}/activities-sync` met onze
+bestaande, publieke API-sleutel → **`401 Auth failed`**. Dit endpoint
+accepteert de API-sleutel niet — vergt vermoedelijk een echte,
+ingelogde browsersessie (cookie), niet na te bootsen met de sleutel
+die we hebben.
+
+### Conclusie — GEEN verdere actie hierop gepland
+CoachOS kan Intervals.icu's eigen Concept2-sync niet forceren. De
+gebruiker moet zelf af en toe de Intervals.icu-website (of -app)
+openen om nieuwe Concept2-activiteiten daadwerkelijk beschikbaar te
+maken — pas dáárna kan CoachOS' eigen, wél werkende import (Fase 15)
+ze ophalen. Dit is een bevestigde, externe beperking van Intervals.icu
+zelf, niet op te lossen vanuit CoachOS zonder een veel grotere
+investering (een volledige OAuth-inlogflow bouwen voor Intervals.icu
+zelf, in plaats van de huidige, simpelere API-sleutel — onzeker of
+dat dit specifieke endpoint zelfs zou vrijgeven, dus niet
+vanzelfsprekend de moeite waard).
+
+### Eén bestand (test, geen productiewijziging)
+`api/debug/intervals-icu-sync-trigger-test/route.ts` — blijft bestaan
+als bewijs/documentatie van dit uitgevoerde experiment.
+
+**Praktisch advies voor de gebruiker:** open af en toe de
+Intervals.icu-app/website na het roeien, vóórdat je op CoachOS'
+import-knop drukt of wacht op de automatische achtergrondcheck.
+
 ## Core Architectuurregels
 
 0. **Consolidatie vóór nieuwbouw** (vastgelegd 5 augustus 2026, na
