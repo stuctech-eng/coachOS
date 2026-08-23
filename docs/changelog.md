@@ -1,5 +1,93 @@
 # CoachOS — Changelog
 
+## v2.4.350 — Kettlebell MVP2 schema-fundament (Federatie → Rulebook → Discipline → Classificatie/Judging/Competition/Records)
+**Schema-only. Geen enkele officiële norm, regel of record ingevuld.**
+
+### Nieuw
+- `supabase/kettlebell_mvp2_federation_schema.sql` — 8 nieuwe tabellen:
+  `kettlebell_rulebooks`, `kettlebell_rulebook_disciplines`,
+  `kettlebell_categories`, `kettlebell_classifications`,
+  `kettlebell_judging_rules`, `kettlebell_competitions`,
+  `kettlebell_competition_entries`, `kettlebell_records`. Alle leeg,
+  behalve één placeholder-rij in `kettlebell_rulebooks` (WKSF
+  2023-2027, naam/periode alleen, `status: pending_source`).
+- `federation_id` `NOT NULL` op elke wedstrijdlogica-tabel
+  (competitions/competition_entries/records) — nooit een tekstkolom.
+- RLS op alle nieuwe tabellen (referentiedata: leesbaar voor ingelogde
+  gebruikers, alleen schrijfbaar via admin-client/migraties;
+  `kettlebell_competition_entries`: gebruikersgebonden, zelfde patroon
+  als `kettlebell_gs_sessions`).
+
+### Bewust NIET gebouwd
+Geen Classification/Judging/Promotion/Competition-engine (logica), geen
+API-routes, geen UI — alles zou tegen lege tabellen gokken of niets
+tonen. Volgt zodra het officiële WKSF Rules English 2023-2027-document
+verwerkt is.
+
+### Open, blokkerend punt (ongewijzigd)
+WKSF Rules English 2023-2027-document (PDF/tekst) nog niet aangeleverd.
+
+**Volledig detail:** README.md, sectie "CHECKPOINT — Kettlebell MVP2
+schema-fundament".
+
+---
+
+## v2.4.349 — Kettlebell Specialist (Girevoy Sport): Fase 0 + MVP1
+**Nieuwe, eigen specialist voor Kettlebell Sport/Girevoy Sport — los van
+de bestaande, generieke kettlebell-oefenbibliotheek (die blijft
+ongewijzigd bij de Trainer AI, "Kettlebell Fitness"-modus).**
+
+### Herkomst
+Uitgebreid Master Plan van de gebruiker (CodeSnap-document). Eerst
+volledige repo-inspectie (geen aannames) → architectuurvoorstel →
+goedgekeurd met twee aanscherpingen: Federatie Engine vanaf het begin
+federatie-onafhankelijk (WKSF eerst, dan IUKL, dan GSU/overige, nooit
+samengevoegd), en expliciete koppeling met de bestaande Trainer AI i.p.v.
+een tweede, dubbele trainingsgenerator.
+
+### Nieuw
+- `supabase/kettlebell_specialist_foundation.sql` — `kettlebell_federations`
+  (skeleton: WKSF/IUKL/GSU als naam-registratie, GEEN reglementinhoud) +
+  `kettlebell_gs_sessions` (discipline, bell weight, RPM, RPE, techniek,
+  no-counts, federation_id als foreign key vanaf dag één)
+- `lib/specialists/kettlebell-data.ts` — Data Engine
+- `lib/specialists/kettlebell-analysis.ts` — Analysis Engine
+  (deterministisch, `EngineResult<T>`-contract), PR per discipline +
+  bell weight, volumestatistieken
+- `api/specialists/kettlebell/profile/route.ts` — voorkeuren (modus:
+  fitness/sport, primaire discipline, federatievoorkeur)
+- `api/specialists/kettlebell/sessions/route.ts` — GET/POST sessies
+- `api/specialists/kettlebell/analyse/route.ts` — Data → Analysis Engine
+- `coach/kettlebell/page.tsx` — dashboard (eerlijke lege staat)
+- `coach/kettlebell/sessie/nieuw/page.tsx` — sessie-logformulier
+- `settings/kettlebell-profile/page.tsx` — instellingen
+- `lib/specialists/kettlebell-training-request.ts` — Trainer AI-brug
+  vastgelegd als datacontract (geen adapter-logica, MVP2.5)
+
+### Gewijzigd
+- `api/specialists/route.ts` — `kettlebell` toegevoegd aan
+  `SPECIALIST_CONFIG` (status `active`)
+- `lib/specialists/capability-registry.ts` — entry toegevoegd
+  (`hasCoachLayer: false` — bewust, geen AI-laag zonder echte regelset)
+- `api/specialists/[type]/data/route.ts` — `haalKettlebellData`
+  geregistreerd in `DATA_FETCHERS`
+- `specialisten/page.tsx` — icoon toegevoegd (Gauge)
+
+### Bewust NIET gebouwd (met reden — zie README-checkpoint)
+Coach Layer (AI), Today Engine-integratie/`kettlebellAdapter` (nieuwe
+fase: MVP2.5, Kettlebell Trainer AI-brug), Federatie/Classificatie/
+Promotion/Records (MVP2 — wacht op het officiële WKSF Rules English
+2023-2027-document), Limiter Engine/Fatigue Signature/Pace Coach (MVP3).
+
+### Open, blokkerend punt
+MVP2 kan pas starten zodra het officiële WKSF Rules English 2023-2027-
+document (PDF/tekst) is aangeleverd — geen enkele wedstrijdnorm is
+verzonnen of aangenomen.
+
+**Volledig detail:** README.md, sectie "CHECKPOINT — Kettlebell
+Specialist / Girevoy Sport" (onderaan).
+
+
 ## v2.4.348 — Sessie-overzicht: 22 augustus 2026 volledig gedocumenteerd
 **Geen code. Chat bijna vol — compleet dagoverzicht toegevoegd aan
 het README (sectie "SESSIE-OVERZICHT — 22 augustus 2026") ter
