@@ -5934,3 +5934,68 @@ bestaande specialisten.
 `kettlebell_classifications` blijft leeg, Classification/Promotion Engine
 blijven `unavailable` totdat het WKSF-rankingdocument er is — dat blijft
 volledig losstaand van deze Trainer AI-brug.
+
+## 🏅 CHECKPOINT — WKSF Ranking-import: 720 classificatierijen (v2.4.354)
+
+**Status: primaire WKSF-classificatiedata geïmporteerd. `bell_weight_kg`
+blijft op ALLE 720 rijen `NULL` — de blok A/B → kettlebellgewicht-
+koppeling is nog niet officieel bevestigd. Classification/Promotion/Beat
+My Class geven daarom altijd `pending_source_verification`/`provisional`
+terug, nooit een definitieve claim.**
+
+### Wat is gebeurd
+Vier officiële WKSF-rankingafbeeldingen (`wksf.site/rankings/`, "Check
+All Ranks Available": Classic Men/Women 10'-12', Marathon Men/Women
+30'-60') zijn door de gebruiker aangeleverd, door mij getranscribeerd,
+teruggegeven ter controle, en na review door de gebruiker als importbron
+bevestigd (`GO`). Twee cellen bleven letterlijk onduidelijk in de
+brontekst zelf (niet door mij gecorrigeerd — "onbekend is beter dan
+fout"):
+- Biathlon 10' Men, gewichtscategorie 95: MSEC/MS identiek aan categorie 80
+- Jerk 60' Women, middelste rij: categorielabel "95" i.p.v. het verwachte 65
+
+Beide gemarkeerd `source_status: 'source_anomaly'` (20 van de 720
+rijen); de overige 700 hebben `source_status: 'unresolved_block_weight'`.
+
+### Database (`supabase/kettlebell_wksf_ranking_import.sql`)
+- `kettlebell_classifications` uitgebreid met `ranking_block` (`'A'|'B'`)
+  en `source_status` (`'verified'|'unresolved_block_weight'|
+  'source_anomaly'`, default `unresolved_block_weight`)
+- 720 rijen: 10 disciplines × (7 of 5 of 3) lichaamsgewichtcategorieën ×
+  2 blokken × (6 of 4 rankniveaus) — exacte bronbenamingen: **MSEC, MS,
+  CMS, Rank 1, Rank 2, Rank 3** (blok B heeft geen MSEC/MS, zoals de bron
+  zelf laat zien)
+- Nieuwe canonieke disciplinesleutels (incl. duur, want de bron
+  onderscheidt 10'/12'/30'/60' als aparte tabellen):
+  `long_cycle_10`, `biathlon_10`, `snatch_12`, `one_arm_long_cycle_10`,
+  `snatch_10`, `long_cycle_30`, `jerk_30`, `snatch_30`, `long_cycle_60`,
+  `jerk_60`
+
+### Engines herbouwd (v2)
+- `lib/specialists/kettlebell-classification.ts` — `ranking_block` nu
+  een VERPLICHT, EXPLICIET invoerveld (nooit afgeleid uit bell weight).
+  Geeft een echte classificatie terug (`status: 'classified_provisional'`),
+  altijd met `bell_weight_note`-disclaimer.
+- `lib/specialists/kettlebell-promotion.ts` — `promotion_status` is
+  altijd `'pending_source_verification'` zolang de blok-koppeling
+  onbevestigd is — nooit "You promoted to Rank I" als definitieve claim.
+- `api/specialists/kettlebell/beat-my-class/route.ts` +
+  `coach/kettlebell/beat-my-class/page.tsx` — blok-keuze (A/B) nu een
+  losstaand UI-veld, disclaimer altijd zichtbaar, niet weggestopt.
+
+### Regressiecontrole
+`grep` bevestigt 0 kettlebell-referenties in Cycling/Running/Rowing —
+niet aangeraakt.
+
+### Bewust niet gedaan in deze stap
+Discipline-uitbreiding (TALC/OALC/One Arm Jerk/One Arm Snatch als
+zelfstandige disciplines) — expliciet een aparte vervolgstap, blokkeert
+deze import niet. Competition/Records-foundation, Today Engine-adapter,
+Athlete Passport-uitbreiding, Kettlebell DNA — ongewijzigd t.o.v.
+eerdere checkpoints, niet in deze levering.
+
+### Enige blokkerende open punt
+De officiële WKSF-bevestiging van wat rankingblok A en B qua
+kettlebellgewicht betekenen. Zodra die er is: één `UPDATE`-migratie
+(`source_status = 'verified'`, `bell_weight_kg` ingevuld) — geen
+herimport nodig.
