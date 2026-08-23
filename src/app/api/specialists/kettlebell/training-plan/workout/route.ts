@@ -11,6 +11,7 @@ import type { WorkoutMesocycle, WorkoutDifficulty } from '@/core/workout-builder
 import { bepaalTrainingType, verrijkMetKettlebellContext, KETTLEBELL_EQUIPMENT_MAPPING } from '@/lib/specialists/kettlebell-workout-adapter'
 import type { KettlebellTrainingRequest } from '@/lib/specialists/kettlebell-training-request'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
+import { bepaalPaceCoach } from '@/lib/specialists/kettlebell-pace-coach'
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -61,10 +62,32 @@ export async function POST(req: NextRequest) {
       console.error('[kettlebell/workout] CoachPolicy ophalen mislukt, val terug op gewoon bouwen:', policyErr)
     }
 
+    // v2.4.363 — Pace Coach-koppeling: als de Specialist zelf geen
+    // recommended_rpm meegaf (KettlebellTrainingRequestIntelligence blijft
+    // optioneel, contract ongewijzigd sinds v2.4.349), vult de route 'm
+    // aan vanuit Pace Coach. Puur een AANVULLING op wat de aanroeper al
+    // meegaf — overschrijft nooit een expliciet doorgegeven waarde, en
+    // faalt stil (geen intelligence) als er te weinig data is.
+    let verrijkteRequest = request
+    if (!request.intelligence?.recommended_rpm) {
+      try {
+        const paceCoach = await bepaalPaceCoach(user.id, request.core.discipline, request.core.bell_weight_kg)
+        if (paceCoach.resultaat.status === 'pace_indicated') {
+          verrijkteRequest = {
+            ...request,
+            intelligence: { ...request.intelligence, recommended_rpm: paceCoach.resultaat.suggested_target_rpm },
+            reden: [...request.reden, paceCoach.resultaat.reason],
+          }
+        }
+      } catch (paceErr) {
+        console.error('[kettlebell/workout] Pace Coach ophalen mislukt, ga verder zonder:', paceErr)
+      }
+    }
+
     const input: WorkoutBuilderInput = {
       sport: 'kettlebell',
-      trainingType: bepaalTrainingType(request),
-      duration_sec: request.core.duration_sec,
+      trainingType: bepaalTrainingType(verrijkteRequest),
+      duration_sec: verrijkteRequest.core.duration_sec,
       mesocycle: MESOCYCLE_MAP[body.mesocycle || 'basis'] || 'basis',
       // v2.4.353-note: bewust vast/via parameter, geen Kettlebell-niveauveld —
       // zelfde eerlijke beperking als Rowing's workout-route.
@@ -72,7 +95,7 @@ export async function POST(req: NextRequest) {
     }
 
     const workout = bouwWorkout(input)
-    const verrijkt = verrijkMetKettlebellContext(workout, request)
+    const verrijkt = verrijkMetKettlebellContext(workout, verrijkteRequest)
 
     const validatie = valideerWorkout(verrijkt)
     const uitvoeringsHints = genereerUitvoeringsHints(verrijkt)

@@ -6327,3 +6327,42 @@ data en worden in latere stappen opgepakt.
 
 ### Regressiecontrole
 0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.
+
+## 🎯 CHECKPOINT — Pace Coach + eerste MVP3→MVP2.5-koppeling (v2.4.363)
+
+**Status: tweede MVP3-onderdeel. Belangrijkste mijlpaal: dit is de eerste
+keer dat een MVP3-engine daadwerkelijk het (al sinds v2.4.349 bestaande,
+ongewijzigde) `KettlebellTrainingRequestIntelligence`-contract vult.**
+
+### Waarom Pace Coach nu wél haalbaar was (i.t.t. Fatigue Signature)
+`rpm_avg` bestaat al per sessie (v2.4.349) — een simpele mediaan/trend-
+berekening over meerdere sessies vereist geen nieuwe datamodel-velden,
+alleen genoeg sessies. **Fatigue Signature blijft geblokkeerd** — niet
+door datavolume maar door een echt datamodel-gat: die vraagt "wanneer in
+de sessie" (spec: "techniekverlies begint rond minuut 7"), en
+`kettlebell_gs_sessions` legt alleen sessie-totalen vast, geen
+per-minuut-tijdreeks. Dat gat is nu expliciet gedocumenteerd i.p.v.
+genegeerd.
+
+### Wat is gebouwd
+- `lib/specialists/kettlebell-pace-coach.ts` — mediaan-RPM + trend
+  (stijgend/stabiel/dalend, eerste helft vs. tweede helft van de
+  sessiereeks) + een conservatief `suggested_target_rpm`. Data-eis: min.
+  3 sessies met gelogde RPM, anders `insufficient_data`.
+- `api/specialists/kettlebell/pace-coach/route.ts`
+- **Koppeling in de workout-route** (`training-plan/workout/route.ts`):
+  als de Specialist zelf geen `recommended_rpm` meegeeft, vult de route
+  'm automatisch aan via Pace Coach — overschrijft nooit een expliciet
+  meegegeven waarde, faalt stil (geen intelligence) bij te weinig data.
+  Dit sluit voor het eerst de keten Data → Analyse → Intelligence →
+  Trainer AI die in de architectuurdocumenten stond geschetst.
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine/Universal
+Workout Builder. Bevestigd: het `KettlebellTrainingRequest`-contract zelf
+(`kettlebell-training-request.ts`) is niet aangeraakt.
+
+### Resterend MVP3
+Fatigue Signature (datamodel-gat, zie boven), Movement Economy (haalbaar
+met bestaande hr_avg/rpm_avg-velden, nog niet gebouwd), Competition
+Simulator, Readiness, Autoregulation, What-if.
