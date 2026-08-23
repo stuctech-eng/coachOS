@@ -37,7 +37,7 @@ export interface ClassificationOutcome {
   bell_weight_note: string
 }
 
-const BELL_WEIGHT_NOTE = 'Bell-weight-mapping voor dit rankingblok is nog niet officieel door WKSF bevestigd. Deze classificatie is gebaseerd op het door jou gekozen blok, niet op je kettlebellgewicht.'
+const BELL_WEIGHT_NOTE = 'Bell-weight-mapping voor dit rankingblok is nog niet officieel door WKSF bevestigd (status: strongly_indicated — sterk onderbouwd via meerdere onafhankelijke aanwijzingen, geen primaire legenda). Deze classificatie is gebaseerd op het door jou gekozen blok, niet op je kettlebellgewicht. Zie docs/sources/wksf-block-ab-investigation.md.'
 
 export async function classificeerAtleet(query: ClassificationQuery): Promise<EngineResult<ClassificationOutcome>> {
   const supabase = createAdminClient()

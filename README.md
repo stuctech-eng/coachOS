@@ -6065,3 +6065,44 @@ Cycling/Running/Rowing/`today-engine.ts`/Universal Workout Builder.
 
 ### Enige blokkerende open punt (ongewijzigd)
 De officiële WKSF-bevestiging van rankingblok A/B → kettlebellgewicht.
+
+## 🔍 CHECKPOINT — Block A/B statusbesluit: strongly_indicated (v2.4.356)
+
+**Status: Block A/B blijft officieel onbevestigd. `bell_weight_kg`
+blijft `NULL` op alle 720 rijen. Nieuwe, preciezere tussenstatus
+`strongly_indicated` vervangt `unresolved_block_weight` op de 700
+normale rijen (de 20 `source_anomaly`-rijen blijven ongewijzigd).**
+
+### Besluit
+Na multi-bron onderzoek (zie `docs/sources/wksf-block-ab-investigation.md`
+voor het volledige rapport): de aanwijzingen wijzen sterk naar **Block A
+= zwaarste kettlebellgewicht, Block B = lichter gewicht** — maar dit is
+GEEN bevestigd WKSF-feit. Vijf onderbouwingspunten, geen enkele op
+zichzelf doorslaggevend: Rules §2.1 (twee gewichtsopties per categorie),
+het MSEC/MS-ontbreken in Blok B, een secundaire bron over het gedeelde
+WKSF/IUKL/GSU-ranksysteem, een cijferpatroon in de eigen 720 al
+geïmporteerde rijen (Blok B's CMS > Blok A's MSEC, consistent met een
+lichter gewicht), en één open punt (Senior Women hebben drie officiële
+gewichten, niet twee — voorkomt een definitieve conclusie).
+
+### Database (`supabase/kettlebell_block_ab_status_decision.sql`)
+- `source_status`-check-constraint uitgebreid: `'verified' |
+  'strongly_indicated' | 'unresolved_block_weight' | 'source_anomaly'`
+- 700 rijen: `unresolved_block_weight` → `strongly_indicated`
+- 20 rijen (de eerder gemarkeerde bronanomalieën): ongewijzigd
+
+### Code
+- `kettlebell-classification.ts` — `bell_weight_note` verwijst nu
+  expliciet naar `strongly_indicated` en naar het bronrapport, blijft
+  het classificatieresultaat nooit als definitief presenteren
+- Promotion Engine / Beat My Class: functioneel ongewijzigd — bewust,
+  want de eis blijft hetzelfde ("nooit doen alsof bell_weight_kg bekend
+  is"), alleen de tekst van de disclaimer is preciezer
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.
+
+### Enige blokkerende open punt (ongewijzigd, nu preciezer omschreven)
+Een primaire WKSF-bron die expliciet stelt welk kettlebellgewicht bij
+welk blok hoort. Zonder die bron blijft `strongly_indicated` het
+maximaal haalbare — nooit `verified`.
