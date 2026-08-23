@@ -34,6 +34,9 @@ export default function KettlebellProfielPage() {
   const [modus, setModus] = useState<'fitness' | 'sport'>('fitness')
   const [primaireDiscipline, setPrimaireDiscipline] = useState<string>('')
   const [federatieVoorkeur, setFederatieVoorkeur] = useState('geen')
+  const [sex, setSex] = useState<'male' | 'female' | ''>('')
+  const [bodyweightClass, setBodyweightClass] = useState('')
+  const [rankingBlockVoorkeur, setRankingBlockVoorkeur] = useState<'A' | 'B' | ''>('')
 
   useEffect(() => {
     fetch('/api/specialists/kettlebell/profile', { credentials: 'include' })
@@ -42,6 +45,9 @@ export default function KettlebellProfielPage() {
         if (d.preferences?.modus) setModus(d.preferences.modus)
         if (d.preferences?.primaire_discipline) setPrimaireDiscipline(d.preferences.primaire_discipline)
         if (d.preferences?.federatie_voorkeur) setFederatieVoorkeur(d.preferences.federatie_voorkeur)
+        if (d.preferences?.sex) setSex(d.preferences.sex)
+        if (d.preferences?.bodyweight_class) setBodyweightClass(d.preferences.bodyweight_class)
+        if (d.preferences?.ranking_block_voorkeur) setRankingBlockVoorkeur(d.preferences.ranking_block_voorkeur)
       })
       .finally(() => setLaden(false))
   }, [])
@@ -56,6 +62,9 @@ export default function KettlebellProfielPage() {
           modus,
           primaire_discipline: primaireDiscipline || undefined,
           federatie_voorkeur: federatieVoorkeur,
+          sex: sex || undefined,
+          bodyweight_class: bodyweightClass || undefined,
+          ranking_block_voorkeur: rankingBlockVoorkeur || undefined,
         }),
       })
       if (res.ok) { setMessage('Opgeslagen'); setTimeout(() => setMessage(''), 2000) }
@@ -120,6 +129,25 @@ export default function KettlebellProfielPage() {
                         {f.label}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-coach-border">
+                  <p className="text-sm font-medium text-white mb-2">Classificatie-gegevens (voor je Athlete Passport)</p>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Eenmalig invullen zodat je passport je WKSF-classificatie kan tonen zonder dat je dit elke keer opnieuw hoeft in te vullen bij Beat My Class.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <button onClick={() => setSex('male')} className={`py-2.5 rounded-lg text-sm font-medium ${sex === 'male' ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-400'}`}>Man</button>
+                    <button onClick={() => setSex('female')} className={`py-2.5 rounded-lg text-sm font-medium ${sex === 'female' ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-400'}`}>Vrouw</button>
+                  </div>
+                  <input value={bodyweightClass} onChange={e => setBodyweightClass(e.target.value)}
+                    placeholder="Lichaamsgewichtcategorie, bijv. 74 of over87"
+                    className="w-full bg-slate-800 text-white rounded-xl px-4 py-3 text-sm outline-none mb-3" />
+                  <p className="text-xs text-slate-500 mb-2">Rankingblok-voorkeur (A/B-betekenis nog niet officieel bevestigd — zie Beat My Class)</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => setRankingBlockVoorkeur('A')} className={`py-2.5 rounded-lg text-sm font-medium ${rankingBlockVoorkeur === 'A' ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-400'}`}>Blok A</button>
+                    <button onClick={() => setRankingBlockVoorkeur('B')} className={`py-2.5 rounded-lg text-sm font-medium ${rankingBlockVoorkeur === 'B' ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-400'}`}>Blok B</button>
                   </div>
                 </div>
               </>

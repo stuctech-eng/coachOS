@@ -6217,3 +6217,33 @@ record verzinnen zijn.
 ### Regressiecontrole
 0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine. Geen
 naamconflict tussen de twee `records`-achtige routes gecontroleerd.
+
+## 🪪 CHECKPOINT — Athlete Passport (v2.4.360)
+
+**Status: aggregatiepagina, geen nieuwe engine — hergebruikt Profile,
+Records Engine, Analysis Engine en Classification Engine (via Beat My
+Class' route). Geen SQL-wijziging.**
+
+### Wat is gebouwd
+- Profiel uitgebreid met `sex`, `bodyweight_class`,
+  `ranking_block_voorkeur` — eenmalig invullen zodat het passport een
+  classificatie-snapshot kan tonen zonder telkens opnieuw vragen.
+- `coach/kettlebell/passport/page.tsx` — toont, met expliciet
+  gescheiden secties:
+  - **Training Data** (sessies, Training Best's — eigen invoer)
+  - **Official Data — WKSF-classificatie** (via Classification Engine,
+    altijd met de `strongly_indicated`-disclaimer)
+  - **Competition Best** (indien aanwezig)
+  - **Geen "Coach Inference"-sectie** — bestaat bewust niet
+    (`hasCoachLayer: false`), geen nep-AI-advies gesuggereerd.
+
+### Belangrijke zelf-gevonden en gecorrigeerde fout
+Mijn eerste opzet gokte een bell weight (24kg) om de classificatie op te
+vragen — precies het soort aanname die dit hele traject probeert te
+vermijden. Gecorrigeerd vóór levering: het passport gebruikt nu de
+atleet se eigen, daadwerkelijk gelogde PR-bell-weight voor de primaire
+discipline, en toont expliciet "nog geen PR gelogd" als die ontbreekt
+i.p.v. te gokken.
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.

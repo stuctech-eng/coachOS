@@ -34,6 +34,12 @@ interface KettlebellPreferences {
   modus?: KettlebellModus
   primaire_discipline?: 'jerk' | 'snatch' | 'long_cycle' | 'biathlon' | 'one_arm_long_cycle'
   federatie_voorkeur?: 'wksf' | 'iukl' | 'gsu' | 'geen'
+  // v2.4.360 — Athlete Passport: nodig om een classificatie-snapshot te
+  // tonen zonder dat de gebruiker dit telkens opnieuw moet invullen
+  // (zoals nu wel bij Beat My Class, waar dit sessie-specifiek is).
+  sex?: 'male' | 'female'
+  bodyweight_class?: string
+  ranking_block_voorkeur?: 'A' | 'B'
 }
 
 export async function GET() {
@@ -69,6 +75,9 @@ export async function POST(req: NextRequest) {
         modus: body.modus || 'fitness',
         primaire_discipline: body.primaire_discipline || undefined,
         federatie_voorkeur: body.federatie_voorkeur || 'geen',
+        sex: body.sex || undefined,
+        bodyweight_class: body.bodyweight_class || undefined,
+        ranking_block_voorkeur: body.ranking_block_voorkeur || undefined,
       },
     }, { onConflict: 'user_id,specialist_type' })
 
