@@ -98,6 +98,12 @@ export default function KettlebellPage() {
           </Card>
         </Link>
 
+        <Link href="/coach/kettlebell/beat-my-class">
+          <Card className="p-4 flex items-center justify-center gap-2">
+            <span className="text-sm font-semibold text-white">Beat My Class</span>
+          </Card>
+        </Link>
+
         {!laden && analyse && analyse.volume.aantal_sessies > 0 && (
           <Card className="p-5">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Volume (90 dagen)</p>

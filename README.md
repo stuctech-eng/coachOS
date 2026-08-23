@@ -5846,3 +5846,48 @@ reps-norm is aangenomen of geschat.
 ### Enige blokkerende open punt
 Het officiële WKSF-rankingdocument (Rank/CMS/MS/MSIC-tabellen per
 discipline/gewicht/lichaamsgewichtklasse) is nog niet aangeleverd.
+
+## ⚙️ CHECKPOINT — Classification/Promotion Engine + Beat My Class + Competition/Records-plumbing (v2.4.352)
+
+**Status: technisch volledig, functioneel "unavailable" totdat het
+WKSF-rankingdocument geverifieerd is. Geen SQL-wijzigingen in deze
+levering — bestaand MVP2-schema (v2.4.350/351) was al toereikend.**
+
+### Wat is gebouwd
+- `lib/specialists/kettlebell-classification.ts` — Classification Engine.
+  Query tegen `kettlebell_classifications`; leeg resultaat → altijd
+  `status: 'unavailable'`, reden `"Official WKSF classification norm not
+  verified."` — nooit geschat/geïnterpoleerd.
+- `lib/specialists/kettlebell-promotion.ts` — Promotion Engine. Koppelt
+  de bestaande PR-logica (Analysis Engine) aan de Classification Engine.
+  Zonder norm: `unavailable`. Zonder PR: `no_pr`.
+- `coach/kettlebell/beat-my-class/page.tsx` + `api/specialists/kettlebell/
+  beat-my-class/route.ts` — toont expliciet "Officiële WKSF-
+  classificatienorm nog niet geverifieerd" i.p.v. een geschat percentage.
+- `api/specialists/kettlebell/judging/route.ts` — leest de al
+  geïmporteerde WKSF-judgingregels (v2.4.351), geen AI-interpretatie.
+- `api/specialists/kettlebell/competitions/route.ts` +
+  `competition-entries/route.ts` — Competition Engine-plumbing.
+  `kettlebell_competitions` blijft leeg (geen wedstrijd verzonnen);
+  `kettlebell_competition_entries` (persoonlijke deelname/voorbereiding)
+  is functioneel, wacht op echte wedstrijddata om te vullen.
+- `api/specialists/kettlebell/records/route.ts` — leest
+  `kettlebell_records`, altijd gefilterd/gegroepeerd op `federation_id`
+  (nooit ongedifferentieerd) — leeg totdat een officiële recordbron er is.
+
+### Bewust niet gedaan
+- Geen `npm run build`/`tsc` uitgevoerd — deze sandbox heeft geen
+  geïnstalleerde dependencies. Wel: balans-check accolades/haakjes op elk
+  nieuw bestand (allemaal gelijk).
+- Regressiecontrole Cycling/Running/Rowing: geen van hun bestanden is
+  aangeraakt (`grep` bevestigt 0 kettlebell-referenties in die mappen) —
+  geen wijziging, dus geen regressierisico.
+- `capability-registry.ts` ongewijzigd gelaten (`hasCoachLayer: false`
+  blijft staan) — Classification/Promotion zijn deterministisch, geen
+  nieuwe AI-laag, dus geen reden om de registry-vlaggen aan te passen.
+
+### Enige blokkerende open punt (ongewijzigd)
+Het officiële WKSF-rankingdocument. Zodra aangeleverd: rijen in
+`kettlebell_classifications` met volledige brontraceerbaarheid, en de
+engines hierboven beginnen automatisch echte classificaties te geven —
+geen enkele codewijziging nodig aan de engines zelf.
