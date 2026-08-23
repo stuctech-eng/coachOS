@@ -5754,3 +5754,53 @@ Zie `kettlebell-specialist-architectuurvoorstel-v1.md` (los aangeleverd,
 niet in de repo-zip) voor de volledige inspectie, vergelijking met het
 Master Plan, en het complete MVP1-4-fasenplan inclusief de nieuwe
 MVP2.5-fase (Trainer AI-brug).
+
+## 🏛️ CHECKPOINT — Kettlebell MVP2 schema-fundament (26 augustus 2026, v2.4.350)
+
+**Status: schema-only. Geen enkele officiële norm/regel/record ingevuld.
+Bouw geen Classification/Judging/Promotion/Competition-ENGINE (logica)
+bovenop dit schema totdat het WKSF-document verwerkt is — dat zou
+verzonnen normen tegen echte tabellen aan draaien.**
+
+### Wat dit is
+`supabase/kettlebell_mvp2_federation_schema.sql` legt de hiërarchie
+Federatie → Rulebook → Discipline → Categorie → Classificatie/Judging →
+Competition/Records vast als **structuur**, bovenop de al live
+`kettlebell_federations` (v2.4.349). Acht nieuwe tabellen, geen enkele
+gevuld met wedstrijdnormen:
+
+- `kettlebell_rulebooks` — één reglementversie per federatie
+  (`status: pending_source` totdat de brontekst verwerkt is). WKSF
+  2023-2027 staat als naam/periode geregistreerd (door de gebruiker zelf
+  publiek geverifieerd), **niet als regelinhoud**.
+- `kettlebell_rulebook_disciplines` — geen CHECK op disciplinenamen
+  (i.t.t. `kettlebell_gs_sessions`), omdat het Master Plan expliciet
+  federatiespecifieke extra disciplines toestaat
+- `kettlebell_categories` — leeftijds-/niveaucategorieën, leeg
+- `kettlebell_classifications` — de kern van de Classification Engine,
+  leeg
+- `kettlebell_judging_rules` — no-counts/fixation/equipment e.d., leeg
+- `kettlebell_competitions` + `kettlebell_competition_entries` —
+  wedstrijden + persoonlijke deelname/voorbereiding
+- `kettlebell_records` — federatie-/nationale/wereldrecords
+
+**`federation_id` is `NOT NULL` op elke wedstrijdlogica-tabel**
+(competitions/competition_entries/records) — nooit een losse tekstkolom,
+zoals expliciet gevraagd. Records van verschillende federaties worden
+dus nooit ongedifferentieerd samengevoegd; elke query filtert/groepeert
+op `federation_id`.
+
+**Geen eigen Promotion-tabel** — promotie is een berekening (huidige PR
+vs. `required_reps` van de volgende klasse in `kettlebell_classifications`),
+geen opgeslagen norm.
+
+### Wat hier bewust NIET bij zit
+Geen enkele engine/route/UI die dit schema leest — met lege tabellen zou
+dat óf niets tonen (nutteloos) óf gokken vereisen. Classification Engine,
+Promotion Engine, Judging Engine, Competition Engine en Records-weergave
+volgen zodra het officiële WKSF Rules English 2023-2027-document
+verwerkt is. Daarna IUKL als aparte, niet-samengevoegde regelset.
+
+### Enige blokkerende open punt (ongewijzigd)
+Het officiële WKSF Rules English 2023-2027-document (PDF/tekst) is nog
+niet aangeleverd.
