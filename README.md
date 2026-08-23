@@ -5891,3 +5891,46 @@ Het officiële WKSF-rankingdocument. Zodra aangeleverd: rijen in
 `kettlebell_classifications` met volledige brontraceerbaarheid, en de
 engines hierboven beginnen automatisch echte classificaties te geven —
 geen enkele codewijziging nodig aan de engines zelf.
+
+## 🔗 CHECKPOINT — Kettlebell Trainer AI-brug: eerste werkende koppeling (MVP2.5, v2.4.353)
+
+**Status: `KettlebellTrainingRequest` (v2.4.349-contract) is nu daadwerkelijk
+aanroepbaar tegen de bestaande Universal Workout Builder. Geen wijziging
+aan `core/workout-builder/builder.ts`/`types.ts` zelf — precies zoals de
+KERNREGEL daar voorschrijft (geen sportlogica in de sport-onafhankelijke
+laag).**
+
+### Wat is gebouwd
+- `lib/specialists/kettlebell-workout-adapter.ts` — Specialist Adapter,
+  zelfde patroon als cycling-/running-/rowing-workout-adapter.ts, maar
+  FORWARD (request → workout i.p.v. workout → sporttaal): vertaalt
+  discipline/technical_focus/competition_specific naar een
+  `WorkoutTrainingType`, en overlegt de generieke zone-blokken van
+  `bouwWorkout()` met de specialistische `target_rpm`/`target_rpe` uit
+  het contract.
+- `api/specialists/kettlebell/training-plan/workout/route.ts` (POST) —
+  eerste echt werkende stap in de keten "Kettlebell Specialist →
+  KettlebellTrainingRequest → Universal Workout Builder → Trainer AI".
+  Inclusief de CoachPolicy REST-check (Master Coach blijft de centrale
+  regisseur, spec §21/§37) — zelfde vangnet als Cycling/Running/Rowing.
+
+### Bewuste, eerlijke scope-beperking
+Cycling/Running/Rowing's workout-routes lezen uit `training_plan_sessions`
+(een periodisatietabel die een Training Plan Engine per sport vult).
+Voor Kettlebell bestaat die periodisatie-engine nog niet (spec §23,
+MVP3+-gebied). Deze route is daarom **on-demand** (de Specialist stuurt
+zelf een `KettlebellTrainingRequest` mee in de POST-body) i.p.v.
+automatisch gekoppeld aan een dagelijks trainingsplan. **Geen wijziging
+aan `today-engine.ts`** — geen `kettlebellAdapter`-registratie daar, dat
+zou een automatische-planning-integratie beloven die er nog niet is.
+
+### Regressiecontrole
+`grep` bevestigt: 0 treffers voor "kettlebell" in Cycling/Running/Rowing-
+bestanden én in `core/workout-builder/builder.ts`/`types.ts` — die zijn
+alleen gelezen, niet gewijzigd. Geen regressierisico voor de drie
+bestaande specialisten.
+
+### Nog steeds ongewijzigd (per eerdere checkpoints)
+`kettlebell_classifications` blijft leeg, Classification/Promotion Engine
+blijven `unavailable` totdat het WKSF-rankingdocument er is — dat blijft
+volledig losstaand van deze Trainer AI-brug.
