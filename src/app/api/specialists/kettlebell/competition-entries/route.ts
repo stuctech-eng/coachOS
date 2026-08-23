@@ -5,6 +5,8 @@ import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 
+import { classificeerAtleet } from '@/lib/specialists/kettlebell-classification'
+
 async function getUser() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -96,5 +98,76 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[kettlebell/competition-entries POST]', err)
     return NextResponse.json({ error: 'Opslaan mislukt' }, { status: 500 })
+  }
+}
+
+interface ResultaatBody {
+  id: string
+  reps: number
+}
+
+// ── Resultaat vastleggen na de wedstrijd ─────────────────────────────────
+// Berekent, indien discipline/sex/bodyweight_class/ranking_block al op de
+// entry stonden, een VOORLOPIGE classificatie via de bestaande
+// Classification Engine (dezelfde die Beat My Class gebruikt) — puur een
+// leesbewerking op kettlebell_classifications, wijzigt daar niets aan.
+// Een wedstrijdresultaat blijft ten allen tijde in
+// kettlebell_competition_entries staan, nooit in kettlebell_classifications.
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const user = await getUser()
+    if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
+
+    const body = await req.json() as ResultaatBody
+    if (!body.id || body.reps == null) {
+      return NextResponse.json({ error: 'id en reps zijn verplicht' }, { status: 400 })
+    }
+
+    const supabase = createAdminClient()
+    const { data: entry, error: fetchError } = await supabase
+      .from('kettlebell_competition_entries')
+      .select('*')
+      .eq('id', body.id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (fetchError || !entry) return NextResponse.json({ error: 'Deelname niet gevonden' }, { status: 404 })
+
+    let resultClass: string | null = null
+    let classificatieNote: string | null = null
+
+    if (entry.discipline && entry.sex && entry.bodyweight_class && entry.ranking_block) {
+      const classificatie = await classificeerAtleet({
+        discipline: entry.discipline,
+        sex: entry.sex,
+        bodyweightClass: entry.bodyweight_class,
+        rankingBlock: entry.ranking_block,
+        bestReps: body.reps,
+      })
+      if (classificatie.resultaat.status === 'classified_provisional') {
+        resultClass = classificatie.resultaat.current_class ?? null
+        classificatieNote = classificatie.resultaat.bell_weight_note
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('kettlebell_competition_entries')
+      .update({
+        reps: body.reps,
+        result_reps: body.reps,
+        result_class: resultClass,
+        status: 'completed',
+      })
+      .eq('id', body.id)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return NextResponse.json({ success: true, deelname: data, classificatie_note: classificatieNote })
+  } catch (err) {
+    console.error('[kettlebell/competition-entries PATCH]', err)
+    return NextResponse.json({ error: 'Bijwerken mislukt' }, { status: 500 })
   }
 }

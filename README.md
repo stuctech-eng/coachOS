@@ -6145,3 +6145,44 @@ apart loggen, en Beat My Class kon er daardoor nooit een PR voor vinden.
 
 ### Regressiecontrole
 0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.
+
+## 🏆 CHECKPOINT — Competition-model afgemaakt (v2.4.358)
+
+**Status: wedstrijden aanmaken, deelnames registreren, resultaten
+vastleggen — allemaal werkend. Geen SQL-wijziging (bestaand schema uit
+v2.4.352/355 volstond).**
+
+### Wat is gebouwd
+- `api/specialists/kettlebell/competitions/route.ts` — POST toegevoegd:
+  gebruiker kan zelf een wedstrijd registreren. **Zelf-gerapporteerd**,
+  geen officiële WKSF-kalender (die is niet als vrij toegankelijke,
+  machineleesbare bron gevonden — zie eerdere bronaudits).
+- `api/specialists/kettlebell/competition-entries/route.ts` — PATCH
+  toegevoegd: resultaat (reps) vastleggen na de wedstrijd. Berekent,
+  indien discipline/geslacht/lichaamsgewichtcategorie/ranking_block al
+  op de deelname stonden, een **voorlopige** classificatie via de
+  **bestaande** `classificeerAtleet()` (dezelfde functie als Beat My
+  Class en Promotion Engine — geen dubbele logica). Puur een
+  leesbewerking op `kettlebell_classifications`, wijzigt daar niets.
+- `api/specialists/kettlebell/federations/route.ts` — nieuw, klein:
+  leest `kettlebell_federations`, nodig zodat de UI het WKSF-`federation_id`
+  kan opzoeken i.p.v. hardcoderen.
+- `coach/kettlebell/competities/page.tsx` — nieuwe pagina: wedstrijd
+  toevoegen, deelname registreren, resultaat invoeren. Dashboard-link
+  toegevoegd.
+
+### Belangrijk onderscheid, technisch bewaakt
+Een wedstrijdresultaat (`kettlebell_competition_entries.reps`) en een
+classificatienorm (`kettlebell_classifications.required_reps`) blijven
+volledig gescheiden tabellen. De PATCH-route *berekent* een classificatie
+tegen de norm, maar *schrijft* nooit naar de normtabel — exact het
+onderscheid dat in alle eerdere checkpoints is bewaakt.
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.
+
+### Bewust niet gedaan
+Geen officiële WKSF-wedstrijdkalender-import (bestaat niet toegankelijk),
+geen automatische Records-koppeling (een goed wedstrijdresultaat wordt
+nu niet automatisch een "record" — dat blijft aparte, nog niet gebouwde
+functionaliteit).

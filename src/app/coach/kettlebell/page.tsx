@@ -107,6 +107,15 @@ export default function KettlebellPage() {
           </Card>
         </Link>
 
+        <Link href="/coach/kettlebell/competities">
+          <Card className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-sm font-semibold text-white block">Competities</span>
+              <span className="text-xs text-slate-500">Wedstrijden &amp; resultaten</span>
+            </div>
+          </Card>
+        </Link>
+
         {!laden && analyse && analyse.volume.aantal_sessies > 0 && (
           <Card className="p-5">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Volume (90 dagen)</p>
