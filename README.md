@@ -6589,3 +6589,24 @@ is nu het makkelijkst vindbare startpunt.
 ### Regressiecontrole
 0 kettlebell-referenties in Cycling/Running/Rowing/Today Engine.
 Contract-hash ongewijzigd.
+
+## 📝 CHECKPOINT — "Hoe werkt het"-uitleg bijgewerkt (v2.4.368)
+
+**Status: gebruikersgerichte uitlegpagina liep achter — bevatte
+letterlijk "op dit moment bestaan de Cycling Coach en de Running
+Coach", terwijl Rowing en Kettlebell allebei al bestonden. Gecorrigeerd.**
+
+### Wat is gewijzigd
+`settings/hoe-werkt-het/page.tsx`, sectie "Specialisten":
+- Intro-zin bijgewerkt naar alle vier huidige specialisten
+- **Nieuwe, bewust correct-geschaalde alinea over Kettlebell** — expliciet
+  NIET dezelfde claims als Cycling/Running/Rowing (geen automatisch
+  meegroeiend meerwekenschema, geen automatische sessie-matching), wél
+  wat er echt is: PR-tracking, Beat My Class (met de bell-weight-
+  disclaimer), Training genereren. Overclaiming vermeden — deze pagina
+  is wat gebruikers daadwerkelijk lezen, dus moet exact kloppen met wat
+  gebouwd is.
+
+### Regressiecontrole
+0 kettlebell-referenties in Cycling/Running/Rowing. Geen andere
+verouderde specialist-vermeldingen gevonden in dit bestand.
