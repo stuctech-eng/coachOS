@@ -1,6 +1,6 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Trash2 } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Send, Bot, User, Trash2, ArrowDown } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { cn } from '@/utils'
 
@@ -26,7 +26,9 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const [laden, setLaden] = useState(true)
   const [wisBevestiging, setWisBevestiging] = useState(false)
+  const [toonScrollKnop, setToonScrollKnop] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -59,6 +61,23 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const checkScrollPositie = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const afstandTotOnder = el.scrollHeight - el.scrollTop - el.clientHeight
+    setToonScrollKnop(afstandTotOnder > 120)
+  }, [])
+
+  useEffect(() => {
+    // Na elke nieuwe render van berichten opnieuw checken (bijv. als een lang
+    // antwoord binnenkomt terwijl de gebruiker al omhoog had gescrold)
+    checkScrollPositie()
+  }, [messages, loading, checkScrollPositie])
+
+  function scrollNaarBeneden() {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   async function stuurBericht(tekst: string) {
     if (!tekst.trim() || loading) return
@@ -142,70 +161,87 @@ export default function ChatPage() {
         )}
 
         {/* Berichten */}
-        <div className="flex-1 overflow-y-auto px-5 pb-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-col gap-4 pt-4">
-              <div className="flex items-center gap-3 bg-slate-800/50 rounded-2xl p-4">
-                <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
-                  <Bot size={20} className="text-primary-400" />
+        <div className="relative flex-1 min-h-0">
+          <div
+            ref={scrollContainerRef}
+            onScroll={checkScrollPositie}
+            className="h-full overflow-y-auto px-5 pb-4"
+          >
+            {messages.length === 0 ? (
+              <div className="flex flex-col gap-4 pt-4">
+                <div className="flex items-center gap-3 bg-slate-800/50 rounded-2xl p-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+                    <Bot size={20} className="text-primary-400" />
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-medium">Goedemorgen!</p>
+                    <p className="text-slate-400 text-xs mt-0.5">Ik ken je data. Stel me een vraag over je training, herstel of gezondheid.</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-white text-sm font-medium">Goedemorgen!</p>
-                  <p className="text-slate-400 text-xs mt-0.5">Ik ken je data. Stel me een vraag over je training, herstel of gezondheid.</p>
+                <p className="text-xs text-slate-500 px-1">Suggesties:</p>
+                <div className="flex flex-col gap-2">
+                  {SUGGESTIES.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => stuurBericht(s)}
+                      className="text-left px-4 py-3 bg-slate-800/50 rounded-xl text-sm text-slate-300 active:bg-slate-700 border border-slate-700/50"
+                    >
+                      {s}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <p className="text-xs text-slate-500 px-1">Suggesties:</p>
-              <div className="flex flex-col gap-2">
-                {SUGGESTIES.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => stuurBericht(s)}
-                    className="text-left px-4 py-3 bg-slate-800/50 rounded-xl text-sm text-slate-300 active:bg-slate-700 border border-slate-700/50"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4 pt-2">
-              {messages.map((msg, i) => (
-                <div key={i} className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
-                  <div className={cn(
-                    'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1',
-                    msg.role === 'user' ? 'bg-primary-500/20' : 'bg-slate-700'
-                  )}>
-                    {msg.role === 'user'
-                      ? <User size={16} className="text-primary-400" />
-                      : <Bot size={16} className="text-slate-300" />
-                    }
-                  </div>
-                  <div className={cn(
-                    'max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
-                    msg.role === 'user'
-                      ? 'bg-primary-600 text-white rounded-tr-sm'
-                      : 'bg-slate-800 text-slate-200 rounded-tl-sm'
-                  )}>
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
-              {loading && (
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-slate-700 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot size={16} className="text-slate-300" />
-                  </div>
-                  <div className="bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3">
-                    <div className="flex gap-1 items-center h-5">
-                      <div className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+            ) : (
+              <div className="flex flex-col gap-4 pt-2">
+                {messages.map((msg, i) => (
+                  <div key={i} className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                    <div className={cn(
+                      'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1',
+                      msg.role === 'user' ? 'bg-primary-500/20' : 'bg-slate-700'
+                    )}>
+                      {msg.role === 'user'
+                        ? <User size={16} className="text-primary-400" />
+                        : <Bot size={16} className="text-slate-300" />
+                      }
+                    </div>
+                    <div className={cn(
+                      'max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
+                      msg.role === 'user'
+                        ? 'bg-primary-600 text-white rounded-tr-sm'
+                        : 'bg-slate-800 text-slate-200 rounded-tl-sm'
+                    )}>
+                      {msg.content}
                     </div>
                   </div>
-                </div>
-              )}
-              <div ref={bottomRef} />
-            </div>
+                ))}
+                {loading && (
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-slate-700 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Bot size={16} className="text-slate-300" />
+                    </div>
+                    <div className="bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3">
+                      <div className="flex gap-1 items-center h-5">
+                        <div className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 rounded-full bg-slate-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
+            )}
+          </div>
+
+          {/* Scroll-naar-beneden-knop, zoals ChatGPT: verschijnt zodra je omhoog scrolt */}
+          {toonScrollKnop && (
+            <button
+              onClick={scrollNaarBeneden}
+              aria-label="Scroll naar beneden"
+              className="absolute bottom-3 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-slate-700/90 border border-slate-600 shadow-lg flex items-center justify-center active:bg-slate-600 backdrop-blur-sm"
+            >
+              <ArrowDown size={18} className="text-slate-200" />
+            </button>
           )}
         </div>
 
