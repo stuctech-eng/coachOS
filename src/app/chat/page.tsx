@@ -120,7 +120,18 @@ export default function ChatPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col" style={{ height: 'calc(100dvh - 4rem)' }}>
+      {/* v2.4.213-FIX: hoogte was een losse berekening 'calc(100dvh - 4rem)',
+          die niet overeenkwam met de werkelijke padding van <main> in AppShell
+          (pb-24 = 6rem). Door die mismatch overflowde deze wrapper binnen
+          main (dat zelf ook overflow-y:auto heeft via .scroll-area), waardoor
+          main ging scrollen i.p.v. de interne berichten-container hieronder.
+          Gevolg: de onScroll-detectie voor de scroll-naar-beneden-pijl
+          (checkScrollPositie/toonScrollKnop) vuurde nooit, dus de pijl kwam
+          nooit in beeld. Met h-full vult deze wrapper altijd exact de door
+          main beschikbaar gestelde ruimte, ongeacht paddingwaarden — main
+          hoeft dan niet meer te scrollen en alle scroll gaat naar de juiste
+          interne container. */}
+      <div className="flex flex-col h-full">
 
         {/* Header */}
         <div className="px-5 pt-6 pb-4 flex-shrink-0 flex items-center justify-between">
