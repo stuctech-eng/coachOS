@@ -823,6 +823,22 @@ de ongecachete functie) gebeurt bij een cache-hit niet opnieuw —
 onschadelijk, een achtergrond-onderhoudstaak die bij de eerstvolgende
 oncachete aanroep gewoon weer meeloopt.
 
+## 🧭 CHECKPOINT — Intervaldata in Roeiprestaties (25 augustus 2026)
+
+**`metrics.intervallen` (v2.4.373) werd sinds die datum al opgeslagen, maar nooit opgehaald door een te smal TypeScript-type — nu zichtbaar op `/coach/rowing/performance`.**
+
+### Bevinding
+`haalRowingRecenteSessies()` selecteerde `activity_sessions.metrics`, maar het lokale type kende alleen `distance`/`avg_hr`/`avg_stroke_rate` — `intervallen` werd stilzwijgend genegeerd bij het mappen naar `RowingRecenteSessie`, ondanks dat de data al vanaf v2.4.373 in de database stond voor nieuwe Concept2-sessies met intervaltraining.
+
+### Gebouwd (v2.4.377)
+- `rowing-grafieken.ts`: type uitgebreid, `intervallen` additief toegevoegd aan `RowingRecenteSessie` (`null` bij sessies zonder interval-data)
+- `performance/page.tsx`: "N INTERVALLEN"-badge + uitklapbaar detail (tijd/afstand/SPM/HR per interval) op sessies die het hebben; sessies zonder intervaldata ongewijzigd
+
+### Package.json — versie-inhaalslag
+Stond vast op 2.4.368 sinds vóór de hele PM5-sessie van vandaag. Acht eerdere entries (v2.4.369 t/m v2.4.376: Roeiprestaties-uitbreiding, PM5-schemavoorbereiding, Concept2-intervaldata, Planned vs Actual, RowingPM5WorkoutRequest-contract, CSAFE-adapter) waren nooit in een versienummer meegenomen. Opgehoogd naar 2.4.377.
+
+**Volledig detail:** `docs/changelog.md`, entry v2.4.377.
+
 ## 🧭 CHECKPOINT — PM5 CSAFE-adapter (25 augustus 2026)
 
 **RowingPM5WorkoutRequest → CSAFE-commando's, in twee iteraties gebouwd binnen dezelfde sessie — de eerste versie werd kritisch bevraagd en verworpen vóórdat hij geleverd werd.**

@@ -3,6 +3,31 @@
 > **Oudere entries (vóór v2.4.185)** staan in `docs/changelog-archief.md` — gearchiveerd op 20 augustus 2026 om het actieve bestand onder de groottedrempel van Working Copy's zip-import te houden. **Deze notitie hoort ALTIJD hier, direct onder de titel — bij het toevoegen van een nieuwe entry, plaats die ERONDER, nooit ervoor, zodat dit niet opnieuw wegzakt.**
 
 
+## v2.4.377 — Intervaldata zichtbaar in Roeiprestaties + versie-inhaalslag
+**`metrics.intervallen` (v2.4.373) werd stilzwijgend niet opgehaald door een te smal type — nu zichtbaar in de "Recente trainingen"-lijst. Package.json opgehoogd naar 2.4.377 (stond vast op 2.4.368 sinds vóór v2.4.369).**
+
+### Aanleiding
+`haalRowingRecenteSessies()` in `rowing-grafieken.ts` haalde `activity_sessions.metrics` op, maar het lokale TypeScript-type voor die kolom bevatte alleen `distance`/`avg_hr`/`avg_stroke_rate` — `intervallen` (sinds v2.4.373 al opgeslagen bij nieuwe Concept2-sessies met intervaltraining) werd dus stilzwijgend genegeerd bij het mappen, ondanks dat de data al in de database stond.
+
+### Gewijzigd — `src/lib/specialists/rowing-grafieken.ts`
+- `RowingActiviteitMetBron.metrics`-type uitgebreid met `intervallen?: RowingIntervalRuw[]`
+- `RowingRecenteSessie` uitgebreid met `intervallen: RowingIntervalDetail[] | null` (additief — `null` bij sessies zonder interval-data, geen bestaand veld gewijzigd)
+- Tijd omgerekend van tiende seconden (Concept2's eenheid) naar hele seconden bij het mappen
+
+### Gewijzigd — `src/app/coach/rowing/performance/page.tsx`
+- Sessies met intervaldata krijgen een "N INTERVALLEN"-badge en zijn tikbaar
+- Uitgeklapt: per interval tijd/afstand/SPM/HR (hergebruikt de bestaande `formatTijd`-helper, geen dubbele functie)
+- Sessies zonder intervaldata (alles vóór v2.4.373, of eenvoudige workouts) ongewijzigd — geen lege badge
+
+### Package.json
+Versie stond vast op 2.4.368 sinds vóór de hele PM5-sessie van vandaag (v2.4.369 t/m v2.4.376, acht eerdere entries nooit meegenomen in een versienummer). Opgehoogd naar 2.4.377 om weer gelijk te lopen met de laatste changelog-entry.
+
+### Verificatie
+Volledige productie-`npm run build`: geslaagd, 0 errors/warnings. Diff-audit: alleen de reeds bekende, eerder goedgekeurde bestanden + deze twee wijzigen — niets anders geraakt.
+
+**Volledig detail:** README.md, sectie "CHECKPOINT — Intervaldata in Roeiprestaties (25 augustus 2026)".
+
+
 ## v2.4.376 — PM5 CSAFE-adapter (RowingPM5WorkoutRequest → CSAFE-commando's, pure logica)
 **Twee onafhankelijke bronnen kruisgeverifieerd vóór implementatie: de officiële Concept2 PM CSAFE Communication Definition (rev 0.27) én de daadwerkelijk werkende, open-source ErgometerJS-library (Apache 2.0, 126 sterren). Geen Bluetooth, geen iOS, geen productiekoppeling.**
 
