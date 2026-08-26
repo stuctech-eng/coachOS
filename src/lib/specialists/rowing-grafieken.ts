@@ -391,3 +391,134 @@ export async function haalRowingAfstandTrends(userId: string): Promise<Record<nu
   }
   return resultaat
 }
+
+// ── Periode-vergelijking & Recente sessies — Roeiprestaties-uitbreiding ──
+// Bron: Fase 2-live-validatie (25 augustus 2026) tegen de productie-
+// Intervals.icu-bridge, bevestigde architectuur — geen nieuwe engine,
+// alleen nieuwe, additieve query-functies bovenop dezelfde
+// activity_sessions-waarheid. Geen van de bestaande functies hierboven
+// is gewijzigd.
+//
+// Watts is hier bewust NERGENS opgenomen: de live dry-run-validatie
+// liet zien dat noch de directe Concept2-sync, noch de Intervals.icu-
+// relay ooit een watts-waarde levert (icu_average_watts stond null in
+// alle 10 geteste sessies, ondanks device_watts:true) — geen
+// schijnfunctionaliteit bouwen voor een veld dat structureel niet
+// bestaat in de brondata.
+
+interface RowingActiviteitMetBron {
+  id: string
+  date: string
+  duration: number
+  metrics: { distance?: number; avg_hr?: number; avg_stroke_rate?: number } | null
+  source: string
+}
+
+export interface RowingRecenteSessie {
+  id: string
+  datum: string
+  afstand_m: number | null
+  duur_min: number
+  split_sec_per_500m: number | null
+  gemiddelde_hartslag: number | null
+  gemiddelde_slagfrequentie: number | null
+  bron: string
+}
+
+/** Meest recente N sessies, incl. bron — voor de "Recente trainingen"-
+ * lijst (§30 Roeiprestaties-plan). Per-sessie, geen aggregatie, zodat
+ * de bronbadge (§31) per rij klopt i.p.v. een gemiddelde over meerdere
+ * bronnen heen. */
+export async function haalRowingRecenteSessies(userId: string, aantal: number = 10): Promise<RowingRecenteSessie[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('activity_sessions')
+    .select('id, date, duration, metrics, source, activities!inner(name)')
+    .eq('user_id', userId)
+    .in('activities.name', ['Roeien'])
+    .order('date', { ascending: false })
+    .limit(aantal)
+
+  if (error) throw error
+
+  return ((data || []) as unknown as RowingActiviteitMetBron[]).map(a => {
+    const mPerMin = a.metrics?.distance && a.duration > 0 ? a.metrics.distance / a.duration : null
+    return {
+      id: a.id,
+      datum: a.date,
+      afstand_m: a.metrics?.distance ?? null,
+      duur_min: a.duration,
+      split_sec_per_500m: mPerMin ? mPerMinNaarSplitPer500m(mPerMin) : null,
+      gemiddelde_hartslag: a.metrics?.avg_hr ?? null,
+      gemiddelde_slagfrequentie: a.metrics?.avg_stroke_rate ?? null,
+      bron: a.source,
+    }
+  })
+}
+
+export interface RowingPeriodeSamenvatting {
+  afstand_km: number
+  aantal_trainingen: number
+  gemiddelde_split_sec_per_500m: number | null
+  gemiddelde_slagfrequentie: number | null
+  gemiddelde_hartslag: number | null
+}
+
+export interface RowingPeriodeVergelijking {
+  huidige_periode: RowingPeriodeSamenvatting
+  vorige_periode: RowingPeriodeSamenvatting
+}
+
+function samenvattenRowingPeriode(sessies: RowingActiviteitMetBron[]): RowingPeriodeSamenvatting {
+  let afstandM = 0
+  const mPerMinWaarden: number[] = []
+  const hrWaarden: number[] = []
+  const slagWaarden: number[] = []
+
+  for (const a of sessies) {
+    afstandM += a.metrics?.distance || 0
+    if (a.metrics?.distance && a.duration > 0) mPerMinWaarden.push(a.metrics.distance / a.duration)
+    if (a.metrics?.avg_hr) hrWaarden.push(a.metrics.avg_hr)
+    if (a.metrics?.avg_stroke_rate) slagWaarden.push(a.metrics.avg_stroke_rate)
+  }
+
+  const gemiddelde = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null
+  const gemMPerMin = gemiddelde(mPerMinWaarden)
+
+  return {
+    afstand_km: Math.round((afstandM / 1000) * 10) / 10,
+    aantal_trainingen: sessies.length,
+    gemiddelde_split_sec_per_500m: gemMPerMin ? mPerMinNaarSplitPer500m(gemMPerMin) : null,
+    gemiddelde_slagfrequentie: gemiddelde(slagWaarden) ? Math.round(gemiddelde(slagWaarden)!) : null,
+    gemiddelde_hartslag: gemiddelde(hrWaarden) ? Math.round(gemiddelde(hrWaarden)!) : null,
+  }
+}
+
+/** Vergelijkt de gekozen periode met de daaraan voorafgaande periode van
+ * gelijke lengte (§24 Roeiprestaties-plan) — op periodeniveau i.p.v.
+ * losse weken, consistent met de periodeselector (§18). */
+export async function haalRowingPeriodeVergelijking(userId: string, periodeDagen: number): Promise<RowingPeriodeVergelijking> {
+  const supabase = createAdminClient()
+  const vandaag = new Date()
+  const huidigeStart = new Date(vandaag)
+  huidigeStart.setDate(huidigeStart.getDate() - periodeDagen)
+  const vorigeStart = new Date(huidigeStart)
+  vorigeStart.setDate(vorigeStart.getDate() - periodeDagen)
+
+  const { data, error } = await supabase
+    .from('activity_sessions')
+    .select('id, date, duration, metrics, source, activities!inner(name)')
+    .eq('user_id', userId)
+    .in('activities.name', ['Roeien'])
+    .gte('date', isoDatum(vorigeStart))
+    .order('date', { ascending: true })
+
+  if (error) throw error
+  const alleSessies = (data || []) as unknown as RowingActiviteitMetBron[]
+  const huidigeStartStr = isoDatum(huidigeStart)
+
+  return {
+    huidige_periode: samenvattenRowingPeriode(alleSessies.filter(a => a.date >= huidigeStartStr)),
+    vorige_periode: samenvattenRowingPeriode(alleSessies.filter(a => a.date < huidigeStartStr)),
+  }
+}

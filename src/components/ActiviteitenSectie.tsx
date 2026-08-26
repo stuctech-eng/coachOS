@@ -62,7 +62,7 @@ const SPORT_ICONS: Record<string, string> = {
 // verificatiefase) expliciet benoemd, plus een neutrale fallback voor
 // 'manual' (toegestaan door de constraint, nergens actief gebruikt) en
 // eventuele toekomstige, nu-onbekende waarden.
-const BRON_LABELS: Record<string, string> = {
+export const BRON_LABELS: Record<string, string> = {
   strava: 'Strava',
   garmin: 'Garmin',
   concept2: 'Concept2',
@@ -76,7 +76,11 @@ const BRON_LABELS: Record<string, string> = {
   intervals_icu: 'Intervals.icu',
   apple_health: 'Apple Health',
 }
-function bronLabel(source: string): string {
+// v2.4.369: geëxporteerd zodat Roeiprestaties (coach/rowing/performance)
+// dezelfde bronlabel-mapping hergebruikt i.p.v. een tweede kopie
+// (architectuurregel "dubbele utilities vermijden") — gedrag van deze
+// functie zelf is ongewijzigd.
+export function bronLabel(source: string): string {
   return BRON_LABELS[source] || 'Onbekend'
 }
 

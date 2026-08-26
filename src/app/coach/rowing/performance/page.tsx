@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AppShell } from '@/components/layout'
 import { Card } from '@/components/ui'
+import { bronLabel } from '@/components/ActiviteitenSectie'
 
 // ── Rowing Performance Center — 8 augustus 2026 ──────────────────────────
 // Bron: bevestigd gat ("Rowing Performance Center ontbreekt", Cycling/
@@ -20,6 +21,14 @@ import { Card } from '@/components/ui'
 // doen typisch hele sessies als testafstand, query-time af te leiden.
 // Eerlijke beperking: alleen Concept2-sessies, Garmin TCX-Rowing nog
 // niet (mist de precieze duur die hiervoor nodig is).
+//
+// v2.4.369 (Roeiprestaties-uitbreiding): periodeselector, Performance
+// Comparison, Recente trainingen + bronbadge, GEMETEN/BEREKEND/
+// GESCHAT-labels — Fase 2-live-gevalideerd tegen de productie-
+// Intervals.icu-bridge (25 augustus 2026). Watts bewust NIET
+// opgenomen: bevestigd afwezig in zowel de directe Concept2-sync als
+// de Intervals.icu-relay (icu_average_watts null in alle geteste
+// sessies), geen veld voor data die structureel niet bestaat.
 
 interface RowingDashboard {
   week_km: number
@@ -38,11 +47,48 @@ interface DagelijkseBelasting { datum: string; geschatte_tss: number; ctl: numbe
 interface WekelijkseTrend { week_start: string; gemiddelde_split_sec_per_500m: number | null; gemiddelde_hartslag: number | null; gemiddelde_slagfrequentie: number | null }
 interface RowingRecord { afstand_m: number; tijd_sec: number; datum: string }
 interface RowingAfstandTrendPunt { datum: string; tijd_sec: number }
+interface RowingRecenteSessie {
+  id: string
+  datum: string
+  afstand_m: number | null
+  duur_min: number
+  split_sec_per_500m: number | null
+  gemiddelde_hartslag: number | null
+  gemiddelde_slagfrequentie: number | null
+  bron: string
+}
+interface RowingPeriodeSamenvatting {
+  afstand_km: number
+  aantal_trainingen: number
+  gemiddelde_split_sec_per_500m: number | null
+  gemiddelde_slagfrequentie: number | null
+  gemiddelde_hartslag: number | null
+}
+interface RowingPeriodeVergelijking {
+  huidige_periode: RowingPeriodeSamenvatting
+  vorige_periode: RowingPeriodeSamenvatting
+}
 
 const TESTAFSTANDEN_MET_LABEL: [number, string][] = [
   [500, '500m'], [1000, '1000m'], [2000, '2000m'], [5000, '5000m'], [6000, '6000m'], [10000, '10.000m'],
   [21097, 'Halve marathon'], [42195, 'Marathon'],
 ]
+
+const PERIODES: [string, string][] = [
+  ['7D', '7D'], ['30D', '30D'], ['3M', '3M'], ['6M', '6M'], ['1J', '1J'],
+]
+
+// v2.4.369: kleine, herbruikbare data-status-badge (§33 Roeiprestaties-
+// plan) — GEMETEN/BEREKEND/GESCHAT, puur presentatie, geen logica.
+function DataLabel({ status }: { status: 'gemeten' | 'berekend' | 'geschat' }) {
+  const stijl = status === 'gemeten'
+    ? 'text-green-500/70 border-green-500/20'
+    : status === 'berekend'
+      ? 'text-blue-400/70 border-blue-400/20'
+      : 'text-amber-400/70 border-amber-400/20'
+  const tekst = status === 'gemeten' ? 'GEMETEN' : status === 'berekend' ? 'BEREKEND' : 'GESCHAT'
+  return <span className={`text-[8px] font-semibold tracking-wider border rounded px-1 py-0.5 ${stijl}`}>{tekst}</span>
+}
 
 function formatTijd(sec: number): string {
   const h = Math.floor(sec / 3600)
@@ -64,6 +110,13 @@ function formatDuur(min: number): string {
   const h = Math.floor(min / 60)
   const m = min % 60
   return m > 0 ? `${h}u ${m}m` : `${h}u`
+}
+function formatDatumKort(datum: string): string {
+  return new Date(datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
+}
+function formatAfstand(m: number | null): string {
+  if (m === null) return '—'
+  return m >= 1000 ? `${(m / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 2 })} km` : `${Math.round(m)} m`
 }
 
 // ── Simpel SVG-lijndiagram, geen dependency — 1-op-1 hergebruikt van
@@ -144,11 +197,14 @@ function StaafGrafiek({ data, veld, formatter, kleur = 'bg-primary-500' }: {
 export default function RowingPerformanceCenterPage() {
   const [laden, setLaden] = useState(true)
   const [heeftBaseline, setHeeftBaseline] = useState(true)
+  const [periode, setPeriode] = useState('30D')
   const [dashboard, setDashboard] = useState<RowingDashboard | null>(null)
   const [ctlAtlTsb, setCtlAtlTsb] = useState<DagelijkseBelasting[]>([])
   const [wekelijkseTrend, setWekelijkseTrend] = useState<WekelijkseTrend[]>([])
   const [records, setRecords] = useState<RowingRecord[]>([])
   const [afstandTrends, setAfstandTrends] = useState<Record<number, RowingAfstandTrendPunt[]>>({})
+  const [recenteSessies, setRecenteSessies] = useState<RowingRecenteSessie[]>([])
+  const [periodeVergelijking, setPeriodeVergelijking] = useState<RowingPeriodeVergelijking | null>(null)
 
   useEffect(() => {
     async function laadAlles() {
@@ -156,7 +212,7 @@ export default function RowingPerformanceCenterPage() {
       try {
         const [profielRes, grafiekenRes] = await Promise.all([
           fetch('/api/specialists/rowing/profile', { credentials: 'include' }),
-          fetch('/api/specialists/rowing/grafieken?weken=12', { credentials: 'include' }),
+          fetch(`/api/specialists/rowing/grafieken?periode=${periode}`, { credentials: 'include' }),
         ])
         const profielData = await profielRes.json()
         const grafiekenData = await grafiekenRes.json()
@@ -167,6 +223,8 @@ export default function RowingPerformanceCenterPage() {
         setWekelijkseTrend(grafiekenData?.wekelijkse_trend || [])
         setRecords(grafiekenData?.records || [])
         setAfstandTrends(grafiekenData?.afstand_trends || {})
+        setRecenteSessies(grafiekenData?.recente_sessies || [])
+        setPeriodeVergelijking(grafiekenData?.periode_vergelijking || null)
       } catch {
         // Elke sectie checkt zelf op aanwezige data
       } finally {
@@ -174,10 +232,11 @@ export default function RowingPerformanceCenterPage() {
       }
     }
     laadAlles()
-  }, [])
+  }, [periode])
 
   const laatsteTsb = ctlAtlTsb.length > 0 ? ctlAtlTsb[ctlAtlTsb.length - 1] : null
   const geenDataHelemaal = !laden && !dashboard?.trainingen_deze_week && ctlAtlTsb.length === 0 && dashboard?.jaar_km === 0
+  const heeftVergelijkingsdata = !!periodeVergelijking && (periodeVergelijking.huidige_periode.aantal_trainingen > 0 || periodeVergelijking.vorige_periode.aantal_trainingen > 0)
 
   return (
     <AppShell>
@@ -190,6 +249,20 @@ export default function RowingPerformanceCenterPage() {
             <h1 className="text-lg font-bold text-white">Performance Center</h1>
             <p className="text-xs text-slate-500">Dashboard, belasting &amp; trends</p>
           </div>
+        </div>
+
+        <div className="flex gap-1.5">
+          {PERIODES.map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setPeriode(key)}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                periode === key ? 'bg-primary-500 text-white' : 'bg-white/5 text-slate-400 active:bg-white/10'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {laden && (
@@ -216,13 +289,22 @@ export default function RowingPerformanceCenterPage() {
             </div>
             <div className="flex flex-wrap gap-4 pt-3 border-t border-coach-border">
               {dashboard.gemiddelde_split_sec_per_500m && (
-                <div><p className="text-xs text-slate-500">Gem. split</p><p className="text-sm font-medium text-white">{formatSplit(dashboard.gemiddelde_split_sec_per_500m)}</p></div>
+                <div>
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5">Gem. split <DataLabel status="berekend" /></p>
+                  <p className="text-sm font-medium text-white">{formatSplit(dashboard.gemiddelde_split_sec_per_500m)}</p>
+                </div>
               )}
               {dashboard.gemiddelde_hartslag && (
-                <div><p className="text-xs text-slate-500">Gem. hartslag</p><p className="text-sm font-medium text-white">{dashboard.gemiddelde_hartslag} bpm</p></div>
+                <div>
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5">Gem. hartslag <DataLabel status="gemeten" /></p>
+                  <p className="text-sm font-medium text-white">{dashboard.gemiddelde_hartslag} bpm</p>
+                </div>
               )}
               {dashboard.gemiddelde_slagfrequentie && (
-                <div><p className="text-xs text-slate-500">Gem. slagfrequentie</p><p className="text-sm font-medium text-white">{dashboard.gemiddelde_slagfrequentie} spm</p></div>
+                <div>
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5">Gem. slagfrequentie <DataLabel status="gemeten" /></p>
+                  <p className="text-sm font-medium text-white">{dashboard.gemiddelde_slagfrequentie} spm</p>
+                </div>
               )}
               {dashboard.langste_sessie && (
                 <div><p className="text-xs text-slate-500">Langste sessie</p><p className="text-sm font-medium text-white">{formatDuur(dashboard.langste_sessie.minuten)}</p></div>
@@ -236,7 +318,7 @@ export default function RowingPerformanceCenterPage() {
 
         {!laden && laatsteTsb && (
           <Card className="p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Trainingsbelasting</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">Trainingsbelasting <DataLabel status="geschat" /></p>
             <p className="text-[10px] text-slate-600 mb-3">Geschatte TSS — gebaseerd op je 2.000m-testtijd, geen instrument-gemeten waarde.</p>
             <div className="grid grid-cols-3 gap-3 mb-3">
               <div><p className="text-xs text-slate-500">CTL</p><p className="text-lg font-bold text-white">{laatsteTsb.ctl}</p></div>
@@ -244,6 +326,59 @@ export default function RowingPerformanceCenterPage() {
               <div><p className="text-xs text-slate-500">TSB</p><p className="text-lg font-bold text-white">{laatsteTsb.tsb}</p></div>
             </div>
             <LijnGrafiek data={ctlAtlTsb} lijnen={[{ key: 'ctl', kleur: '#3b82f6', label: 'CTL (fitness)' }, { key: 'atl', kleur: '#f43f5e', label: 'ATL (vermoeidheid)' }]} />
+          </Card>
+        )}
+
+        {!laden && heeftVergelijkingsdata && periodeVergelijking && (
+          <Card className="p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Performance Comparison</p>
+            <p className="text-[10px] text-slate-600 mb-3">Vergelijking van beschikbare periodegemiddelden — deze periode ({periode}) tegenover de voorgaande periode van gelijke lengte.</p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[10px] text-slate-600">
+                  <th className="font-normal pb-1"></th>
+                  <th className="font-normal pb-1 text-right">Deze periode</th>
+                  <th className="font-normal pb-1 text-right">Vorige periode</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-coach-border">
+                  <td className="py-1.5 text-slate-400">Afstand</td>
+                  <td className="py-1.5 text-right text-white font-medium">{periodeVergelijking.huidige_periode.afstand_km} km</td>
+                  <td className="py-1.5 text-right text-slate-500">{periodeVergelijking.vorige_periode.afstand_km} km</td>
+                </tr>
+                <tr className="border-t border-coach-border">
+                  <td className="py-1.5 text-slate-400">Trainingen</td>
+                  <td className="py-1.5 text-right text-white font-medium">{periodeVergelijking.huidige_periode.aantal_trainingen}</td>
+                  <td className="py-1.5 text-right text-slate-500">{periodeVergelijking.vorige_periode.aantal_trainingen}</td>
+                </tr>
+                <tr className="border-t border-coach-border">
+                  <td className="py-1.5 text-slate-400">Gem. split</td>
+                  <td className="py-1.5 text-right text-white font-medium">
+                    {periodeVergelijking.huidige_periode.gemiddelde_split_sec_per_500m ? formatSplit(periodeVergelijking.huidige_periode.gemiddelde_split_sec_per_500m) : '—'}
+                  </td>
+                  <td className="py-1.5 text-right text-slate-500">
+                    {periodeVergelijking.vorige_periode.gemiddelde_split_sec_per_500m ? formatSplit(periodeVergelijking.vorige_periode.gemiddelde_split_sec_per_500m) : '—'}
+                  </td>
+                </tr>
+                <tr className="border-t border-coach-border">
+                  <td className="py-1.5 text-slate-400">Gem. SPM</td>
+                  <td className="py-1.5 text-right text-white font-medium">{periodeVergelijking.huidige_periode.gemiddelde_slagfrequentie ?? '—'}</td>
+                  <td className="py-1.5 text-right text-slate-500">{periodeVergelijking.vorige_periode.gemiddelde_slagfrequentie ?? '—'}</td>
+                </tr>
+                <tr className="border-t border-coach-border">
+                  <td className="py-1.5 text-slate-400">Gem. HR</td>
+                  <td className="py-1.5 text-right text-white font-medium">{periodeVergelijking.huidige_periode.gemiddelde_hartslag ?? '—'}</td>
+                  <td className="py-1.5 text-right text-slate-500">{periodeVergelijking.vorige_periode.gemiddelde_hartslag ?? '—'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </Card>
+        )}
+
+        {!laden && periodeVergelijking && !heeftVergelijkingsdata && (
+          <Card className="p-4 text-center">
+            <p className="text-xs text-slate-500">Nog onvoldoende roeigegevens voor deze periode.</p>
           </Card>
         )}
 
@@ -262,6 +397,30 @@ export default function RowingPerformanceCenterPage() {
               <StaafGrafiek data={wekelijkseTrend} veld="gemiddelde_slagfrequentie" formatter={v => `${Math.round(v)} spm`} kleur="bg-amber-500" />
             </Card>
           </>
+        )}
+
+        {!laden && recenteSessies.length > 0 && (
+          <Card className="p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Recente trainingen</p>
+            <div className="flex flex-col gap-3">
+              {recenteSessies.map(s => (
+                <div key={s.id} className="flex items-center justify-between border-t border-coach-border pt-3 first:border-0 first:pt-0">
+                  <div>
+                    <p className="text-sm text-white font-medium">{formatDatumKort(s.datum)} — {formatAfstand(s.afstand_m)}</p>
+                    <p className="text-xs text-slate-500">
+                      {formatDuur(s.duur_min)}
+                      {' · '}{s.split_sec_per_500m ? formatSplit(s.split_sec_per_500m) : '—'}
+                      {' · '}{s.gemiddelde_slagfrequentie !== null ? `${s.gemiddelde_slagfrequentie} SPM` : 'SPM —'}
+                      {' · '}{s.gemiddelde_hartslag !== null ? `HR ${s.gemiddelde_hartslag}` : 'HR —'}
+                    </p>
+                  </div>
+                  <span className="text-[9px] font-semibold tracking-wide text-slate-400 bg-white/5 rounded-full px-2 py-1 whitespace-nowrap">
+                    {bronLabel(s.bron)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
         )}
 
         {/* v2.4.310: Records — hele sessies rond een standaard
