@@ -1,173 +1,252 @@
-// ── RowingPM5WorkoutRequest → CSAFE — Adapter (pure logica) ─────────────
-// Bron: Concept2 PM CSAFE Communication Definition rev 0.27
-// (log.concept2.com/developers/documentation) + command-ID-bevestiging
-// via het open-source csafe.h-header (github.com/tijmenvangulik/
-// PM3Monitor, MIT-vergelijkbare licentie, identieke command-IDs als de
-// officiële Concept2-documentatie).
+// ── RowingPM5WorkoutRequest → CSAFE — Adapter v2 (pure logica) ──────────
+// Bron: bevestigde, daadwerkelijk werkende broncode uit
+// tijmenvangulik/ErgometerJS (Apache 2.0, 126 sterren, echte PM5-
+// hardware-gebruikers) — specifiek
+// api/typescript/ergometer/csafe/proprietary_program_commands.ts —
+// kruisgeverifieerd tegen de officiële Concept2 PM CSAFE Communication
+// Definition rev 0.27 (log.concept2.com/developers/documentation).
+// Command-ID's onafhankelijk bevestigd via twee bronnen (deze library
+// én het losse open-source csafe.h-header van dezelfde auteur).
 //
 // SCOPE: dit bestand bouwt CSAFE command+data-byte-paren. GEEN BLE-
-// frame-encoding (start/stop-bytes, byte-stuffing, checksum — dat is
-// transportlaag-werk voor de toekomstige iOS-bridge), GEEN Bluetooth,
-// GEEN Xcode-afhankelijkheid. Puur TypeScript, geïsoleerd te
-// verifiëren zonder hardware — vandaar nu al bouwbaar, in
-// tegenstelling tot de iOS/BLE-laag zelf.
+// frame-encoding (start/stop-bytes, byte-stuffing, checksum, 120-byte-
+// frame-opsplitsing — dat is transportlaag-werk voor de toekomstige
+// iOS-bridge), GEEN Bluetooth, GEEN Xcode-afhankelijkheid.
 //
-// NIET GEÏMPLEMENTEERD, BEWUST: doelpace (CSAFE_PM_SET_TARGETPACETIME,
-// commando 0x06). Het command-ID is bevestigd (twee onafhankelijke
-// bronnen), maar het exacte byte-formaat van de data (eenheid,
-// bytelengte, volgorde) kon ik nergens vinden — de officiële PDF kapte
-// op precies dat punt af (drie pogingen, ook met verhoogd
-// tokenlimiet), en het open-source csafe.h-header bevat alleen de
-// command-ID, niet de data-encoding (die zit in een niet-publiek
-// .cpp-bestand). Zie encodeerDoelPace() hieronder — gooit bewust een
-// fout i.p.v. te gokken naar een byte-indeling.
+// v2 t.o.v. v1 — wat er veranderd is en waarom:
+//   - Structuur is nu stateful/interval-index-gebaseerd i.p.v. een
+//     platte commandolijst — bevestigd nodig, geen keuze.
+//   - Afstand-duur: rauwe meters, GEEN ×10 (v1-fout, gecorrigeerd).
+//   - Watts: PM_SET_TARGETAVGWATTS (0x15, proprietary, 2 bytes MSB-
+//     eerst, geen eenheid-byte) i.p.v. het publieke CSAFE_SETPOWER_CMD
+//     (0x34) dat v1 gebruikte — deze programmeerroute is exclusief
+//     proprietary, mixen met een publiek commando is niet bevestigd
+//     en dus vermeden.
+//   - Pace: nu wél geïmplementeerd — CSAFE_PM_SET_TARGETPACETIME,
+//     4 bytes MSB-eerst, ×100 (0,01 sec), GEEN type-vlagbyte. Bevestigd
+//     via `.setTargetPaceTime({value:(1*60+40)*100})` in een echt
+//     werkend ErgometerJS-voorbeeld voor "1:40"-pace.
+//
+// BELANGRIJKE TERMINOLOGIE-CORRECTIE: CONFIGURE_WORKOUT(true) wordt
+// hieronder NERGENS "commit-stap" genoemd. Bevestigd is uitsluitend dat
+// ErgometerJS deze aanroep doet tijdens het programmeren van elk
+// interval, in elk werkend voorbeeld dat gevonden is. De betekenis van
+// CONFIGURE_WORKOUT(false) is nergens gedocumenteerd en in geen enkel
+// gevonden werkend voorbeeld gebruikt — deze adapter roept daarom
+// UITSLUITEND programmingMode=true aan, nooit false.
 
 import type {
   RowingPM5WorkoutRequest,
   RowingPM5WorkoutType,
+  RowingPM5Interval,
   RowingPM5WorkInterval,
   RowingPM5RestInterval,
 } from './rowing-pm5-workout-request'
 
 export interface CSAFECommando {
-  /** Het CSAFE long-commando-ID, bijv. 0x01 voor CSAFE_PM_SET_WORKOUTTYPE. */
   commando: number
-  /** Ruwe databytes, exact zoals de documentatie ze beschrijft. */
   data: number[]
-  /** Voor menselijke leesbaarheid/debugging — geen onderdeel van de CSAFE-frame zelf. */
   naam: string
 }
 
-// ── Bevestigde command-IDs (CSAFE_PM_LONG_PUSH_CFG_CMDS) ────────────────
-// Command space: CSAFE_SETPMCFG_CMD_LONG_MIN = 0x00, dus dit zijn de
-// ruwe long-commando-bytes zoals ze op de CSAFE_SETPMCFG_CMD (0x76) of
-// CSAFE_SETPMDATA_CMD (0x77) wrapper meegaan — de wrapping zelf is
-// bridge/transportlaag-werk, hier alleen de "binnenkant".
-const CSAFE_PM_SET_WORKOUTTYPE = 0x01
-const CSAFE_PM_SET_WORKOUTDURATION = 0x03
-const CSAFE_PM_SET_RESTDURATION = 0x04
-const CSAFE_SETPOWER_CMD = 0x34 // Standaard (publieke) CSAFE long-commando, niet PM-proprietary — eigen command space (CSAFE_DATA_CMD_LONG_MIN-gebaseerd), apart afgehandeld
+/** Gegooid i.p.v. een gok — zie module-commentaar en de functie
+ * hieronder voor de exacte reden. */
+export class RowingPM5AdapterFout extends Error {
+  constructor(public code: 'UNDEFINED_REST_INTERVALTYPE_ONBEKEND', melding: string) {
+    super(melding)
+    this.name = 'RowingPM5AdapterFout'
+  }
+}
 
-// ── Workout-type-mapping — CSAFE_PM_GET_WORKOUTTYPE-enum, bevestigd ─────
-// Twee keer identiek teruggevonden in de officiële documentatie
-// (rowing general status-characteristic 0x0031 én de multiplexed-
-// informatietabel). OBJ_WORKOUTTYPE_T-enum-waarden, 0-12.
+// ── Bevestigde command-ID's (CSAFE_PM_LONG_PUSH_CFG_CMDS) ───────────────
+// Kruisgeverifieerd: ErgometerJS/api/typescript/ergometer/csafe/
+// typedefinitions.ts ÉN de officiële PDF (Table: "C2 Proprietary Long
+// Set Configuration Commands"), beide identiek.
+const PM_SET_WORKOUTTYPE = 0x01
+const PM_SET_WORKOUTDURATION = 0x03
+const PM_SET_RESTDURATION = 0x04
+const PM_SET_TARGETPACETIME = 0x06
+const PM_CONFIGURE_WORKOUT = 0x14
+const PM_SET_TARGETAVGWATTS = 0x15
+const PM_SET_INTERVALTYPE = 0x17
+const PM_SET_WORKOUTINTERVALCOUNT = 0x18
+
+// ── Workout-type-enum — bevestigd (OBJ_WORKOUTTYPE_T, officiële PDF) ────
 const WORKOUTTYPE_ENUM: Record<RowingPM5WorkoutType, number> = {
-  // EERLIJKE BEPERKING: het contract kent geen "met/zonder splits"-
-  // onderscheid voor just_row/fixed_distance/fixed_time (de PM5-enum
-  // heeft dat wel — bijv. WORKOUTTYPE_JUSTROW_SPLITS vs _NOSPLITS).
-  // Hier bewust de _NOSPLITS-variant als conservatieve default gekozen
-  // — geen aanname over of de gebruiker split-weergave wil.
-  just_row: 0, // WORKOUTTYPE_JUSTROW_NOSPLITS
-  fixed_distance: 2, // WORKOUTTYPE_FIXEDDIST_NOSPLITS
-  fixed_time: 4, // WORKOUTTYPE_FIXEDTIME_NOSPLITS
-  fixed_time_interval: 6, // WORKOUTTYPE_FIXEDTIME_INTERVAL
-  fixed_distance_interval: 7, // WORKOUTTYPE_FIXEDDIST_INTERVAL
-  variable_interval: 8, // WORKOUTTYPE_VARIABLE_INTERVAL
-  variable_undefined_rest_interval: 9, // WORKOUTTYPE_VARIABLE_UNDEFINEDREST_INTERVAL
+  // EERLIJKE BEPERKING (ongewijzigd t.o.v. v1): het contract kent geen
+  // "met/zonder splits"-onderscheid voor just_row/fixed_distance/
+  // fixed_time — bewust de _NOSPLITS-variant als conservatieve default.
+  just_row: 0,
+  fixed_distance: 2,
+  fixed_time: 4,
+  fixed_time_interval: 6,
+  fixed_distance_interval: 7,
+  variable_interval: 8,
+  variable_undefined_rest_interval: 9,
 }
 
-function encodeer4ByteWaarde(waarde: number, volgorde: 'MSB_EERST' | 'LSB_EERST'): number[] {
-  const bytes = [
-    (waarde >> 24) & 0xff,
-    (waarde >> 16) & 0xff,
-    (waarde >> 8) & 0xff,
-    waarde & 0xff,
-  ]
-  return volgorde === 'MSB_EERST' ? bytes : bytes.reverse()
+const INTERVAL_TYPES_MET_PM5_PROGRAMMERING: RowingPM5WorkoutType[] = [
+  'fixed_time_interval', 'fixed_distance_interval', 'variable_interval', 'variable_undefined_rest_interval',
+]
+
+function getByte(waarde: number, byteIndex: number): number {
+  return (waarde >> (byteIndex * 8)) & 0xff
+}
+function vierBytesMsbEerst(waarde: number): number[] {
+  return [getByte(waarde, 3), getByte(waarde, 2), getByte(waarde, 1), getByte(waarde, 0)]
+}
+function tweeBytesMsbEerst(waarde: number): number[] {
+  return [getByte(waarde, 1), getByte(waarde, 0)]
 }
 
-/** CSAFE_PM_SET_WORKOUTTYPE (0x01) — bevestigd: 1 databyte, de enum-waarde. */
-export function encodeerWorkoutType(workoutType: RowingPM5WorkoutType): CSAFECommando {
-  return { commando: CSAFE_PM_SET_WORKOUTTYPE, data: [WORKOUTTYPE_ENUM[workoutType]], naam: 'CSAFE_PM_SET_WORKOUTTYPE' }
+function encodeerWorkoutType(workoutType: RowingPM5WorkoutType): CSAFECommando {
+  return { commando: PM_SET_WORKOUTTYPE, data: [WORKOUTTYPE_ENUM[workoutType]], naam: 'PM_SET_WORKOUTTYPE' }
 }
 
-/** CSAFE_PM_SET_WORKOUTDURATION (0x03) — bevestigd: byte 0 = type-vlag
- * (0x00 tijd, 0x80 afstand — calorieën/watt-minuten niet gebruikt door
- * dit contract), byte 1-4 = duur, MSB eerst (bevestigd uit de
- * documentatie-tekst voor dit specifieke commando).
- *
- * Sub-eenheid AFGELEID uit het patroon dat elders in dezelfde
- * documentatie consistent gebruikt wordt voor tijd/afstand (0,01 sec
- * resp. 0,1 m per LSB, gezien in alle BLE-status-characteristics) —
- * NIET letterlijk herbevestigd voor dit specifieke SET-commando. Zie
- * module-commentaar: als richtwaarde gebruikt, niet als 100% zeker feit. */
-export function encodeerWorkoutDuur(work: RowingPM5WorkInterval): CSAFECommando {
+/** Bevestigd: byte0 = type-vlag (0x00 tijd, 0x80 afstand), dan 4 bytes
+ * MSB-eerst. Tijd in 0,01 sec (×100, bevestigd via ErgometerJS-
+ * broncode-commentaar "when the value is a time it is in 0.01
+ * seconds"). Afstand: RAUWE METERS — bevestigd via het werkende
+ * voorbeeld `setWorkoutDuration({value:500, distance})` voor 500m
+ * (v1 gebruikte hier ten onrechte ×10). */
+function encodeerWorkoutDuur(work: RowingPM5WorkInterval): CSAFECommando {
   const typeVlag = work.duration_type === 'distance' ? 0x80 : 0x00
-  const subEenheid = work.duration_type === 'distance' ? 10 : 100 // 0,1 m of 0,01 sec per eenheid — afgeleid, zie boven
-  const ruweWaarde = Math.round(work.duration_value * subEenheid)
-  return {
-    commando: CSAFE_PM_SET_WORKOUTDURATION,
-    data: [typeVlag, ...encodeer4ByteWaarde(ruweWaarde, 'MSB_EERST')],
-    naam: 'CSAFE_PM_SET_WORKOUTDURATION',
+  const ruweWaarde = work.duration_type === 'distance'
+    ? Math.round(work.duration_value)
+    : Math.round(work.duration_value * 100)
+  return { commando: PM_SET_WORKOUTDURATION, data: [typeVlag, ...vierBytesMsbEerst(ruweWaarde)], naam: 'PM_SET_WORKOUTDURATION' }
+}
+
+/** Bevestigd: 2 bytes MSB-eerst, rauwe hele seconden. Wordt alleen
+ * aangeroepen voor een AANWEZIGE, vaste rust — undefined rest wordt
+ * hiervoor nooit bereikt (zie generateerCSAFECommandos: fail-fast). */
+function encodeerRestDuur(rest: RowingPM5RestInterval): CSAFECommando {
+  const seconden = Math.round(rest.duration_sec as number)
+  return { commando: PM_SET_RESTDURATION, data: tweeBytesMsbEerst(seconden), naam: 'PM_SET_RESTDURATION' }
+}
+
+/** Bevestigd via werkend voorbeeld: `.setTargetPaceTime({value:(1*60+40)*100})`
+ * voor pace "1:40" → 4 bytes MSB-eerst, ×100 (0,01 sec), GEEN type-vlagbyte
+ * (in tegenstelling tot WORKOUTDURATION/SPLITDURATION). */
+function encodeerDoelPace(paceSecPer500m: number): CSAFECommando {
+  const waarde = Math.round(paceSecPer500m * 100)
+  return { commando: PM_SET_TARGETPACETIME, data: vierBytesMsbEerst(waarde), naam: 'PM_SET_TARGETPACETIME' }
+}
+
+/** Bevestigd: PM_SET_TARGETAVGWATTS (0x15, proprietary), 2 bytes
+ * MSB-eerst, GEEN eenheid-byte. Vervangt v1's publieke SETPOWER_CMD
+ * (0x34) — die hoort niet in een verder volledig proprietary
+ * programmeersequentie, op expliciet verzoek gecorrigeerd. */
+function encodeerDoelWatts(watts: number): CSAFECommando {
+  return { commando: PM_SET_TARGETAVGWATTS, data: tweeBytesMsbEerst(Math.round(watts)), naam: 'PM_SET_TARGETAVGWATTS' }
+}
+
+/** Bevestigd: 1 byte, 0=tijd/1=afstand voor een NORMAAL (niet-undefined-
+ * rest) werk-interval. Undefined-rest-intervaltype-waarden worden hier
+ * bewust nooit gebruikt — zie generateerCSAFECommandos(). */
+function encodeerIntervalType(work: RowingPM5WorkInterval): CSAFECommando {
+  const waarde = work.duration_type === 'distance' ? 1 : 0
+  return { commando: PM_SET_INTERVALTYPE, data: [waarde], naam: 'PM_SET_INTERVALTYPE' }
+}
+
+function encodeerWorkoutIntervalCount(index: number): CSAFECommando {
+  return { commando: PM_SET_WORKOUTINTERVALCOUNT, data: [index], naam: 'PM_SET_WORKOUTINTERVALCOUNT' }
+}
+
+/** Bevestigd: 1 byte, 1=true/0=false. UITSLUITEND met true aangeroepen
+ * in deze adapter — zie module-commentaar. */
+function encodeerConfigureWorkout(programmingMode: true): CSAFECommando {
+  return { commando: PM_CONFIGURE_WORKOUT, data: [programmingMode ? 1 : 0], naam: 'PM_CONFIGURE_WORKOUT' }
+}
+
+interface Pm5IntervalSlot {
+  index: number
+  work: RowingPM5WorkInterval
+  rest: RowingPM5RestInterval | null
+}
+
+/** Groepeert de platte, afwisselende work/rest-lijst uit het contract
+ * in PM5-interval-"slots" (één work + de eventueel direct erop volgende
+ * rest = één 0-based interval-index) — bevestigd patroon uit het
+ * werkende variable-interval-voorbeeld. */
+function groepeerInPm5Slots(intervals: RowingPM5Interval[]): Pm5IntervalSlot[] {
+  const slots: Pm5IntervalSlot[] = []
+  let i = 0
+  let index = 0
+  while (i < intervals.length) {
+    const huidig = intervals[i]
+    if (huidig.type !== 'work') { i++; continue } // contract-validatie voorkomt dit al, puur defensief
+    const volgende = intervals[i + 1]
+    const rest = (volgende && volgende.type === 'rest') ? volgende : null
+    slots.push({ index, work: huidig, rest })
+    index++
+    i += rest ? 2 : 1
   }
+  return slots
 }
 
-/** CSAFE_PM_SET_RESTDURATION (0x04) — bevestigd: 2 databytes, MSB eerst,
- * hele seconden (Table 19 specificeert de limiet zelf al in hele
- * seconden — ":00" tot "9:55" — geen sub-seconde-precisie nodig of
- * gedocumenteerd voor dit commando). Retourneert null bij undefined
- * rest (geen duration_sec) — er is geen waarde om te versturen; de
- * bridge moet in dat geval WORKOUTTYPE_VARIABLE_UNDEFINEDREST_INTERVAL
- * gebruiken (al gezet via encodeerWorkoutType) zonder deze SET-aanroep
- * voor dat specifieke rust-interval. */
-export function encodeerRestDuur(rest: RowingPM5RestInterval): CSAFECommando | null {
-  if (rest.duration_sec === undefined) return null
-  const seconden = Math.round(rest.duration_sec)
-  return {
-    commando: CSAFE_PM_SET_RESTDURATION,
-    data: [(seconden >> 8) & 0xff, seconden & 0xff],
-    naam: 'CSAFE_PM_SET_RESTDURATION',
-  }
+function pushTargets(commandos: CSAFECommando[], work: RowingPM5WorkInterval) {
+  if (work.target?.watts !== undefined) commandos.push(encodeerDoelWatts(work.target.watts))
+  if (work.target?.pace_sec_per_500m !== undefined) commandos.push(encodeerDoelPace(work.target.pace_sec_per_500m))
 }
 
-/** CSAFE_SETPOWER_CMD (0x34) — bevestigd: byte 0 = watts LSB, byte 1 =
- * watts MSB, byte 2 = eenheid-specifier. CSAFE_POWER_WATTS_0_0 = 0x58
- * (bevestigd uit de eenheid-definitietabel in dezelfde documentatie). */
-export function encodeerDoelWatts(watts: number): CSAFECommando {
-  const w = Math.round(watts)
-  return { commando: CSAFE_SETPOWER_CMD, data: [w & 0xff, (w >> 8) & 0xff, 0x58], naam: 'CSAFE_SETPOWER_CMD' }
-}
-
-/** CSAFE_PM_SET_TARGETPACETIME (0x06) — command-ID bevestigd, databyte-
- * formaat NIET. Gooit bewust een fout i.p.v. te gokken. Zie
- * module-commentaar voor de exacte reden. */
-export function encodeerDoelPace(_paceSecPer500m: number): never {
-  throw new Error(
-    'encodeerDoelPace: CSAFE_PM_SET_TARGETPACETIME (0x06) — command-ID bevestigd, '
-    + 'maar het exacte databyte-formaat (eenheid/bytelengte/volgorde) kon niet worden '
-    + 'gevonden in de beschikbare documentatie. Niet geïmplementeerd i.p.v. giswerk. '
-    + 'Vereist verificatie tegen echte PM5-hardware of een aanvullende, vertrouwde bron '
-    + 'vóórdat dit veilig gebouwd kan worden.'
-  )
-}
-
-/** Bouwt de volledige, geordende lijst CSAFE-commando's voor een
- * workout — GEEN BLE-verzending, GEEN frame-encoding, puur de
- * commando+data-inhoud. `target.pace_sec_per_500m` wordt overgeslagen
- * (niet gegooid) als er ook geen watts-target is opgegeven, zodat een
- * workout zonder enig target gewoon door kan; is er ALLEEN een
- * pace-target opgegeven, dan gooit dit een fout — beter dan stilzwijgend
- * een target laten verdwijnen. */
+/** Bouwt de volledige, geordende lijst CSAFE-commando's — GEEN BLE-
+ * verzending, GEEN frame-encoding.
+ *
+ * Gooit RowingPM5AdapterFout (UNDEFINED_REST_INTERVALTYPE_ONBEKEND) en
+ * genereert HELEMAAL NIETS als de workout een undefined-rest-interval
+ * bevat — bewust fail-fast, geen gedeeltelijke/foutieve commandolijst.
+ * variable_undefined_rest_interval blijft daarmee wél onderdeel van
+ * het contract (RowingPM5WorkoutRequest v1, approved), maar is via
+ * deze adapter voorlopig bewust niet uitvoerbaar. */
 export function genereerCSAFECommandos(request: RowingPM5WorkoutRequest): CSAFECommando[] {
-  const commandos: CSAFECommando[] = [encodeerWorkoutType(request.workout_type)]
+  const isIntervalWorkout = INTERVAL_TYPES_MET_PM5_PROGRAMMERING.includes(request.workout_type)
 
-  for (const interval of request.intervals) {
-    if (interval.type === 'work') {
-      commandos.push(encodeerWorkoutDuur(interval))
-      if (interval.target?.watts !== undefined) {
-        commandos.push(encodeerDoelWatts(interval.target.watts))
-      }
-      if (interval.target?.pace_sec_per_500m !== undefined) {
-        encodeerDoelPace(interval.target.pace_sec_per_500m) // gooit altijd — zie functie
-      }
-    } else {
-      const restCommando = encodeerRestDuur(interval)
-      if (restCommando) commandos.push(restCommando)
-      // undefined rest: geen SET_RESTDURATION-aanroep nodig — de
-      // WORKOUTTYPE staat al op VARIABLE_UNDEFINEDREST_INTERVAL.
+  if (isIntervalWorkout) {
+    const slots = groepeerInPm5Slots(request.intervals)
+
+    const ongedefinieerdeRustSlot = slots.find(s => s.rest && s.rest.duration_sec === undefined)
+    if (ongedefinieerdeRustSlot) {
+      throw new RowingPM5AdapterFout(
+        'UNDEFINED_REST_INTERVALTYPE_ONBEKEND',
+        `PM5 IntervalType voor undefined rest is niet voldoende bevestigd; workout niet gegenereerd om `
+        + `protocolgokken te voorkomen (interval-index ${ongedefinieerdeRustSlot.index}). `
+        + `Vijf kandidaat-enumwaarden gevonden (timertUndefined/distanceRestUndefined/restUndefined/`
+        + `calRestUndefined/wattMinuteRestUndefined) zonder een werkend voorbeeld dat bevestigt welke `
+        + `daadwerkelijk gebruikt wordt voor deze situatie.`
+      )
     }
+
+    const commandos: CSAFECommando[] = []
+    for (const slot of slots) {
+      commandos.push(encodeerWorkoutIntervalCount(slot.index))
+      if (slot.index === 0) commandos.push(encodeerWorkoutType(request.workout_type)) // bevestigd: alleen bij interval 0
+      commandos.push(encodeerIntervalType(slot.work))
+      commandos.push(encodeerWorkoutDuur(slot.work))
+      if (slot.rest) commandos.push(encodeerRestDuur(slot.rest))
+      pushTargets(commandos, slot.work)
+      commandos.push(encodeerConfigureWorkout(true))
+    }
+    return commandos
   }
 
+  // Niet-interval-workouts (just_row / fixed_distance / fixed_time):
+  // geen SET_WORKOUTINTERVALCOUNT/SET_INTERVALTYPE — bevestigd afwezig
+  // in de werkende "Configure 2000m/400m splits"/"Configure 20:00/4:00
+  // splits"-voorbeelden.
+  const enkelWork = request.intervals.find((i): i is RowingPM5WorkInterval => i.type === 'work')!
+
+  if (request.workout_type === 'just_row') {
+    // Bevestigd: het "Configure JustRow"-voorbeeld roept ALLEEN
+    // setWorkoutType aan — geen duur, geen CONFIGURE_WORKOUT. Het
+    // contract staat een duration_value toe voor just_row (zie
+    // rowing-pm5-workout-request.ts), maar echte JustRow kent geen
+    // duurdoel — bewust genegeerd door deze adapter, niet verzonden.
+    return [encodeerWorkoutType('just_row')]
+  }
+
+  const commandos: CSAFECommando[] = [encodeerWorkoutType(request.workout_type), encodeerWorkoutDuur(enkelWork)]
+  pushTargets(commandos, enkelWork)
+  commandos.push(encodeerConfigureWorkout(true))
   return commandos
 }
