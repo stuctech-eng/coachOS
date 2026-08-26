@@ -3,6 +3,42 @@
 > **Oudere entries (vóór v2.4.185)** staan in `docs/changelog-archief.md` — gearchiveerd op 20 augustus 2026 om het actieve bestand onder de groottedrempel van Working Copy's zip-import te houden. **Deze notitie hoort ALTIJD hier, direct onder de titel — bij het toevoegen van een nieuwe entry, plaats die ERONDER, nooit ervoor, zodat dit niet opnieuw wegzakt.**
 
 
+## v2.4.369 — Roeiprestaties-uitbreiding: periodeselector, Performance Comparison, Recente trainingen, GEMETEN/BEREKEND/GESCHAT
+**Fase 2 live-gevalideerd (25 augustus 2026) tegen de productie-Intervals.icu-bridge vóór UI-code — geen enkele bestaande engine gewijzigd.**
+
+### Aanleiding — Activity Bridge Audit
+Master plan "Activity Bridge Audit + Roeiprestaties" uitgevoerd in twee fasen:
+- **Fase 1 (audit):** bevestigd dat de Roeiprestaties-datalaag al bijna volledig bestond (`rowing-grafieken.ts`, `/coach/rowing/performance`) — geen nieuwe engine nodig, alleen ontbrekende UI-stukken.
+- **PM5 integration impact audit:** bevestigd dat de bestaande `activity_sessions`/`training_plan_sessions`-architectuur (incl. `completed_activity_id`/`match_confidence`/`match_reden` via de bestaande Workout Matcher) al PM5-ready is — geen nieuwe opslaglaag nodig voor een toekomstige CoachOS → PM5 → CoachOS-bridge. Twee kleine, additieve schema-velden geïdentificeerd voor later (doel-afstand op `training_plan_sessions`, `pm5_session_id` op `activity_sessions`) — nu bewust niet gebouwd, buiten scope.
+- **Fase 2 (live dry-run + raw-data-validatie):** productie-Intervals.icu-bridge getest via bestaande `/debug`-knop + bestaande `intervals-icu-test`-route (Fase 9, GET-only, geen writes). Resultaat: alle 10 gevonden roei-activiteiten zijn Concept2-relays (`bron: CONCEPT2`), correct geblokkeerd door `nieuweBronWint()` — geen dubbeltelling. **Watts bevestigd structureel afwezig** (`icu_average_watts: null` in alle 10 sessies, ondanks `device_watts: true`) — bewust nergens toegevoegd aan de UI.
+
+### Nieuw — `src/lib/specialists/rowing-grafieken.ts` (puur additief)
+- `haalRowingRecenteSessies()` — laatste N sessies incl. `source`, voor de Recente-trainingen-lijst
+- `haalRowingPeriodeVergelijking()` — huidige periode vs. voorgaande periode van gelijke lengte (afstand, aantal trainingen, gem. split/SPM/HR)
+- Geen van de bestaande functies (`haalRowingDashboard`, `haalRowingCTLATLTSB`, `haalWekelijkseRowingTrend`, `haalRowingRecords`, `haalRowingAfstandTrends`) is gewijzigd
+
+### Nieuw — `src/app/api/specialists/rowing/grafieken/route.ts`
+- Periodeselector: `?periode=7D/30D/3M/6M/1J` — `?weken=` blijft ondersteund (backward-compatible)
+- Respons uitgebreid met `recente_sessies` en `periode_vergelijking`
+
+### Gewijzigd — `src/components/ActiviteitenSectie.tsx`
+- `bronLabel`/`BRON_LABELS` geëxporteerd (alleen `export` toegevoegd) zodat Roeiprestaties dezelfde bronlabel-mapping hergebruikt i.p.v. een tweede kopie — gedrag ongewijzigd
+
+### Nieuw — `src/app/coach/rowing/performance/page.tsx`
+- Periodeselector (7D/30D/3M/6M/1J)
+- Performance Comparison-tabel (huidige vs. vorige periode)
+- Recente trainingen-lijst met bronbadge, `—` bij ontbrekende HR/SPM/split (nooit 0)
+- GEMETEN/BEREKEND/GESCHAT-labels op Dashboard (HR/SPM=gemeten, split=berekend) en Trainingsbelasting (TSS=geschat)
+- Lege staat bij onvoldoende data per periode: "Nog onvoldoende roeigegevens voor deze periode."
+
+### Bewust niet gedaan
+- Geen watts-veld — bevestigd afwezig in zowel de directe Concept2-sync als de Intervals.icu-relay
+- Geen interval-detail op sessieniveau in de UI — de live test toonde dat Intervals.icu dit wél levert (`icu_intervals`/`interval_summary`), maar `concept2-result-processor.ts` slaat dit nog niet op; apart, kleiner vervolgpunt, nu buiten scope
+- Geen PM5-code — audit bevestigt de architectuur, bouw volgt in een latere sessie
+
+**Volledig detail:** README.md, sectie "CHECKPOINT — Roeiprestaties-uitbreiding + PM5 integration impact audit (25 augustus 2026)".
+
+
 ## v2.4.366 — Formeel checkpoint: MVP2/MVP2.5/MVP3-status
 **Geen codewijziging. Volledige verificatie + statusoverzicht na afronding van de MVP3-uitbreidingsfase.**
 
