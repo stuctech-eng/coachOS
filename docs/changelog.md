@@ -1,5 +1,8 @@
 # CoachOS — Changelog
 
+> **Oudere entries (vóór v2.4.185)** staan in `docs/changelog-archief.md` — gearchiveerd op 20 augustus 2026 om het actieve bestand onder de groottedrempel van Working Copy's zip-import te houden. **Deze notitie hoort ALTIJD hier, direct onder de titel — bij het toevoegen van een nieuwe entry, plaats die ERONDER, nooit ervoor, zodat dit niet opnieuw wegzakt.**
+
+
 ## v2.4.366 — Formeel checkpoint: MVP2/MVP2.5/MVP3-status
 **Geen codewijziging. Volledige verificatie + statusoverzicht na afronding van de MVP3-uitbreidingsfase.**
 
@@ -150,7 +153,6 @@ vinden van een bestandspad (`codeload.github.com` + lokaal `grep`).
 `README.md`.
 
 
-> **Oudere entries (vóór v2.4.185)** staan in `docs/changelog-archief.md` — gearchiveerd op 20 augustus 2026 om het actieve bestand onder de groottedrempel van Working Copy's zip-import te houden (595 KB werd als "mogelijk binair" overgeslagen).
 
 
 ## v2.4.323 — FIX: v2.4.322's SQL miste RLS
