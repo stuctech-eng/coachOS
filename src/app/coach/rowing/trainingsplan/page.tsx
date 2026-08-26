@@ -4,17 +4,29 @@ import { ArrowLeft, CheckCircle2, XCircle, ArrowRightLeft, PauseCircle } from 'l
 import { AppShell } from '@/components/layout'
 import { Card, Button } from '@/components/ui'
 import Link from 'next/link'
+import { bronLabel } from '@/components/ActiviteitenSectie'
 
 // ── Rowing Trainingsplan-scherm — Fase 1, stap 3 ─────────────────────────
 // Bron: Rowing Platform Master Vision (1 augustus 2026). Spiegelbeeld
 // van coach/cycling/trainingsplan/page.tsx — bewust compacter (geen
 // uitleg-laag/AI-coach-tekst hier, dat is een latere verfijning), maar
 // wel de kern: genereren, tonen, pauzeren/hervatten.
+//
+// v2.4.374 (Planned vs Actual — presentatielaag): completed_activity_id/
+// match_confidence/match_reden bestonden al sinds de Workout Matching
+// Service (v2.4.267), maar werden hier nooit getoond — deze pagina
+// filterde afgeronde sessies zelfs volledig weg (s.date >= vandaag).
+// Puur additief: bestaande status-iconen/workout-detail-uitklap
+// ongewijzigd, alleen een nieuwe sectie ervoor.
 
+interface ActueleData { afstand_m: number | null; duur_min: number; split_sec_per_500m: number | null; bron: string }
 interface Sessie {
   id: string; date: string; type: string; duration: number
   status: 'planned' | 'scheduled' | 'completed' | 'skipped' | 'adjusted' | 'cancelled'
   adjustment_reason: string | null
+  match_confidence: number | null
+  match_reden: string | null
+  actual: ActueleData | null
 }
 interface Plan { id: string; start_date: string; end_date: string }
 
@@ -30,6 +42,11 @@ function formatDatum(dateStr: string): string {
   const vandaag = new Date().toISOString().split('T')[0]
   if (dateStr === vandaag) return 'Vandaag'
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short' })
+}
+function formatSplit(secPer500m: number): string {
+  const min = Math.floor(secPer500m / 60)
+  const sec = Math.round(secPer500m % 60)
+  return `${min}:${sec.toString().padStart(2, '0')}/500m`
 }
 
 function StatusIcoon({ status }: { status: Sessie['status'] }) {
@@ -186,6 +203,12 @@ export default function RowingTrainingsplanPage() {
 
   const vandaag = new Date().toISOString().split('T')[0]
   const toekomstigeSessies = sessies.filter(s => s.date >= vandaag)
+  // v2.4.374: recent afgeronde sessies, meest recente eerst — voorheen
+  // nergens getoond (toekomstigeSessies liet ze al eerder al weg)
+  const afgerondeSessies = sessies
+    .filter(s => s.status === 'completed' && s.date < vandaag)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 10)
 
   return (
     <AppShell showNav={false}>
@@ -254,6 +277,55 @@ export default function RowingTrainingsplanPage() {
                 <Card className="p-6 text-center"><p className="text-sm text-slate-400">Geen aankomende sessies</p></Card>
               )}
             </div>
+
+            {/* v2.4.374: Gepland vs Uitgevoerd — presentatielaag bovenop
+                de bestaande Workout Matching Service (v2.4.267). Geen
+                nieuwe matching-logica, alleen tonen wat er al gekoppeld
+                is. Alleen sessies met status='completed' verschijnen
+                hier — een lage-confidence-kandidaat die niet automatisch
+                gekoppeld werd, staat gewoon nog als 'planned'/'scheduled'
+                (zie AUTO_MATCH_DREMPEL in workout-matcher.ts) en komt
+                dus terecht niet hier terecht. */}
+            {afgerondeSessies.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 px-1">Gepland vs Uitgevoerd</p>
+                <div className="flex flex-col gap-2">
+                  {afgerondeSessies.map(s => (
+                    <Card key={s.id} className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm text-white capitalize">{formatDatum(s.date)}</p>
+                        {s.actual && (
+                          <span className="text-[9px] font-semibold tracking-wide text-slate-400 bg-white/5 rounded-full px-2 py-1">
+                            {bronLabel(s.actual.bron)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-[10px] text-slate-600 uppercase tracking-wide">Gepland</p>
+                          <p className="text-sm text-slate-300">{TYPE_LABEL[s.type] || s.type} · {s.duration} min</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-600 uppercase tracking-wide">Uitgevoerd</p>
+                          {s.actual ? (
+                            <p className="text-sm text-white">
+                              {s.actual.duur_min} min
+                              {s.actual.afstand_m !== null && ` · ${(s.actual.afstand_m / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 2 })} km`}
+                              {s.actual.split_sec_per_500m !== null && ` · ${formatSplit(s.actual.split_sec_per_500m)}`}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-slate-500">—</p>
+                          )}
+                        </div>
+                      </div>
+                      {s.match_reden && (
+                        <p className="text-[10px] text-slate-600 mt-2 pt-2 border-t border-coach-border">{s.match_reden}</p>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

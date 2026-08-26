@@ -82,7 +82,35 @@ export async function GET() {
       .neq('status', 'cancelled')
       .order('date', { ascending: true })
 
-    return NextResponse.json({ plan, sessies: sessies || [], aanpassingen })
+    // v2.4.374 (Planned vs Actual — presentatielaag, geen nieuwe engine):
+    // voor afgeronde sessies is completed_activity_id al langer gevuld
+    // (Workout Matching Service, v2.4.267) — alleen nooit teruggegeven
+    // aan de UI. Eén batch-select i.p.v. per-sessie, puur additief.
+    const voltooideIds = (sessies || [])
+      .filter(s => s.completed_activity_id)
+      .map(s => s.completed_activity_id as string)
+
+    let actueleData: Record<string, { afstand_m: number | null; duur_min: number; split_sec_per_500m: number | null; bron: string }> = {}
+    if (voltooideIds.length > 0) {
+      const { data: activiteiten } = await supabase
+        .from('activity_sessions')
+        .select('id, duration, metrics, source')
+        .in('id', voltooideIds)
+
+      actueleData = Object.fromEntries((activiteiten || []).map(a => {
+        const metrics = a.metrics as { distance?: number } | null
+        const mPerMin = metrics?.distance && a.duration > 0 ? metrics.distance / a.duration : null
+        const splitSecPer500m = mPerMin ? Math.round((500 / mPerMin) * 60) : null
+        return [a.id, { afstand_m: metrics?.distance ?? null, duur_min: a.duration, split_sec_per_500m: splitSecPer500m, bron: a.source }]
+      }))
+    }
+
+    const sessiesMetActueel = (sessies || []).map(s => ({
+      ...s,
+      actual: s.completed_activity_id ? (actueleData[s.completed_activity_id] || null) : null,
+    }))
+
+    return NextResponse.json({ plan, sessies: sessiesMetActueel, aanpassingen })
   } catch (err) {
     console.error('[training-plan GET]', err)
     return NextResponse.json({ error: 'Ophalen mislukt' }, { status: 500 })
