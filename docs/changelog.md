@@ -3,6 +3,35 @@
 > **Oudere entries (vóór v2.4.185)** staan in `docs/changelog-archief.md` — gearchiveerd op 20 augustus 2026 om het actieve bestand onder de groottedrempel van Working Copy's zip-import te houden. **Deze notitie hoort ALTIJD hier, direct onder de titel — bij het toevoegen van een nieuwe entry, plaats die ERONDER, nooit ervoor, zodat dit niet opnieuw wegzakt.**
 
 
+## v2.4.376 — PM5 CSAFE-adapter (RowingPM5WorkoutRequest → CSAFE-commando's, pure logica)
+**Twee onafhankelijke bronnen kruisgeverifieerd vóór implementatie: de officiële Concept2 PM CSAFE Communication Definition (rev 0.27) én de daadwerkelijk werkende, open-source ErgometerJS-library (Apache 2.0, 126 sterren). Geen Bluetooth, geen iOS, geen productiekoppeling.**
+
+### Aanleiding
+Het contract (v2.4.375) beschrijft de workout; deze adapter vertaalt hem naar CSAFE command+data-bytes — nog steeds geen transportlaag, dat blijft de toekomstige iOS-bridge. Bewuste architectuurkeuze: CoachOS → contract → adapter → CSAFE → PM5, nooit CoachOS → CSAFE rechtstreeks, zodat een andere bridge dit contract ooit zou kunnen hergebruiken.
+
+### Protocolonderzoek — twee iteraties
+**Eerste versie (nooit geleverd — binnen dezelfde sessie vervangen):** gebouwd op alleen de officiële PDF, met een platte commandolijst-structuur en het publieke `CSAFE_SETPOWER_CMD` voor watts. Direct daarna kritisch bevraagd: "is dit bevestigd, of aangenomen?" Twee dingen bleken niet bevestigd: het exacte byte-formaat van `CSAFE_PM_SET_TARGETPACETIME` (de PDF-fetch kapte drie keer op precies hetzelfde punt af) en de vraag of een platte commandolijst wel het juiste model is voor multi-interval-workouts.
+
+**Tweede, definitieve versie:** de daadwerkelijk werkende broncode van `tijmenvangulik/ErgometerJS` gevonden (`proprietary_program_commands.ts`) — een PM5-hardware-geteste library, geen reverse-engineering-gok. Die bevestigde:
+- Pace: `CSAFE_PM_SET_TARGETPACETIME`, 4 bytes MSB-eerst, ×100 (0,01 sec), géén type-vlagbyte
+- Afstand-duur: **rauwe meters**, niet ×10 zoals de eerste versie aannam
+- Watts: proprietary `PM_SET_TARGETAVGWATTS` (0x15, 2 bytes MSB-eerst, geen eenheid-byte) — niet het publieke `SETPOWER_CMD` dat de eerste versie gebruikte
+- Structuur: stateful, per interval-index (`SET_WORKOUTINTERVALCOUNT`, 0-based, bevestigd via code-commentaar "when you program the first interval the index is 0") — geen platte lijst
+- `CONFIGURE_WORKOUT` (0x14): bevestigd gebruikt met `programmingMode=true` tijdens het programmeren van elk interval, in elk gevonden werkend voorbeeld — **niet** benoemd als "commit-stap", want de betekenis van `programmingMode=false` is nergens gedocumenteerd of gebruikt
+- Command-ID's kruisgeverifieerd tegen een tweede, onafhankelijke bron (het losse open-source `csafe.h`-C-header van dezelfde auteur) — identiek
+
+### Wat bewust niet geïmplementeerd is
+`variable_undefined_rest_interval` blijft onderdeel van het contract, maar `genereerCSAFECommandos()` gooit `RowingPM5AdapterFout` (`UNDEFINED_REST_INTERVALTYPE_ONBEKEND`) en genereert dan niets — welke van de vijf kandidaat-`IntervalType`-enumwaarden (`timertUndefined`/`distanceRestUndefined`/`restUndefined`/`calRestUndefined`/`wattMinuteRestUndefined`) daadwerkelijk gebruikt wordt voor undefined rest is nergens in een werkend voorbeeld bevestigd — fail-fast in plaats van een gok die een training verkeerd zou programmeren op echte hardware.
+
+### Nieuw — `src/lib/specialists/rowing-pm5-csafe-adapter.ts`
+`genereerCSAFECommandos()` + acht losse encodeerfuncties, elk met een JSDoc-commentaar dat aangeeft welke bron het bevestigt. Nergens geïmporteerd — geen bestaande productiecode aangeraakt.
+
+### Verificatie
+22 geïsoleerde functietests (alle 7 workouttypes, 5×2000m byte-voor-byte, 5×4:00 @ 1:45/500m pace, watts, vaste rust, undefined-rest-fail-fast, JustRow): alle geslaagd. Volledige productie-`npm run build`: geslaagd, 0 errors/warnings. Diff tegen een onafhankelijke download: alleen de reeds bekende, eerder goedgekeurde bestanden wijken af.
+
+**Volledig detail:** README.md, sectie "CHECKPOINT — PM5 CSAFE-adapter (25 augustus 2026)".
+
+
 ## v2.4.375 — RowingPM5WorkoutRequest v1 (contract, APPROVED — nog niet gekoppeld aan productiecode)
 **Zuiver datacontract, zelfde patroon als kettlebell-training-request.ts. Geen adapter, geen CSAFE, geen Bluetooth, geen PM5 API-route — dat volgt in een latere sessie, met echte hardware beschikbaar.**
 

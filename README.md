@@ -823,6 +823,38 @@ de ongecachete functie) gebeurt bij een cache-hit niet opnieuw —
 onschadelijk, een achtergrond-onderhoudstaak die bij de eerstvolgende
 oncachete aanroep gewoon weer meeloopt.
 
+## 🧭 CHECKPOINT — PM5 CSAFE-adapter (25 augustus 2026)
+
+**RowingPM5WorkoutRequest → CSAFE-commando's, in twee iteraties gebouwd binnen dezelfde sessie — de eerste versie werd kritisch bevraagd en verworpen vóórdat hij geleverd werd.**
+
+### Waarom een tweede iteratie nodig was
+Eerste versie gebouwd op alleen de officiële PDF (CSAFE Communication Definition rev 0.27): platte commandolijst, publieke `CSAFE_SETPOWER_CMD` voor watts. Vóór levering kritisch bevraagd of dit echt bevestigd was — bleek van niet: het exacte byte-formaat van `CSAFE_PM_SET_TARGETPACETIME` kon niet uit de PDF gehaald worden (drie fetch-pogingen kapten op precies hetzelfde punt af), en een platte commandolijst bleek niet het juiste model voor multi-interval-workouts.
+
+### De doorbraak — een echte, werkende library
+`tijmenvangulik/ErgometerJS` gevonden: Apache 2.0, 126 sterren, daadwerkelijk gebruikt tegen PM5-hardware. De broncode zelf (`proprietary_program_commands.ts`), niet alleen de documentatie, bevestigde:
+
+| Onderdeel | Eerste versie (verworpen) | Bevestigd (v2, geleverd) |
+|---|---|---|
+| Structuur | Platte commandolijst | Stateful, per interval-index (`SET_WORKOUTINTERVALCOUNT`, 0-based) |
+| Afstand-duur | ×10 (aanname) | **Rauwe meters** |
+| Watts | Publiek `SETPOWER_CMD` (0x34) | Proprietary `PM_SET_TARGETAVGWATTS` (0x15) |
+| Pace | Niet geïmplementeerd (`encodeerDoelPace` gooide bewust een fout) | 4 bytes MSB-eerst, ×100, bevestigd via een echt werkend voorbeeld ("1:40" → waarde 10000) |
+| `CONFIGURE_WORKOUT` | Ontbrak volledig | Bevestigd gebruikt met `programmingMode=true` tijdens interval-programmering — **nooit** "commit-stap" genoemd, want `false`'s betekenis is nergens gedocumenteerd of gebruikt |
+
+Command-ID's kruisgeverifieerd tegen een tweede, onafhankelijke bron (`csafe.h`, hetzelfde auteur, los C-project) — identiek.
+
+### Wat bewust niet geïmplementeerd is
+`variable_undefined_rest_interval` blijft onderdeel van het contract (v2.4.375), maar de adapter weigert 'm te genereren: `RowingPM5AdapterFout` (`UNDEFINED_REST_INTERVALTYPE_ONBEKEND`), fail-fast, geen gedeeltelijke output. Welke van de vijf kandidaat-`IntervalType`-enumwaarden voor undefined rest daadwerkelijk gebruikt wordt, is nergens in een werkend voorbeeld gevonden — ondanks gerichte zoekacties in ErgometerJS, de officiële PDF (het specifieke "Variable Interval Undefined Rest"-voorbeeld op pagina 87 was niet bereikbaar door herhaalde fetch-afkapping) en andere open-source PM5-libraries.
+
+### Gebouwd (v2.4.376)
+`src/lib/specialists/rowing-pm5-csafe-adapter.ts` — `genereerCSAFECommandos()`, acht encodeerfuncties, elk met bronvermelding in het commentaar. Nergens geïmporteerd, geen productiecode gekoppeld.
+
+**Verificatie:** 22 geïsoleerde functietests (alle byte-formaten, alle 7 workouttypes, undefined-rest-fail-fast) geslaagd, volledige productie-build geslaagd, diff-audit bevestigt alleen bekende bestanden gewijzigd.
+
+**Volgende stap, nog niet gestart:** de iOS/Bluetooth-bridge zelf — vergt Xcode en fysieke PM5-hardware, buiten deze chat-omgeving. Met contract + adapter nu klaar, is dat de laatst overgebleven stap vóór een eerste echte PM5-test mogelijk is.
+
+**Volledig detail:** `docs/changelog.md`, entry v2.4.376.
+
 ## 🧭 CHECKPOINT — RowingPM5WorkoutRequest v1 (25 augustus 2026)
 
 **Contract v1: APPROVED. Puur datacontract, nog geen adapter/CSAFE/Bluetooth/PM5 API-route — bewust de grens die vandaag is vastgehouden.**
