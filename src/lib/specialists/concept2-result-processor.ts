@@ -41,6 +41,86 @@ export type Concept2VerwerkUitkomst =
   | { status: 'overgeslagen' }
   | { status: 'fout'; foutmelding: string }
 
+/** Verplaatst hierheen vanuit concept2/sync/route.ts (v2.4.373) —
+ * intervaldata-detailcall (zie verderop) heeft dit ook nodig, en de
+ * webhook-route had helemaal geen tokenlogica. Eén plek i.p.v. straks
+ * een derde kopie (architectuurregel "dubbele utilities vermijden").
+ * Gedrag exact ongewijzigd overgenomen — puur een verplaatsing. */
+export async function haalGeldigToken(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  const { data: tokenRij } = await supabase
+    .from('concept2_tokens')
+    .select('access_token, refresh_token, expires_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!tokenRij) return null
+
+  if (new Date(tokenRij.expires_at).getTime() > Date.now() + 5 * 60 * 1000) {
+    return tokenRij.access_token
+  }
+
+  const clientId = process.env.CONCEPT2_CLIENT_ID
+  const clientSecret = process.env.CONCEPT2_CLIENT_SECRET
+  if (!clientId || !clientSecret) return null
+
+  const refreshRes = await fetch('https://log.concept2.com/oauth/access_token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: tokenRij.refresh_token,
+      scope: 'results:read',
+    }),
+  })
+  if (!refreshRes.ok) {
+    console.error('[concept2-result-processor] Token-vernieuwing mislukt:', refreshRes.status, await refreshRes.text())
+    return null
+  }
+  const nieuweTokens = await refreshRes.json() as { access_token: string; refresh_token: string; expires_in: number }
+  const nieuweExpiresAt = new Date(Date.now() + nieuweTokens.expires_in * 1000).toISOString()
+
+  await supabase.from('concept2_tokens').update({
+    access_token: nieuweTokens.access_token,
+    refresh_token: nieuweTokens.refresh_token,
+    expires_at: nieuweExpiresAt,
+    updated_at: new Date().toISOString(),
+  }).eq('user_id', userId)
+
+  return nieuweTokens.access_token
+}
+
+// ── Intervaldata — v2.4.373 ──────────────────────────────────────────────
+// Bron: Fase 2-live-validatie tegen Concept2's EIGEN API (25 augustus
+// 2026, niet Intervals.icu) — bevestigd via /debug: GET /results/{id}
+// (zonder ?include=strokes) geeft al workout.intervals terug, met time/
+// distance/stroke_rate/heart_rate per interval. Apart, licht endpoint
+// t.o.v. de lijst-call — vandaar hier een eigen, kleine helper i.p.v.
+// dit in de hoofdfunctie te vermengen.
+//
+// BEWUST: geen ?include=strokes (niet nodig, bevestigd veel grotere
+// respons zonder toegevoegde waarde voor dit doel). BEWUST: faalt deze
+// aanroep, dan geeft de functie null terug — de aanroeper beslist zelf
+// dat de basisimport hierdoor nooit mag mislukken.
+async function haalConcept2Intervallen(accessToken: string, resultId: number): Promise<unknown[] | null> {
+  try {
+    const res = await fetch(`https://log.concept2.com/api/users/me/results/${resultId}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/vnd.c2logbook.v1+json' },
+    })
+    if (!res.ok) {
+      console.error('[concept2-result-processor] Intervaldetail ophalen mislukt:', resultId, res.status)
+      return null
+    }
+    const json = await res.json() as { data?: { workout?: { intervals?: unknown[] } } }
+    const intervallen = json.data?.workout?.intervals
+    return Array.isArray(intervallen) && intervallen.length > 0 ? intervallen : null
+  } catch (err) {
+    console.error('[concept2-result-processor] Intervaldetail-aanroep mislukt:', resultId, err)
+    return null
+  }
+}
+
 /** Zoekt of maakt de "Roeien"-activiteit voor deze gebruiker — één keer
  * per aanroeper aan te roepen (niet per resultaat), zelfde als voorheen
  * in sync/route.ts. */
@@ -86,6 +166,23 @@ export async function verwerkConcept2Resultaat(
   // een afronding op de minuut te grof (7:32 zou 8:00 worden) — daarom
   // hier apart, puur additief, de precieze waarde bewaard.
   metrics.precieze_duur_sec = Math.round(resultaat.time / 10)
+
+  // v2.4.373: intervaldata — ALLEEN hier, want dit punt wordt uitsluitend
+  // bereikt voor een resultaat dat de idempotency-check hierboven al is
+  // gepasseerd (dus daadwerkelijk nieuw). Vóór de insert, zodat
+  // metrics.intervallen in dezelfde, enkele schrijfactie meegaat i.p.v.
+  // een aparte update() erna. Faalt de tokenophaal of de detailcall, dan
+  // blijft metrics.intervallen gewoon afwezig — de import hieronder gaat
+  // altijd door, ongeacht dit resultaat.
+  try {
+    const detailToken = await haalGeldigToken(supabase, userId)
+    if (detailToken) {
+      const intervallen = await haalConcept2Intervallen(detailToken, resultaat.id)
+      if (intervallen) metrics.intervallen = intervallen
+    }
+  } catch (intervalErr) {
+    console.error('[concept2-result-processor] Intervaldata-stap mislukt, import gaat door zonder:', resultaat.id, intervalErr)
+  }
 
   const duurMinuten = Math.round(resultaat.time / 600)
   const dagStr = resultaat.date.split(' ')[0]

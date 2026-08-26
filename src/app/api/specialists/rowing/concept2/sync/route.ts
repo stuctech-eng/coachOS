@@ -10,6 +10,7 @@ import {
   type Concept2Result,
   haalOfMaakRoeiActiviteit,
   verwerkConcept2Resultaat,
+  haalGeldigToken,
 } from '@/lib/specialists/concept2-result-processor'
 
 async function getUser() {
@@ -34,63 +35,22 @@ async function getUser() {
 // extractie), nodig omdat de nieuwe webhook-route exact dezelfde stappen
 // nodig heeft voor telkens één resultaat i.p.v. een hele lijst.
 
-async function haalGeldigToken(userId: string): Promise<string | null> {
-  const supabase = createAdminClient()
-  const { data: tokenRij } = await supabase
-    .from('concept2_tokens')
-    .select('access_token, refresh_token, expires_at')
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (!tokenRij) return null
-
-  if (new Date(tokenRij.expires_at).getTime() > Date.now() + 5 * 60 * 1000) {
-    return tokenRij.access_token
-  }
-
-  const clientId = process.env.CONCEPT2_CLIENT_ID
-  const clientSecret = process.env.CONCEPT2_CLIENT_SECRET
-  if (!clientId || !clientSecret) return null
-
-  const refreshRes = await fetch('https://log.concept2.com/oauth/access_token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: 'refresh_token',
-      refresh_token: tokenRij.refresh_token,
-      scope: 'results:read',
-    }),
-  })
-  if (!refreshRes.ok) {
-    console.error('[concept2/sync] Token-vernieuwing mislukt:', refreshRes.status, await refreshRes.text())
-    return null
-  }
-  const nieuweTokens = await refreshRes.json() as { access_token: string; refresh_token: string; expires_in: number }
-  const nieuweExpiresAt = new Date(Date.now() + nieuweTokens.expires_in * 1000).toISOString()
-
-  await supabase.from('concept2_tokens').update({
-    access_token: nieuweTokens.access_token,
-    refresh_token: nieuweTokens.refresh_token,
-    expires_at: nieuweExpiresAt,
-    updated_at: new Date().toISOString(),
-  }).eq('user_id', userId)
-
-  return nieuweTokens.access_token
-}
+// v2.4.373: haalGeldigToken verhuisd naar concept2-result-processor.ts
+// (geëxporteerd) — de nieuwe intervaldata-detailcall daar heeft 'm ook
+// nodig, en de webhook-route had helemaal geen tokenlogica. Zie de
+// module-comment daar voor de volledige toelichting.
 
 export async function POST() {
   try {
     const user = await getUser()
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 
-    const accessToken = await haalGeldigToken(user.id)
+    const supabase = createAdminClient()
+
+    const accessToken = await haalGeldigToken(supabase, user.id)
     if (!accessToken) {
       return NextResponse.json({ error: 'Geen geldige Concept2-koppeling — verbind opnieuw' }, { status: 400 })
     }
-
-    const supabase = createAdminClient()
 
     const van = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
