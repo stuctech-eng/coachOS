@@ -3,6 +3,34 @@
 > **Oudere entries (vóór v2.4.185)** staan in `docs/changelog-archief.md` — gearchiveerd op 20 augustus 2026 om het actieve bestand onder de groottedrempel van Working Copy's zip-import te houden. **Deze notitie hoort ALTIJD hier, direct onder de titel — bij het toevoegen van een nieuwe entry, plaats die ERONDER, nooit ervoor, zodat dit niet opnieuw wegzakt.**
 
 
+## v2.4.375 — RowingPM5WorkoutRequest v1 (contract, APPROVED — nog niet gekoppeld aan productiecode)
+**Zuiver datacontract, zelfde patroon als kettlebell-training-request.ts. Geen adapter, geen CSAFE, geen Bluetooth, geen PM5 API-route — dat volgt in een latere sessie, met echte hardware beschikbaar.**
+
+### Aanleiding
+Vóór er ook maar één regel native iOS/Bluetooth-code gebouwd wordt, eerst de CoachOS-kant van de PM5-uitwisseling vastleggen als apparaat-onafhankelijk contract — zodat de Training Engine nooit hoeft te weten wat CSAFE is, en een andere bridge (ander roeitoestel, andere transportlaag) dit contract in theorie kan hergebruiken.
+
+### Protocolonderzoek — Concept2's officiële documentatie, niet uit geheugen
+- Concept2 PM CSAFE Communication Definition rev 0.27 (log.concept2.com/developers/documentation): bevestigde SET-commando's voor workouttype, duur (tijd/afstand/calorieën/watt-minuten), rustduur, doelpace (`CSAFE_PM_SET_TARGETPACETIME`) en doelvermogen (`CSAFE_SETPOWER_CMD`)
+- **Geen SET-commando gevonden voor streefslagfrequentie** — vandaar bewust geen `target_spm` in het contract
+- Rustduur hard begrensd op 9:55 (595s) — Table 19, PM5 Workout Configuration Parameter Limits
+- Concept2's eigen support-documentatie (concept2.ch/concept2.co.uk, "Setting Up a Workout with Undefined Rest") bevestigde een tweede, striktere limiet: **maximaal 29 undefined-rest-intervallen** (los van de algemene 50-splits-limiet)
+
+### Nieuw — `src/lib/specialists/rowing-pm5-workout-request.ts`
+- `RowingPM5WorkoutRequest`: `workout_type`, `intervals[]` (work/rest, tijd óf afstand expliciet onderscheiden via `duration_type`), `target` (alleen `pace_sec_per_500m`/`watts` — bevestigde PM5-targets), `instruction` (coaching-only, o.a. `stroke_rate_spm`, nooit naar de PM5), `metadata.training_plan_session_id` (verplicht — sleutel voor de deterministische Planned → PM5 → Actual-koppeling)
+- `validateRowingPM5WorkoutRequest()`: max 50 intervals, max 29 undefined-rest-intervallen, rust max 595s, geen gemengde vaste/undefined rust binnen één workout (expliciet als aanname gemarkeerd, niet als bevestigd feit — de documentatie toont dit nooit gemengd, maar bevestigt het verbod ook niet letterlijk)
+- 6 getypeerde voorbeelden (incl. 2 bewust ongeldige, ter documentatie van de validator)
+
+### Bewust niet gedaan
+- Geen enkele koppeling aan bestaande productiecode — het bestand wordt nergens geïmporteerd
+- Geen PM5 API-route, geen adapter-laag, geen iOS/Bluetooth-code
+- Geen testframework — zelfde afweging als bij v2.4.373
+
+### Verificatie
+Volledige productie-`npm run build`: geslaagd, 0 errors/warnings. Diff tegen een onafhankelijke download: precies 1 nieuw bestand, niets anders geraakt.
+
+**Volledig detail:** README.md, sectie "CHECKPOINT — RowingPM5WorkoutRequest v1 (25 augustus 2026)".
+
+
 ## v2.4.374 — Rowing Planned vs Actual v1 (presentatielaag, geen nieuwe matching-engine)
 **Bestaande Workout Matching Service (v2.4.267) voor het eerst zichtbaar gemaakt — geen wijziging aan de matching-logica zelf.**
 

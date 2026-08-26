@@ -823,6 +823,39 @@ de ongecachete functie) gebeurt bij een cache-hit niet opnieuw —
 onschadelijk, een achtergrond-onderhoudstaak die bij de eerstvolgende
 oncachete aanroep gewoon weer meeloopt.
 
+## 🧭 CHECKPOINT — RowingPM5WorkoutRequest v1 (25 augustus 2026)
+
+**Contract v1: APPROVED. Puur datacontract, nog geen adapter/CSAFE/Bluetooth/PM5 API-route — bewust de grens die vandaag is vastgehouden.**
+
+### Waarom eerst dit, vóór native iOS/Bluetooth-code
+Voorkomt dat de Training Engine ooit hoeft te weten wat CSAFE is. `RowingPM5WorkoutRequest` is apparaat-onafhankelijk — een andere bridge (ander roeitoestel, andere transportlaag dan BLE) zou dit contract in theorie kunnen hergebruiken.
+
+```
+CoachOS Training Plan → training_plan_session
+  → RowingPM5WorkoutRequest (contract, v2.4.375)
+  → [toekomstige iOS-app] PM5 Bridge Adapter → CSAFE → BLE → PM5
+en terug:
+PM5 → BLE/CSAFE → iOS Bridge → CoachOS API → activity_sessions
+  → completed_activity_id → training_plan_sessions → Planned vs Actual
+```
+
+### Protocolonderzoek — twee bevestigingsrondes tegen Concept2's officiële documentatie
+1. **PM CSAFE Communication Definition rev 0.27**: bevestigde SET-commando's voor workouttype, duur, rustduur, doelpace, doelvermogen. **Geen SET-commando voor streefslagfrequentie gevonden** — daarom bewust geen `target_spm` in het contract; een gewenste SPM is `instruction.stroke_rate_spm`, coaching-tekst, nooit naar de PM5 verstuurd. Rust hard begrensd op 9:55 (595s), max 50 splits per workout (Table 19).
+2. **Tweede verificatieronde (op verzoek, vóór het toevoegen van undefined rest):** Concept2's eigen support-documentatie bevestigde een **tweede, striktere limiet — max 29 undefined-rest-intervallen**, los van de algemene 50-grens. Zonder deze tweede check was dat gemist.
+
+### Wat het contract bewust wél/niet vastlegt
+- **Wél:** `workout_type` (incl. `variable_undefined_rest_interval`), `intervals[]` met expliciet `duration_type` (tijd/afstand, nooit een ambigue kale `duration`), `target.pace_sec_per_500m`/`target.watts` (beide bevestigde PM5-commando's), `metadata.training_plan_session_id` (verplicht — de sleutel voor **deterministische** Planned → PM5 → Actual-koppeling, in tegenstelling tot de bestaande, retrospectieve `rowingMatcher` voor workouts die buiten CoachOS om gestart worden)
+- **Niet:** CSAFE-bytes (dat is de toekomstige adapter), `target_spm`
+- **Bewust als aanname gemarkeerd, niet als feit:** geen mix van vaste/undefined rust binnen één workout — de documentatie toont dit nooit gemengd, bevestigt het verbod ook niet letterlijk. Blijft een strengere, veiligere validatieregel totdat er echte PM5-hardware is om te testen.
+- **Bekend, niet opgelost risico (raakt de toekomstige adapter, niet dit contract):** een forumthread meldt dat CSAFE-configuratiecommando's voor workouts met veel intervallen het 120-byte-frame-limiet kunnen overschrijden, zonder dat Concept2 documenteert hoe je dat over meerdere frames verdeelt.
+
+### Gebouwd (v2.4.375)
+`src/lib/specialists/rowing-pm5-workout-request.ts` — types, `validateRowingPM5WorkoutRequest()`, 6 getypeerde voorbeelden (incl. 2 bewust ongeldige). Nergens geïmporteerd — geen enkele bestaande productiecode aangeraakt of gekoppeld.
+
+**Volgende stap, expliciet nog niet gestart:** PM5 Bridge Adapter (CSAFE-vertaling) en de native iOS/Bluetooth-laag zelf — vergt Xcode en fysieke PM5-hardware, buiten deze chat-omgeving.
+
+**Volledig detail:** `docs/changelog.md`, entry v2.4.375.
+
 ## 🧭 CHECKPOINT — Rowing Planned vs Actual v1 (25 augustus 2026)
 
 **Bestaande Workout Matching Service (v2.4.267) voor het eerst zichtbaar — geen nieuwe matching-engine.**
