@@ -47,6 +47,12 @@ interface DagelijkseBelasting { datum: string; geschatte_tss: number; ctl: numbe
 interface WekelijkseTrend { week_start: string; gemiddelde_split_sec_per_500m: number | null; gemiddelde_hartslag: number | null; gemiddelde_slagfrequentie: number | null }
 interface RowingRecord { afstand_m: number; tijd_sec: number; datum: string }
 interface RowingAfstandTrendPunt { datum: string; tijd_sec: number }
+interface RowingIntervalDetail {
+  duur_sec: number
+  afstand_m: number
+  gemiddelde_slagfrequentie: number | null
+  gemiddelde_hartslag: number | null
+}
 interface RowingRecenteSessie {
   id: string
   datum: string
@@ -56,6 +62,7 @@ interface RowingRecenteSessie {
   gemiddelde_hartslag: number | null
   gemiddelde_slagfrequentie: number | null
   bron: string
+  intervallen: RowingIntervalDetail[] | null
 }
 interface RowingPeriodeSamenvatting {
   afstand_km: number
@@ -206,6 +213,7 @@ export default function RowingPerformanceCenterPage() {
   const [records, setRecords] = useState<RowingRecord[]>([])
   const [afstandTrends, setAfstandTrends] = useState<Record<number, RowingAfstandTrendPunt[]>>({})
   const [recenteSessies, setRecenteSessies] = useState<RowingRecenteSessie[]>([])
+  const [uitgeklapteSessie, setUitgeklapteSessie] = useState<string | null>(null)
   const [periodeVergelijking, setPeriodeVergelijking] = useState<RowingPeriodeVergelijking | null>(null)
 
   useEffect(() => {
@@ -405,22 +413,55 @@ export default function RowingPerformanceCenterPage() {
           <Card className="p-4">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">Recente trainingen</p>
             <div className="flex flex-col gap-3">
-              {recenteSessies.map(s => (
-                <div key={s.id} className="flex items-center justify-between border-t border-coach-border pt-3 first:border-0 first:pt-0">
-                  <div>
-                    <p className="text-sm text-white font-medium">{formatDatumKort(s.datum)} — {formatAfstand(s.afstand_m)}</p>
-                    <p className="text-xs text-slate-500">
-                      {formatDuur(s.duur_min)}
-                      {' · '}{s.split_sec_per_500m ? formatSplit(s.split_sec_per_500m) : '—'}
-                      {' · '}{s.gemiddelde_slagfrequentie !== null ? `${s.gemiddelde_slagfrequentie} SPM` : 'SPM —'}
-                      {' · '}{s.gemiddelde_hartslag !== null ? `HR ${s.gemiddelde_hartslag}` : 'HR —'}
-                    </p>
+              {recenteSessies.map(s => {
+                const heeftIntervallen = !!s.intervallen && s.intervallen.length > 0
+                const isUitgeklapt = uitgeklapteSessie === s.id
+                return (
+                  <div key={s.id} className="border-t border-coach-border pt-3 first:border-0 first:pt-0">
+                    <div
+                      className="flex items-center justify-between"
+                      onClick={heeftIntervallen ? () => setUitgeklapteSessie(isUitgeklapt ? null : s.id) : undefined}
+                      role={heeftIntervallen ? 'button' : undefined}
+                    >
+                      <div>
+                        <p className="text-sm text-white font-medium">
+                          {formatDatumKort(s.datum)} — {formatAfstand(s.afstand_m)}
+                          {/* v2.4.377: intervallen alleen tonen als de sessie ze heeft
+                              (metrics.intervallen, v2.4.373 — nieuwe Concept2-sessies) */}
+                          {heeftIntervallen && (
+                            <span className="ml-1.5 text-[9px] font-semibold text-blue-400/70 border border-blue-400/20 rounded px-1 py-0.5 align-middle">
+                              {s.intervallen!.length} INTERVALLEN
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {formatDuur(s.duur_min)}
+                          {' · '}{s.split_sec_per_500m ? formatSplit(s.split_sec_per_500m) : '—'}
+                          {' · '}{s.gemiddelde_slagfrequentie !== null ? `${s.gemiddelde_slagfrequentie} SPM` : 'SPM —'}
+                          {' · '}{s.gemiddelde_hartslag !== null ? `HR ${s.gemiddelde_hartslag}` : 'HR —'}
+                        </p>
+                      </div>
+                      <span className="text-[9px] font-semibold tracking-wide text-slate-400 bg-white/5 rounded-full px-2 py-1 whitespace-nowrap">
+                        {bronLabel(s.bron)}
+                      </span>
+                    </div>
+                    {heeftIntervallen && isUitgeklapt && (
+                      <div className="mt-2 pl-1 flex flex-col gap-1.5">
+                        {s.intervallen!.map((iv, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500">#{i + 1}</span>
+                            <span className="text-slate-300">{formatTijd(iv.duur_sec)} · {iv.afstand_m} m</span>
+                            <span className="text-slate-500">
+                              {iv.gemiddelde_slagfrequentie !== null ? `${iv.gemiddelde_slagfrequentie} SPM` : '—'}
+                              {' · '}{iv.gemiddelde_hartslag !== null ? `HR ${iv.gemiddelde_hartslag}` : 'HR —'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-[9px] font-semibold tracking-wide text-slate-400 bg-white/5 rounded-full px-2 py-1 whitespace-nowrap">
-                    {bronLabel(s.bron)}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </Card>
         )}

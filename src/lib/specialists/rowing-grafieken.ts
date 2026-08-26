@@ -406,12 +406,26 @@ export async function haalRowingAfstandTrends(userId: string): Promise<Record<nu
 // schijnfunctionaliteit bouwen voor een veld dat structureel niet
 // bestaat in de brondata.
 
+interface RowingIntervalRuw {
+  time?: number // tiende seconden (bevestigd: Concept2 API, v2.4.373)
+  distance?: number // meters
+  stroke_rate?: number
+  heart_rate?: { min?: number; average?: number; max?: number; ending?: number }
+}
+
 interface RowingActiviteitMetBron {
   id: string
   date: string
   duration: number
-  metrics: { distance?: number; avg_hr?: number; avg_stroke_rate?: number } | null
+  metrics: { distance?: number; avg_hr?: number; avg_stroke_rate?: number; intervallen?: RowingIntervalRuw[] } | null
   source: string
+}
+
+export interface RowingIntervalDetail {
+  duur_sec: number
+  afstand_m: number
+  gemiddelde_slagfrequentie: number | null
+  gemiddelde_hartslag: number | null
 }
 
 export interface RowingRecenteSessie {
@@ -423,6 +437,11 @@ export interface RowingRecenteSessie {
   gemiddelde_hartslag: number | null
   gemiddelde_slagfrequentie: number | null
   bron: string
+  // v2.4.377: additief — alleen gevuld als metrics.intervallen bestaat
+  // (v2.4.373, alleen nieuwe Concept2-sessies na die datum). Geen
+  // pace/watts hier, zoals de rest van Roeiprestaties — Concept2
+  // levert geen pace per interval, alleen tijd/afstand berekenbaar.
+  intervallen: RowingIntervalDetail[] | null
 }
 
 /** Meest recente N sessies, incl. bron — voor de "Recente trainingen"-
@@ -443,6 +462,15 @@ export async function haalRowingRecenteSessies(userId: string, aantal: number = 
 
   return ((data || []) as unknown as RowingActiviteitMetBron[]).map(a => {
     const mPerMin = a.metrics?.distance && a.duration > 0 ? a.metrics.distance / a.duration : null
+    const intervallenRuw = a.metrics?.intervallen
+    const intervallen = Array.isArray(intervallenRuw) && intervallenRuw.length > 0
+      ? intervallenRuw.map(i => ({
+          duur_sec: Math.round((i.time ?? 0) / 10),
+          afstand_m: Math.round(i.distance ?? 0),
+          gemiddelde_slagfrequentie: i.stroke_rate ?? null,
+          gemiddelde_hartslag: i.heart_rate?.average ?? null,
+        }))
+      : null
     return {
       id: a.id,
       datum: a.date,
@@ -452,6 +480,7 @@ export async function haalRowingRecenteSessies(userId: string, aantal: number = 
       gemiddelde_hartslag: a.metrics?.avg_hr ?? null,
       gemiddelde_slagfrequentie: a.metrics?.avg_stroke_rate ?? null,
       bron: a.source,
+      intervallen,
     }
   })
 }
