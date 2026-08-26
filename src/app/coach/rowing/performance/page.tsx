@@ -106,10 +106,12 @@ function formatWeekLabel(weekStart: string): string {
   return new Date(weekStart).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
 }
 function formatDuur(min: number): string {
-  if (min < 60) return `${min}m`
+  // v2.4.371: 'm' verving naar 'min' — "50m" naast "50 SPM" en afstanden
+  // in km las als meters, verwarrend in de Recente-trainingen-lijst.
+  if (min < 60) return `${min} min`
   const h = Math.floor(min / 60)
   const m = min % 60
-  return m > 0 ? `${h}u ${m}m` : `${h}u`
+  return m > 0 ? `${h}u ${m}min` : `${h}u`
 }
 function formatDatumKort(datum: string): string {
   return new Date(datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
