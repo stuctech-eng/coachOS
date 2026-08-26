@@ -823,6 +823,46 @@ de ongecachete functie) gebeurt bij een cache-hit niet opnieuw —
 onschadelijk, een achtergrond-onderhoudstaak die bij de eerstvolgende
 oncachete aanroep gewoon weer meeloopt.
 
+## 🧭 CHECKPOINT — Rowing Planned vs Actual v1 (25 augustus 2026)
+
+**Bestaande Workout Matching Service (v2.4.267) voor het eerst zichtbaar — geen nieuwe matching-engine.**
+
+Audit van `workout-matcher.ts`/`rowing-matcher.ts` bevestigde: `completed_activity_id`, `match_confidence`, `match_reden` worden al sinds v2.4.267 gevuld, maar werden nergens getoond. Extra gevonden: `coach/rowing/trainingsplan/page.tsx` filterde afgeronde sessies actief weg (`s.date >= vandaag`) — puur een frontend-gat, geen datagat.
+
+**Gebouwd (v2.4.374):**
+- `training-plan/route.ts`: additieve batch-select op `activity_sessions` voor sessies met `completed_activity_id`, als `actual` meegegeven
+- `trainingsplan/page.tsx`: nieuwe sectie "Gepland vs Uitgevoerd" — laatste 10 afgeronde sessies, gepland vs. uitgevoerd (duur/afstand/split), bronbadge, `match_reden` zichtbaar
+
+**Niet aangeraakt:** `workout-matcher.ts`, `rowing-matcher.ts`, `AUTO_MATCH_DREMPEL` — puur presentatie. Het nieuwe `distance_target_m`-veld (v2.4.370) wordt bewust nog niet gebruikt in de confidence-berekening — er is nog niets dat dit veld vult.
+
+**Volledig detail:** `docs/changelog.md`, entry v2.4.374.
+
+## 🧭 CHECKPOINT — Concept2 intervaldata (25 augustus 2026)
+
+**`workout.intervals` rechtstreeks uit Concept2's EIGEN API bevestigd en geïmplementeerd — los van wat Intervals.icu al bleek te leveren.**
+
+Concept2's officiële API-documentatie bevestigde: het lijst-endpoint geeft geen intervalstructuur, alleen het losse `/results/{id}`-endpoint. Rechtstreeks getest tegen een echt resultaat (tijdelijke debug-route, sindsdien niet meer nodig): `workout.intervals` aanwezig met `time`/`distance`/`stroke_rate`/`heart_rate`, geen `?include=strokes` nodig.
+
+**Gebouwd (v2.4.373):** detailcall in `concept2-result-processor.ts`, ALLEEN voor daadwerkelijk nieuwe resultaten (idempotency-check staat ervoor), in try/catch (fout blokkeert de import nooit), `metrics.intervallen` additief. Geldt automatisch voor zowel "Sync nu" als de webhook (`result-added`) — de webhook-route zelf is **geen enkele regel** aangepast, want beide roepen dezelfde `verwerkConcept2Resultaat()` aan.
+
+**Verificatie zonder testframework** (bewuste keuze — project heeft nog geen Vitest/Jest, disproportioneel voor deze ene wijziging): volledige productie-`npm run build` geslaagd, 8 geïsoleerde functietests tegen gemockte `fetch` geslaagd, control-flow bevestigd tegen de daadwerkelijk toegepaste broncode, diff tegen een onafhankelijke download bevestigde exact 2 bestanden gewijzigd.
+
+**Volledig detail:** `docs/changelog.md`, entry v2.4.373.
+
+**Vooruitblik, expliciet vastgelegd:** dit legt de datastructuur vast (`activity_sessions.metrics.intervallen` + Planned vs Actual) die de toekomstige PM5-workout-uitwisseling nodig heeft:
+
+```
+COACHOS TRAINING
+      ↓
+GEPLAND (distance target · duration target · load target)
+      ↓
+   ROEIEN → CONCEPT2 RESULT → intervaldata + total
+      ↓
+UITGEVOERD → PLANNED vs ACTUAL
+```
+
+Nog steeds geen PM5-code — de native iOS-app/hardware-stap blijft buiten deze chat-omgeving.
+
 ## 🧭 CHECKPOINT — Roeiprestaties-uitbreiding + PM5 integration impact audit (25 augustus 2026)
 
 **Master plan "Activity Bridge Audit + Roeiprestaties" volledig doorlopen — Fase 1 (audit), Fase 2 (live API-validatie) en de UI-uitbreiding. PM5-bridge zelf nog niet gebouwd — alleen de architectuur ervoor bevestigd.**

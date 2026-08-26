@@ -3,6 +3,59 @@
 > **Oudere entries (vóór v2.4.185)** staan in `docs/changelog-archief.md` — gearchiveerd op 20 augustus 2026 om het actieve bestand onder de groottedrempel van Working Copy's zip-import te houden. **Deze notitie hoort ALTIJD hier, direct onder de titel — bij het toevoegen van een nieuwe entry, plaats die ERONDER, nooit ervoor, zodat dit niet opnieuw wegzakt.**
 
 
+## v2.4.374 — Rowing Planned vs Actual v1 (presentatielaag, geen nieuwe matching-engine)
+**Bestaande Workout Matching Service (v2.4.267) voor het eerst zichtbaar gemaakt — geen wijziging aan de matching-logica zelf.**
+
+### Aanleiding
+Audit van `workout-matcher.ts`/`rowing-matcher.ts` liet zien dat `completed_activity_id`/`match_confidence`/`match_reden` al sinds v2.4.267 gevuld worden, maar nergens getoond werden. Extra bevinding: `coach/rowing/trainingsplan/page.tsx` filterde afgeronde sessies zelfs actief weg (`s.date >= vandaag`) — een afgeronde sessie kon dus sowieso nooit in beeld komen, los van de ontbrekende data.
+
+### Gewijzigd — `src/app/api/specialists/rowing/training-plan/route.ts`
+- Ná de bestaande `training_plan_sessions`-select: één additieve batch-select op `activity_sessions` voor sessies met een `completed_activity_id`, resultaat als `actual` (afstand/duur/split/bron) meegegeven per sessie
+- Bestaande queries (plan ophalen, Daily Adjustment Layer, rolling horizon) ongewijzigd
+
+### Gewijzigd — `src/app/coach/rowing/trainingsplan/page.tsx`
+- Nieuwe sectie "Gepland vs Uitgevoerd": laatste 10 afgeronde sessies, gepland (type/duur) naast uitgevoerd (duur/afstand/split), bronbadge (hergebruikt `bronLabel` uit `ActiviteitenSectie.tsx`), `match_reden` zichtbaar voor transparantie
+- Bestaande toekomstweergave (`toekomstigeSessies`) en workout-detail-uitklap ongewijzigd
+
+### Bewust niet gedaan
+- Geen wijziging aan `workout-matcher.ts`, `rowing-matcher.ts` of `AUTO_MATCH_DREMPEL` — puur presentatie bovenop bestaande, al-gevulde velden
+- Geen distance-gebaseerde confidence-scoring, ondanks het nieuwe `distance_target_m`-veld (v2.4.370) — dat veld wordt nog nergens gevuld, dus niets om op te toetsen
+
+**Volledig detail:** README.md, sectie "CHECKPOINT — Rowing Planned vs Actual v1 (25 augustus 2026)".
+
+
+## v2.4.373 — Concept2 intervaldata (workout.intervals rechtstreeks uit Concept2's eigen API)
+**Fase 2-live-gevalideerd tegen Concept2's EIGEN API (niet Intervals.icu) vóór implementatie. Geen testframework toegevoegd — handmatig geverifieerd via de echte productiebuild + geïsoleerde functietests.**
+
+### Aanleiding
+Concept2's officiële API-documentatie (log.concept2.com/developers/documentation) bevestigde dat het lijst-endpoint (`/results`) geen intervalstructuur bevat — alleen het losse `/results/{id}`-endpoint. Rechtstreeks getest via een tijdelijke debug-route (`api/debug/concept2-result-detail`, sindsdien niet meer nodig) tegen een echt resultaat: `workout.intervals` bevestigd aanwezig, met `time`/`distance`/`stroke_rate`/`heart_rate`, geen `?include=strokes` nodig.
+
+### Gewijzigd — `src/lib/specialists/concept2-result-processor.ts`
+- `haalGeldigToken()` hierheen verplaatst vanuit `sync/route.ts` (geëxporteerd, gedrag ongewijzigd) — nodig omdat zowel de nieuwe detailcall als de webhook-route (die nog geen tokenlogica had) dit nodig hebben
+- Nieuwe, private `haalConcept2Intervallen()` — haalt `workout.intervals` op via het bevestigde detail-endpoint
+- In `verwerkConcept2Resultaat()`: detailcall vóór de insert, in try/catch, **alleen voor daadwerkelijk nieuwe resultaten** (de idempotency-check staat er al vóór). `metrics.intervallen` additief gevuld; faalt de detailcall, dan gaat de basisimport gewoon door
+
+### Gewijzigd — `src/app/api/specialists/rowing/concept2/sync/route.ts`
+- Lokale `haalGeldigToken`-kopie verwijderd, geïmporteerd i.p.v.
+
+### Niet gewijzigd
+- `src/app/api/webhooks/concept2/[secret]/route.ts` — **geen enkele regel aangepast.** Roept `verwerkConcept2Resultaat()` aan zoals voorheen; de intervaldata-stap geldt daardoor automatisch ook voor webhook-events (`result-added`)
+- `rowing-grafieken.ts`, `source-priority-policy.ts`, dedup-logica — niet aangeraakt
+
+### Verificatie (geen testframework — bewuste, kleine wijziging)
+- Volledige productie-build (`npm run build`): geslaagd, 0 errors/warnings
+- 8 geïsoleerde functietests tegen een gemockte `fetch` (succesvolle intervaldata, HTTP-fout, netwerkfout, workout zonder intervallen, lege intervals-array): alle geslaagd
+- Control-flow-verificatie tegen de daadwerkelijk toegepaste broncode (dedup vóór detailcall, try/catch vóór de insert, geen return/throw in het catch-blok): bevestigd
+- Diff tegen een onafhankelijke, verse download: exact de twee bedoelde bestanden wijken af
+
+### Bewust niet gedaan
+- Geen `?include=strokes` — bevestigd niet nodig, veel grotere respons zonder toegevoegde waarde
+- Geen pace- of watts-veld verzonnen — Concept2 levert dit niet per interval
+- Geen aanpassing aan `rowing-grafieken.ts` om intervallen te tonen — aparte, latere stap
+
+**Volledig detail:** README.md, sectie "CHECKPOINT — Concept2 intervaldata (25 augustus 2026)".
+
+
 ## v2.4.369 — Roeiprestaties-uitbreiding: periodeselector, Performance Comparison, Recente trainingen, GEMETEN/BEREKEND/GESCHAT
 **Fase 2 live-gevalideerd (25 augustus 2026) tegen de productie-Intervals.icu-bridge vóór UI-code — geen enkele bestaande engine gewijzigd.**
 
