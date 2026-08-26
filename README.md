@@ -823,6 +823,53 @@ de ongecachete functie) gebeurt bij een cache-hit niet opnieuw —
 onschadelijk, een achtergrond-onderhoudstaak die bij de eerstvolgende
 oncachete aanroep gewoon weer meeloopt.
 
+## 🧭 CHECKPOINT — Roeiprestaties-uitbreiding + PM5 integration impact audit (25 augustus 2026)
+
+**Master plan "Activity Bridge Audit + Roeiprestaties" volledig doorlopen — Fase 1 (audit), Fase 2 (live API-validatie) en de UI-uitbreiding. PM5-bridge zelf nog niet gebouwd — alleen de architectuur ervoor bevestigd.**
+
+### Fase 1 — Audit, kernbevinding
+De Roeiprestaties-datalaag bestond al bijna volledig vóór dit werk begon: `src/lib/specialists/rowing-grafieken.ts` (dashboard, CTL/ATL/TSB, wekelijkse trend, records) en `/coach/rowing/performance` waren er al. Geen nieuwe engine nodig — alleen de vier ontbrekende UI-stukken (periodeselector, Performance Comparison, Recente trainingen, GEMETEN/BEREKEND/GESCHAT-labels).
+
+### Fase 2 — Live validatie tegen productie
+Bestaande `/debug`-knop (Intervals.icu Dry-run) en de bestaande `intervals-icu-test`-route (Fase 9, GET-only, geen writes) gebruikt om de productie-Intervals.icu-bridge te testen, vóór er UI-code op werd gebaseerd.
+
+**Bevinding:** alle 10 gevonden roei-activiteiten in Intervals.icu blijken zelf Concept2-relays te zijn (`device_name: "CONCEPT2"`, `source: "CONCEPT2"`) — geen onafhankelijke tweede bron. `nieuweBronWint()` blokkeert ze terecht allemaal (Concept2 prioriteit 100 > intervals_icu 85), 0 schrijfacties. Dit bevestigt de architectuur: Intervals.icu is bij deze gebruiker een spiegel van Concept2, geen aparte databron — de directe "Sync nu"-knop blijft de aanbevolen dagelijkse route.
+
+**Velden bevestigd (via de raw-data-route, niet alleen de dry-run-samenvatting):**
+| Veld | Status |
+|---|---|
+| Afstand, duur, datum/tijd | Gemeten, betrouwbaar |
+| Split/pace | Geen los veld — berekend uit afstand/tijd, zoals `rowing-grafieken.ts` al deed |
+| Stroke rate/SPM | Gemeten, aanwezig in alle 10 sessies |
+| HR | Gemeten, aanwezig in 7 van 10 sessies (3x geen band gedragen) |
+| **Watts** | **Structureel `null` in alle 10 sessies, op alle lap-niveaus — ondanks `device_watts: true`.** Noch de directe Concept2-sync, noch de Intervals.icu-relay levert dit. Bewust géén watts-veld gebouwd in de UI — geen schijnfunctionaliteit voor data die niet bestaat. |
+| Interval-structuur | **Wél aanwezig** bij sessies met echte intervaltraining (bijv. `interval_summary: ["1x 5m4s 94bpm","1x 42m2s 97bpm","1x 2m47s 88bpm"]`) — maar `concept2-result-processor.ts` slaat dit vandaag niet op. Apart, kleiner vervolgpunt, bewust nu buiten scope. |
+
+### PM5 integration impact audit
+Vóór er UI-code werd geschreven, eerst gecontroleerd of de bestaande architectuur PM5-ready is (op verzoek, om te voorkomen dat de UI later weer aangepast moet worden). Zeven punten gecontroleerd:
+
+1. **Waar `activity_sessions` wordt aangemaakt:** vier onafhankelijke inzetpunten (Concept2-sync, Intervals.icu-import, Garmin, Strava) — een vijfde voor PM5 past in hetzelfde patroon.
+2. **Planned vs. actual:** bestaat al, alleen niet op `activity_sessions` maar op `training_plan_sessions` (`status`, `completed_activity_id`, `match_confidence`, `match_reden` — geschreven door de bestaande `workout-matcher.ts`/`rowing-matcher.ts`). Echte gap: geen afstand-/interval-doelveld, alleen `duration` + `load_target` — nodig voor een structured-workout-push naar de PM5.
+3. **`concept2-result-processor.ts`:** bewaart genoeg voor historische data; extern ID zit als string in `notes` (`concept2:${id}`), niet als eigen kolom — werkt, maar fragiel voor een PM5-sessie die nog geen Concept2-log-ID heeft op het moment van binnenkomst.
+4. **`Concept2Workout`/`RowingPM5WorkoutRequest`:** hoort in hetzelfde patroon als de bestaande Trainer AI-bridge (`KettlebellTrainingRequest`-contract) — geen nieuw patroon nodig.
+5. **Waar PM5-data binnenkomt:** via de native iOS-app (Bluetooth/CoreBluetooth — bevestigd niet bouwbaar in deze chat-omgeving, vergt Xcode/fysieke hardware) → nieuwe endpoint → dezelfde `concept2-result-processor.ts`-pijplijn.
+6. **Dedup/bronprioriteit:** PM5-data hergebruikt `source: 'concept2'` (zelfde hardware, zelfde prioriteit) — wel een eigen, robuустere identificatie nodig i.p.v. de huidige `notes`-string-aanpak.
+7. **Koppeling PM5-workout ↔ geplande workout:** vandaag altijd retrospectief/kans-gebaseerd (`rowingMatcher`). Een PM5-push kan straks **deterministisch** koppelen (CoachOS weet vooraf welke `training_plan_sessions.id` verstuurd is) — de bestaande confidence-matcher blijft de fallback voor workouts die buiten CoachOS om gestart worden.
+
+**Conclusie:** geen enkel bestaand bestand hoeft te veranderen om PM5-ready te worden. Twee kleine, additieve schema-uitbreidingen geïdentificeerd voor later (doel-afstand op `training_plan_sessions`, `pm5_session_id` op `activity_sessions`) — nu bewust niet gebouwd.
+
+### Gebouwd (v2.4.369)
+- `rowing-grafieken.ts`: `haalRowingRecenteSessies()`, `haalRowingPeriodeVergelijking()` — puur additief
+- `api/specialists/rowing/grafieken/route.ts`: periodeselector (`?periode=7D/30D/3M/6M/1J`), `recente_sessies`, `periode_vergelijking`
+- `ActiviteitenSectie.tsx`: `bronLabel`/`BRON_LABELS` geëxporteerd voor hergebruik (geen gedragswijziging)
+- `coach/rowing/performance/page.tsx`: periodeselector, Performance Comparison, Recente trainingen + bronbadge, GEMETEN/BEREKEND/GESCHAT-labels
+
+**Niet aangeraakt:** `rowing-grafieken.ts`'s bestaande functies, `concept2-result-processor.ts`, `source-priority-policy.ts`, de matching-logica (`workout-matcher.ts`/`rowing-matcher.ts`) — geen van alle gewijzigd, geen aantoonbare fout gevonden die dat nodig maakte.
+
+**Volgende stap:** PM5 Bridge zelf bouwen vergt een native iOS-app (Swift/CoreBluetooth) en fysieke PM5-hardware — buiten deze chat-omgeving, bewaren voor een moment met een daadwerkelijke iOS-ontwikkelomgeving. De twee schema-uitbreidingen hierboven zijn dan de eerste stap.
+
+**Volledig detail:** `docs/changelog.md`, entry v2.4.369.
+
 ## 📋 SESSIE-OVERZICHT — 22 augustus 2026 (zeer lange sessie, chat bijna vol)
 
 **Voor de volgende sessie: lees dit eerst, dan de twee gedetailleerde
