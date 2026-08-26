@@ -95,6 +95,12 @@ export default function DebugPage() {
   // POST-aanroepen, gemeld "witte pagina" bij directe browser-navigatie
   const [intervalsBezig, setIntervalsBezig] = useState(false)
   const [intervalsResultaat, setIntervalsResultaat] = useState('')
+  // v2.4.372: Concept2 result-detail-validatie — zelfde reden als
+  // hierboven (directe browser-navigatie faalt op auth), plus dit
+  // endpoint heeft sowieso een result_id nodig, dus een invoerveld.
+  const [concept2ResultId, setConcept2ResultId] = useState('')
+  const [concept2Bezig, setConcept2Bezig] = useState(false)
+  const [concept2Resultaat, setConcept2Resultaat] = useState('')
   // v2.4.96: test-state voor de Adaptive Training Plan Engine
   const [planBezig, setPlanBezig] = useState(false)
   const [planResultaat, setPlanResultaat] = useState('')
@@ -279,6 +285,24 @@ export default function DebugPage() {
       setIntervalsResultaat(`FOUT: ${(e as Error).message}`)
     } finally {
       setIntervalsBezig(false)
+    }
+  }
+
+  // v2.4.372: Concept2 result-detail-validatie (§25 aug audit-vervolg)
+  // — bevestigt of Concept2's EIGEN API workout.splits/intervals levert,
+  // los van wat Intervals.icu al bleek te leveren. GET-only, geen writes.
+  async function draaiConcept2Detail(metStrokes: boolean) {
+    if (!concept2ResultId) { setConcept2Resultaat('FOUT: vul eerst een result_id in'); return }
+    setConcept2Bezig(true)
+    try {
+      const pad = `/api/debug/concept2-result-detail?result_id=${concept2ResultId}${metStrokes ? '&strokes=true' : ''}`
+      const res = await fetch(pad, { credentials: 'include' })
+      const data = await res.json()
+      setConcept2Resultaat(`GET ${metStrokes ? '(met strokes)' : ''} →\n${JSON.stringify(data, null, 2)}`)
+    } catch (e) {
+      setConcept2Resultaat(`FOUT: ${(e as Error).message}`)
+    } finally {
+      setConcept2Bezig(false)
     }
   }
 
@@ -904,6 +928,40 @@ export default function DebugPage() {
           </div>
           {intervalsResultaat && (
             <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{intervalsResultaat}</pre>
+          )}
+          </div>
+          </details>
+
+          {/* v2.4.372: Concept2 result-detail-validatie — bevestigt of
+              Concept2's EIGEN API workout.splits/intervals levert, vóór
+              concept2-result-processor.ts wordt aangepast. GET-only. */}
+          <details open className="rounded-xl bg-white/5 overflow-hidden mb-3">
+          <summary className="px-3 py-2.5 text-xs font-bold text-white cursor-pointer select-none">Concept2 result-detail-validatie (v2.4.372)</summary>
+          <div className="px-3 pb-3">
+          <p className="text-xs text-slate-500 mb-3">
+            Puur lezend, geen writes, geen token-refresh. Vul een bekend
+            Concept2 result_id in (te vinden in activity_sessions.notes,
+            formaat &quot;concept2:119496473&quot; — het getal erachter).
+          </p>
+          <input
+            type="text"
+            value={concept2ResultId}
+            onChange={e => setConcept2ResultId(e.target.value)}
+            placeholder="bijv. 119496473"
+            className="w-full mb-3 px-3 py-2.5 bg-slate-800 rounded-xl text-sm text-white placeholder:text-slate-600"
+          />
+          <div className="flex gap-2 mb-3">
+            <button onClick={() => draaiConcept2Detail(false)} disabled={concept2Bezig}
+              className="flex-1 py-2.5 bg-slate-800 rounded-xl text-xs font-medium text-white disabled:opacity-50">
+              {concept2Bezig ? 'Bezig...' : 'Detail ophalen (GET)'}
+            </button>
+            <button onClick={() => draaiConcept2Detail(true)} disabled={concept2Bezig}
+              className="flex-1 py-2.5 bg-slate-800 rounded-xl text-xs font-medium text-white disabled:opacity-50">
+              {concept2Bezig ? 'Bezig...' : 'Met strokes (kan groot zijn)'}
+            </button>
+          </div>
+          {concept2Resultaat && (
+            <pre className="bg-slate-900 rounded-xl p-3 text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap">{concept2Resultaat}</pre>
           )}
           </div>
           </details>
