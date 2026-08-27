@@ -31,6 +31,12 @@
 // bevestigen, dan de SQL-migratie klaarzetten, dan pas de code.
 
 export const SOURCE_PRIORITEIT: Record<string, number> = {
+  // v2.4.xxx (CoachOS Connect-contract, 28 augustus 2026): directe
+  // BLE-meting vanaf de PM5 zelf — hoger dan concept2 (dat via een
+  // cloud-omweg loopt), zodat directe Connect-data wint bij een
+  // dubbele registratie van dezelfde training. Productbeslissing,
+  // vastgelegd tijdens de contract-review.
+  coachos_connect: 110,
   concept2: 100,
   garmin: 90,
   // v2.4.337 (Intervals.icu-bridge, Fase 12): gerelayde apparaatdata

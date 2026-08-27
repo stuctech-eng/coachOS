@@ -1,9 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase'
-import { cookies } from 'next/headers'
+import { getAuthenticatedUser } from '@/lib/auth/getAuthenticatedUser'
 import { bouwWorkout, type WorkoutBuilderInput } from '@/core/workout-builder/builder'
 import { pasWorkoutAan, type AdaptationSignal } from '@/core/workout-builder/adaptation'
 import { valideerWorkout } from '@/core/workout-builder/validation'
@@ -17,17 +16,6 @@ import { bepaalKruisSportSignaal } from '@/core/athlete-platform/cross-sport-bri
 import { voerDailyAdjustmentUitCore } from '@/lib/specialists/training-plan-engine/adjuster-core'
 import { rowingAdapter } from '@/lib/specialists/training-plan-engine/rowing-adapter'
 import { genereerCoachPolicy } from '@/lib/specialists/coach-policy'
-
-async function getUser() {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
-  )
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
-}
 
 // ── Rowing Fase 2: eerste echte aansluiting op de Workout Platform ──────
 // Bron: overleg 1 augustus 2026. Voor een gegeven training_plan_sessions-
@@ -55,7 +43,11 @@ const MESOCYCLE_MAP: Record<string, WorkoutMesocycle> = {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getUser()
+    // v2.4.xxx (CoachOS Connect-contract, 28 augustus 2026): gemigreerd
+    // naar de gedeelde getAuthenticatedUser() — accepteert nu ook een
+    // native Authorization: Bearer-token. Cookie-pad voor de PWA
+    // ongewijzigd.
+    const user = await getAuthenticatedUser(req)
     if (!user) return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 })
 
     const sessieId = req.nextUrl.searchParams.get('sessieId')

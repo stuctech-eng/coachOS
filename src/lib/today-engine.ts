@@ -336,7 +336,7 @@ async function kiesTussenProposals(userId: string, proposals: SpecialistProposal
 // api/smart-actions/route.ts riepen deze functie tot nu toe alle drie
 // volledig ONAFHANKELIJK aan — bij één Home-bezoek dus tot 3× dezelfde,
 // zware berekening (CoachPolicy + workout-keten) tegelijk.
-async function bepaalTodayPlanOngecached(userId: string, cookieHeader: string, baseUrl: string): Promise<TodayPlan> {
+async function bepaalTodayPlanOngecached(userId: string, cookieHeader: string, baseUrl: string, authorizationHeader?: string): Promise<TodayPlan> {
   const supabase = createAdminClient()
   const vandaag = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
 
@@ -410,9 +410,19 @@ async function bepaalTodayPlanOngecached(userId: string, cookieHeader: string, b
     // Trainer-tab in de browser werkte prima, deze interne aanroep
     // faalde stil. baseUrl komt nu van de aanroeper, afgeleid van het
     // daadwerkelijke inkomende verzoek — gegarandeerd hetzelfde domein.
+    // CoachOS Connect-contract (28 augustus 2026): een Bearer-geauthenticeerde
+    // aanroeper heeft geen cookie — geef die header hier ook door zodat deze
+    // interne aanroep niet stilzwijgend faalt voor een native client zonder
+    // cookie. Werkt pas volledig zodra /api/training/today zelf ook naar
+    // getAuthenticatedUser() gemigreerd is (nog niet gedaan in deze patch,
+    // buiten scope van Sprint 6a — bewust niet stilzwijgend "opgelost").
     const trainerRes = await fetch(`${baseUrl}/api/training/today`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', cookie: cookieHeader },
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: cookieHeader,
+        ...(authorizationHeader ? { authorization: authorizationHeader } : {}),
+      },
       body: JSON.stringify({}),
     })
     if (!trainerRes.ok) {
@@ -475,7 +485,7 @@ async function bepaalTodayPlanOngecached(userId: string, cookieHeader: string, b
 //   );
 const TODAY_PLAN_CACHE_TTL_MS = 60 * 1000
 
-export async function bepaalTodayPlan(userId: string, cookieHeader: string, baseUrl: string): Promise<TodayPlan> {
+export async function bepaalTodayPlan(userId: string, cookieHeader: string, baseUrl: string, authorizationHeader?: string): Promise<TodayPlan> {
   const supabase = createAdminClient()
 
   try {
@@ -488,7 +498,7 @@ export async function bepaalTodayPlan(userId: string, cookieHeader: string, base
     console.error('[today-engine] Cache lezen mislukt, val terug op vers berekenen:', cacheErr)
   }
 
-  const plan = await bepaalTodayPlanOngecached(userId, cookieHeader, baseUrl)
+  const plan = await bepaalTodayPlanOngecached(userId, cookieHeader, baseUrl, authorizationHeader)
 
   try {
     await supabase.from('today_plan_cache').upsert({ user_id: userId, plan_json: plan, computed_at: new Date().toISOString() }, { onConflict: 'user_id' })
