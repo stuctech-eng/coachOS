@@ -47,4 +47,3 @@ public struct DeviceDescriptor: Codable, Equatable, Sendable, Identifiable {
         self.capabilities = capabilities
     }
 }
-

@@ -6,7 +6,7 @@ hardware: Bluetooth, live metrics, workout-uitvoering, synchronisatie.
 
 > CoachOS denkt. CoachOS Connect voert uit.
 
-## Status: Sprint 1 — Fundament (architectuur)
+## Status: Sprint 1 — Fundament (architectuur) + patch
 
 Sprint 1 levert de volledige projectstructuur, Clean Architecture, werkende
 Dependency Injection en het Device Layer-protocol. **Er zit in deze sprint
@@ -18,7 +18,7 @@ lege stekkerdoos, daarna de apparaten.
 - Swift Package met vier modules: `CoachOSConnectCore`, `CoachOSConnectDeviceLayer`, `CoachOSConnectData`, `CoachOSConnectDI`
 - Clean Architecture: Domain (protocollen, modellen, use cases) kent geen implementatiedetails
 - `DeviceAdapterProtocol` (volledig `async throws`) — de universele interface die elke toekomstige fabrikant-adapter implementeert
-- `DeviceState` + `DeviceStateMachine` — volledige levenscyclus (scanning → connecting → connected → workoutLoaded → running → paused → finished → syncing → error) met expliciet toegestane transities
+- `DeviceState` + `DeviceStateMachine` — volledige levenscyclus (scanning → connecting → connected → workoutLoaded → running ⇄ paused → finished → syncing → error) met expliciet toegestane transities
 - Capability-systeem (`DeviceCapability`) — apparaten worden bevraagd op vaardigheid, nooit op merknaam
 - `DeviceLayer` + `DeviceAdapterRegistry` — coördinatiepunt boven alle adapters, registratie via fabrieksfuncties, geen naam-gebaseerde branching
 - `UniversalWorkout` / `WorkoutBlock` (`.step` / `.repeatGroup`) / `WorkoutTarget` — hardware- én sport-onafhankelijk trainingsmodel, met `expandedSteps` voor adapters die geen herhalingsstructuur hoeven te begrijpen
@@ -77,12 +77,12 @@ handmatig opbouwen is foutgevoelig. In plaats daarvan:
 
 ## Volgende sprints (uit de architectuurvisie)
 
-- Sprint 2 — Login (koppeling aan echte CoachOS-auth)
-- Sprint 3 — Bluetooth Manager
-- Sprint 4 — Device Layer uitbreiden met scanning/discovery
+- Sprint 2 — Authenticatie (koppeling aan echte CoachOS-auth)
+- Sprint 3 — Generieke Bluetooth Manager
+- Sprint 4 — Device discovery / device UI
 - Sprint 5 — PM5 Adapter (eerste concrete implementatie)
-- Sprint 6 — API-client tegen live CoachOS-contract
+- Sprint 6 — Live CoachOS API-integratie
 - Sprint 7 — Workout Sync
 - Sprint 8 — Live Metrics
 - Sprint 9 — Workout Player
-- Sprint 10 — Audio Coach
+- Sprint 10 — Audio Coach + Haptics
