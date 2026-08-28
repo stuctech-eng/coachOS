@@ -1,3 +1,34 @@
+// ══════════════════════════════════════════════════════════════════════
+// ARCHITECTUURBESLISSING (28 augustus 2026) — NIET DE RUNTIME-BRIDGE
+// ══════════════════════════════════════════════════════════════════════
+// Dit bestand (en het bijbehorende src/lib/specialists/rowing-pm5-csafe-
+// adapter.ts) is bij de CoachOS Connect-architectuurreview aangetroffen
+// als een tweede, onafhankelijk gebouwde implementatie van dezelfde
+// PM5/CSAFE-kennis als CoachOS Connect's Swift-module
+// (stuctech-eng/coachos-connect-ios, Sources/CoachOSConnectPM5/).
+//
+// BESLUIT: de Swift-implementatie in CoachOS Connect is de ENIGE
+// runtime-implementatie van PM5/CSAFE-encoding. Dit TypeScript-bestand
+// wordt NIET aan een productieroute gekoppeld en NIET verder ontwikkeld
+// als uitvoerend systeem. Reden: CoachOS Connect is verantwoordelijk
+// voor "vertaal het universele workout-contract naar hardware, beheer
+// Bluetooth, encodeer CSAFE, communiceer met de PM5" — CoachOS hoeft
+// niet te weten hoe een BLE-frame, CSAFE-checksum of PM5-commandobyte
+// eruitziet.
+//
+// WEL BEHOUDEN, als onderzoeks-/validatiemateriaal: dat twee
+// onafhankelijk gebouwde implementaties (deze, en de Swift-versie) tot
+// vrijwel identieke CSAFE-commando's, byte-volgorden en eenheden komen,
+// is sterke, waardevolle kruisvalidatie van de Swift-implementatie —
+// zie de changelog van coachos-connect-ios, Sprint 6b-3.
+//
+// Dit bestand wordt verwijderd zodra bevestigd is dat niets ervan
+// productieafhankelijkheden heeft (op moment van dit besluit: nergens
+// geïmporteerd buiten rowing-pm5-csafe-adapter.ts zelf, geen route, geen
+// tests — dus in principe veilig te verwijderen, maar dat gebeurt in een
+// aparte, bewuste opruimstap, niet stilzwijgend hier).
+// ══════════════════════════════════════════════════════════════════════
+
 // ── RowingPM5WorkoutRequest — Contract (v1) ──────────────────────────────
 // Bron: PM5/Concept2 CSAFE-protocolonderzoek (25 augustus 2026) tegen
 // Concept2's officiële documentatie — Concept2 PM CSAFE Communication
